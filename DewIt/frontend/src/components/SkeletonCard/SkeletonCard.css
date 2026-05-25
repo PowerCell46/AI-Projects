@@ -1,0 +1,264 @@
+.skeleton-card {
+  background: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  padding: 20px 18px 18px;
+  aspect-ratio: 1 / 1.05;
+  display: flex;
+  flex-direction: column;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.skeleton-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+.skeleton-card-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.skeleton-card-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.skeleton-card-pill {
+  width: 70px;
+  height: 18px;
+  border-radius: 100px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.skeleton-card-priority {
+  width: 36px;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.skeleton-card-title {
+  width: 85%;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--bg);
+  margin-bottom: 10px;
+}
+
+.skeleton-card-desc {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.skeleton-card-desc--1 {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.skeleton-card-desc--2 {
+  width: 70%;
+}
+
+.skeleton-card-spacer {
+  flex: 1;
+}
+
+.skeleton-card-footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.skeleton-card-due {
+  width: 80px;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+@media (min-width: 1920px) {
+  .skeleton-card {
+    padding: 28px 26px 24px;
+    border-radius: 24px;
+  }
+  .skeleton-card-top {
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  .skeleton-card-top-left {
+    gap: 12px;
+  }
+  .skeleton-card-checkbox {
+    width: 22px;
+    height: 22px;
+  }
+  .skeleton-card-pill {
+    width: 86px;
+    height: 22px;
+  }
+  .skeleton-card-priority {
+    width: 44px;
+    height: 13px;
+  }
+  .skeleton-card-title {
+    height: 14px;
+    margin-bottom: 12px;
+  }
+  .skeleton-card-desc {
+    height: 10px;
+  }
+  .skeleton-card-desc--1 {
+    margin-bottom: 7px;
+  }
+  .skeleton-card-footer {
+    padding-top: 14px;
+  }
+  .skeleton-card-due {
+    width: 98px;
+    height: 13px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .skeleton-card {
+    padding: 36px 32px 30px;
+    border-radius: 32px;
+    border-width: 2px;
+  }
+  .skeleton-card-top {
+    margin-bottom: 20px;
+    gap: 14px;
+  }
+  .skeleton-card-top-left {
+    gap: 14px;
+  }
+  .skeleton-card-checkbox {
+    width: 27px;
+    height: 27px;
+  }
+  .skeleton-card-pill {
+    width: 104px;
+    height: 27px;
+  }
+  .skeleton-card-priority {
+    width: 54px;
+    height: 15px;
+  }
+  .skeleton-card-title {
+    height: 17px;
+    margin-bottom: 14px;
+  }
+  .skeleton-card-desc {
+    height: 12px;
+  }
+  .skeleton-card-desc--1 {
+    margin-bottom: 8px;
+  }
+  .skeleton-card-footer {
+    padding-top: 18px;
+  }
+  .skeleton-card-due {
+    width: 120px;
+    height: 15px;
+  }
+}
+
+@media (min-width: 3440px) {
+  .skeleton-card {
+    padding: 46px 40px 38px;
+    border-radius: 40px;
+    border-width: 2px;
+  }
+  .skeleton-card-top {
+    margin-bottom: 26px;
+    gap: 16px;
+  }
+  .skeleton-card-top-left {
+    gap: 16px;
+  }
+  .skeleton-card-checkbox {
+    width: 34px;
+    height: 34px;
+  }
+  .skeleton-card-pill {
+    width: 128px;
+    height: 34px;
+  }
+  .skeleton-card-priority {
+    width: 66px;
+    height: 19px;
+  }
+  .skeleton-card-title {
+    height: 21px;
+    margin-bottom: 17px;
+  }
+  .skeleton-card-desc {
+    height: 15px;
+  }
+  .skeleton-card-desc--1 {
+    margin-bottom: 10px;
+  }
+  .skeleton-card-footer {
+    padding-top: 22px;
+  }
+  .skeleton-card-due {
+    width: 148px;
+    height: 19px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .skeleton-card {
+    padding: 56px 50px 46px;
+    border-radius: 48px;
+    border-width: 2px;
+  }
+  .skeleton-card-top {
+    margin-bottom: 32px;
+    gap: 20px;
+  }
+  .skeleton-card-top-left {
+    gap: 20px;
+  }
+  .skeleton-card-checkbox {
+    width: 42px;
+    height: 42px;
+  }
+  .skeleton-card-pill {
+    width: 156px;
+    height: 42px;
+  }
+  .skeleton-card-priority {
+    width: 80px;
+    height: 23px;
+  }
+  .skeleton-card-title {
+    height: 26px;
+    margin-bottom: 21px;
+  }
+  .skeleton-card-desc {
+    height: 18px;
+  }
+  .skeleton-card-desc--1 {
+    margin-bottom: 13px;
+  }
+  .skeleton-card-footer {
+    padding-top: 28px;
+  }
+  .skeleton-card-due {
+    width: 180px;
+    height: 23px;
+  }
+}

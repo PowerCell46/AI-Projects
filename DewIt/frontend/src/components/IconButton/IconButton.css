@@ -1,0 +1,89 @@
+.icon-button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-icon), border-color var(--transition-icon),
+    background-color var(--transition-icon);
+}
+
+/* SVG size is set in JSX — override it here so it scales with the button */
+.icon-button svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.icon-button--edit:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.icon-button--delete:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 1920px) {
+  .icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .icon-button svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .icon-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border-width: 2px;
+  }
+  .icon-button svg {
+    width: 19px;
+    height: 19px;
+    stroke-width: 1.8;
+  }
+}
+
+@media (min-width: 3440px) {
+  .icon-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 13px;
+    border-width: 2px;
+  }
+  .icon-button svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
+  }
+}
+
+@media (min-width: 3840px) {
+  .icon-button {
+    width: 62px;
+    height: 62px;
+    border-radius: 16px;
+    border-width: 2px;
+  }
+  .icon-button svg {
+    width: 29px;
+    height: 29px;
+    stroke-width: 2;
+  }
+}

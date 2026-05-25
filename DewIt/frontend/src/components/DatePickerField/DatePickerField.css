@@ -1,0 +1,219 @@
+.date-picker {
+  position: relative;
+}
+
+.date-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 44px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.date-picker-value {
+  color: var(--ink-deep);
+  font-size: 14px;
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date-picker-value.is-placeholder {
+  color: var(--ink-muted);
+}
+
+.date-picker-icon {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.date-picker-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 296px;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 20px 40px -16px rgba(61, 40, 23, 0.22);
+  z-index: 100;
+}
+
+.date-picker-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.date-picker-time-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-deep);
+  letter-spacing: 0.02em;
+}
+
+.date-picker-time-input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-deep);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: text;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.date-picker-time-input:hover {
+  border-color: var(--border-strong);
+}
+
+.date-picker-time-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+  background: var(--card);
+}
+
+@media (max-width: 480px) {
+  .date-picker-popover {
+    width: min(296px, calc(100vw - 64px));
+    padding: 12px;
+    border-radius: 14px;
+  }
+  .date-picker-time-row {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+  .date-picker-time-input {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .date-picker-popover {
+    left: auto;
+    right: 0;
+  }
+}
+
+@media (min-width: 1920px) {
+  .date-picker-trigger {
+    height: 54px;
+  }
+  .date-picker-value {
+    font-size: 16px;
+  }
+  .date-picker-icon {
+    font-size: 16px;
+  }
+  .date-picker-popover {
+    width: 360px;
+    border-radius: 20px;
+    padding: 22px;
+  }
+  .date-picker-time-label {
+    font-size: 15px;
+  }
+  .date-picker-time-input {
+    font-size: 15px;
+    padding: 10px 13px;
+    border-radius: 12px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .date-picker-trigger {
+    height: 66px;
+  }
+  .date-picker-value {
+    font-size: 19px;
+  }
+  .date-picker-icon {
+    font-size: 19px;
+  }
+  .date-picker-popover {
+    width: 440px;
+    border-radius: 24px;
+    padding: 26px;
+  }
+  .date-picker-time-row {
+    margin-top: 18px;
+    padding-top: 18px;
+  }
+  .date-picker-time-label {
+    font-size: 17px;
+  }
+  .date-picker-time-input {
+    font-size: 17px;
+    padding: 12px 15px;
+    border-radius: 14px;
+  }
+}
+
+@media (min-width: 3440px) {
+  .date-picker-trigger {
+    height: 80px;
+  }
+  .date-picker-value {
+    font-size: 22px;
+  }
+  .date-picker-icon {
+    font-size: 22px;
+  }
+  .date-picker-popover {
+    width: 530px;
+    border-radius: 30px;
+    padding: 32px;
+  }
+  .date-picker-time-row {
+    margin-top: 22px;
+    padding-top: 22px;
+  }
+  .date-picker-time-label {
+    font-size: 20px;
+  }
+  .date-picker-time-input {
+    font-size: 20px;
+    padding: 14px 18px;
+    border-radius: 18px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .date-picker-trigger {
+    height: 96px;
+  }
+  .date-picker-value {
+    font-size: 26px;
+  }
+  .date-picker-icon {
+    font-size: 26px;
+  }
+  .date-picker-popover {
+    width: 640px;
+    border-radius: 36px;
+    padding: 38px;
+  }
+  .date-picker-time-row {
+    margin-top: 28px;
+    padding-top: 28px;
+  }
+  .date-picker-time-label {
+    font-size: 24px;
+  }
+  .date-picker-time-input {
+    font-size: 24px;
+    padding: 17px 22px;
+    border-radius: 22px;
+  }
+}

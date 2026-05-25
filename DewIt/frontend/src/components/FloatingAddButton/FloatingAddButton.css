@@ -1,0 +1,93 @@
+.floating-add {
+  position: fixed;
+  right: 36px;
+  bottom: 36px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-add);
+  z-index: 100;
+  transition: transform var(--transition-ui), box-shadow var(--transition-ui);
+}
+
+.floating-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -10px rgba(139, 90, 43, 0.55);
+}
+
+.floating-add:focus-visible {
+  outline: 2px solid var(--ink-deep);
+  outline-offset: 3px;
+}
+
+.floating-add-plus {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+body.modal-open .floating-add {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .floating-add {
+    width: 56px;
+    height: 56px;
+    right: 20px;
+    bottom: 20px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .floating-add {
+    width: 76px;
+    height: 76px;
+    right: 44px;
+    bottom: 44px;
+  }
+  .floating-add-plus {
+    font-size: 34px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .floating-add {
+    width: 94px;
+    height: 94px;
+    right: 56px;
+    bottom: 56px;
+  }
+  .floating-add-plus {
+    font-size: 42px;
+  }
+}
+
+@media (min-width: 3440px) {
+  .floating-add {
+    width: 114px;
+    height: 114px;
+    right: 68px;
+    bottom: 68px;
+  }
+  .floating-add-plus {
+    font-size: 50px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .floating-add {
+    width: 136px;
+    height: 136px;
+    right: 82px;
+    bottom: 82px;
+  }
+  .floating-add-plus {
+    font-size: 60px;
+  }
+}
