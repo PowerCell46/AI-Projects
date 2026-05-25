@@ -1,0 +1,151 @@
+.carousel {
+  display: flex;
+  flex-direction: column;
+}
+
+.carousel-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.carousel-container {
+  overflow: hidden;
+}
+
+.carousel-track {
+  display: flex;
+  will-change: transform;
+}
+
+.carousel-track--tasks {
+  gap: 18px;
+}
+
+.carousel-track--tasks > * {
+  flex: 0 0 calc((100% - 72px) / 5);
+}
+
+.carousel-track--categories {
+  gap: 14px;
+}
+
+.carousel-track--categories > * {
+  flex: 0 0 calc((100% - 56px) / 5);
+  min-width: 160px;
+}
+
+/* Responsive — fewer visible cards on narrower viewports */
+@media (max-width: 1100px) {
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 54px) / 4);
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 42px) / 4);
+  }
+}
+
+@media (max-width: 860px) {
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 36px) / 3);
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 28px) / 3);
+  }
+}
+
+@media (max-width: 640px) {
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 18px) / 2);
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 14px) / 2);
+  }
+}
+
+@media (max-width: 480px) {
+  .carousel-track--tasks > * {
+    flex: 0 0 100%;
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 100%;
+  }
+}
+
+/* Scale up for large / hi-res viewports — keep 5 visible slots */
+@media (min-width: 1920px) {
+  .carousel-header {
+    margin-bottom: 26px;
+  }
+  .carousel-track--tasks {
+    gap: 20px;
+  }
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 80px) / 5);
+  }
+  .carousel-track--categories {
+    gap: 16px;
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 64px) / 5);
+    min-width: 180px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .carousel-header {
+    margin-bottom: 32px;
+  }
+  .carousel-track--tasks {
+    gap: 22px;
+  }
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 88px) / 5);
+  }
+  .carousel-track--categories {
+    gap: 18px;
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 72px) / 5);
+    min-width: 200px;
+  }
+}
+
+@media (min-width: 3440px) {
+  .carousel-header {
+    margin-bottom: 40px;
+  }
+  .carousel-track--tasks {
+    gap: 26px;
+  }
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 104px) / 5);
+  }
+  .carousel-track--categories {
+    gap: 22px;
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 88px) / 5);
+    min-width: 220px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .carousel-header {
+    margin-bottom: 48px;
+  }
+  .carousel-track--tasks {
+    gap: 30px;
+  }
+  .carousel-track--tasks > * {
+    flex: 0 0 calc((100% - 120px) / 5);
+  }
+  .carousel-track--categories {
+    gap: 26px;
+  }
+  .carousel-track--categories > * {
+    flex: 0 0 calc((100% - 104px) / 5);
+    min-width: 240px;
+  }
+}

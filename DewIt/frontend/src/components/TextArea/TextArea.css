@@ -1,0 +1,21 @@
+.text-area {
+  min-height: 84px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+@media (min-width: 1920px) {
+  .text-area { min-height: 104px; }
+}
+
+@media (min-width: 2560px) {
+  .text-area { min-height: 128px; }
+}
+
+@media (min-width: 3440px) {
+  .text-area { min-height: 156px; }
+}
+
+@media (min-width: 3840px) {
+  .text-area { min-height: 188px; }
+}

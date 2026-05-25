@@ -1,0 +1,132 @@
+.brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 40px;
+}
+
+.brand-header-title {
+  font-family: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
+  font-weight: 500;
+  font-size: 56px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink-deep);
+  margin: 0;
+}
+
+.brand-header-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 20px 11px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 100px;
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+.brand-header-stats:hover {
+  background: var(--card);
+  border-color: var(--accent);
+  color: var(--ink-deep);
+}
+
+.brand-header-stats:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-header-stats {
+    transition: none;
+  }
+}
+
+@media (min-width: 1920px) {
+  .brand-header {
+    margin-bottom: 48px;
+  }
+  .brand-header-title {
+    font-size: 68px;
+  }
+  .brand-header-stats {
+    font-size: 17px;
+    padding: 15px 28px 15px 22px;
+    gap: 10px;
+    border-width: 1.5px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .brand-header {
+    margin-bottom: 56px;
+  }
+  .brand-header-title {
+    font-size: 86px;
+  }
+  .brand-header-stats {
+    font-size: 22px;
+    padding: 19px 36px 19px 28px;
+    gap: 12px;
+    border-width: 2px;
+  }
+}
+
+@media (min-width: 3440px) {
+  .brand-header {
+    margin-bottom: 72px;
+  }
+  .brand-header-title {
+    font-size: 108px;
+  }
+  .brand-header-stats {
+    font-size: 27px;
+    padding: 23px 46px 23px 34px;
+    gap: 14px;
+    border-width: 2px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .brand-header {
+    margin-bottom: 88px;
+  }
+  .brand-header-title {
+    font-size: 130px;
+  }
+  .brand-header-stats {
+    font-size: 32px;
+    padding: 28px 56px 28px 42px;
+    gap: 16px;
+    border-width: 2px;
+  }
+}
+
+@media (max-width: 360px) {
+  .brand-header-stats {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .brand-header-stats-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

@@ -1,0 +1,19 @@
+.text-input {
+  height: 44px;
+}
+
+@media (min-width: 1920px) {
+  .text-input { height: 54px; }
+}
+
+@media (min-width: 2560px) {
+  .text-input { height: 66px; }
+}
+
+@media (min-width: 3440px) {
+  .text-input { height: 80px; }
+}
+
+@media (min-width: 3840px) {
+  .text-input { height: 96px; }
+}

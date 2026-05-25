@@ -1,0 +1,83 @@
+.checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--card);
+  transition: all 180ms ease;
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.checkbox--checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.task-section--today .checkbox--checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.task-section--overdue .checkbox--checked {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.task-section--upcoming .checkbox--checked {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+.checkbox-icon {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkbox {
+    transition: none;
+  }
+}
+
+@media (min-width: 1920px) {
+  .checkbox {
+    width: 22px;
+    height: 22px;
+    border-width: 2px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .checkbox {
+    width: 28px;
+    height: 28px;
+    border-width: 2px;
+  }
+}
+
+@media (min-width: 3440px) {
+  .checkbox {
+    width: 34px;
+    height: 34px;
+    border-width: 2.5px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .checkbox {
+    width: 42px;
+    height: 42px;
+    border-width: 3px;
+  }
+}
