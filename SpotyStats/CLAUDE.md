@@ -1,0 +1,108 @@
+# Project Conventions
+
+Spring Boot backend + React TypeScript frontend. These are **strong preferences** — push back when you have reason, don't follow them mechanically.
+
+## Stack
+- **Backend**: Java 25, Spring Boot, Maven
+- **Frontend**: React + TypeScript LSV, npm
+
+---
+
+## Running the project
+
+### Backend
+
+`JAVA_HOME` must point at Java 25:
+
+```powershell
+# PowerShell
+$env:JAVA_HOME = "C:\Users\HP ZBook 17 G5\.jdks\openjdk-25"
+mvn spring-boot:run
+```
+
+```cmd
+:: cmd
+set JAVA_HOME=C:\Users\HP ZBook 17 G5\.jdks\openjdk-25
+mvn spring-boot:run
+```
+
+Other Maven goals: `mvn clean install`, `mvn test`, `mvn verify`.
+
+### Frontend
+
+```bash
+npm install
+npm run dev        # dev server
+npm run build      # production build
+npm test           # tests
+```
+
+> If the actual script names in `package.json` differ, use those instead.
+
+## Code style (applies everywhere)
+
+1. Write clean, maintainable, well-ordered (horizontally and vertically), spaced-out code, following Uncle Bob's principles.
+2. Don't write long methods/functions — split them up.
+3. Leave **two** blank lines, instead of one, between the last import and the first actual line of code, for clearer separation.
+4. If a method contains complex logic, write a short and concise doc comment (e.g. JavaDoc, JSDoc).
+5. When chaining, put each call on a new line so it's easier to read.
+6. Take effort when naming variables, classes, interfaces, etc. The name should be cognitive — **readability is the end goal.**
+
+---
+
+## Backend (Spring Boot)
+
+### Architecture
+
+Layered: `controller → service → repository`. Controllers don't touch repositories directly. Services own business logic; controllers stay thin (validate input, delegate, shape response).
+
+### Dependency injection
+
+- **Constructor injection only.** Declare dependencies as `private final` fields and put `@RequiredArgsConstructor` on the class.
+- **No `@Autowired` on fields. Ever.**
+- **No setter injection.**
+
+### Lombok
+
+Used freely: `@RequiredArgsConstructor`, `@Data`, `@Builder`, `@Slf4j`, `@Value`, `@Getter`/`@Setter`, etc. Pick the narrowest annotation that does the job — prefer `@Getter` + `@RequiredArgsConstructor` over `@Data` on JPA entities.
+
+### Transactions
+
+Apply `@Transactional` on service methods where they're actually needed — multi-step writes, read-modify-write flows, anything requiring atomicity. Don't blanket-annotate every public service method.
+
+- Don't use Records, use Java classes with Lombok annotations.
+- Empty lines between methods should be EXACTLY 1.
+
+---
+
+## Frontend (React + TypeScript)
+
+### Folder organization
+
+By type:
+
+```
+src/
+  components/   reusable UI
+  hooks/        custom hooks
+  services/     API clients, business logic
+```
+
+### Components
+
+- **Functional components only.** No class components.
+- **Named exports only** — `export const Foo = ...`. No `export default`.
+
+### TypeScript
+
+- **No `any`.** Use `unknown` + narrowing, or define the type properly. If something legitimately can't be typed, justify it in a comment.
+- Prefer inference for locals; be explicit on function signatures and exported APIs.
+
+---
+
+## Working with me
+
+- **Push back when you have reason.** These are strong preferences, not commandments. If a rule would make the code worse in a specific case, say so and explain.
+- **No filler.** Skip "Great question!", "Here's a summary:", "I hope this helps." Get to the point.
+- **No silent assumptions.** If a request is ambiguous, ask one focused question before guessing.
+- **Don't auto-run tests/lint/builds.** Suggest the command if it matters; let me run it.

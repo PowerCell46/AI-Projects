@@ -1,0 +1,30 @@
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.count {
+  font-size: 12px;
+  color: var(--text-mute);
+  letter-spacing: 1px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Cap to the viewport so a heavy listening day scrolls inside the panel
+     instead of stretching the page; the floor keeps short windows usable. */
+  max-height: max(360px, calc(100vh - 430px));
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}

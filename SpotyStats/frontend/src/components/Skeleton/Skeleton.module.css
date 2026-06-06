@@ -1,0 +1,16 @@
+.block {
+  background: var(--panel-inset);
+  opacity: 0.6;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+}

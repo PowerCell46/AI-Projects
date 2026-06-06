@@ -1,0 +1,70 @@
+.sidebar {
+  padding: 36px 28px;
+}
+
+/* Wordmark only — no icon or symbol, by design. */
+.wordmark {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text);
+  padding: 0 4px;
+  margin-bottom: 48px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navItem,
+.navItemActive {
+  padding: 14px 18px;
+  border-radius: var(--radius-nav);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background var(--transition-hover);
+}
+
+.navItem {
+  color: var(--text-mute);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.navItem:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.navItemActive {
+  color: var(--text);
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    padding: 20px;
+  }
+
+  .wordmark {
+    margin-bottom: 16px;
+  }
+
+  .nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+
+  .navItem,
+  .navItemActive {
+    white-space: nowrap;
+    padding: 10px 16px;
+    border-radius: var(--radius-pill);
+  }
+}
