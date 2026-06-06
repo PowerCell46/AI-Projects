@@ -1,0 +1,36 @@
+/* Action buttons are rectangular (radius 10px) by design — never pill. */
+
+.primary {
+  padding: 11px 22px;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius-button);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background var(--transition-hover);
+}
+
+.primary:hover {
+  background: var(--accent-hover);
+}
+
+.primary:active {
+  background: var(--accent-active);
+}
+
+.secondary {
+  padding: 10px 22px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-button);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--transition-hover), border-color var(--transition-hover);
+}
+
+.secondary:hover {
+  background: var(--panel);
+  border-color: rgba(255, 255, 255, 0.18);
+}

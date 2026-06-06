@@ -1,0 +1,59 @@
+/* Design tokens — "Vinyl Glass" (docs/design-brief.md) */
+
+:root {
+  /* Surfaces */
+  --bg-base: #0b0d1a;
+  --bg-glow: #1a1530;
+  --panel: rgba(255, 255, 255, 0.04);
+  --panel-strong: rgba(255, 255, 255, 0.06);
+  --panel-inset: rgba(255, 255, 255, 0.025);
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.09);
+  --border-soft: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  /* Text */
+  --text: #f4f1ea;
+  --text-mute: #8a8fa3;
+  --text-mute-soft: #b0b4c4;
+
+  /* Accent */
+  --accent: #f4b860;
+  --accent-hover: #f6c47e;
+  --accent-active: #e0a64a;
+  --accent-text: #1a1530;
+
+  /* Chart palette, descending-value order; chart-6 is the lumped tail */
+  --chart-1: #f4b860;
+  --chart-2: #c9a3ff;
+  --chart-3: #7ad7c5;
+  --chart-4: #f48fb1;
+  --chart-5: #8aa9ff;
+  --chart-6: #3a3f55;
+
+  --track-art-bg: #22263a;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, sans-serif;
+
+  /* Radii */
+  --radius-panel: 20px;
+  --radius-stat-card: 18px;
+  --radius-row: 14px;
+  --radius-nav: 12px;
+  --radius-button: 10px;
+  --radius-art: 10px;
+  --radius-pill: 999px;
+
+  /* Layout */
+  --sidebar-width: 300px;
+  --main-padding: 48px 56px 64px;
+  --section-gap: 40px;
+
+  /* Breakpoints (for reference — media queries can't read custom props) */
+  /* 1100px: content grid → 1 col; 900px: stats → 2×2; 720px: top bar */
+
+  /* Transitions */
+  --transition-hover: 150ms ease;
+}

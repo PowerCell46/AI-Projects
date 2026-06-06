@@ -1,0 +1,28 @@
+.chart {
+  width: 200px;
+  height: 200px;
+  display: block;
+  margin: 0 auto;
+}
+
+.segment,
+.segmentHovered {
+  cursor: pointer;
+  transition: filter var(--transition-hover);
+}
+
+.segmentHovered {
+  filter: brightness(1.15);
+}
+
+.centerValue {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.centerLabel {
+  font-size: 5px;
+  fill: var(--text-mute);
+}

@@ -37,19 +37,22 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskResponse create(TaskCreateRequest request) {
-        log.info("Creating task title='{}' categoryId={}",
-                request.title(), request.categoryId());
+        log.info("Creating task title='{}' categoryId={}", request.title(), request.categoryId());
 
         Category category = loadCategoryOrThrow(request.categoryId());
         Task task = new Task();
+
         task.setTitle(request.title());
         task.setDescription(request.description());
         task.setDueDate(request.dueDate());
+
         task.setPriority(request.priority());
         task.setStatus(request.status());
+
         if (request.status() == TaskStatus.COMPLETED) {
             task.setCompletedAt(LocalDateTime.now());
         }
+
         task.setCategory(category);
 
         Task saved = taskRepository.save(task);
@@ -60,9 +63,11 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public Page<TaskResponse> findAll(Pageable pageable) {
-        log.debug("Listing tasks page={} size={}",
-                pageable.getPageNumber(), pageable.getPageSize());
-        return taskRepository.findAll(pageable).map(TaskMapper::toResponse);
+        log.debug("Listing tasks page={} size={}", pageable.getPageNumber(), pageable.getPageSize());
+
+        return taskRepository
+                .findAll(pageable)
+                .map(TaskMapper::toResponse);
     }
 
     @Override
@@ -78,6 +83,7 @@ public class TaskServiceImpl implements TaskService {
 
         Task task = loadTaskOrThrow(id);
         applyPartialUpdate(task, request);
+
         // JPA dirty checking inside the active transaction flushes changes on commit.
 
         log.info("Updated task id={}", id);
@@ -116,42 +122,52 @@ public class TaskServiceImpl implements TaskService {
         if (request.title() != null) {
             task.setTitle(request.title());
         }
+
         if (request.description() != null) {
             task.setDescription(request.description());
         }
+
         if (request.dueDate() != null) {
             task.setDueDate(request.dueDate());
         }
+
         if (request.priority() != null) {
             task.setPriority(request.priority());
         }
+
         if (request.status() != null) {
             TaskStatus newStatus = request.status();
+
             if (newStatus == TaskStatus.COMPLETED && task.getStatus() != TaskStatus.COMPLETED) {
                 task.setCompletedAt(LocalDateTime.now());
+
             } else if (newStatus != TaskStatus.COMPLETED && task.getStatus() == TaskStatus.COMPLETED) {
                 task.setCompletedAt(null);
             }
+
             task.setStatus(newStatus);
         }
+
         if (request.categoryId() != null) {
             task.setCategory(loadCategoryOrThrow(request.categoryId()));
         }
     }
 
     private Task loadTaskOrThrow(UUID id) {
-        return taskRepository.findById(id)
+        return taskRepository
+                .findById(id)
                 .orElseThrow(() -> {
                     log.warn("Task not found id={}", id);
-                    return new ResourceNotFoundException(
-                            TASK_NOT_FOUND_TEMPLATE.formatted(id));
+                    return new ResourceNotFoundException(TASK_NOT_FOUND_TEMPLATE.formatted(id));
                 });
     }
 
     private Category loadCategoryOrThrow(UUID id) {
-        return categoryRepository.findById(id)
+        return categoryRepository
+                .findById(id)
                 .orElseThrow(() -> {
                     log.warn("Category not found id={}", id);
+
                     return new ResourceNotFoundException(
                             CATEGORY_NOT_FOUND_TEMPLATE.formatted(id));
                 });

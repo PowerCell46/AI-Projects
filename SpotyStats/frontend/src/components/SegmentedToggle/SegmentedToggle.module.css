@@ -1,0 +1,32 @@
+/* The segmented toggle is intentionally pill-shaped — unlike action buttons. */
+
+.container {
+  display: flex;
+  background: var(--panel);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+
+.option,
+.optionActive {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  transition: background var(--transition-hover);
+}
+
+.option {
+  background: transparent;
+  color: var(--text-mute);
+}
+
+.option:hover {
+  color: var(--text);
+}
+
+.optionActive {
+  background: var(--accent);
+  color: var(--accent-text);
+}
