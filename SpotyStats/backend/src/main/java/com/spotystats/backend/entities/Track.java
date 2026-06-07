@@ -10,6 +10,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,13 +22,15 @@ import java.util.List;
 /**
  * A Spotify track, keyed by its Spotify id. Charts attribute plays to the
  * {@code primaryArtist}; {@code credits} carries the full ordered artist list
- * for display on history cards.
+ * for display on history cards. Equality is id-based, deliberately excluding
+ * the lazy associations and the {@code credits} collection.
  */
 @Entity
 @Table(name = "track")
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(of = "spotifyId")
 public class Track {
 
     @Id

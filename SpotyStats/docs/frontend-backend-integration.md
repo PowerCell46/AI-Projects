@@ -115,7 +115,15 @@ POST /auth/logout
 
 ## 4. API endpoints
 
-All responses are JSON, camelCase. Timestamps are ISO 8601 in UTC (e.g. `2026-06-05T10:30:45.123Z`).
+All responses are JSON, camelCase. Timestamps are ISO 8601 in UTC (e.g. `2026-06-05T10:30:45.123Z`);
+calendar dates are ISO `yyyy-MM-dd`. Every endpoint except `/api/me` requires a session and
+returns **401** without one. Mutating endpoints (`POST`) need the CSRF header (§5).
+
+**Common query params:**
+
+- `zone` — an IANA time zone (e.g. `Europe/Sofia`) used to bucket plays into calendar days.
+  Defaults to `UTC`; invalid values silently fall back to UTC. Pass
+  `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 
 ### `GET /api/me` — public
 
@@ -129,10 +137,10 @@ interface CurrentUserResponse {
 }
 ```
 
-### `GET /api/profile` — requires session
+### `GET /api/profile?zone` — requires session
 
-Fetches the user's profile **live from Spotify** (proxied through the backend, tokens
-refreshed automatically server-side).
+Spotify account details (live from Spotify, tokens refreshed server-side) plus what
+SpotyStats has recorded about the user's listening.
 
 ```ts
 interface ProfileResponse {
@@ -140,14 +148,170 @@ interface ProfileResponse {
   displayName: string | null;
   email: string | null;
   imageUrl: string | null;       // largest/first profile image, may be absent
+  country: string | null;        // ISO 3166-1 alpha-2, e.g. "BG"
+  product: string | null;        // Spotify tier, e.g. "premium"
+  followers: number | null;
+  totals: ListeningTotals;
+}
+
+interface ListeningTotals {       // all-time aggregates over our recorded plays
+  totalPlays: number;
+  totalListeningTimeMs: number;
+  uniqueArtists: number;
+  uniqueTracks: number;
+  trackingSince: string | null;  // date of the earliest recorded play (in `zone`)
+  likedTotal: number | null;     // live from Spotify; null when Spotify is unavailable
 }
 ```
 
-Returns **401** with no meaningful body if there is no session → treat as "not logged in"
-and show the sign-in screen.
+### `POST /api/listening/sync` → 204
 
-*(That's the entire API surface today. History/stats/library endpoints will follow the same
-conventions: `/api/...`, session cookie auth, `ApiError` on failure.)*
+Pulls the user's new recently-played tracks from Spotify into our DB (on-visit sync,
+[ADR 0002](adr/0002-persisted-history-on-visit-sync.md)). Call it when a listening page
+mounts, **before** fetching the read endpoints below. Idempotent — already-stored plays
+are deduplicated.
+
+### `GET /api/listening/today?zone`
+
+Today's plays (in the caller's time zone), newest first.
+
+```ts
+interface DailyHistoryResponse {
+  date: string;                  // calendar date in `zone`
+  tracks: PlayedTrackResponse[];
+}
+
+interface PlayedTrackResponse {
+  id: string;        // the play's DB id — unique per listen, safe as a React key
+  trackId: string;   // Spotify track id — use for the liked toggle
+  title: string;
+  artist: string;
+  album: string;
+  albumArtUrl: string | null;
+  playedAt: string;  // ISO 8601 UTC
+  durationMs: number;
+  liked: boolean;    // computed live from Spotify (ADR 0003); false if Spotify is unavailable
+}
+```
+
+### `GET /api/listening/history?zone&before`
+
+The listening diary, paged: up to a week of days (newest first) per page.
+
+- `before` (optional, ISO date) — exclusive upper bound; omit for the first page.
+
+```ts
+interface HistoryPageResponse {
+  days: DailyHistoryResponse[];
+  nextBefore: string | null;     // pass as `before` for the next page; null = nothing older
+}
+```
+
+`nextBefore` is already positioned past any play-free gap — just feed it back verbatim.
+
+### `GET /api/listening/week-stats`
+
+Rolling 7-day aggregates.
+
+```ts
+interface WeekStatsResponse {
+  tracksPlayed: number;
+  tracksPlayedDeltaPercent: number | null;  // vs the 7 days before; null when no baseline
+  listeningTimeMs: number;
+  uniqueArtists: number;
+  newArtists: number;                       // artists first heard this week
+  uniqueTracks: number;
+}
+```
+
+### `GET /api/listening/artist-breakdown`
+
+Artist share of recent listening (the donut), attributed by primary artist.
+
+```ts
+type ArtistBreakdown = ArtistShareResponse[];
+
+interface ArtistShareResponse {
+  artistName: string;
+  trackCount: number;
+  listeningTimeMs: number;
+}
+```
+
+### `GET /api/listening/artists?period`
+
+Artist ranking. `period` = `week` (default) | `month` — ranked from our captured plays —
+or `all`, served from Spotify's long-term top artists (which reach back further than our
+own history can).
+
+```ts
+interface ArtistRankingResponse {
+  trackedSince: string | null;   // earliest play we ever captured (ISO 8601 UTC);
+                                 // periods reaching further back are necessarily incomplete
+  artists: ArtistRankResponse[];
+}
+
+interface ArtistRankResponse {
+  artistId: string;
+  artistName: string;
+  imageUrl: string | null;
+  playCount: number | null;        // ┐ null when period=all — Spotify only
+  listeningTimeMs: number | null;  // ├ shares the order, not the metrics
+  uniqueTracks: number | null;     // ┘
+  followed: boolean;               // live from Spotify; false if Spotify is unavailable
+}
+```
+
+### `GET /api/listening/insights?zone`
+
+Aggregated listening patterns for the Insights page.
+
+```ts
+interface InsightsResponse {
+  hourlyActivity: { hour: number; plays: number }[];          // 0-23, all recorded plays
+  weekdayActivity: { isoWeekday: number;                      // 1 = Monday … 7 = Sunday
+                     plays: number; listeningTimeMs: number }[];
+  weeklyTrend: { weekStart: string;                           // ISO date
+                 plays: number; listeningTimeMs: number }[];  // recent weeks
+  topTracks: { trackId: string; title: string; artist: string;
+               albumArtUrl: string | null;
+               playCount: number; listeningTimeMs: number }[];
+}
+```
+
+### `POST /api/listening/tracks/{trackId}/liked` → 204
+
+Save or remove a track from the user's Spotify library. Body: `{ "liked": boolean }`
+(required). Needs the CSRF header.
+
+### `POST /api/listening/artists/{artistId}/followed` → 204
+
+Follow or unfollow an artist on the user's Spotify account. Body: `{ "followed": boolean }`
+(required). Needs the CSRF header.
+
+### `GET /api/liked?limit&offset`
+
+The user's Liked Songs library, fetched live from Spotify in Spotify's order (most
+recently added first). `limit` defaults to 50 (clamped to 1–50), `offset` defaults to 0.
+
+```ts
+interface LikedPageResponse {
+  total: number;                 // library-wide count, for pagination
+  limit: number;
+  offset: number;
+  items: LikedTrackResponse[];
+}
+
+interface LikedTrackResponse {
+  trackId: string;
+  title: string;
+  artist: string;
+  album: string;
+  albumArtUrl: string | null;
+  addedAt: string;               // ISO 8601 UTC — when the user liked the track
+  durationMs: number;
+}
+```
 
 ---
 
@@ -214,6 +378,12 @@ Note: a bare **401 from Spring Security itself** (e.g. hitting `/api/profile` wi
 session) may arrive with an empty body — handle `response.status === 401` first, then try
 to parse `ApiError` for the code.
 
+**Graceful degradation:** decorative data fetched live from Spotify does *not* fail the
+whole request when Spotify hiccups — instead the affected fields degrade:
+`ProfileResponse.totals.likedTotal` becomes `null`, and `liked` / `followed` flags fall
+back to `false`. Don't treat `liked: false` as proof the track isn't saved if you need
+certainty at that moment.
+
 ---
 
 ## 7. Quick reference
@@ -229,7 +399,12 @@ to parse `ApiError` for the code.
 | Failed-login redirect | `/login-error?reason=login_failed` (frontend route) |
 | Logout | `POST /auth/logout` → `204`, needs CSRF header |
 | Auth probe | `GET /api/me` (public) |
-| Profile | `GET /api/profile` (session required) |
+| Profile | `GET /api/profile?zone` (session required) |
+| Sync (call before reads) | `POST /api/listening/sync` → `204` |
+| Listening reads | `GET /api/listening/{today,history,week-stats,artist-breakdown,artists,insights}` |
+| Liked Songs library | `GET /api/liked?limit&offset` |
+| Save/unsave track | `POST /api/listening/tracks/{trackId}/liked` `{"liked": bool}` → `204` |
+| Follow/unfollow artist | `POST /api/listening/artists/{artistId}/followed` `{"followed": bool}` → `204` |
 | Health check | `GET /actuator/health` (public) |
 | Dates | ISO 8601, UTC |
 | JSON naming | camelCase |

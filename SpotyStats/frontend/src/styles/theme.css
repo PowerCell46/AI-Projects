@@ -24,6 +24,9 @@
   --accent-active: #e0a64a;
   --accent-text: #1a1530;
 
+  /* Icons */
+  --icon-inactive: #3a3f55;
+
   /* Chart palette, descending-value order; chart-6 is the lumped tail */
   --chart-1: #f4b860;
   --chart-2: #c9a3ff;
@@ -50,6 +53,10 @@
   --sidebar-width: 300px;
   --main-padding: 48px 56px 64px;
   --section-gap: 40px;
+  /* Scrollable panel lists: cap to the viewport so heavy lists scroll inside
+     the panel instead of stretching the page; the floor keeps short windows
+     usable. */
+  --scroll-list-max-height: max(360px, calc(100vh - 430px));
 
   /* Breakpoints (for reference — media queries can't read custom props) */
   /* 1100px: content grid → 1 col; 900px: stats → 2×2; 720px: top bar */

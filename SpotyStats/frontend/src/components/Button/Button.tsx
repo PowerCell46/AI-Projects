@@ -4,12 +4,22 @@ import styles from './Button.module.css'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary'
+  selected?: boolean
   children: ReactNode
 }
 
-export const Button = ({ variant = 'primary', children, ...rest }: ButtonProps) => (
+const classFor = (variant: 'primary' | 'secondary', selected: boolean | undefined): string => {
+  if (selected === true) {
+    return styles.selected
+  }
+
+  return variant === 'primary' ? styles.primary : styles.secondary
+}
+
+export const Button = ({ variant = 'primary', selected, children, ...rest }: ButtonProps) => (
   <button
-    className={variant === 'primary' ? styles.primary : styles.secondary}
+    className={classFor(variant, selected)}
+    aria-pressed={selected}
     {...rest}
   >
     {children}

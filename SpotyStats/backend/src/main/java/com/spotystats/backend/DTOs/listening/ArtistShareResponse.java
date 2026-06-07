@@ -1,4 +1,4 @@
-package com.spotystats.backend.DTOs.listening;
+package com.spotystats.backend.dtos.listening;
 
 import lombok.Value;
 

@@ -70,7 +70,7 @@ Used freely: `@RequiredArgsConstructor`, `@Data`, `@Builder`, `@Slf4j`, `@Value`
 
 Apply `@Transactional` on service methods where they're actually needed — multi-step writes, read-modify-write flows, anything requiring atomicity. Don't blanket-annotate every public service method.
 
-- Don't use Records, use Java classes with Lombok annotations.
+- Don't use Records, use Java classes with Lombok annotations. **Exception:** `@ConfigurationProperties` classes (e.g. `AppProperties`, `SpotifyProperties`) stay records — immutable constructor binding there is the idiomatic Spring Boot pattern.
 - Empty lines between methods should be EXACTLY 1.
 
 ---

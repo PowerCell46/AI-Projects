@@ -1,13 +1,15 @@
 package com.spotystats.backend.services.interfaces;
 
-import com.spotystats.backend.DTOs.profile.ProfileResponse;
+import com.spotystats.backend.dtos.profile.ProfileResponse;
+
+import java.time.ZoneId;
 
 
 public interface ProfileService {
 
     /**
      * Fetches the current user's profile live from Spotify (exercising the BFF token
-     * proxy + automatic refresh) and maps it to the SPA-facing shape.
+     * proxy + automatic refresh), enriched with SpotyStats' listening totals.
      */
-    ProfileResponse currentProfile();
+    ProfileResponse currentProfile(String userId, ZoneId zone);
 }

@@ -1,6 +1,7 @@
 package com.spotystats.backend.clients;
 
 import com.spotystats.backend.configurations.SpotifyProperties;
+import com.spotystats.backend.exceptions.SpotifyAuthorizationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -94,7 +95,7 @@ public class SpotifyApiClient {
         final OAuth2AuthorizedClient authorizedClient = authorizedClientManager.authorize(authorizeRequest);
 
         if (authorizedClient == null) {
-            throw new IllegalStateException("No authorized Spotify client for the current user");
+            throw new SpotifyAuthorizationException("No authorized Spotify client for the current user.");
         }
 
         return authorizedClient.getAccessToken().getTokenValue();

@@ -1,6 +1,6 @@
 package com.spotystats.backend.exceptions;
 
-import com.spotystats.backend.DTOs.error.ApiError;
+import com.spotystats.backend.dtos.error.ApiError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +32,9 @@ public class GlobalExceptionHandler {
     /**
      * Raised when there is no authorized Spotify client for the current request.
      */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiError> handleIllegalState(IllegalStateException ex) {
-        log.warn("Illegal state handling request: {}", ex.getMessage());
+    @ExceptionHandler(SpotifyAuthorizationException.class)
+    public ResponseEntity<ApiError> handleSpotifyAuthorization(SpotifyAuthorizationException ex) {
+        log.warn("No authorized Spotify client: {}", ex.getMessage());
 
         return build(HttpStatus.UNAUTHORIZED, "not_authorized", "No active Spotify session.");
     }

@@ -1,4 +1,4 @@
-# Spotistats — Design System & App Shell Implementation Brief
+# Spotystats — Design System & App Shell Implementation Brief
 
 ## Design rationale
 
@@ -95,8 +95,8 @@ backdrop-filter: blur(12px);
 
 ## Application name & branding
 
-- **Name:** Spotistats
-- **Logo treatment:** Wordmark only. **Do NOT add an icon or symbol next to it.** Just the word "Spotistats" in **19px / weight 600 / letter-spacing 0.3px**, color `var(--text)`.
+- **Name:** Spotystats
+- **Logo treatment:** Wordmark only. **Do NOT add an icon or symbol next to it.** Just the word "Spotystats" in **19px / weight 600 / letter-spacing 0.3px**, color `var(--text)`.
 
 ---
 
@@ -110,7 +110,7 @@ A `300px` left sidebar and a fluid-width main content area. The sidebar and main
 
 Contents from top to bottom:
 
-1. **Brand wordmark** — "Spotistats", standalone (no symbol/icon). Padding `0 4px`, margin-bottom **48px**.
+1. **Brand wordmark** — "Spotystats", standalone (no symbol/icon). Padding `0 4px`, margin-bottom **48px**.
 2. **Navigation items** — vertical list, gap **6px**. Items: `Today`, `History`, `Artists`, `Liked`, `Insights`, `Profile`.
    - Each item: padding `14px 18px`, border-radius `12px`, font-size `15px`, font-weight `500`.
    - **Inactive:** color `var(--text-mute)`, transparent background, transparent 1px border.
@@ -212,7 +212,7 @@ The toggle stays pill-shaped (it's a different component class than action butto
 ## Do not touch / do not add
 
 - Do NOT add a sidebar account/profile card.
-- Do NOT add an icon, dot, or symbol next to the "Spotistats" wordmark.
+- Do NOT add an icon, dot, or symbol next to the "Spotystats" wordmark.
 - Do NOT use pill-shaped buttons for primary actions — only the segmented toggle uses pill shape.
 - Do NOT introduce Spotify green (`#1db954`) anywhere. The amber accent is the only accent.
 - Do NOT add gradients to text, buttons, or panels (the page-background radial gradient is the only gradient).

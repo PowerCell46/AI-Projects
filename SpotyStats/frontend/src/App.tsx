@@ -1,10 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout/AppLayout'
 import { useCurrentUser } from './hooks/useCurrentUser'
-import { PlaceholderPage } from './pages/PlaceholderPage/PlaceholderPage'
+import { ArtistsPage } from './pages/ArtistsPage/ArtistsPage'
+import { HistoryPage } from './pages/HistoryPage/HistoryPage'
+import { InsightsPage } from './pages/InsightsPage/InsightsPage'
+import { LikedPage } from './pages/LikedPage/LikedPage'
 import { ProfilePage } from './pages/ProfilePage/ProfilePage'
+import { OverviewPage } from './pages/OverviewPage/OverviewPage'
 import { SignInPage } from './pages/SignInPage/SignInPage'
-import { TodayPage } from './pages/TodayPage/TodayPage'
 
 
 const LoginErrorPage = () => {
@@ -34,26 +37,14 @@ export const App = () => {
         <Route path="/login-error" element={<LoginErrorPage />} />
         {authenticated ? (
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/today" replace />} />
-            <Route path="/today" element={<TodayPage />} />
-            <Route
-              path="/history"
-              element={<PlaceholderPage eyebrow="Listening diary" title="History" />}
-            />
-            <Route
-              path="/artists"
-              element={<PlaceholderPage eyebrow="Listening diary" title="Artists" />}
-            />
-            <Route
-              path="/liked"
-              element={<PlaceholderPage eyebrow="Library" title="Liked" />}
-            />
-            <Route
-              path="/insights"
-              element={<PlaceholderPage eyebrow="Listening diary" title="Insights" />}
-            />
+            <Route path="/" element={<Navigate to="/overview" replace />} />
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/artists" element={<ArtistsPage />} />
+            <Route path="/liked" element={<LikedPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
             <Route path="/profile" element={<ProfilePage onLoggedOut={refresh} />} />
-            <Route path="*" element={<Navigate to="/today" replace />} />
+            <Route path="*" element={<Navigate to="/overview" replace />} />
           </Route>
         ) : (
           <Route path="*" element={<SignInPage />} />

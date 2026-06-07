@@ -1,0 +1,34 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* 50px shorter than --scroll-list-max-height: the pager row sits below the
+     list inside the same panel and needs the room. */
+  max-height: max(360px, calc(100vh - 480px));
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.pageInfo {
+  font-size: 13px;
+  color: var(--text-mute);
+}
+
+.pagerButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.empty {
+  color: var(--text-mute);
+  font-size: 14px;
+}

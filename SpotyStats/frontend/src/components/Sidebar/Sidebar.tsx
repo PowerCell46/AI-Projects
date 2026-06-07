@@ -8,7 +8,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { label: 'Today', path: '/today' },
+  { label: 'Overview', path: '/overview' },
   { label: 'History', path: '/history' },
   { label: 'Artists', path: '/artists' },
   { label: 'Liked', path: '/liked' },
@@ -18,7 +18,7 @@ const NAV_ITEMS: readonly NavItem[] = [
 
 export const Sidebar = () => (
   <aside className={styles.sidebar}>
-    <div className={styles.wordmark}>Spotistats</div>
+    <div className={styles.wordmark}>Spotystats</div>
     <nav className={styles.nav}>
       {NAV_ITEMS.map((item) => (
         <NavLink

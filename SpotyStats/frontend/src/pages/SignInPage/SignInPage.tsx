@@ -12,7 +12,7 @@ interface SignInPageProps {
  */
 export const SignInPage = ({ errorMessage }: SignInPageProps) => (
   <div className={styles.page}>
-    <div className={styles.wordmark}>Spotistats</div>
+    <div className={styles.wordmark}>Spotystats</div>
     <div className={styles.hero}>
       <div className={styles.eyebrow}>Listening diary</div>
       <h1 className={styles.title}>Your music, remembered</h1>

@@ -20,9 +20,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  /* Cap to the viewport so a heavy listening day scrolls inside the panel
-     instead of stretching the page; the floor keeps short windows usable. */
-  max-height: max(360px, calc(100vh - 430px));
+  max-height: var(--scroll-list-max-height);
   overflow-y: auto;
   padding-right: 8px;
   scrollbar-width: thin;

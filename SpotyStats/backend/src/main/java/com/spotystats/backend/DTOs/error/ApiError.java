@@ -1,4 +1,6 @@
-package com.spotystats.backend.DTOs.error;
+package com.spotystats.backend.dtos.error;
+
+import lombok.Value;
 
 import java.time.Instant;
 
@@ -7,16 +9,16 @@ import java.time.Instant;
  * Consistent error body returned to the SPA. Deliberately free of stack traces or
  * upstream internals.
  */
-public record ApiError(
+@Value
+public class ApiError {
 
-        Instant timestamp,
+    Instant timestamp;
 
-        int status,
+    int status;
 
-        String error,
+    String error;
 
-        String message
-) {
+    String message;
 
     public static ApiError of(int status, String error, String message) {
         return new ApiError(Instant.now(), status, error, message);

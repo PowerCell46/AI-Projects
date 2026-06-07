@@ -1,4 +1,4 @@
-package com.spotystats.backend.DTOs.listening;
+package com.spotystats.backend.dtos.listening;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
