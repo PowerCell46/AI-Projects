@@ -11,7 +11,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Overview', path: '/overview' },
   { label: 'History', path: '/history' },
   { label: 'Artists', path: '/artists' },
-  { label: 'Liked', path: '/liked' },
+  { label: 'Liked songs', path: '/liked-songs' },
   { label: 'Insights', path: '/insights' },
   { label: 'Profile', path: '/profile' },
 ]

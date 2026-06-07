@@ -30,15 +30,17 @@ const displayValueOf = (value: number, mode: BreakdownMode): string =>
   mode === 'Tracks' ? String(value) : formatListeningTime(value)
 
 /**
- * Sorts artists by the selected metric descending, keeps the top five with
- * their own chart colors, and lumps everything past that into a slate
- * "Others" tail — per the design brief's donut spec.
+ * Keeps the top five artists with their own chart colors and lumps everything
+ * past that into a slate "Others" tail — per the design brief's donut spec.
+ * The ranking is always by listening time, regardless of the selected mode,
+ * so flipping Tracks/Time re-weights the slices without shuffling each
+ * artist's position and color; the mode only chooses the values shown.
  */
 export const buildLegendEntries = (
   shares: ArtistShare[],
   mode: BreakdownMode,
 ): LegendEntry[] => {
-  const sorted = [...shares].sort((a, b) => valueOf(b, mode) - valueOf(a, mode))
+  const sorted = [...shares].sort((a, b) => b.listeningTimeMs - a.listeningTimeMs)
   const named = sorted.slice(0, MAX_NAMED_ARTISTS)
   const tail = sorted.slice(MAX_NAMED_ARTISTS)
 

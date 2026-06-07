@@ -9,28 +9,27 @@ import { useGuardedLoad } from '../../hooks/useGuardedLoad'
 import {
   fetchArtistBreakdown,
   fetchHistoryPage,
+  fetchStats,
   fetchTodayHistory,
-  fetchWeekStats,
   setTrackLiked,
   syncListeningHistory,
 } from '../../services/listeningService'
 import type {
   ArtistShare,
   DailyHistory,
+  ListeningPeriod,
   StatMetric,
 } from '../../services/listeningService'
 import styles from './OverviewPage.module.css'
 
 
-type DiaryRange = 'today' | 'week'
-
-const INITIAL_RANGE: DiaryRange = 'today'
+const INITIAL_RANGE: ListeningPeriod = 'today'
 
 /**
  * The diary days for a range: today's single day (always present, possibly
  * empty), or the rolling week's play-bearing days, newest first.
  */
-const fetchDiaryDays = (range: DiaryRange): Promise<DailyHistory[]> =>
+const fetchDiaryDays = (range: ListeningPeriod): Promise<DailyHistory[]> =>
   range === 'today'
     ? fetchTodayHistory().then((day) => [day])
     : fetchHistoryPage().then((page) => page.days)
@@ -39,7 +38,7 @@ export const OverviewPage = () => {
   const [stats, setStats] = useState<StatMetric[] | null>(null)
   const [days, setDays] = useState<DailyHistory[] | null>(null)
   const [shares, setShares] = useState<ArtistShare[] | null>(null)
-  const [range, setRange] = useState<DiaryRange>(INITIAL_RANGE)
+  const [range, setRange] = useState<ListeningPeriod>(INITIAL_RANGE)
 
   const { run, isRunning } = useGuardedLoad()
 
@@ -49,7 +48,7 @@ export const OverviewPage = () => {
    * the same plays.
    */
   const loadAll = useCallback(
-    (diaryRange: DiaryRange) => {
+    (period: ListeningPeriod) => {
       run(() => {
         setStats(null)
         setDays(null)
@@ -61,9 +60,9 @@ export const OverviewPage = () => {
           .catch(() => undefined)
           .then(() =>
             Promise.allSettled([
-              fetchWeekStats().then(setStats),
-              fetchDiaryDays(diaryRange).then(setDays),
-              fetchArtistBreakdown().then(setShares),
+              fetchStats(period).then(setStats),
+              fetchDiaryDays(period).then(setDays),
+              fetchArtistBreakdown(period).then(setShares),
             ]),
           )
       })
@@ -76,20 +75,30 @@ export const OverviewPage = () => {
   }, [loadAll])
 
   /**
-   * Flips the diary between today and the rolling week. Only the diary
-   * refetches — stats and artist breakdown are week-scoped either way.
+   * Flips all three panels between today and the rolling week. No re-sync —
+   * the plays are already fresh from the initial load.
    */
-  const switchRange = (next: DiaryRange): void => {
+  const switchRange = (next: ListeningPeriod): void => {
     if (next === range || isRunning()) {
       return
     }
 
     setRange(next)
+    setStats(null)
     setDays(null)
+    setShares(null)
+
+    fetchStats(next)
+      .then(setStats)
+      .catch(() => setStats([]))
 
     fetchDiaryDays(next)
       .then(setDays)
       .catch(() => setDays([]))
+
+    fetchArtistBreakdown(next)
+      .then(setShares)
+      .catch(() => setShares([]))
   }
 
   const applyLiked = (trackId: string, liked: boolean): void => {

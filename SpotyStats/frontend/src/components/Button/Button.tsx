@@ -2,18 +2,20 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import styles from './Button.module.css'
 
 
+type ButtonVariant = 'primary' | 'secondary' | 'danger'
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary'
+  variant?: ButtonVariant
   selected?: boolean
   children: ReactNode
 }
 
-const classFor = (variant: 'primary' | 'secondary', selected: boolean | undefined): string => {
+const classFor = (variant: ButtonVariant, selected: boolean | undefined): string => {
   if (selected === true) {
     return styles.selected
   }
 
-  return variant === 'primary' ? styles.primary : styles.secondary
+  return styles[variant]
 }
 
 export const Button = ({ variant = 'primary', selected, children, ...rest }: ButtonProps) => (

@@ -95,10 +95,10 @@ When the flow finishes, the backend redirects the browser to a **frontend route*
 
 | Outcome | Browser lands on | SPA must provide |
 |---|---|---|
-| Success | `/profile` | profile page route |
+| Success | `/overview` | overview (dashboard) route |
 | Failure (denied consent, callback error, …) | `/login-error?reason=login_failed` | error page route |
 
-After landing on `/profile`, the `SESSION` cookie is already set — just call the API.
+After landing on `/overview`, the `SESSION` cookie is already set — just call the API.
 
 ### 3.3 Log out
 
@@ -209,24 +209,28 @@ interface HistoryPageResponse {
 
 `nextBefore` is already positioned past any play-free gap — just feed it back verbatim.
 
-### `GET /api/listening/week-stats`
+### `GET /api/listening/stats?period&zone`
 
-Rolling 7-day aggregates.
+Stat-card aggregates for the toggled window. `period` = `week` (default, rolling 7 days)
+| `today` (since midnight in `zone`).
 
 ```ts
-interface WeekStatsResponse {
+interface PeriodStatsResponse {
   tracksPlayed: number;
-  tracksPlayedDeltaPercent: number | null;  // vs the 7 days before; null when no baseline
+  tracksPlayedDeltaPercent: number | null;  // vs the equally long window before
+                                            // (yesterday same-time / prior week);
+                                            // null when no baseline
   listeningTimeMs: number;
   uniqueArtists: number;
-  newArtists: number;                       // artists first heard this week
+  newArtists: number;                       // artists first heard this period
   uniqueTracks: number;
 }
 ```
 
-### `GET /api/listening/artist-breakdown`
+### `GET /api/listening/artist-breakdown?period&zone`
 
-Artist share of recent listening (the donut), attributed by primary artist.
+Artist share of recent listening (the donut), attributed by primary artist. Takes the
+same `period` / `zone` as `/stats`.
 
 ```ts
 type ArtistBreakdown = ArtistShareResponse[];
@@ -395,13 +399,13 @@ certainty at that moment.
 | Session cookie | `SESSION`, HttpOnly, 30-day server-side session |
 | CSRF cookie → header | `XSRF-TOKEN` → `X-XSRF-TOKEN` |
 | Login | full-page navigation to `/oauth2/authorization/spotify` |
-| Post-login redirect | `/profile` (frontend route) |
+| Post-login redirect | `/overview` (frontend route) |
 | Failed-login redirect | `/login-error?reason=login_failed` (frontend route) |
 | Logout | `POST /auth/logout` → `204`, needs CSRF header |
 | Auth probe | `GET /api/me` (public) |
 | Profile | `GET /api/profile?zone` (session required) |
 | Sync (call before reads) | `POST /api/listening/sync` → `204` |
-| Listening reads | `GET /api/listening/{today,history,week-stats,artist-breakdown,artists,insights}` |
+| Listening reads | `GET /api/listening/{today,history,stats,artist-breakdown,artists,insights}` |
 | Liked Songs library | `GET /api/liked?limit&offset` |
 | Save/unsave track | `POST /api/listening/tracks/{trackId}/liked` `{"liked": bool}` → `204` |
 | Follow/unfollow artist | `POST /api/listening/artists/{artistId}/followed` `{"followed": bool}` → `204` |

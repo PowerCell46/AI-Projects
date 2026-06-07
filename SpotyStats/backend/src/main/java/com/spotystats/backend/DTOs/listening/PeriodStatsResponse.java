@@ -5,12 +5,13 @@ import lombok.Value;
 
 
 /**
- * Rolling 7-day listening aggregates. {@code tracksPlayedDeltaPercent} compares
- * against the 7 days before that and is null when there is nothing to compare to.
+ * Listening aggregates for a toggled period (today or the rolling week).
+ * {@code tracksPlayedDeltaPercent} compares against the equally long window
+ * before the period and is null when there is nothing to compare to.
  */
 @Value
 @Builder
-public class WeekStatsResponse {
+public class PeriodStatsResponse {
 
     long tracksPlayed;
 

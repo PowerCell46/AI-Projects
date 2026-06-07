@@ -8,7 +8,7 @@ import { StatCard, StatCardSkeleton } from '../../components/StatCard/StatCard'
 import { ApiRequestError } from '../../services/api'
 import { logout } from '../../services/authService'
 import { fetchProfile } from '../../services/profileService'
-import type { Profile } from '../../services/profileService'
+import type { ListeningTotals, Profile } from '../../services/profileService'
 import { formatListeningTime, formatShortDate } from '../../utils/format'
 import styles from './ProfilePage.module.css'
 
@@ -16,6 +16,58 @@ import styles from './ProfilePage.module.css'
 interface ProfilePageProps {
   onLoggedOut: () => void
 }
+
+const SPOTIFY_APPS_URL = 'https://www.spotify.com/account/apps/'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Calendar days from the first tracked play until now, at least 1. */
+const daysTracked = (trackingSince: string): number =>
+  Math.max(1, Math.floor((Date.now() - Date.parse(trackingSince)) / DAY_MS) + 1)
+
+interface HabitEntry {
+  label: string
+  value: string
+}
+
+/** Lifetime averages — numbers no other view derives from the totals. */
+const buildHabits = (totals: ListeningTotals, trackingSince: string): HabitEntry[] => {
+  const days = daysTracked(trackingSince)
+
+  return [
+    { label: 'Days tracked', value: String(days) },
+    {
+      label: 'Listening per day',
+      value: formatListeningTime(totals.totalListeningTimeMs / days),
+    },
+    {
+      label: 'Tracks per day',
+      value: String(Math.round(totals.totalPlays / days)),
+    },
+    {
+      label: 'Plays per unique track',
+      value: totals.uniqueTracks > 0 ? (totals.totalPlays / totals.uniqueTracks).toFixed(1) : '—',
+    },
+  ]
+}
+
+const LogoutIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+)
 
 const capitalize = (value: string): string =>
   value.charAt(0).toUpperCase() + value.slice(1)
@@ -39,6 +91,7 @@ const buildBadges = (profile: Profile): string[] => {
 export const ProfilePage = ({ onLoggedOut }: ProfilePageProps) => {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -68,6 +121,8 @@ export const ProfilePage = ({ onLoggedOut }: ProfilePageProps) => {
   }, [])
 
   const handleLogout = async (): Promise<void> => {
+    setLoggingOut(true)
+
     try {
       await logout()
     } finally {
@@ -84,8 +139,13 @@ export const ProfilePage = ({ onLoggedOut }: ProfilePageProps) => {
         eyebrow="Account"
         title="Profile"
         actions={
-          <Button variant="secondary" onClick={() => void handleLogout()}>
-            Log out
+          <Button
+            variant="danger"
+            onClick={() => void handleLogout()}
+            disabled={loggingOut}
+          >
+            <LogoutIcon />
+            {loggingOut ? 'Logging out…' : 'Log out'}
           </Button>
         }
       />
@@ -161,6 +221,54 @@ export const ProfilePage = ({ onLoggedOut }: ProfilePageProps) => {
               />
             </>
           )}
+        </div>
+      )}
+      {error === null && (
+        <div className={styles.bottomGrid}>
+          <Panel>
+            <h2 className={styles.panelTitle}>Listening habits</h2>
+            <p className={styles.panelSubtitle}>Lifetime averages across everything tracked</p>
+            {totals === undefined && <Skeleton height="180px" radius="14px" />}
+            {totals !== undefined && totals.trackingSince === null && (
+              <p className={styles.emptyNote}>No plays recorded yet.</p>
+            )}
+            {totals !== undefined && totals.trackingSince !== null && (
+              <ul className={styles.habits}>
+                {buildHabits(totals, totals.trackingSince).map((habit) => (
+                  <li key={habit.label} className={styles.habitRow}>
+                    <span className={styles.habitLabel}>{habit.label}</span>
+                    <span className={styles.habitValue}>{habit.value}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+          <Panel>
+            <h2 className={styles.panelTitle}>Your data</h2>
+            <p className={styles.panelSubtitle}>How Spotystats keeps your diary</p>
+            <div className={styles.dataText}>
+              <p>
+                Plays are captured automatically while you use Spotystats. Spotify only
+                shares your 50 most recent plays, so regular visits keep the diary complete.
+              </p>
+              <p>
+                Your play history lives in Spotystats&apos;s own database
+                {totals?.trackingSince != null
+                  ? ` and reaches back to ${formatShortDate(totals.trackingSince)}`
+                  : ''}
+                . Liked songs and followed artists stay in your Spotify library — Spotystats
+                reads and updates them live.
+              </p>
+            </div>
+            <a
+              className={styles.manageLink}
+              href={SPOTIFY_APPS_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Manage access on Spotify
+            </a>
+          </Panel>
         </div>
       )}
     </>

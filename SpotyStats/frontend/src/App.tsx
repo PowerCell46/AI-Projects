@@ -41,7 +41,8 @@ export const App = () => {
             <Route path="/overview" element={<OverviewPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/artists" element={<ArtistsPage />} />
-            <Route path="/liked" element={<LikedPage />} />
+            <Route path="/liked-songs" element={<LikedPage />} />
+            <Route path="/liked" element={<Navigate to="/liked-songs" replace />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/profile" element={<ProfilePage onLoggedOut={refresh} />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />

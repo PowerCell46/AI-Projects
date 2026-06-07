@@ -4,9 +4,21 @@
   gap: 24px;
 }
 
-.loadEarlierRow {
+.pager {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.pageInfo {
+  font-size: 13px;
+  color: var(--text-mute);
+}
+
+.pagerButtons {
+  display: flex;
+  gap: 12px;
 }
 
 .empty {

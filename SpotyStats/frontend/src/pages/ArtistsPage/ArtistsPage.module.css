@@ -1,7 +1,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   max-height: var(--scroll-list-max-height);
   overflow-y: auto;
   padding-right: 8px;
@@ -9,12 +9,14 @@
   scrollbar-color: var(--border-strong) transparent;
 }
 
+/* Same scale as TrackRow (56px art, 16px/18px padding) so the /history,
+   /artists, and /liked-songs lists read as one consistent table style. */
 .row {
   display: grid;
-  grid-template-columns: 32px 44px 1fr 110px 110px 110px 96px;
+  grid-template-columns: 32px 56px 1fr 110px 110px 110px 96px;
   align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
+  gap: 18px;
+  padding: 16px 18px;
   background: var(--panel-inset);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-row);
@@ -23,7 +25,7 @@
 /* Spotify's long-term ranking carries no metrics — just rank, artist, follow. */
 .rowOrderOnly {
   composes: row;
-  grid-template-columns: 32px 44px 1fr 96px;
+  grid-template-columns: 32px 56px 1fr 96px;
 }
 
 .position {
@@ -33,20 +35,20 @@
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--track-art-bg);
   color: var(--text-mute-soft);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
 }
 
 .portrait {
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
 }

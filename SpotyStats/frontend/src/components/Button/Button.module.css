@@ -35,6 +35,26 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+/* Destructive affordance (log out): quiet until hovered, then clearly red. */
+.danger {
+  composes: secondary;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--danger);
+}
+
+.danger:hover {
+  background: var(--danger-tint);
+  border-color: var(--danger);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* The selected half of a toggle pair: greyed out, nothing left to click. */
 .selected {
   composes: secondary;

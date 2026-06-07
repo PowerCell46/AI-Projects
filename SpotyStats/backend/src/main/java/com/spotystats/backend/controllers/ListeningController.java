@@ -7,7 +7,7 @@ import com.spotystats.backend.dtos.listening.FollowedUpdateRequest;
 import com.spotystats.backend.dtos.listening.HistoryPageResponse;
 import com.spotystats.backend.dtos.listening.InsightsResponse;
 import com.spotystats.backend.dtos.listening.LikedUpdateRequest;
-import com.spotystats.backend.dtos.listening.WeekStatsResponse;
+import com.spotystats.backend.dtos.listening.PeriodStatsResponse;
 import com.spotystats.backend.services.interfaces.FollowedArtistsService;
 import com.spotystats.backend.services.interfaces.LikedTracksService;
 import com.spotystats.backend.services.interfaces.ListeningInsightsService;
@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -75,14 +76,38 @@ public class ListeningController {
         return listeningQueryService.historyPage(authentication.getName(), ZoneIdParser.parseOrUtc(zone), before);
     }
 
-    @GetMapping("/week-stats")
-    public WeekStatsResponse weekStats(Authentication authentication) {
-        return listeningQueryService.weekStats(authentication.getName());
+    /**
+     * Stat-card aggregates scoped to the diary's range: {@code today} (in the
+     * caller's zone) or the rolling week, each with a delta against the
+     * equally long window before it.
+     */
+    @GetMapping("/stats")
+    public PeriodStatsResponse stats(
+            Authentication authentication,
+            @RequestParam(defaultValue = "week") String period,
+            @RequestParam(defaultValue = "UTC") String zone) {
+
+        final ZoneId zoneId = ZoneIdParser.parseOrUtc(zone);
+
+        return listeningQueryService.periodStats(
+                authentication.getName(),
+                windowStart(period, zoneId),
+                priorWindowStart(period, zoneId));
     }
 
+    /**
+     * Artist shares for the Overview pie chart, scoped to the diary's range:
+     * {@code today} (in the caller's zone) or the rolling week.
+     */
     @GetMapping("/artist-breakdown")
-    public List<ArtistShareResponse> artistBreakdown(Authentication authentication) {
-        return listeningQueryService.artistBreakdown(authentication.getName());
+    public List<ArtistShareResponse> artistBreakdown(
+            Authentication authentication,
+            @RequestParam(defaultValue = "week") String period,
+            @RequestParam(defaultValue = "UTC") String zone) {
+
+        return listeningQueryService.artistBreakdown(
+                authentication.getName(),
+                windowStart(period, ZoneIdParser.parseOrUtc(zone)));
     }
 
     /**
@@ -136,5 +161,25 @@ public class ListeningController {
         return "month".equals(period)
                 ? Instant.now().minus(30, ChronoUnit.DAYS)
                 : Instant.now().minus(7, ChronoUnit.DAYS);
+    }
+
+    /**
+     * Start of the toggled window: today's midnight in the caller's zone, or
+     * the rolling week; unknown values fall back to the week window.
+     */
+    private static Instant windowStart(String period, ZoneId zone) {
+        return "today".equals(period)
+                ? LocalDate.now(zone).atStartOfDay(zone).toInstant()
+                : Instant.now().minus(7, ChronoUnit.DAYS);
+    }
+
+    /**
+     * Start of the comparison window one period earlier: yesterday's midnight,
+     * or the week before the rolling week.
+     */
+    private static Instant priorWindowStart(String period, ZoneId zone) {
+        return "today".equals(period)
+                ? LocalDate.now(zone).minusDays(1).atStartOfDay(zone).toInstant()
+                : Instant.now().minus(14, ChronoUnit.DAYS);
     }
 }
