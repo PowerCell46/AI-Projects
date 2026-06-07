@@ -58,7 +58,7 @@
 }
 
 .heart {
-  color: #3a3f55;
+  color: var(--icon-inactive);
 }
 
 .heartLiked {

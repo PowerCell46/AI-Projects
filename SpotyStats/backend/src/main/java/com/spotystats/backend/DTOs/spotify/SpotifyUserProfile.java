@@ -1,7 +1,10 @@
-package com.spotystats.backend.DTOs.spotify;
+package com.spotystats.backend.dtos.spotify;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -9,26 +12,46 @@ import java.util.List;
 /**
  * Subset of Spotify's "Get Current User's Profile" ({@code GET /me}) response.
  */
+@Getter
+@Setter
+@NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record SpotifyUserProfile(
+public class SpotifyUserProfile {
 
-        String id,
+    private String id;
 
-        @JsonProperty("display_name")
-        String displayName,
+    @JsonProperty("display_name")
+    private String displayName;
 
-        String email,
+    private String email;
 
-        List<SpotifyImage> images
-) {
+    private String country;
+
+    private String product;
+
+    private Followers followers;
+
+    private List<SpotifyImage> images;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SpotifyImage(
+    public static class Followers {
 
-            String url,
+        private Integer total;
+    }
 
-            Integer height,
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class SpotifyImage {
 
-            Integer width
-    ) {
+        private String url;
+
+        private Integer height;
+
+        private Integer width;
     }
 }

@@ -11,6 +11,17 @@
   align-items: start;
 }
 
+.diaryColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.empty {
+  color: var(--text-mute);
+  font-size: 14px;
+}
+
 @media (max-width: 1100px) {
   .contentGrid {
     grid-template-columns: 1fr;

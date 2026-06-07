@@ -1,63 +1,86 @@
 package com.spotystats.backend.services.implementations;
 
-import com.spotystats.backend.DTOs.listening.ArtistShareResponse;
-import com.spotystats.backend.DTOs.listening.PlayedTrackResponse;
-import com.spotystats.backend.DTOs.listening.TodayHistoryResponse;
-import com.spotystats.backend.DTOs.listening.WeekStatsResponse;
+import com.spotystats.backend.dtos.listening.ArtistRankingResponse;
+import com.spotystats.backend.dtos.listening.ArtistShareResponse;
+import com.spotystats.backend.dtos.listening.DailyHistoryResponse;
+import com.spotystats.backend.dtos.listening.HistoryPageResponse;
+import com.spotystats.backend.dtos.listening.PlayedTrackResponse;
+import com.spotystats.backend.dtos.listening.RankedArtistResponse;
+import com.spotystats.backend.dtos.listening.WeekStatsResponse;
 import com.spotystats.backend.entities.Play;
 import com.spotystats.backend.entities.Track;
 import com.spotystats.backend.entities.TrackArtist;
 import com.spotystats.backend.repositories.PlayRepository;
+import com.spotystats.backend.repositories.projections.ArtistRankView;
+import com.spotystats.backend.services.interfaces.ArtistImageService;
+import com.spotystats.backend.services.interfaces.FollowedArtistsService;
 import com.spotystats.backend.services.interfaces.LikedTracksService;
 import com.spotystats.backend.services.interfaces.ListeningQueryService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ListeningQueryServiceImpl implements ListeningQueryService {
 
     private static final int WINDOW_DAYS = 7;
 
+    private static final int HISTORY_PAGE_DAYS = 7;
+
+    private static final int ARTIST_RANKING_LIMIT = 50;
+
     private final PlayRepository playRepository;
 
     private final LikedTracksService likedTracksService;
 
+    private final FollowedArtistsService followedArtistsService;
+
+    private final ArtistImageService artistImageService;
+
     /**
-     * Today's plays in the caller's time zone, newest first, with liked state
-     * resolved from the user's Spotify library. Deliberately not transactional:
-     * the history query fetch-joins everything the mapping touches, and the liked
-     * lookup is a Spotify HTTP call that must not hold a DB connection hostage.
+     * Today's plays in the caller's time zone, newest first. Always reports
+     * today's date, even when nothing has been played yet. Deliberately not
+     * transactional — the liked-status decoration calls Spotify mid-flow.
      */
     @Override
-    public TodayHistoryResponse todayHistory(String userId, ZoneId zone) {
+    public DailyHistoryResponse todayHistory(String userId, ZoneId zone) {
         final LocalDate today = LocalDate.now(zone);
-        final Instant startOfDay = today.atStartOfDay(zone).toInstant();
-        final Instant startOfTomorrow = today.plusDays(1).atStartOfDay(zone).toInstant();
+        final List<DailyHistoryResponse> days = historyDays(userId, zone, today, today.plusDays(1));
 
-        final List<Play> plays = playRepository.findHistoryWindow(userId, startOfDay, startOfTomorrow);
-        final Map<String, Boolean> likedByTrackId = likedStatusesOrEmpty(distinctTrackIds(plays));
+        return days.isEmpty()
+                ? new DailyHistoryResponse(today, List.of())
+                : days.getFirst();
+    }
 
-        final List<PlayedTrackResponse> tracks = plays
-                .stream()
-                .map(play -> toPlayedTrack(play, likedByTrackId))
-                .toList();
+    /**
+     * One diary page: the week of days ending just before {@code before}
+     * (defaults to "now"), with only play-bearing days included. The returned
+     * cursor already skips past any play-free gap, so paging never serves
+     * empty weeks. Deliberately not transactional — the liked-status decoration
+     * calls Spotify mid-flow.
+     */
+    @Override
+    public HistoryPageResponse historyPage(String userId, ZoneId zone, LocalDate before) {
+        final LocalDate end = before != null ? before : LocalDate.now(zone).plusDays(1);
+        final LocalDate start = end.minusDays(HISTORY_PAGE_DAYS);
 
-        return new TodayHistoryResponse(today, tracks);
+        final List<DailyHistoryResponse> days = historyDays(userId, zone, start, end);
+
+        return new HistoryPageResponse(days, nextBefore(userId, zone, start));
     }
 
     /**
@@ -103,17 +126,96 @@ public class ListeningQueryServiceImpl implements ListeningQueryService {
     }
 
     /**
-     * Liked state is decoration on the history panel — if Spotify rejects the
-     * lookup (e.g. missing library scope), show the history anyway with all
-     * hearts unliked rather than failing the whole request.
+     * Ranks artists by plays, with portraits resolved through the image cache
+     * and follow state looked up on Spotify. Not transactional: both
+     * enrichments may call Spotify, which must not hold a DB connection.
      */
-    private Map<String, Boolean> likedStatusesOrEmpty(List<String> trackIds) {
-        try {
-            return likedTracksService.likedStatuses(trackIds);
-        } catch (RestClientResponseException ex) {
-            log.warn("Liked-status lookup failed with {}: {}", ex.getStatusCode(), ex.getResponseBodyAsString());
-            return Map.of();
+    @Override
+    public ArtistRankingResponse artistRanking(String userId, Instant since) {
+        final List<ArtistRankView> ranks =
+                playRepository.rankArtistsSince(userId, since, PageRequest.of(0, ARTIST_RANKING_LIMIT));
+
+        final List<String> artistIds = ranks
+                .stream()
+                .map(ArtistRankView::getArtistId)
+                .toList();
+
+        final Map<String, String> imageUrls = artistImageService.imageUrlsFor(artistIds);
+        final Map<String, Boolean> followedByArtistId = followedArtistsService.followedStatuses(artistIds);
+
+        final List<RankedArtistResponse> artists = ranks
+                .stream()
+                .map(rank -> RankedArtistResponse
+                        .builder()
+                        .artistId(rank.getArtistId())
+                        .artistName(rank.getArtistName())
+                        .imageUrl(imageUrls.get(rank.getArtistId()))
+                        .playCount(rank.getPlayCount())
+                        .listeningTimeMs(rank.getListeningTimeMs())
+                        .uniqueTracks(rank.getUniqueTracks())
+                        .followed(followedByArtistId.getOrDefault(rank.getArtistId(), false))
+                        .build())
+                .toList();
+
+        return new ArtistRankingResponse(playRepository.findEarliestPlayedAt(userId), artists);
+    }
+
+    /**
+     * Loads the plays of [startDate, endDate) and groups them into per-day
+     * responses, newest day first. Days without plays are omitted. Deliberately
+     * not transactional: the history query fetch-joins everything the mapping
+     * touches, and the liked lookup is a Spotify HTTP call that must not hold
+     * a DB connection hostage.
+     */
+    private List<DailyHistoryResponse> historyDays(
+            String userId,
+            ZoneId zone,
+            LocalDate startDate,
+            LocalDate endDate) {
+
+        final Instant start = startDate.atStartOfDay(zone).toInstant();
+        final Instant end = endDate.atStartOfDay(zone).toInstant();
+
+        final List<Play> plays = playRepository.findHistoryWindow(userId, start, end);
+        final Map<String, Boolean> likedByTrackId = likedTracksService.likedStatuses(distinctTrackIds(plays));
+
+        final Map<LocalDate, List<PlayedTrackResponse>> tracksByDate = new LinkedHashMap<>();
+
+        for (final Play play : plays) {
+            final LocalDate date = play
+                    .getPlayedAt()
+                    .atZone(zone)
+                    .toLocalDate();
+
+            tracksByDate
+                    .computeIfAbsent(date, ignored -> new ArrayList<>())
+                    .add(toPlayedTrack(play, likedByTrackId));
         }
+
+        return tracksByDate
+                .entrySet()
+                .stream()
+                .map(entry -> new DailyHistoryResponse(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    /**
+     * Where the next diary page should end (exclusive): the day after the
+     * newest play older than the current window, or null when no older plays
+     * exist.
+     */
+    private LocalDate nextBefore(String userId, ZoneId zone, LocalDate windowStart) {
+        final Instant windowStartInstant = windowStart.atStartOfDay(zone).toInstant();
+        final Instant latestOlderPlay = playRepository.findLatestPlayedAtBefore(userId, windowStartInstant);
+
+        if (latestOlderPlay == null) {
+            return null;
+        }
+
+        return latestOlderPlay
+                .atZone(zone)
+                .toLocalDate()
+                .plusDays(1);
     }
 
     private static List<String> distinctTrackIds(List<Play> plays) {

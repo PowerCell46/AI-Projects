@@ -1,10 +1,10 @@
 package com.spotystats.backend.services.implementations;
 
-import com.spotystats.backend.DTOs.spotify.SpotifyRecentlyPlayed;
-import com.spotystats.backend.DTOs.spotify.SpotifyRecentlyPlayed.PlayHistoryItem;
-import com.spotystats.backend.DTOs.spotify.SpotifyRecentlyPlayed.SpotifyAlbum;
-import com.spotystats.backend.DTOs.spotify.SpotifyRecentlyPlayed.SpotifyArtist;
-import com.spotystats.backend.DTOs.spotify.SpotifyRecentlyPlayed.SpotifyTrack;
+import com.spotystats.backend.dtos.spotify.SpotifyAlbum;
+import com.spotystats.backend.dtos.spotify.SpotifyArtist;
+import com.spotystats.backend.dtos.spotify.SpotifyRecentlyPlayed;
+import com.spotystats.backend.dtos.spotify.SpotifyRecentlyPlayed.PlayHistoryItem;
+import com.spotystats.backend.dtos.spotify.SpotifyTrack;
 import com.spotystats.backend.clients.SpotifyApiClient;
 import com.spotystats.backend.entities.Album;
 import com.spotystats.backend.entities.Artist;

@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,11 +20,14 @@ import java.time.Instant;
 /**
  * A single listening event. De-duplicated on (userId, playedAt) — a user cannot
  * play two things at the same instant, so sync uses it as a natural key.
+ * Equality follows that natural key rather than the generated id, which is
+ * null until the row is flushed.
  */
 @Entity
 @Table(name = "play")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(of = {"userId", "playedAt"})
 public class Play {
 
     @Id

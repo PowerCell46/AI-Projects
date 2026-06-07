@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from './api'
+import { formatListeningTime } from '../utils/format'
 
 export interface StatMetric {
   label: string
@@ -39,14 +40,6 @@ interface WeekStatsResponse {
 }
 
 const browserZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone
-
-const formatListeningTime = (timeMs: number): string => {
-  const totalMinutes = Math.round(timeMs / 60_000)
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-
-  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-}
 
 const formatDelta = (deltaPercent: number | null): string => {
   if (deltaPercent === null) {
@@ -101,3 +94,84 @@ export const fetchArtistBreakdown = (): Promise<ArtistShare[]> =>
 export const setTrackLiked = (trackId: string, liked: boolean): Promise<void> =>
   apiPost(`/api/listening/tracks/${trackId}/liked`, { liked })
     .then(() => undefined)
+
+export interface HistoryPage {
+  days: DailyHistory[]
+  nextBefore: string | null
+}
+
+/**
+ * One diary page: up to a week of play-bearing days ending just before
+ * `before` (today's page when omitted). `nextBefore` feeds the next call.
+ */
+export const fetchHistoryPage = (before?: string): Promise<HistoryPage> => {
+  const params = new URLSearchParams({ zone: browserZone() })
+
+  if (before !== undefined) {
+    params.set('before', before)
+  }
+
+  return apiGet<HistoryPage>(`/api/listening/history?${params.toString()}`)
+}
+
+export type RankPeriod = 'week' | 'month' | 'all'
+
+export interface ArtistRank {
+  artistId: string
+  artistName: string
+  imageUrl: string | null
+  /** Metrics are null for Spotify's long-term ranking, which only shares the order. */
+  playCount: number | null
+  listeningTimeMs: number | null
+  uniqueTracks: number | null
+  followed: boolean
+}
+
+export interface ArtistRanking {
+  /** Earliest play we ever captured — coverage stops there, null before the first sync. */
+  trackedSince: string | null
+  artists: ArtistRank[]
+}
+
+export const fetchArtistRanking = (period: RankPeriod): Promise<ArtistRanking> =>
+  apiGet<ArtistRanking>(`/api/listening/artists?period=${period}`)
+
+export const setArtistFollowed = (artistId: string, followed: boolean): Promise<void> =>
+  apiPost(`/api/listening/artists/${artistId}/followed`, { followed })
+    .then(() => undefined)
+
+export interface HourlyActivity {
+  hour: number
+  plays: number
+}
+
+export interface WeekdayActivity {
+  isoWeekday: number
+  plays: number
+  listeningTimeMs: number
+}
+
+export interface WeeklyTrendPoint {
+  weekStart: string
+  plays: number
+  listeningTimeMs: number
+}
+
+export interface TopTrack {
+  trackId: string
+  title: string
+  artist: string
+  albumArtUrl: string | null
+  playCount: number
+  listeningTimeMs: number
+}
+
+export interface Insights {
+  hourlyActivity: HourlyActivity[]
+  weekdayActivity: WeekdayActivity[]
+  weeklyTrend: WeeklyTrendPoint[]
+  topTracks: TopTrack[]
+}
+
+export const fetchInsights = (): Promise<Insights> =>
+  apiGet<Insights>(`/api/listening/insights?zone=${encodeURIComponent(browserZone())}`)

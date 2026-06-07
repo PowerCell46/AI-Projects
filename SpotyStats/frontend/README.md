@@ -1,73 +1,52 @@
-# React + TypeScript + Vite
+# SpotyStats Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript SPA for SpotyStats. Talks to the Spring BFF — no OAuth logic, no
+tokens in the browser, just same-origin JSON calls with a session cookie. See the repo-root
+[`PLAN.md`](../PLAN.md) and especially
+[`docs/frontend-backend-integration.md`](../docs/frontend-backend-integration.md) for how
+the SPA and backend fit together.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Node 20+** and npm.
+- The **backend running on `127.0.0.1:8080`** — the Vite dev server proxies `/api`, `/auth`,
+  `/login`, and `/oauth2` to it (see `vite.config.ts`). Without the backend, every page is a
+  sign-in screen. Backend setup: [`../backend/README.md`](../backend/README.md).
 
-## React Compiler
+## Run (local dev)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open **`http://127.0.0.1:5173`** — *not* `localhost:5173`. Cookies are scoped per host
+and the Spotify redirect URI is registered for `127.0.0.1`; using `localhost` makes every
+request look anonymous.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server with HMR on `127.0.0.1:5173` |
+| `npm run build` | Type-check (`tsc -b`) + production build to `dist/` |
+| `npm run lint` | ESLint over the whole project |
+| `npm run preview` | Serve the production build locally |
+
+## Structure & conventions
+
 ```
+src/
+  components/   reusable UI — one directory per component:
+                Foo/Foo.tsx + Foo/Foo.module.css (+ optional Foo.helpers.ts)
+  pages/        route-level components, same per-directory layout
+  hooks/        custom hooks
+  services/     fetch-based API clients (api.ts owns the CSRF header logic)
+  styles/       theme.css (design tokens) + global.css (reset)
+```
+
+- Functional components, **named exports only** (no `export default`).
+- **No `any`** — `unknown` + narrowing, or a proper type.
+- Styling: CSS Modules per component; shared values only via `var(--…)` tokens from
+  `src/styles/theme.css`. No chart library — charts are hand-rolled SVG components.
+- Routing: React Router; auth gating lives in `App.tsx` (probes `GET /api/me` on load).

@@ -34,3 +34,17 @@
   background: var(--panel);
   border-color: rgba(255, 255, 255, 0.18);
 }
+
+/* The selected half of a toggle pair: greyed out, nothing left to click. */
+.selected {
+  composes: secondary;
+  background: var(--panel);
+  color: var(--text-mute);
+  border-color: transparent;
+  cursor: default;
+}
+
+.selected:hover {
+  background: var(--panel);
+  border-color: transparent;
+}

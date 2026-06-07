@@ -1,0 +1,15 @@
+.daysColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.loadEarlierRow {
+  display: flex;
+  justify-content: center;
+}
+
+.empty {
+  color: var(--text-mute);
+  font-size: 14px;
+}
