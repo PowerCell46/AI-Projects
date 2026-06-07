@@ -10,13 +10,24 @@ import {
   syncListeningHistory,
 } from '../../services/listeningService'
 import type { DailyHistory } from '../../services/listeningService'
+import { formatWeekLabel } from '../../utils/format'
 import styles from './HistoryPage.module.css'
 
+
+/** "Jun 1 – Jun 7" for the page's days (newest first), single date for one day. */
+const pageRangeLabel = (days: DailyHistory[]): string => {
+  const newest = formatWeekLabel(days[0].date)
+  const oldest = formatWeekLabel(days[days.length - 1].date)
+
+  return newest === oldest ? newest : `${oldest} – ${newest}`
+}
 
 export const HistoryPage = () => {
   const [days, setDays] = useState<DailyHistory[] | null>(null)
   const [nextBefore, setNextBefore] = useState<string | null>(null)
-  const [loadingEarlier, setLoadingEarlier] = useState(false)
+  /** `before` cursors of the pages navigated into; last one is the current page. */
+  const [cursorTrail, setCursorTrail] = useState<string[]>([])
+  const [loadingPage, setLoadingPage] = useState(false)
   const { run } = useGuardedLoad()
 
   useEffect(() => {
@@ -32,19 +43,38 @@ export const HistoryPage = () => {
     )
   }, [run])
 
-  const loadEarlier = (): void => {
-    if (nextBefore === null || loadingEarlier) {
-      return
-    }
-    setLoadingEarlier(true)
+  /** Replaces the visible page; `before` undefined loads the newest page. */
+  const loadPage = (before?: string): void => {
+    setLoadingPage(true)
+    setDays(null)
 
-    fetchHistoryPage(nextBefore)
+    fetchHistoryPage(before)
       .then((page) => {
-        setDays((current) => [...(current ?? []), ...page.days])
+        setDays(page.days)
         setNextBefore(page.nextBefore)
       })
-      .catch(() => undefined)
-      .then(() => setLoadingEarlier(false))
+      .catch(() => setDays([]))
+      .then(() => setLoadingPage(false))
+  }
+
+  const showOlder = (): void => {
+    if (nextBefore === null || loadingPage) {
+      return
+    }
+
+    setCursorTrail((trail) => [...trail, nextBefore])
+    loadPage(nextBefore)
+  }
+
+  const showNewer = (): void => {
+    if (cursorTrail.length === 0 || loadingPage) {
+      return
+    }
+
+    const trail = cursorTrail.slice(0, -1)
+
+    setCursorTrail(trail)
+    loadPage(trail[trail.length - 1])
   }
 
   const applyLiked = (trackId: string, liked: boolean): void => {
@@ -87,7 +117,7 @@ export const HistoryPage = () => {
       <PageHeader eyebrow="Listening diary" title="History" />
       <div className={styles.daysColumn}>
         {days === null && <HistoryPanel history={null} onToggleLiked={() => undefined} />}
-        {days !== null && days.length === 0 && (
+        {days !== null && days.length === 0 && cursorTrail.length === 0 && (
           <Panel>
             <p className={styles.empty}>
               No plays recorded yet — listen to something on Spotify and come back.
@@ -98,11 +128,24 @@ export const HistoryPage = () => {
           <HistoryPanel key={day.date} history={day} onToggleLiked={toggleLiked} />
         ))}
       </div>
-      {nextBefore !== null && (
-        <div className={styles.loadEarlierRow}>
-          <Button variant="secondary" onClick={loadEarlier}>
-            {loadingEarlier ? 'Loading…' : 'Load earlier'}
-          </Button>
+      {days !== null && (days.length > 0 || cursorTrail.length > 0) && (
+        <div className={styles.pager}>
+          <span className={styles.pageInfo}>
+            {days.length > 0 ? pageRangeLabel(days) : 'Nothing here'}
+            {nextBefore === null && ' · start of your history'}
+          </span>
+          <div className={styles.pagerButtons}>
+            {cursorTrail.length > 0 && (
+              <Button variant="secondary" onClick={showNewer}>
+                Newer
+              </Button>
+            )}
+            {nextBefore !== null && (
+              <Button variant="secondary" onClick={showOlder}>
+                Older
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </>

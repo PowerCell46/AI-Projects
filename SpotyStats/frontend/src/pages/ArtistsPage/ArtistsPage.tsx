@@ -26,6 +26,9 @@ const PERIOD_WINDOW_DAYS: Record<Exclude<RankPeriod, 'all'>, number> = {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/** Mirrors the backend's ranking limit (and Spotify's own top-artists cap). */
+const RANKING_LIMIT = 50
+
 /**
  * Whether the selected rolling window reaches further back than our captured
  * data. Spotify only exposes the most recent plays, so anything before the
@@ -94,7 +97,7 @@ export const ArtistsPage = () => {
     <>
       <PageHeader
         eyebrow="Listening diary"
-        title="Your artists"
+        title={`Your top ${RANKING_LIMIT} artists`}
         actions={
           <SegmentedToggle
             options={PERIOD_LABELS}
@@ -122,7 +125,7 @@ export const ArtistsPage = () => {
           <ul className={styles.list}>
             {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
               <li key={index}>
-                <Skeleton height="56px" radius="14px" />
+                <Skeleton height="88px" radius="14px" />
               </li>
             ))}
           </ul>

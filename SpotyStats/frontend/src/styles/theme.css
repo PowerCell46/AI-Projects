@@ -27,6 +27,10 @@
   /* Icons */
   --icon-inactive: #3a3f55;
 
+  /* Status */
+  --danger: #e07a72;
+  --danger-tint: rgba(224, 122, 114, 0.08);
+
   /* Chart palette, descending-value order; chart-6 is the lumped tail */
   --chart-1: #f4b860;
   --chart-2: #c9a3ff;

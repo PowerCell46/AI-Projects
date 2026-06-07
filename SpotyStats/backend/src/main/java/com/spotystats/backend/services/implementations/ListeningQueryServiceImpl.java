@@ -4,9 +4,9 @@ import com.spotystats.backend.dtos.listening.ArtistRankingResponse;
 import com.spotystats.backend.dtos.listening.ArtistShareResponse;
 import com.spotystats.backend.dtos.listening.DailyHistoryResponse;
 import com.spotystats.backend.dtos.listening.HistoryPageResponse;
+import com.spotystats.backend.dtos.listening.PeriodStatsResponse;
 import com.spotystats.backend.dtos.listening.PlayedTrackResponse;
 import com.spotystats.backend.dtos.listening.RankedArtistResponse;
-import com.spotystats.backend.dtos.listening.WeekStatsResponse;
 import com.spotystats.backend.entities.Play;
 import com.spotystats.backend.entities.Track;
 import com.spotystats.backend.entities.TrackArtist;
@@ -21,10 +21,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -36,8 +36,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ListeningQueryServiceImpl implements ListeningQueryService {
-
-    private static final int WINDOW_DAYS = 7;
 
     private static final int HISTORY_PAGE_DAYS = 7;
 
@@ -84,39 +82,36 @@ public class ListeningQueryServiceImpl implements ListeningQueryService {
     }
 
     /**
-     * Aggregates the rolling last-7-days window; the play-count delta compares it
-     * against the 7 days before that.
+     * Aggregates the window from {@code since} to now. The play-count delta
+     * compares against the equally long window starting at {@code priorSince} —
+     * yesterday up to the same time of day, or the week before the rolling
+     * week — so a partial period is never measured against a full one.
      */
     @Override
     @Transactional(readOnly = true)
-    public WeekStatsResponse weekStats(String userId) {
+    public PeriodStatsResponse periodStats(String userId, Instant since, Instant priorSince) {
         final Instant now = Instant.now();
-        final Instant weekAgo = now.minus(WINDOW_DAYS, ChronoUnit.DAYS);
-        final Instant twoWeeksAgo = weekAgo.minus(WINDOW_DAYS, ChronoUnit.DAYS);
+        final Instant priorEnd = priorSince.plus(Duration.between(since, now));
 
-        final long tracksPlayed = playRepository.countPlaysInWindow(userId, weekAgo, now);
-        final long tracksPlayedPriorWeek = playRepository.countPlaysInWindow(userId, twoWeeksAgo, weekAgo);
+        final long tracksPlayed = playRepository.countPlaysInWindow(userId, since, now);
+        final long tracksPlayedPrior = playRepository.countPlaysInWindow(userId, priorSince, priorEnd);
 
-        return WeekStatsResponse
+        return PeriodStatsResponse
                 .builder()
                 .tracksPlayed(tracksPlayed)
-                .tracksPlayedDeltaPercent(deltaPercent(tracksPlayed, tracksPlayedPriorWeek))
-                .listeningTimeMs(playRepository.sumListeningTimeMsInWindow(userId, weekAgo, now))
-                .uniqueArtists(playRepository.countUniqueArtistsInWindow(userId, weekAgo, now))
-                .newArtists(playRepository.countNewArtistsSince(userId, weekAgo))
-                .uniqueTracks(playRepository.countUniqueTracksInWindow(userId, weekAgo, now))
+                .tracksPlayedDeltaPercent(deltaPercent(tracksPlayed, tracksPlayedPrior))
+                .listeningTimeMs(playRepository.sumListeningTimeMsInWindow(userId, since, now))
+                .uniqueArtists(playRepository.countUniqueArtistsInWindow(userId, since, now))
+                .newArtists(playRepository.countNewArtistsSince(userId, since))
+                .uniqueTracks(playRepository.countUniqueTracksInWindow(userId, since, now))
                 .build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ArtistShareResponse> artistBreakdown(String userId) {
-        final Instant weekAgo = Instant
-                .now()
-                .minus(WINDOW_DAYS, ChronoUnit.DAYS);
-
+    public List<ArtistShareResponse> artistBreakdown(String userId, Instant since) {
         return playRepository
-                .aggregateArtistSharesSince(userId, weekAgo)
+                .aggregateArtistSharesSince(userId, since)
                 .stream()
                 .map(share -> new ArtistShareResponse(
                         share.getArtistName(),

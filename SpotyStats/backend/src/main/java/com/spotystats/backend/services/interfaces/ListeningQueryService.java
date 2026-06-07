@@ -4,7 +4,7 @@ import com.spotystats.backend.dtos.listening.ArtistRankingResponse;
 import com.spotystats.backend.dtos.listening.ArtistShareResponse;
 import com.spotystats.backend.dtos.listening.DailyHistoryResponse;
 import com.spotystats.backend.dtos.listening.HistoryPageResponse;
-import com.spotystats.backend.dtos.listening.WeekStatsResponse;
+import com.spotystats.backend.dtos.listening.PeriodStatsResponse;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,9 +18,9 @@ public interface ListeningQueryService {
 
     HistoryPageResponse historyPage(String userId, ZoneId zone, LocalDate before);
 
-    WeekStatsResponse weekStats(String userId);
+    PeriodStatsResponse periodStats(String userId, Instant since, Instant priorSince);
 
-    List<ArtistShareResponse> artistBreakdown(String userId);
+    List<ArtistShareResponse> artistBreakdown(String userId, Instant since);
 
     ArtistRankingResponse artistRanking(String userId, Instant since);
 }

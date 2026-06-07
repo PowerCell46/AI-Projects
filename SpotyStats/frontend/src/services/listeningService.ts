@@ -30,7 +30,10 @@ export interface ArtistShare {
   listeningTimeMs: number
 }
 
-interface WeekStatsResponse {
+/** The Overview's toggled window: today (browser zone) or the rolling week. */
+export type ListeningPeriod = 'today' | 'week'
+
+interface PeriodStatsResponse {
   tracksPlayed: number
   tracksPlayedDeltaPercent: number | null
   listeningTimeMs: number
@@ -41,13 +44,18 @@ interface WeekStatsResponse {
 
 const browserZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone
 
-const formatDelta = (deltaPercent: number | null): string => {
+const periodParams = (period: ListeningPeriod): string =>
+  new URLSearchParams({ period, zone: browserZone() }).toString()
+
+const formatDelta = (deltaPercent: number | null, period: ListeningPeriod): string => {
+  const priorLabel = period === 'today' ? 'yesterday' : 'last week'
+
   if (deltaPercent === null) {
-    return 'no plays last week'
+    return `no plays ${priorLabel}`
   }
 
   const sign = deltaPercent >= 0 ? '+' : ''
-  return `${sign}${deltaPercent}% vs last week`
+  return `${sign}${deltaPercent}% vs ${priorLabel}`
 }
 
 /**
@@ -58,24 +66,25 @@ export const syncListeningHistory = (): Promise<void> =>
   apiPost('/api/listening/sync')
     .then(() => undefined)
 
-export const fetchWeekStats = async (): Promise<StatMetric[]> => {
-  const stats = await apiGet<WeekStatsResponse>('/api/listening/week-stats')
+export const fetchStats = async (period: ListeningPeriod): Promise<StatMetric[]> => {
+  const stats = await apiGet<PeriodStatsResponse>(`/api/listening/stats?${periodParams(period)}`)
+  const today = period === 'today'
 
   return [
     {
       label: 'Tracks played',
       value: String(stats.tracksPlayed),
-      sublabel: formatDelta(stats.tracksPlayedDeltaPercent),
+      sublabel: formatDelta(stats.tracksPlayedDeltaPercent, period),
     },
     {
       label: 'Listening time',
       value: formatListeningTime(stats.listeningTimeMs),
-      sublabel: 'across 7 days',
+      sublabel: today ? 'so far today' : 'across 7 days',
     },
     {
       label: 'Unique artists',
       value: String(stats.uniqueArtists),
-      sublabel: `${stats.newArtists} new this week`,
+      sublabel: `${stats.newArtists} new ${today ? 'today' : 'this week'}`,
     },
     {
       label: 'Unique tracks',
@@ -88,8 +97,8 @@ export const fetchWeekStats = async (): Promise<StatMetric[]> => {
 export const fetchTodayHistory = (): Promise<DailyHistory> =>
   apiGet<DailyHistory>(`/api/listening/today?zone=${encodeURIComponent(browserZone())}`)
 
-export const fetchArtistBreakdown = (): Promise<ArtistShare[]> =>
-  apiGet<ArtistShare[]>('/api/listening/artist-breakdown')
+export const fetchArtistBreakdown = (period: ListeningPeriod): Promise<ArtistShare[]> =>
+  apiGet<ArtistShare[]>(`/api/listening/artist-breakdown?${periodParams(period)}`)
 
 export const setTrackLiked = (trackId: string, liked: boolean): Promise<void> =>
   apiPost(`/api/listening/tracks/${trackId}/liked`, { liked })

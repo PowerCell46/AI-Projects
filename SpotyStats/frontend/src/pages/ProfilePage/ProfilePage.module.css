@@ -80,3 +80,76 @@
   font-size: 13px;
   color: var(--text-mute-soft);
 }
+
+/* No align-items: start — both panels stretch to the taller one's height. */
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.panelTitle {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.panelSubtitle {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-top: 4px;
+  margin-bottom: 20px;
+}
+
+.habits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.habitRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--panel-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-row);
+}
+
+.habitLabel {
+  font-size: 13px;
+  color: var(--text-mute-soft);
+}
+
+.habitValue {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dataText {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-mute-soft);
+  line-height: 1.6;
+}
+
+/* Styled as a secondary button — it's an action, just one that leaves the app. */
+.manageLink {
+  composes: secondary from '../../components/Button/Button.module.css';
+  display: inline-flex;
+  margin-top: 20px;
+}
+
+.emptyNote {
+  color: var(--text-mute);
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}

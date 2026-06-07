@@ -15,8 +15,9 @@ import java.io.IOException;
 
 
 /**
- * On successful Spotify login, refreshes the local user profile and redirects the
- * browser to the SPA's profile page (per the spec: land on the profile immediately).
+ * On successful Spotify login, refreshes the local user profile and redirects
+ * the browser to the SPA's overview page — the listening dashboard is the
+ * app's home, not the account details.
  */
 @Slf4j
 @Component
@@ -24,11 +25,11 @@ public class SpotifyLoginSuccessHandler implements AuthenticationSuccessHandler 
 
     private final AppUserService appUserService;
 
-    private final String profileRedirectUri;
+    private final String overviewRedirectUri;
 
     public SpotifyLoginSuccessHandler(AppUserService appUserService, AppProperties appProperties) {
         this.appUserService = appUserService;
-        this.profileRedirectUri = appProperties.frontendBaseUri() + "/profile";
+        this.overviewRedirectUri = appProperties.frontendBaseUri() + "/overview";
     }
 
     @Override
@@ -44,6 +45,6 @@ public class SpotifyLoginSuccessHandler implements AuthenticationSuccessHandler 
             log.info("Spotify login succeeded for user {}", token.getName());
         }
 
-        response.sendRedirect(profileRedirectUri);
+        response.sendRedirect(overviewRedirectUri);
     }
 }
