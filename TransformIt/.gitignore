@@ -1,0 +1,14 @@
+# Maven build output
+target/
+
+# Compiled class files (safety net if built outside Maven)
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# OS
+.DS_Store
+Thumbs.db
