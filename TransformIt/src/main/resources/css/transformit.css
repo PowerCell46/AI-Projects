@@ -1,0 +1,323 @@
+/* ============================================================
+   TransformIt — Catppuccin Mocha dark theme
+   ============================================================ */
+
+/* ----- Token definitions ----- */
+.root {
+    -color-bg-deep:    #11111b;
+    -color-bg:         #1e1e2e;
+    -color-surface0:   #313244;
+    -color-surface1:   #45475a;
+    -color-overlay0:   #6c7086;
+    -color-text:       #cdd6f4;
+    -color-subtext:    #a6adc8;
+    -color-accent:     #cba6f7;
+    -color-accent-dim: #7c4dff44;
+    -color-red:        #f38ba8;
+    -color-green:      #a6e3a1;
+
+    -fx-base:                     #1e1e2e;
+    -fx-background:               #1e1e2e;
+    -fx-control-inner-background: #313244;
+    -fx-text-fill:                #cdd6f4;
+    -fx-accent:                   #cba6f7;
+    -fx-focus-color:              #cba6f7;
+    -fx-faint-focus-color:        #cba6f744;
+    -fx-font-family:              "Segoe UI", "SF Pro Display", sans-serif;
+    -fx-font-size:                13px;
+}
+
+/* ============================================================
+   Toolbar
+   ============================================================ */
+.tool-bar,
+.app-toolbar {
+    -fx-background-color: #181825;
+    -fx-border-color:     #313244;
+    -fx-border-width:     0 0 1 0;
+    -fx-padding:          8 12 8 12;
+    -fx-spacing:          6;
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.button,
+.toolbar-btn,
+.palette-btn {
+    -fx-background-color: #313244;
+    -fx-text-fill:        #cdd6f4;
+    -fx-background-radius: 6;
+    -fx-border-radius:    6;
+    -fx-padding:          5 14 5 14;
+    -fx-cursor:           hand;
+    -fx-font-size:        12px;
+}
+
+.button:hover,
+.toolbar-btn:hover,
+.palette-btn:hover {
+    -fx-background-color: #45475a;
+}
+
+.button:pressed,
+.toolbar-btn:pressed,
+.palette-btn:pressed {
+    -fx-background-color: #585b70;
+}
+
+.button.accent {
+    -fx-background-color: #cba6f7;
+    -fx-text-fill:        #1e1e2e;
+    -fx-font-weight:      bold;
+}
+
+.button.accent:hover {
+    -fx-background-color: #d4b3fa;
+}
+
+.remove-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill:        #6c7086;
+    -fx-font-size:        14px;
+    -fx-padding:          0 4 0 4;
+    -fx-cursor:           hand;
+    -fx-background-radius: 4;
+}
+
+.remove-btn:hover {
+    -fx-background-color: #f38ba822;
+    -fx-text-fill:        #f38ba8;
+}
+
+/* ============================================================
+   ToggleButton
+   ============================================================ */
+.toggle-button {
+    -fx-background-color: #313244;
+    -fx-text-fill:        #cdd6f4;
+    -fx-background-radius: 6;
+    -fx-border-radius:    6;
+    -fx-padding:          5 12 5 12;
+    -fx-cursor:           hand;
+}
+
+.toggle-button:selected {
+    -fx-background-color: #cba6f7;
+    -fx-text-fill:        #1e1e2e;
+}
+
+.toggle-button:hover:selected {
+    -fx-background-color: #d4b3fa;
+}
+
+.before-after-btn {
+    -fx-background-color: #313244cc;
+    -fx-text-fill:        #cdd6f4;
+    -fx-background-radius: 6;
+    -fx-padding:          4 10 4 10;
+    -fx-font-size:        12px;
+}
+
+/* ============================================================
+   Side panel
+   ============================================================ */
+.side-panel {
+    -fx-background-color: #181825;
+    -fx-border-color:     #313244;
+    -fx-border-width:     0 1 0 0;
+}
+
+.params-section {
+    -fx-background-color: #181825;
+}
+
+/* ============================================================
+   Labels
+   ============================================================ */
+.section-label {
+    -fx-text-fill:   #a6adc8;
+    -fx-font-size:   10px;
+    -fx-font-weight: bold;
+}
+
+.param-label {
+    -fx-text-fill:   #6c7086;
+    -fx-font-size:   10px;
+    -fx-font-weight: bold;
+}
+
+.param-hint {
+    -fx-text-fill:   #6c7086;
+    -fx-font-size:   12px;
+    -fx-font-style:  italic;
+}
+
+.workspace-placeholder {
+    -fx-text-fill:   #45475a;
+    -fx-font-size:   15px;
+}
+
+/* ============================================================
+   Pipeline entries
+   ============================================================ */
+.pipeline-entry {
+    -fx-background-color:  #313244;
+    -fx-background-radius: 6;
+    -fx-padding:           6 10 6 10;
+    -fx-cursor:            hand;
+}
+
+.pipeline-entry:hover {
+    -fx-background-color:  #45475a;
+}
+
+.pipeline-entry.selected {
+    -fx-background-color:  #45475a;
+    -fx-border-color:      #cba6f7;
+    -fx-border-width:      1;
+    -fx-border-radius:     6;
+}
+
+/* ============================================================
+   Sliders
+   ============================================================ */
+.slider .track {
+    -fx-background-color:  #45475a;
+    -fx-pref-height:       4px;
+}
+
+.slider .thumb {
+    -fx-background-color:  #cba6f7;
+    -fx-pref-width:        14px;
+    -fx-pref-height:       14px;
+    -fx-background-radius: 7;
+}
+
+.slider .thumb:hover {
+    -fx-background-color:  #d4b3fa;
+}
+
+/* ============================================================
+   Workspace
+   ============================================================ */
+.workspace {
+    -fx-background-color: #11111b;
+}
+
+/* ============================================================
+   ASCII text area
+   ============================================================ */
+.ascii-area {
+    -fx-font-family:              "Courier New", "Consolas", monospace;
+    -fx-font-size:                11px;
+    -fx-text-fill:                #cdd6f4;
+    -fx-control-inner-background: #11111b;
+    -fx-background-color:         #11111b;
+    -fx-border-color:             transparent;
+}
+
+.ascii-area .content {
+    -fx-background-color: #11111b;
+}
+
+/* ============================================================
+   Busy overlay
+   ============================================================ */
+.busy-overlay {
+    -fx-background-color: #11111b88;
+}
+
+/* ============================================================
+   Scrollpane / edges
+   ============================================================ */
+.scroll-pane.edge-to-edge,
+.scroll-pane.edge-to-edge > .viewport {
+    -fx-background-color: transparent;
+    -fx-border-color:     transparent;
+}
+
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+    -fx-background-color: transparent;
+    -fx-pref-width:       6px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color:  #45475a;
+    -fx-background-radius: 3;
+}
+
+/* ============================================================
+   RadioButton / CheckBox
+   ============================================================ */
+.radio-button,
+.check-box {
+    -fx-text-fill: #cdd6f4;
+}
+
+.radio-button .radio,
+.check-box .box {
+    -fx-background-color: #313244;
+    -fx-border-color:     #6c7086;
+    -fx-border-radius:    3;
+}
+
+.radio-button:selected .dot,
+.check-box:selected .mark {
+    -fx-background-color: #cba6f7;
+}
+
+/* ============================================================
+   ComboBox
+   ============================================================ */
+.combo-box {
+    -fx-background-color:  #313244;
+    -fx-text-fill:         #cdd6f4;
+    -fx-background-radius: 6;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill:         #cdd6f4;
+    -fx-background-color:  transparent;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color:  #313244;
+    -fx-border-color:      #45475a;
+    -fx-border-radius:     6;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color:  #45475a;
+}
+
+/* ============================================================
+   Separator
+   ============================================================ */
+.separator .line {
+    -fx-border-color: #313244;
+}
+
+.panel-separator .line {
+    -fx-border-color: #313244;
+}
+
+/* ============================================================
+   Divider line (split slider handle)
+   ============================================================ */
+.divider-line {
+    -fx-stroke:       #cba6f7;
+    -fx-stroke-width: 2;
+}
+
+/* ============================================================
+   Alert dialogs
+   ============================================================ */
+.dialog-pane {
+    -fx-background-color: #1e1e2e;
+}
+
+.dialog-pane .content {
+    -fx-text-fill: #cdd6f4;
+}
