@@ -1,8 +1,10 @@
 /* Symmetric 1:1 panels — auto-fit collapses to one column on its own,
-   replacing the old 1100px breakpoint. */
+   replacing the old 1100px breakpoint. The 32rem floor (not 20rem) is sized to
+   the rigid topTrackRow inside: a narrower panel can't fit position + art +
+   title + the two right-aligned metric columns, so the row would overflow. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(32rem, 1fr));
   gap: var(--space-24);
   align-items: start;
 }
