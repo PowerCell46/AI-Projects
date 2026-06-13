@@ -1,27 +1,27 @@
 .daysColumn {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-24);
 }
 
 .pager {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 24px;
+  margin-top: var(--space-24);
 }
 
 .pageInfo {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-mute);
 }
 
 .pagerButtons {
   display: flex;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .empty {
   color: var(--text-mute);
-  font-size: 14px;
+  font-size: var(--fs-14);
 }

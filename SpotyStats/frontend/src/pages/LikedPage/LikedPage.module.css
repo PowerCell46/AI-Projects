@@ -1,12 +1,12 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
   /* 50px shorter than --scroll-list-max-height: the pager row sits below the
      list inside the same panel and needs the room. */
-  max-height: max(360px, calc(100vh - 480px));
+  max-height: max(27.6923rem, calc(100vh - 36.9231rem));
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: var(--space-8);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -15,20 +15,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 24px;
+  margin-top: var(--space-24);
 }
 
 .pageInfo {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-mute);
 }
 
 .pagerButtons {
   display: flex;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .empty {
   color: var(--text-mute);
-  font-size: 14px;
+  font-size: var(--fs-14);
 }

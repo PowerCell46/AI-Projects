@@ -1,12 +1,12 @@
 .page {
   min-height: 100vh;
-  padding: 36px 32px;
+  padding: var(--space-40) var(--space-32);
   display: flex;
   flex-direction: column;
 }
 
 .wordmark {
-  font-size: 19px;
+  font-size: var(--fs-19);
   font-weight: 600;
   letter-spacing: 0.3px;
 }
@@ -22,42 +22,44 @@
 }
 
 .eyebrow {
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 10px;
+  margin-bottom: var(--space-10);
 }
 
+/* Fluid 34px → 44px via --fs-display. */
 .title {
-  font-size: 44px;
+  font-size: var(--fs-display);
   font-weight: 600;
   letter-spacing: -1px;
   line-height: 1.1;
 }
 
 .subtitle {
-  font-size: 15px;
+  font-size: var(--fs-15);
   color: var(--text-mute-soft);
-  max-width: 440px;
+  max-width: 33.8462rem;
   line-height: 1.6;
-  margin-top: 18px;
+  margin-top: var(--space-20);
 }
 
 .error {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--accent);
-  margin-top: 18px;
+  margin-top: var(--space-20);
 }
 
+/* em padding so the button hugs its own label size. */
 .loginButton {
-  margin-top: 36px;
-  padding: 13px 28px;
+  margin-top: var(--space-40);
+  padding: 0.93em 2em;
   background: var(--accent);
   color: var(--accent-text);
   border-radius: var(--radius-button);
-  font-size: 14px;
+  font-size: var(--fs-14);
   font-weight: 600;
   transition: background var(--transition-hover);
 }

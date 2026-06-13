@@ -2,16 +2,16 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-24);
 }
 
 .title {
-  font-size: 18px;
+  font-size: var(--fs-18);
   font-weight: 600;
 }
 
 .count {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--text-mute);
   letter-spacing: 1px;
 }
@@ -19,10 +19,10 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
   max-height: var(--scroll-list-max-height);
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: var(--space-8);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
