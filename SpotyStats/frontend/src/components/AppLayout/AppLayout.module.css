@@ -4,20 +4,27 @@
   min-height: 100vh;
 }
 
+/* Cap + center the content on ultrawide/4K so the grids don't stretch their
+   few items across the whole panel. The cap is in rem, so it grows with the
+   fluid root; 125rem clears the ~1620px content box at 1920px, leaving the
+   full-HD layout untouched and only engaging on wider viewports. */
 .main {
   padding: var(--main-padding);
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
   min-width: 0;
+  max-width: 125rem;
+  margin-inline: auto;
+  width: 100%;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 45em) {
   .layout {
     grid-template-columns: 1fr;
   }
 
   .main {
-    padding: 24px 20px;
+    padding: var(--space-24) var(--space-20);
   }
 }

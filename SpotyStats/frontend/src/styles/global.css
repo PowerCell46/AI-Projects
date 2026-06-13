@@ -8,6 +8,22 @@
   padding: 0;
 }
 
+/* Fluid rem base, proportional to viewport width above 1920px. The whole rem/em
+   UI is sized for a 1920px design, so the root tracks viewport/1920 (= 0.6771vw,
+   since 13px / 19.2 = 0.6771): a screen twice as wide renders the UI at twice the
+   size, like the full-HD design zoomed up rather than a small island in a sea of
+   empty space. Floored at 13px so ≤1920px is unchanged 1:1; capped at 28px so it
+   doesn't run away on 5K+.
+
+     1920px → 13px   2560px → ~17px   3440px → ~23px   3840px → 26px
+
+   The 0.8125rem floor resolves against the browser default (16px = 13px), so the
+   baseline still respects the user's font-size preference.
+       0.8125rem = 13px   1.75rem = 28px */
+html {
+  font-size: clamp(0.8125rem, 0.6771vw, 1.75rem);
+}
+
 html,
 body,
 #root {
@@ -23,7 +39,7 @@ body {
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-family);
-  font-size: 13px;
+  font-size: var(--fs-13);
   -webkit-font-smoothing: antialiased;
 }
 

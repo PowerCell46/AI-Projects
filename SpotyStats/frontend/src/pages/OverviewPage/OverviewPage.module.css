@@ -1,35 +1,33 @@
+/* auto-fit/minmax reflows the stat cards 4→3→2→1 at any width, replacing the
+   old 900px breakpoint. */
 .statsRow {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-20);
 }
 
 .contentGrid {
   display: grid;
   grid-template-columns: 1.45fr 1fr;
-  gap: 24px;
+  gap: var(--space-24);
   align-items: start;
 }
 
 .diaryColumn {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-24);
 }
 
 .empty {
   color: var(--text-mute);
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 
-@media (max-width: 1100px) {
+/* Kept as a breakpoint: the 1.45:1 diary/panel ratio can't collapse to one
+   column via auto-fit without losing the ratio. 68.75em = 1100px. */
+@media (max-width: 68.75em) {
   .contentGrid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px) {
-  .statsRow {
-    grid-template-columns: repeat(2, 1fr);
   }
 }

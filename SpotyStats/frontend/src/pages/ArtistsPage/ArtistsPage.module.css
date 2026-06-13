@@ -1,22 +1,22 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
   max-height: var(--scroll-list-max-height);
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: var(--space-8);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
 
-/* Same scale as TrackRow (56px art, 16px/18px padding) so the /history,
+/* Same scale as TrackRow (3.3rem art, 16/20 padding) so the /history,
    /artists, and /liked-songs lists read as one consistent table style. */
 .row {
   display: grid;
-  grid-template-columns: 32px 56px 1fr 110px 110px 110px 96px;
+  grid-template-columns: 2.4615rem 4.3077rem 1fr 8.4615rem 8.4615rem 8.4615rem 7.3846rem;
   align-items: center;
-  gap: 18px;
-  padding: 16px 18px;
+  gap: var(--space-20);
+  padding: var(--space-16) var(--space-20);
   background: var(--panel-inset);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-row);
@@ -25,36 +25,36 @@
 /* Spotify's long-term ranking carries no metrics — just rank, artist, follow. */
 .rowOrderOnly {
   composes: row;
-  grid-template-columns: 32px 56px 1fr 96px;
+  grid-template-columns: 2.4615rem 4.3077rem 1fr 7.3846rem;
 }
 
 .position {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-mute);
   text-align: right;
 }
 
 .avatar {
-  width: 56px;
-  height: 56px;
+  width: 4.3077rem;
+  height: 4.3077rem;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--track-art-bg);
   color: var(--text-mute-soft);
-  font-size: 20px;
+  font-size: var(--fs-20);
   font-weight: 600;
 }
 
 .portrait {
-  width: 56px;
-  height: 56px;
+  width: 4.3077rem;
+  height: 4.3077rem;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .name {
-  font-size: 15px;
+  font-size: var(--fs-15);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -62,29 +62,30 @@
 }
 
 .metric {
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text-mute);
   text-align: right;
 }
 
 .empty {
   color: var(--text-mute);
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 
 .coverageNote {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-16);
   color: var(--text-mute);
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 
+/* em padding so the button hugs its own label size. */
 .follow {
-  padding: 7px 0;
+  padding: 0.58em 0;
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-button);
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 600;
   transition: background var(--transition-hover), border-color var(--transition-hover);
 }

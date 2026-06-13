@@ -1,6 +1,6 @@
 .chart {
-  width: 200px;
-  height: 200px;
+  width: 15.3846rem;
+  height: 15.3846rem;
   display: block;
   margin: 0 auto;
 }
@@ -15,6 +15,8 @@
   filter: brightness(1.15);
 }
 
+/* font-size here is in SVG user units (the viewBox coordinate system), not
+   screen pixels — it must stay unitless-px and not be converted to rem. */
 .centerValue {
   font-size: 9px;
   font-weight: 600;

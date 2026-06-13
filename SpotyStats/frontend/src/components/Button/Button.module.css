@@ -1,12 +1,13 @@
-/* Action buttons are rectangular (radius 10px) by design — never pill. */
+/* Action buttons are rectangular (radius 10px) by design — never pill.
+   Padding is in em so a button grows with its own label size. */
 
 .primary {
-  padding: 11px 22px;
+  padding: 0.85em 1.69em;
   background: var(--accent);
   color: var(--accent-text);
   border: none;
   border-radius: var(--radius-button);
-  font-size: 13px;
+  font-size: var(--fs-13);
   font-weight: 600;
   transition: background var(--transition-hover);
 }
@@ -20,12 +21,12 @@
 }
 
 .secondary {
-  padding: 10px 22px;
+  padding: 0.77em 1.69em;
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-button);
-  font-size: 13px;
+  font-size: var(--fs-13);
   font-weight: 500;
   transition: background var(--transition-hover), border-color var(--transition-hover);
 }
@@ -40,7 +41,7 @@
   composes: secondary;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   color: var(--danger);
 }
 

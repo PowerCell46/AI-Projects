@@ -4,14 +4,15 @@
   display: flex;
   background: var(--panel);
   border-radius: var(--radius-pill);
-  padding: 4px;
+  padding: var(--space-4);
 }
 
+/* Padding is in em so each option grows with its own label size. */
 .option,
 .optionActive {
-  padding: 6px 14px;
+  padding: 0.55em 1.27em;
   border-radius: var(--radius-pill);
-  font-size: 11px;
+  font-size: var(--fs-11);
   font-weight: 600;
   border: none;
   transition: background var(--transition-hover);

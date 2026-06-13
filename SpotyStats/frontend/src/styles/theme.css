@@ -1,5 +1,12 @@
 /* Design tokens — "Vinyl Glass" (docs/design-brief.md) */
 
+/* Sizing is rem-based so the whole UI scales with viewport size (see the fluid
+   root in global.css), the user's browser font setting, and zoom. The root is
+   anchored so 1rem = 13px at a 1920px viewport, so every token below maps 1:1
+   to the old pixel design at full HD and scales up from there on larger panels.
+   Tokens are named after that 1920px pixel equivalent purely for auditability —
+   the value itself is relative. */
+
 :root {
   /* Surfaces */
   --bg-base: #0b0d1a;
@@ -44,26 +51,61 @@
   /* Typography */
   --font-family: 'Inter', system-ui, sans-serif;
 
+  /* Font scale — kept exact (px / 13) so type is pixel-identical to the
+     original design. */
+  --fs-11: 0.8462rem;
+  --fs-12: 0.9231rem;
+  --fs-13: 1rem;
+  --fs-14: 1.0769rem;
+  --fs-15: 1.1538rem;
+  --fs-18: 1.3846rem;
+  --fs-19: 1.4615rem;
+  --fs-20: 1.5385rem;
+  --fs-22: 1.6923rem;
+  --fs-32: 2.4615rem;
+  --fs-38: 2.9231rem;
+  /* Fluid display heading: 34px → 44px without a media query. */
+  --fs-display: clamp(2.6154rem, 1.95rem + 2.05vw, 3.3846rem);
+
+  /* Spacing scale — a rem rhythm. Off-grid legacy values were snapped to the
+     nearest step (max 2px drift): 11→12, 14→16, 18→20, 22→24, 26→28, 36→40. */
+  --space-4: 0.3077rem;
+  --space-6: 0.4615rem;
+  --space-8: 0.6154rem;
+  --space-10: 0.7692rem;
+  --space-12: 0.9231rem;
+  --space-16: 1.2308rem;
+  --space-20: 1.5385rem;
+  --space-24: 1.8462rem;
+  --space-28: 2.1538rem;
+  --space-32: 2.4615rem;
+  --space-40: 3.0769rem;
+  --space-48: 3.6923rem;
+  --space-56: 4.3077rem;
+  --space-64: 4.9231rem;
+
   /* Radii */
-  --radius-panel: 20px;
-  --radius-stat-card: 18px;
-  --radius-row: 14px;
-  --radius-nav: 12px;
-  --radius-button: 10px;
-  --radius-art: 10px;
+  --radius-panel: 1.5385rem;
+  --radius-stat-card: 1.3846rem;
+  --radius-row: 1.0769rem;
+  --radius-nav: 0.9231rem;
+  --radius-button: 0.7692rem;
+  --radius-art: 0.7692rem;
   --radius-pill: 999px;
 
   /* Layout */
-  --sidebar-width: 300px;
-  --main-padding: 48px 56px 64px;
-  --section-gap: 40px;
+  --sidebar-width: 23.0769rem;
+  --main-padding: var(--space-48) var(--space-56) var(--space-64);
+  --section-gap: var(--space-40);
   /* Scrollable panel lists: cap to the viewport so heavy lists scroll inside
      the panel instead of stretching the page; the floor keeps short windows
      usable. */
-  --scroll-list-max-height: max(360px, calc(100vh - 430px));
+  --scroll-list-max-height: max(27.6923rem, calc(100vh - 33.0769rem));
 
-  /* Breakpoints (for reference — media queries can't read custom props) */
-  /* 1100px: content grid → 1 col; 900px: stats → 2×2; 720px: top bar */
+  /* Breakpoints (for reference — media queries can't read custom props, and
+     MQ units ignore the html font-size override, so they're authored in em
+     relative to the 16px browser default): 45em = 720px top bar. The old
+     900px/1100px grid breaks are now handled by auto-fit/minmax. */
 
   /* Transitions */
   --transition-hover: 150ms ease;
