@@ -42,7 +42,8 @@ public class ParamControls extends VBox {
 
         Node controls = switch (transform) {
             case GrayscaleTransform      gt  -> buildGrayscaleControls();
-            case FlipTransform           ft  -> buildFlipControls(ft);
+            case HorizontalFlipTransform hf  -> infoHint("Mirrors the image left ↔ right.");
+            case VerticalFlipTransform   vf  -> infoHint("Mirrors the image top ↕ bottom.");
             case BrightnessContrastTransform bct -> buildBrightnessContrastControls(bct);
             case ColorRemapTransform     crt -> buildColorRemapControls(crt);
             case AsciiTransform          at  -> buildAsciiControls(at);
@@ -62,24 +63,15 @@ public class ParamControls extends VBox {
     // =========================================================================
 
     private Node buildGrayscaleControls() {
-        Label info = new Label("Converts to luminance:\n0.299 R + 0.587 G + 0.114 B");
+        return infoHint("Converts to luminance:\n0.299 R + 0.587 G + 0.114 B");
+    }
+
+    /** A read-only hint used for transforms that have no adjustable parameters. */
+    private Node infoHint(String text) {
+        Label info = new Label(text);
         info.getStyleClass().add("param-hint");
         info.setWrapText(true);
         return info;
-    }
-
-    private Node buildFlipControls(FlipTransform ft) {
-        ToggleButton btnH = new ToggleButton("Horizontal");
-        ToggleButton btnV = new ToggleButton("Vertical");
-
-        btnH.setSelected(ft.isFlipHorizontal());
-        btnV.setSelected(ft.isFlipVertical());
-
-        btnH.setOnAction(e -> { ft.setFlipHorizontal(btnH.isSelected()); onChanged.run(); });
-        btnV.setOnAction(e -> { ft.setFlipVertical(btnV.isSelected());   onChanged.run(); });
-
-        HBox row = new HBox(8, btnH, btnV);
-        return labeled("Direction", row);
     }
 
     private Node buildBrightnessContrastControls(BrightnessContrastTransform bct) {

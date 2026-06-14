@@ -22,11 +22,9 @@ set JAVA_HOME=C:\Users\HP ZBook 17 G5\.jdks\openjdk-25
 mvn clean javafx:run
 ```
 
-Run in dev:
-
-```powershell
-mvn clean javafx:run
-```
+The `javafx-maven-plugin` supplies the runtime JVM flags the app needs (`--add-exports` for the
+native window handle, `--enable-native-access` for the FFM dark-title-bar call), so plain
+`mvn javafx:run` is all you need.
 
 ---
 

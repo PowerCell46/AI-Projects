@@ -85,14 +85,15 @@ public class PipelinePanel extends VBox {
     private Node buildAddSection() {
         Label heading = sectionLabel("Add Transform");
 
-        Button grayscaleBtn  = paletteButton("Grayscale",          () -> addEntry(new GrayscaleTransform()));
-        Button flipBtn       = paletteButton("Flip / Mirror",       () -> addEntry(new FlipTransform()));
+        Button grayscaleBtn  = paletteButton("Grayscale",            () -> addEntry(new GrayscaleTransform()));
+        Button flipHBtn      = paletteButton("Flip Horizontal",      () -> addEntry(new HorizontalFlipTransform()));
+        Button flipVBtn      = paletteButton("Flip Vertical",        () -> addEntry(new VerticalFlipTransform()));
         Button brightnessBtn = paletteButton("Brightness / Contrast", () -> addEntry(new BrightnessContrastTransform()));
-        Button colorRemapBtn = paletteButton("Color Remap",         () -> addEntry(new ColorRemapTransform()));
-        Button asciiBtn      = paletteButton("ASCII Art",           () -> addEntry(new AsciiTransform()));
+        Button colorRemapBtn = paletteButton("Color Remap",          () -> addEntry(new ColorRemapTransform()));
+        Button asciiBtn      = paletteButton("ASCII Art",            () -> addEntry(new AsciiTransform()));
 
         FlowPane palette = new FlowPane(6, 6,
-                grayscaleBtn, flipBtn, brightnessBtn, colorRemapBtn, asciiBtn);
+                grayscaleBtn, flipHBtn, flipVBtn, brightnessBtn, colorRemapBtn, asciiBtn);
         palette.setPadding(new Insets(6, 0, 6, 0));
 
         VBox section = new VBox(6, heading, palette);
