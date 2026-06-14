@@ -13,10 +13,6 @@ experienced in the **Java/Spring ecosystem but new to JavaFX/desktop development
 favors familiar tools (Java, Maven), clear module boundaries, and heavy inline documentation, while
 isolating the one genuinely new layer (JavaFX UI) behind a small, well-defined surface.
 
-> Note: `context.md` line 63 ("after a successful login, redirect to profile page") is a copy-paste
-> artifact from an unrelated spec. TransformIt is a **local, offline desktop app with no accounts or
-> login** — that line is intentionally ignored.
-
 ## Decisions (locked with the user)
 
 | Area | Decision |
@@ -81,35 +77,6 @@ result image (and ASCII grid, if any) to the workspace.
 `AsciiTransform` is special: because it is **terminal**, the pipeline validates that nothing is
 ordered after it (UI prevents it). Its output is a small `AsciiResult { char[][] grid; BufferedImage
 rendered; }` carried alongside the image in `RenderResult` so both export paths work.
-
-## Project layout
-
-```
-TransformIt/
-├─ pom.xml                         # JavaFX + maven-jpackage; mainClass = ...App
-├─ PROJECT.md                      # this plan
-├─ src/main/java/bg/transformit/
-│  ├─ App.java                     # JavaFX Application entry point
-│  ├─ ui/
-│  │  ├─ MainView.java             # builds toolbar + panel + workspace
-│  │  ├─ WorkspaceView.java        # split-slider / toggle preview, aspect-fit
-│  │  ├─ PipelinePanel.java        # palette + active pipeline list
-│  │  ├─ ParamControls.java        # per-transform sliders/toggles (debounced)
-│  │  └─ RenderService.java        # wraps Task<RenderResult>, progress, debounce
-│  ├─ core/
-│  │  ├─ Transform.java
-│  │  ├─ TransformPipeline.java
-│  │  ├─ RenderResult.java
-│  │  └─ transforms/               # the 5 transforms + AsciiResult, palettes
-│  └─ io/
-│     ├─ ImageLoader.java          # FileChooser + ImageIO.read
-│     ├─ PngExporter.java          # ImageIO.write(result, "png", file)
-│     └─ TxtExporter.java          # writes char grid
-├─ src/main/resources/
-│  ├─ css/transformit.css          # JavaFX styling (clean, modern, accessible)
-│  └─ samples/                     # 1–2 bundled demo images
-└─ ...
-```
 
 ## Algorithm notes (the meaty bits)
 

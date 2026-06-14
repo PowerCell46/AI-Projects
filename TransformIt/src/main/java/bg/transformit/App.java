@@ -2,13 +2,18 @@ package bg.transformit;
 
 
 import bg.transformit.ui.MainView;
+import bg.transformit.ui.NativeTitleBarDarkMode;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 
 /** JavaFX entry point — keeps this class as thin as possible. */
 public class App extends Application {
+
+    private static final String APP_ICON = "/icons/icon_two.png";
+
 
     @Override
     public void start(Stage primaryStage) {
@@ -22,8 +27,12 @@ public class App extends Application {
         primaryStage.setTitle("TransformIt");
         primaryStage.setMinWidth(800);
         primaryStage.setMinHeight(550);
+        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream(APP_ICON)));
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Must run after show() — the native window handle only exists once shown.
+        NativeTitleBarDarkMode.apply();
     }
 
     public static void main(String[] args) {

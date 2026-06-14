@@ -68,10 +68,7 @@ public class MainView extends BorderPane {
         exportPngBtn.setOnAction(e -> exportPng());
         exportTxtBtn.setOnAction(e -> exportTxt());
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        ToolBar toolbar = new ToolBar(openBtn, new Separator(), exportPngBtn, exportTxtBtn);
+        ToolBar toolbar = new ToolBar(openBtn, exportPngBtn, exportTxtBtn);
         toolbar.getStyleClass().add("app-toolbar");
         return toolbar;
     }

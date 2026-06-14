@@ -1,5 +1,3 @@
-
-
 Your task is to build a desktop application that allows users to open an existing image and transform it creatively. The goal is to encourage experimentation with visual expression through a collection of customizable transformation tools. Instead of passively viewing an image, users should be able to explore how various effects reshape its structure, mood, and overall appearance. Unlike traditional image editors that focus on precise adjustments or professional workflows, this application should emphasize exploration, playfulness, and artistic experimentation.
 
 You will design an intuitive, visually appealing desktop application that enables users to apply different transformations, analyze visual patterns, and convert images into alternative visual formats (such as ASCII-art representations).
@@ -60,8 +58,6 @@ Detailed functional requirements:
 
 · Implement a color transformation that analyzes the image’s color distribution and swaps high-frequency colors with low-frequency ones to produce unique visual results.
 
-· Immediately after a successful login, users should be redirected to their profile page.
-
 · Allow users to apply multiple transformations sequentially.
 
 · Provide an option to export the generated ASCII art or the final transformed image.
@@ -81,7 +77,3 @@ Non-functional requirements:
 · Avoid unnecessary memory use when processing images
 
 · Code should be organized, maintainable, and well-documented
-
-Important notes:
-
-· You will NOT implement this application – use it solely as a reference to improve your planning and AI workflow design skills

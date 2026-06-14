@@ -13,13 +13,13 @@ image, stacks playful transformations (grayscale, flip, color remap, ASCII), and
 ```powershell
 # PowerShell
 $env:JAVA_HOME = "C:\Users\HP ZBook 17 G5\.jdks\openjdk-25"
-
+mvn clean javafx:run
 ```
 
 ```cmd
 :: cmd
 set JAVA_HOME=C:\Users\HP ZBook 17 G5\.jdks\openjdk-25
-
+mvn clean javafx:run
 ```
 
 Run in dev:

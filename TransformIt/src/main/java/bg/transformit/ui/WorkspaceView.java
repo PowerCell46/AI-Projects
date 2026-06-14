@@ -22,9 +22,9 @@ import java.awt.image.BufferedImage;
  * <ul>
  *   <li><b>SPLIT_SLIDER</b> (default) — shows the original on the left and the
  *       result on the right, split by a draggable vertical divider.</li>
- *   <li><b>ASCII_TOGGLE</b> — active when the last transform is ASCII; shows a
- *       monospace text area with a Before / After toggle button to switch to
- *       the original image.</li>
+ *   <li><b>ASCII_WIPE</b> — active when the last transform is ASCII; shows the
+ *       monospace text alongside the original image, wiped between by a slider
+ *       (slider far-right = full ASCII, dragging left reveals the original).</li>
  * </ul>
  *
  * <p>Images are always letterboxed (fit-to-area, aspect ratio preserved) so
@@ -43,12 +43,14 @@ public class WorkspaceView extends StackPane {
     private final Pane      splitPane    = new Pane();
 
     // -------------------------------------------------------------------------
-    // ASCII-toggle nodes
+    // ASCII wipe-reveal nodes
     // -------------------------------------------------------------------------
-    private final TextArea      asciiArea        = new TextArea();
-    private final ToggleButton  beforeAfterToggle = new ToggleButton("Show Original");
-    private final ImageView     asciiOriginalView = new ImageView();
-    private final StackPane     asciiPane         = new StackPane();
+    private final TextArea  asciiArea         = new TextArea();
+    private final ImageView asciiOriginalView = new ImageView();
+    private final Pane      asciiPane         = new Pane();
+    private final Rectangle asciiClip         = new Rectangle();
+    private final Rectangle asciiOriginalClip = new Rectangle();
+    private final Line      asciiDividerLine  = new Line();
 
     // -------------------------------------------------------------------------
     // Busy overlay
@@ -58,8 +60,10 @@ public class WorkspaceView extends StackPane {
     // -------------------------------------------------------------------------
     // State
     // -------------------------------------------------------------------------
-    private double dividerRatio = 0.5;
-    private boolean dragging    = false;
+    private double dividerRatio     = 0.5;
+    private double asciiRevealRatio = 0.5;
+    private boolean dragging        = false;
+    private boolean asciiDragging   = false;
 
     private BufferedImage currentOriginal;
     private BufferedImage currentResult;
@@ -99,7 +103,7 @@ public class WorkspaceView extends StackPane {
 
         if (result.hasAscii()) {
             asciiArea.setText(result.ascii().toText());
-            showAsciiToggle();
+            showAsciiView();
         } else {
             javafx.scene.image.Image fx = SwingFXUtils.toFXImage(result.image(), null);
             resultView.setImage(fx);
@@ -150,24 +154,63 @@ public class WorkspaceView extends StackPane {
         asciiArea.setEditable(false);
         asciiArea.setWrapText(false);
         asciiArea.getStyleClass().add("ascii-area");
+        asciiArea.setClip(asciiClip);
+        asciiArea.setMouseTransparent(true);   // let the divider drag pass through
 
-        // asciiOriginalView is shown when the toggle is pressed
         configureImageView(asciiOriginalView);
-        asciiOriginalView.setVisible(false);
+        asciiOriginalView.setClip(asciiOriginalClip);
 
-        beforeAfterToggle.getStyleClass().add("before-after-btn");
-        beforeAfterToggle.selectedProperty().addListener((obs, old, showing) -> {
-            asciiArea.setVisible(!showing);
-            asciiArea.setManaged(!showing);
-            asciiOriginalView.setVisible(showing);
-        });
+        asciiDividerLine.getStyleClass().add("divider-line");
+        asciiDividerLine.setStrokeWidth(2);
+        asciiDividerLine.setStroke(Color.web("#cba6f7"));
 
-        StackPane.setAlignment(beforeAfterToggle, Pos.TOP_RIGHT);
-        StackPane.setMargin(beforeAfterToggle, new Insets(10));
-
-        asciiPane.getChildren().addAll(asciiArea, asciiOriginalView, beforeAfterToggle);
+        // Same structure as the split pane: a plain Pane with children pinned at (0,0).
+        asciiPane.getChildren().addAll(asciiOriginalView, asciiArea, asciiDividerLine);
+        asciiPane.getStyleClass().add("workspace");
         asciiPane.setVisible(false);
         asciiPane.setManaged(false);
+
+        asciiPane.widthProperty().addListener((obs, old, nv)  -> layoutAsciiWipe());
+        asciiPane.heightProperty().addListener((obs, old, nv) -> layoutAsciiWipe());
+
+        installAsciiDragHandlers();
+    }
+
+    /**
+     * Lays out the ASCII wipe: the original image fills {@code [0 .. divX]} on the
+     * left, the ASCII text fills {@code [divX .. width]} on the right, meeting at
+     * the draggable divider, where {@code divX = paneWidth * asciiRevealRatio}.
+     */
+    private void layoutAsciiWipe() {
+        double w = asciiPane.getWidth();
+        double h = asciiPane.getHeight();
+
+        if (w <= 0 || h <= 0) return;
+
+        double divX = asciiRevealRatio * w;
+
+        // Original image: clip to [0 .. divX]
+        asciiOriginalClip.setX(0);
+        asciiOriginalClip.setY(0);
+        asciiOriginalClip.setWidth(divX);
+        asciiOriginalClip.setHeight(h);
+
+        // ASCII text: clip to [divX .. w]
+        asciiClip.setX(divX);
+        asciiClip.setY(0);
+        asciiClip.setWidth(w - divX);
+        asciiClip.setHeight(h);
+
+        // Divider line
+        asciiDividerLine.setStartX(divX);
+        asciiDividerLine.setEndX(divX);
+        asciiDividerLine.setStartY(0);
+        asciiDividerLine.setEndY(h);
+
+        // Image fills the pane (letterboxed); TextArea filled via its preferred size.
+        asciiOriginalView.setFitWidth(w);
+        asciiOriginalView.setFitHeight(h);
+        asciiArea.setPrefSize(w, h);
     }
 
     private void buildBusyOverlay() {
@@ -190,27 +233,32 @@ public class WorkspaceView extends StackPane {
         asciiPane.setManaged(false);
     }
 
-    private void showAsciiToggle() {
+    private void showAsciiView() {
         splitPane.setVisible(false);
         splitPane.setManaged(false);
         asciiPane.setVisible(true);
         asciiPane.setManaged(true);
-        beforeAfterToggle.setSelected(false);
-        asciiArea.setVisible(true);
-        asciiArea.setManaged(true);
-        asciiOriginalView.setVisible(false);
+
+        asciiRevealRatio = 0.5;   // start half original / half ASCII
+        layoutAsciiWipe();
     }
 
     // =========================================================================
     // Layout / refresh
     // =========================================================================
 
-    /**
-     * Recalculates clips and divider position after resize or a new image.
-     * Both ImageViews fill the splitPane (preserveRatio=true, fitW/H bound),
-     * so the letterboxing is automatic — we only need to update the clip rects.
-     */
+    /** Re-lays both display modes after a resize or new image; each self-guards. */
     private void refresh() {
+        layoutSplitSlider();
+        layoutAsciiWipe();
+    }
+
+    /**
+     * Positions the split-slider clips and divider. Both ImageViews fill the
+     * splitPane (preserveRatio=true), so letterboxing is automatic — we only
+     * need to update the clip rects and fit dimensions.
+     */
+    private void layoutSplitSlider() {
         double w = splitPane.getWidth();
         double h = splitPane.getHeight();
 
@@ -241,9 +289,6 @@ public class WorkspaceView extends StackPane {
         originalView.setFitHeight(h);
         resultView.setFitWidth(w);
         resultView.setFitHeight(h);
-
-        asciiOriginalView.setFitWidth(asciiPane.getWidth());
-        asciiOriginalView.setFitHeight(asciiPane.getHeight());
     }
 
     // =========================================================================
@@ -269,6 +314,28 @@ public class WorkspaceView extends StackPane {
         });
 
         splitPane.setOnMouseReleased(e -> dragging = false);
+    }
+
+    /** Same divider drag as the split slider, driving the ASCII wipe ratio. */
+    private void installAsciiDragHandlers() {
+        asciiPane.setOnMouseMoved(e -> {
+            double divX = asciiRevealRatio * asciiPane.getWidth();
+            boolean nearDivider = Math.abs(e.getX() - divX) < 20;
+            asciiPane.setCursor(nearDivider ? Cursor.H_RESIZE : Cursor.DEFAULT);
+        });
+
+        asciiPane.setOnMousePressed(e -> {
+            double divX = asciiRevealRatio * asciiPane.getWidth();
+            asciiDragging = Math.abs(e.getX() - divX) < 20;
+        });
+
+        asciiPane.setOnMouseDragged(e -> {
+            if (!asciiDragging) return;
+            asciiRevealRatio = Math.clamp(e.getX() / asciiPane.getWidth(), 0.02, 0.98);
+            layoutAsciiWipe();
+        });
+
+        asciiPane.setOnMouseReleased(e -> asciiDragging = false);
     }
 
     // =========================================================================
