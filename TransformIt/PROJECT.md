@@ -8,7 +8,7 @@ transformations (grayscale, flip/mirror, color remapping, ASCII art), tweaks the
 exports the result as a PNG or `.txt`. It must feel smooth, never freeze on heavy work, and always
 display images at the correct aspect ratio.
 
-This plan exists to lock the architecture **before** any code is written. The developer is
+This document captures the architecture and the reasoning behind each decision. The developer is
 experienced in the **Java/Spring ecosystem but new to JavaFX/desktop development**, so the design
 favors familiar tools (Java, Maven), clear module boundaries, and heavy inline documentation, while
 isolating the one genuinely new layer (JavaFX UI) behind a small, well-defined surface.
@@ -17,18 +17,18 @@ isolating the one genuinely new layer (JavaFX UI) behind a small, well-defined s
 
 | Area | Decision |
 |------|----------|
-| Stack | **JavaFX 25** UI, **Java 25 LTS**, **Maven** build, **jpackage** for native installers |
+| Stack | **JavaFX 25** UI, **Java 25 LTS**, **Maven** build (`mvn javafx:run` in dev) |
 | Processing representation | `java.awt.image.BufferedImage` (full pixel access + free `ImageIO` PNG export); converted to JavaFX `Image` for display via `SwingFXUtils.toFXImage` |
 | Transform model | **Non-destructive pipeline**: ordered list of `Transform` instances; always re-run from the original image when any param/order/toggle changes |
 | Responsiveness | Heavy renders run on a JavaFX `Task` (background thread) with a progress overlay; slider changes are **debounced** before triggering a re-render |
-| Transforms shipped | Grayscale, Flip (H/V), **Color Remap** (two modes), **ASCII** (terminal), **Brightness/Contrast** |
+| Transforms shipped | Grayscale, Flip Horizontal, Flip Vertical, **Color Remap** (two modes), **ASCII** (terminal), **Brightness/Contrast** |
 | Color Remap | Mode A = auto frequency-swap (median-cut quantize → rank by frequency → map most↔least frequent); Mode B = palette map (nearest color to a chosen preset) |
 | ASCII | **Terminal** step (runs last). Produces BOTH a char grid (→ `.txt`, monospace view) AND a rendered `BufferedImage` (→ `.png`, mono or per-block colored). Monospace **aspect correction** applied so shapes aren't vertically squashed |
 | Preview UX | Center workspace with a **draggable split slider** (original \| result), fit-to-workspace preserving aspect (letterboxed). Falls back to a **Before/After toggle** when ASCII (text) is the active result |
 | Layout | Top toolbar (Open / Export) · left panel (transform palette + active pipeline list with per-transform params) · center workspace |
 | Export | PNG via `ImageIO` at **original resolution** (never the scaled preview); ASCII `.txt` (raw grid); colored ASCII PNG |
 | Tests | **Out of scope for now.** Pure algorithm functions are structured to be easily unit-testable later (see note at end) |
-| Extras | Bundle 1–2 sample images for instant first-run demo |
+| Window chrome | Native **Windows dark title bar** (DWM `DwmSetWindowAttribute` via the Java FFM API) so the OS chrome matches the dark UI; no-op on other platforms |
 
 ## Architecture
 
@@ -37,6 +37,7 @@ isolating the one genuinely new layer (JavaFX UI) behind a small, well-defined s
    ui (JavaFX)           │  MainView (toolbar, panel, workspace) │
    - the only "new" tier │  PipelinePanel · ParamControls         │
                          │  WorkspaceView (split slider/toggle)   │
+                         │  RenderService (debounce + Task)       │
                          └───────────────┬──────────────────────┘
                                          │ calls (on a Task)
                          ┌───────────────▼──────────────────────┐
@@ -44,7 +45,8 @@ isolating the one genuinely new layer (JavaFX UI) behind a small, well-defined s
    no JavaFX imports)    │   apply(original) -> result            │
                          │  Transform (interface)                 │
                          │   ├─ GrayscaleTransform                │
-                         │   ├─ FlipTransform                     │
+                         │   ├─ HorizontalFlipTransform           │
+                         │   ├─ VerticalFlipTransform             │
                          │   ├─ BrightnessContrastTransform       │
                          │   ├─ ColorRemapTransform (AUTO|PALETTE)│
                          │   └─ AsciiTransform (terminal)         │
@@ -81,7 +83,7 @@ rendered; }` carried alongside the image in `RenderResult` so both export paths 
 ## Algorithm notes (the meaty bits)
 
 - **Grayscale**: per-pixel luminance `0.299R + 0.587G + 0.114B`, written to R=G=B.
-- **Flip**: horizontal and/or vertical mirror via index remap (no interpolation needed).
+- **Flip**: two single-axis transforms (horizontal, vertical) — pure index remap, no interpolation.
 - **Brightness/Contrast**: `out = clamp((in - 128) * contrast + 128 + brightness)` per channel.
 - **Color Remap — AUTO_SWAP**: median-cut quantize into `K` buckets (K = slider), build a
   per-bucket pixel-count histogram, sort buckets by frequency, build a remap so the *i*-th most
@@ -108,25 +110,27 @@ rendered; }` carried alongside the image in `RenderResult` so both export paths 
 - Display images are scaled to the workspace for rendering only; full-resolution buffers are used for
   export.
 
-## Build & run (beginner-friendly)
+## Build & run
 
 ```bash
-# Run in dev:
+# Run in dev (JAVA_HOME must point at Java 25 — see CLAUDE.md):
 mvn clean javafx:run
 
-# Build a runnable jar / native installer (per OS, run on each target OS):
-mvn clean package          # produces the app jar
-jpackage ...               # wrapped via the maven plugin -> .msi (Win) / .dmg (mac) / .deb (linux)
+# Build the app jar:
+mvn clean package
 ```
 
-`pom.xml` will pin Java 25, the `javafx-controls`/`javafx-swing` modules (swing for
-`SwingFXUtils`), the `javafx-maven-plugin` (for `javafx:run`), and a jpackage step. Exact coordinates
-are filled in during implementation.
+`pom.xml` pins Java 25, the `javafx-controls`/`javafx-swing` modules (swing for `SwingFXUtils`), and
+the `javafx-maven-plugin` (for `javafx:run`). The `javafx:run` execution passes the JVM flags the app
+needs at runtime: `--add-exports=javafx.graphics/com.sun.glass.ui=ALL-UNNAMED` (to read the native
+window handle for the dark title bar) and `--enable-native-access=ALL-UNNAMED` (for the FFM call).
+
+Packaging into native installers (jpackage → `.msi` / `.dmg` / `.deb`) is **deferred** — see below.
 
 ## Verification (end-to-end)
 
 1. `mvn clean javafx:run` launches the window.
-2. **Open** a bundled sample image → it renders in the workspace at correct aspect ratio (letterboxed,
+2. **Open** any image → it renders in the workspace at correct aspect ratio (letterboxed,
    no crop/overflow/stretch), original on both sides of the split slider.
 3. Add **Grayscale** → result side updates; drag the split slider to compare.
 4. Add **Color Remap**, switch AUTO ↔ PALETTE, drag the `K`/palette controls → result re-renders
@@ -137,7 +141,6 @@ are filled in during implementation.
 7. **Export PNG** (non-ASCII result) → file opens in any viewer at original resolution.
 8. **Export TXT** (ASCII active) → opens as readable ASCII art; **Export PNG** of colored ASCII → image.
 9. Resize the window → workspace re-fits image without distortion.
-10. Build a native installer with jpackage on the host OS → installed app launches and repeats step 2.
 
 ## Deferred / later (not in this plan)
 
@@ -146,3 +149,5 @@ are filled in during implementation.
   deliberately JavaFX-free precisely so these are trivial to add when desired.
 - Intermediate-stage render caching (only if large-image re-preview feels slow).
 - Additional palettes / transforms.
+- **Native installers** via jpackage (`.msi` / `.dmg` / `.deb`) — not yet wired into `pom.xml`.
+- **Bundled sample images** for an instant first-run demo.
