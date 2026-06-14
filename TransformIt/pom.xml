@@ -12,8 +12,8 @@
     <name>TransformIt</name>
 
     <properties>
-        <java.version>21</java.version>
-        <javafx.version>21</javafx.version>
+        <java.version>25</java.version>
+        <javafx.version>25</javafx.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -44,6 +44,9 @@
                 <version>3.14.0</version>
                 <configuration>
                     <release>${java.version}</release>
+                    <compilerArgs>
+                        <arg>--add-exports=javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
 
@@ -57,6 +60,12 @@
                     <!-- Force the plugin to use the same JVM that Maven runs on
                          instead of falling back to whatever 'java' is on PATH. -->
                     <executable>${java.home}${file.separator}bin${file.separator}java</executable>
+                    <options>
+                        <!-- Required to read the Glass HWND for DWM dark-title-bar call -->
+                        <option>--add-exports=javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</option>
+                        <!-- Required by the FFM API (Linker.nativeLinker) -->
+                        <option>--enable-native-access=ALL-UNNAMED</option>
+                    </options>
                 </configuration>
             </plugin>
 

@@ -1,3 +1,6 @@
+# IDE
+.idea/
+
 # Maven build output
 target/
 
