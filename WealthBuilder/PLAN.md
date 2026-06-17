@@ -47,6 +47,13 @@ and review per-asset aggregations. Moderators manage the asset catalog.
 | date | LocalDate | @NotNull @PastOrPresent (purchase date) |
 | note | String | optional, max len |
 
+> ⚠️ **Open decision — transaction timestamp.** `date` is a `LocalDate` (day only), capturing the
+> *purchase date* but **not** a precise timestamp of when the transaction happened, nor when the
+> record was created. Decide before building the entity:
+> - **Purchase moment matters?** → make it `LocalDateTime` (or add a `time`) instead of `LocalDate`.
+> - **Audit trail wanted?** → add a separate `createdAt` (`Instant`, `@CreationTimestamp`),
+>   independent of the user-supplied purchase date.
+
 - **price is derived, never stored**: `price = boughtForAmount / quantity`.
 - Money/quantity use `BigDecimal` for exact arithmetic (non-functional accuracy requirement).
 

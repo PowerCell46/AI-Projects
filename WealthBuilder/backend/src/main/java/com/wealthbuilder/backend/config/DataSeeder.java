@@ -35,17 +35,17 @@ public class DataSeeder implements ApplicationRunner {
             return;
         }
 
-        final AppProperties.Moderator moderator = appProperties.moderator();
-        if (isBlank(moderator.password())) {
+        final AppProperties.Moderator moderator = appProperties.getModerator();
+        if (isBlank(moderator.getPassword())) {
             log.warn("No moderator exists and the seed password is blank; skipping moderator seeding.");
             return;
         }
 
         userRepository.save(new User(
-                moderator.username(),
-                passwordEncoder.encode(moderator.password()),
+                moderator.getUsername(),
+                passwordEncoder.encode(moderator.getPassword()),
                 Role.MODERATOR));
-        log.info("Seeded moderator account '{}'.", moderator.username());
+        log.info("Seeded moderator account '{}'.", moderator.getUsername());
     }
 
     private boolean isBlank(String value) {

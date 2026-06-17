@@ -1,6 +1,5 @@
-package com.wealthbuilder.backend.controllers;
+package com.wealthbuilder.backend.exceptions;
 
-import com.wealthbuilder.backend.exceptions.UsernameAlreadyTakenException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

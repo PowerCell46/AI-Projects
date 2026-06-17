@@ -37,12 +37,12 @@ public class JwtServiceImpl implements JwtService {
 
     public JwtServiceImpl(AppProperties appProperties) {
         this.signingKey = appProperties
-                .jwt()
-                .secret()
+                .getJwt()
+                .getSecret()
                 .getBytes(StandardCharsets.UTF_8);
         this.tokenTtl = appProperties
-                .jwt()
-                .ttl();
+                .getJwt()
+                .getTtl();
     }
 
     @Override

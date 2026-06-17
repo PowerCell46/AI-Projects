@@ -122,4 +122,4 @@ src/
 - **Push back when you have reason.** These are strong preferences, not commandments. If a rule would make the code worse in a specific case, say so and explain.
 - **No filler.** Skip "Great question!", "Here's a summary:", "I hope this helps." Get to the point.
 - **No silent assumptions.** If a request is ambiguous, ask one focused question before guessing.
-- **Don't auto-run tests/lint/builds.** Suggest the command if it matters; let me run it.
+- **Auto-run tests, lint, and builds.** Run lint frequently, run builds after meaningful changes, and run tests for serious changes or any changes to tests.

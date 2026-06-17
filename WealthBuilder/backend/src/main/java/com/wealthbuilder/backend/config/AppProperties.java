@@ -1,48 +1,50 @@
 package com.wealthbuilder.backend.config;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 
 
 /**
- * Application-level settings bound from the {@code app.*} configuration tree.
- *
- * @param frontendBaseUri browser-facing SPA origin, allowed by CORS
- * @param jwt             JWT signing material and lifetime
- * @param moderator       credentials for the moderator seeded at startup
+ * Application-level settings bound from the {@code app.*} configuration tree. Bound via
+ * constructor binding — the single generated constructor makes each value final, so the
+ * configuration is immutable once the context starts.
  */
+@Getter
+@RequiredArgsConstructor
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(
+public class AppProperties {
 
-        String frontendBaseUri,
+    /** Browser-facing SPA origin, allowed by CORS. */
+    private final String frontendBaseUri;
 
-        Jwt jwt,
+    /** JWT signing material and lifetime. */
+    private final Jwt jwt;
 
-        Moderator moderator
-) {
+    /** Credentials for the moderator seeded at startup. */
+    private final Moderator moderator;
 
-    /**
-     * @param secret HMAC signing secret (>= 256 bits for HS256)
-     * @param ttl    how long an issued access token stays valid
-     */
-    public record Jwt(
+    @Getter
+    @RequiredArgsConstructor
+    public static class Jwt {
 
-            String secret,
+        /** HMAC signing secret (>= 256 bits for HS256). */
+        private final String secret;
 
-            Duration ttl
-    ) {
+        /** How long an issued access token stays valid. */
+        private final Duration ttl;
     }
 
-    /**
-     * @param username seeded moderator username
-     * @param password seeded moderator raw password; blank disables seeding
-     */
-    public record Moderator(
+    @Getter
+    @RequiredArgsConstructor
+    public static class Moderator {
 
-            String username,
+        /** Seeded moderator username. */
+        private final String username;
 
-            String password
-    ) {
+        /** Seeded moderator raw password; blank disables seeding. */
+        private final String password;
     }
 }
