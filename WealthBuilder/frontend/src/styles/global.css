@@ -1,0 +1,49 @@
+/* Minimal reset + base. Component-specific styling lives in CSS Modules. */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+/* Smooth the light <-> dark swap: cross-fade only the theme-driven properties. Components
+   that declare their own transition (e.g. the input glow) override this for themselves. */
+*,
+*::before,
+*::after {
+    transition:
+        background-color var(--theme-transition) ease,
+        border-color var(--theme-transition) ease,
+        color var(--theme-transition) ease;
+}
+
+body {
+    font-family: var(--font-mono);
+    background: var(--app-bg);
+    color: var(--app-fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+input {
+    font: inherit;
+    color: inherit;
+}
+
+a {
+    color: inherit;
+}

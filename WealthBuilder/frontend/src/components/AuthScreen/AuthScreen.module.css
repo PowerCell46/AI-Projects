@@ -1,0 +1,76 @@
+.viewport {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    min-height: 100vh;
+    padding: 1.5rem;
+    background: var(--bg-app);
+}
+
+.stageFrame {
+    position: relative;
+    /* Grow to fill the screen, capped by width, height (keeping 16:10), and an absolute
+       max — so it's large on big monitors without overflowing short ones. */
+    width: min(78rem, 94vw, calc(90vh * 16 / 10));
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    /* Hairline outer frame. */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-stage);
+}
+
+.sweepLayer {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+}
+
+/* Pinned to the window corner (outside the CRT frame) as a global control, above
+   everything so it stays usable through any mode swap. */
+.themeToggle {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 100;
+}
+
+/* CRT scanlines — the px stops are intentional (rem would break the pattern). */
+.scanlines {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        0deg,
+        var(--scanline) 0px,
+        var(--scanline) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+}
+
+.vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 51;
+    pointer-events: none;
+    background: radial-gradient(
+        ellipse at center,
+        transparent 55%,
+        var(--vignette) 100%
+    );
+}
+
+/* Mobile: drop the fixed 16:10 ratio so the stacked column can grow tall enough. */
+@media (max-width: 40rem) {
+    .viewport {
+        padding: 0;
+    }
+
+    .stageFrame {
+        width: 100%;
+        aspect-ratio: auto;
+        min-height: 100vh;
+        border: none;
+    }
+}

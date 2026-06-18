@@ -1,0 +1,94 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: 0.22em;
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.inputRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.125rem;
+    transition: box-shadow 150ms ease;
+}
+
+/* No border — focus/typing just lifts a soft phosphor glow under the field, so the active
+   row reads as "powered on" rather than boxed-in. */
+.inputRow:focus-within {
+    box-shadow: 0 0.5rem 0.75rem -0.625rem var(--phosphor-dim);
+}
+
+/* Errored fields glow red instead; the helper line below carries the message. */
+.inputRow.errored {
+    box-shadow: 0 0.5rem 0.75rem -0.625rem rgba(255, 107, 107, 0.5);
+}
+
+.prompt {
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+    font-size: 0.875rem;
+}
+
+.input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 0.875rem;
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.input::placeholder {
+    color: rgba(122, 255, 160, 0.3);
+}
+
+/* The field-level underline + glow (and the row's keyboard ring) signal focus; the
+   input itself carries no boxy outline of its own. */
+.input:focus,
+.input:focus-visible {
+    outline: none;
+}
+
+.reveal {
+    flex: none;
+    padding: 0 0.25rem;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    color: var(--phosphor-dim);
+    text-shadow: var(--glow-phosphor);
+    transition: color 150ms ease;
+}
+
+.reveal:hover:not(:disabled) {
+    color: var(--phosphor);
+}
+
+.reveal:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.reveal:focus-visible {
+    outline: 0.125rem solid var(--phosphor);
+    outline-offset: 0.125rem;
+}
+
+.helper {
+    font-size: 0.75rem;
+    color: var(--terminal-red);
+    text-shadow: var(--glow-red);
+}

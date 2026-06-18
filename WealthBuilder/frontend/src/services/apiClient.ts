@@ -1,0 +1,99 @@
+import { ApiError } from '../types/problem';
+import type { ProblemDetail } from '../types/problem';
+
+
+// A thin fetch wrapper that injects the bearer token, parses RFC-7807 errors into
+// ApiError, and notifies a global handler on 401 so the app can clear auth + redirect.
+
+let authToken: string | null = null;
+
+let unauthorizedHandler: () => void = () => { };
+
+
+export const setAuthToken = (token: string | null): void => {
+    authToken = token;
+};
+
+export const setUnauthorizedHandler = (handler: () => void): void => {
+    unauthorizedHandler = handler;
+};
+
+
+interface RequestOptions {
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    body?: unknown;
+    // Auth endpoints set this so a 401 (bad credentials) surfaces as a form error
+    // instead of triggering a global logout + redirect.
+    suppressUnauthorizedHandler?: boolean;
+}
+
+
+/**
+ * Performs a JSON request against the API and returns the parsed body.
+ * Throws {@link ApiError} for any non-2xx response.
+ */
+export const apiRequest = async <TResponse>(
+    url: string,
+    options: RequestOptions = {},
+): Promise<TResponse> => {
+    const { method = 'GET', body, suppressUnauthorizedHandler = false } = options;
+
+    const response = await fetch(url, {
+        method,
+        headers: buildHeaders(body !== undefined),
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+        throw await toApiError(response, suppressUnauthorizedHandler);
+    }
+
+    return parseBody<TResponse>(response);
+};
+
+
+const buildHeaders = (hasBody: boolean): HeadersInit => {
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+    };
+
+    if (hasBody) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    if (authToken !== null) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    return headers;
+};
+
+
+const toApiError = async (response: Response, suppress: boolean): Promise<ApiError> => {
+    if (response.status === 401 && !suppress) {
+        unauthorizedHandler();
+    }
+
+    const problem = await readProblemDetail(response);
+    const detail = problem?.detail ?? response.statusText ?? 'Request failed.';
+
+    return new ApiError(response.status, detail, problem?.errors ?? {});
+};
+
+
+const readProblemDetail = async (response: Response): Promise<ProblemDetail | null> => {
+    try {
+        return (await response.json()) as ProblemDetail;
+    } catch {
+        return null;
+    }
+};
+
+
+const parseBody = async <TResponse>(response: Response): Promise<TResponse> => {
+    if (response.status === 204) {
+        return undefined as TResponse;
+    }
+
+    return (await response.json()) as TResponse;
+};

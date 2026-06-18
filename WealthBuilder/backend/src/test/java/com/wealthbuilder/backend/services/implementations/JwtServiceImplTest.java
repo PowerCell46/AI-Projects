@@ -110,7 +110,7 @@ class JwtServiceImplTest {
         final AppProperties.Jwt jwt = new AppProperties.Jwt(secret, ttl);
         final AppProperties.Moderator moderator = new AppProperties.Moderator("mod", "pw");
 
-        return new AppProperties("http://localhost", jwt, moderator);
+        return new AppProperties(java.util.List.of("http://localhost"), jwt, moderator);
     }
 
     /**

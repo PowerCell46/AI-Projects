@@ -1,0 +1,89 @@
+/*
+ * Design tokens.
+ *
+ * The CRT terminal tokens (--phosphor, --bg-stage, ...) default to the dark phosphor
+ * terminal from AUTH_DESIGN.md, but now switch with [data-theme] too: the light theme
+ * recasts the auth screen as a "paper terminal" (deep-green type on a soft paper ground).
+ *
+ * The --app-* tokens drive the rest of the app and likewise switch with [data-theme].
+ */
+
+:root {
+    /*
+     * Root font size: every rem derives from this. Scales with the viewport within the
+     * brief's 14–20px band so the whole proportional layout grows on large desktops
+     * instead of floating small. (px + vw only — `rem` here would be self-referential.)
+     */
+    font-size: clamp(16px, 14px + 0.42vw, 20px);
+
+    /* --- CRT terminal palette (fixed) --- */
+    --bg-stage: #0A1208;
+    --bg-form: #0C1610;
+    --bg-app: #040506;
+    --phosphor: #7AFFA0;
+    --phosphor-dim: rgba(122, 255, 160, 0.5);
+    --phosphor-faint: rgba(122, 255, 160, 0.18);
+    --terminal-red: #FF6B6B;
+    --scanline: rgba(0, 0, 0, 0.18);
+    --vignette: rgba(0, 0, 0, 0.55);
+
+    /* --- Glows --- */
+    --glow-phosphor: 0 0 0.375rem rgba(122, 255, 160, 0.6);
+    --glow-red: 0 0 0.375rem rgba(255, 107, 107, 0.7);
+    --glow-red-strong: 0 0 0.5rem rgba(255, 107, 107, 0.9);
+
+    /* --- Motion --- */
+    /* Duration of the light <-> dark cross-fade (see global.css). */
+    --theme-transition: 700ms;
+
+    /* --- Typography --- */
+    --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", "JetBrains Mono", monospace;
+
+    /* --- Spacing scale (base 0.25rem) --- */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-9: 2.25rem;
+    --space-10: 2.5rem;
+    --space-11: 2.75rem;
+    --space-12: 3rem;
+}
+
+/* Dark theme: the CRT keeps its default phosphor-on-black palette (declared in :root). */
+:root[data-theme='dark'] {
+    --app-bg: #040506;
+    --app-surface: #0C1610;
+    --app-fg: #DFF6E6;
+    --app-fg-muted: rgba(223, 246, 230, 0.6);
+    --app-accent: #7AFFA0;
+}
+
+/* Light theme: recast the CRT as a "paper terminal" — deep-green type on soft paper, with
+   the glows dropped (they only read as light against a dark ground). */
+:root[data-theme='light'] {
+    --app-bg: #F4F7F4;
+    --app-surface: #FFFFFF;
+    --app-fg: #0C1610;
+    --app-fg-muted: rgba(12, 22, 16, 0.6);
+    --app-accent: #137A45;
+
+    /* Share the app's light whites so the auth screen and home page read identically:
+       stage + margin = the page white, the form half = the surface white. */
+    --bg-stage: #F4F7F4;
+    --bg-form: #FFFFFF;
+    --bg-app: #F4F7F4;
+    --phosphor: #1C5A33;
+    --phosphor-dim: rgba(28, 90, 51, 0.5);
+    --phosphor-faint: rgba(28, 90, 51, 0.12);
+    --terminal-red: #B23A38;
+    --scanline: rgba(0, 0, 0, 0.05);
+    --vignette: rgba(0, 0, 0, 0.12);
+
+    --glow-phosphor: none;
+    --glow-red: none;
+    --glow-red-strong: none;
+}

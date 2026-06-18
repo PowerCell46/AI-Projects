@@ -62,7 +62,7 @@ class JwtSecretValidatorTest {
     private JwtSecretValidator validatorWith(String secret) {
         final AppProperties.Jwt jwt = new AppProperties.Jwt(secret, Duration.ofMinutes(30));
         final AppProperties.Moderator moderator = new AppProperties.Moderator("mod", "pw");
-        final AppProperties appProperties = new AppProperties("http://localhost", jwt, moderator);
+        final AppProperties appProperties = new AppProperties(java.util.List.of("http://localhost"), jwt, moderator);
 
         return new JwtSecretValidator(appProperties, environment);
     }

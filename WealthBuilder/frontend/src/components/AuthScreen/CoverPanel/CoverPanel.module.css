@@ -1,0 +1,58 @@
+.cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 2.25rem;
+    background: var(--bg-stage);
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.logo {
+    position: absolute;
+    top: 2.25rem;
+    left: 2.25rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+}
+
+.chart {
+    margin: auto 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    white-space: pre;
+}
+
+.footer {
+    position: absolute;
+    bottom: 2.25rem;
+    left: 2.25rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+}
+
+/* On the compressed mobile header the chart would overflow; keep only the heading row. */
+@media (max-width: 40rem) {
+    .cover {
+        padding: 1rem 1.25rem;
+    }
+
+    .logo,
+    .footer {
+        position: static;
+    }
+
+    .footer {
+        display: none;
+    }
+
+    .chart {
+        margin: 0.5rem 0 0;
+        font-size: 0.625rem;
+        overflow: hidden;
+    }
+}

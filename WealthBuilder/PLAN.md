@@ -211,8 +211,16 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
 > it gets wired to `sum(boughtForAmount)` once holdings exist (see the Dashboard item).
 
 ### Frontend
-- [ ] Scaffold + `AuthContext` + `apiClient` + routing/guards.
-- [ ] Login/register → home (balance + carousel + donut).
+- [x] **Scaffold** — Vite + React 19 + TS (strict), react-router 7, `@stylistic` ESLint
+      (4-space, semicolons, single quotes), CSS Modules + shared theme tokens, URL/route
+      constants, `.env(.example)` + `.gitignore`.
+- [x] **AuthContext + apiClient + guards** — token in context + localStorage (rehydrate on
+      load), fetch wrapper injecting `Bearer` + parsing RFC-7807 into `ApiError`, global
+      401 → logout, `ProtectedRoute` / `PublicOnlyRoute`. `ThemeProvider` (light/dark).
+- [x] **Login/register** — single CRT auth screen (login + register, VHS sweep mode swap,
+      reduced-motion fallback), wired to `/auth/register` + `/auth/login` with field-level
+      (400) and form-level (401/409) error handling; placeholder home shows the balance.
+- [ ] Home dashboard (carousel + donut).
 - [ ] Asset detail (table + aggregation + holding CRUD).
 - [ ] Moderator asset admin screen.
 - [ ] Responsive pass + empty/error states.

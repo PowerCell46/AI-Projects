@@ -1,0 +1,11 @@
+.loader {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    min-height: 100vh;
+    background: var(--bg-app);
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+    font-size: 0.875rem;
+    letter-spacing: 0.18em;
+}

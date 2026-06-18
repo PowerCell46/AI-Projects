@@ -1,0 +1,37 @@
+.toggle {
+    padding: 0.5em 0.875em;
+    border: 1px solid var(--app-accent);
+    background: transparent;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--app-accent);
+    transition:
+        background-color 150ms ease,
+        color var(--theme-transition) ease,
+        border-color var(--theme-transition) ease;
+}
+
+.toggle:hover {
+    background: rgba(127, 127, 127, 0.12);
+}
+
+.toggle:focus-visible {
+    outline: 0.125rem solid var(--app-accent);
+    outline-offset: 0.125rem;
+}
+
+/* Phosphor variant for the dark CRT auth screen — always terminal-green regardless of the
+   active app theme, with a soft glow to match the surrounding terminal type. */
+.phosphor {
+    border-color: var(--phosphor-dim);
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.phosphor:hover {
+    background: var(--phosphor-faint);
+}
+
+.phosphor:focus-visible {
+    outline-color: var(--phosphor);
+}

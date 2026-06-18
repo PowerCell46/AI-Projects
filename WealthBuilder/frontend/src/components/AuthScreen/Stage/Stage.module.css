@@ -1,0 +1,49 @@
+.stage {
+    position: absolute;
+    inset: 0;
+}
+
+/* Preview (sweep-layer) compositions never take pointer or focus. */
+.preview {
+    pointer-events: none;
+}
+
+.half {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+}
+
+.left {
+    left: 0;
+}
+
+.right {
+    left: 50%;
+}
+
+/* Mobile: collapse to a single column — cover header on top, form below. */
+@media (max-width: 40rem) {
+    .stage {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .half {
+        position: static;
+        width: 100%;
+        height: auto;
+    }
+
+    /* Cover always renders first in the DOM, so it stays on top regardless of mode. */
+    .half:first-child {
+        flex: 0 0 20vh;
+        order: 0;
+    }
+
+    .half:last-child {
+        flex: 1 1 auto;
+        order: 1;
+    }
+}

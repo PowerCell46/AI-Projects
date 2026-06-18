@@ -1,0 +1,130 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 2.75rem;
+    background: var(--bg-form);
+    color: var(--phosphor);
+}
+
+.eyebrow {
+    margin-bottom: 1.625rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.heading {
+    margin-bottom: 2rem;
+    font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.cursor {
+    display: inline-block;
+    animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+    0%,
+    49% {
+        opacity: 1;
+    }
+
+    50%,
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Reduced motion: the cursor holds visible instead of blinking. */
+@media (prefers-reduced-motion: reduce) {
+    .cursor {
+        animation: none;
+        opacity: 1;
+    }
+}
+
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+}
+
+.formError {
+    margin-top: 1.125rem;
+    font-size: 0.75rem;
+    color: var(--terminal-red);
+    text-shadow: var(--glow-red);
+}
+
+.submit {
+    margin-top: 2rem;
+    padding: 0.75em 1em;
+    border: 1px dashed var(--phosphor);
+    background: transparent;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.submit:hover:not(:disabled) {
+    border: 1px solid var(--phosphor);
+    background: rgba(122, 255, 160, 0.08);
+}
+
+.submit:active:not(:disabled) {
+    background: rgba(122, 255, 160, 0.15);
+    transition: none;
+}
+
+.submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.submit:focus-visible {
+    outline: 0.125rem solid var(--phosphor);
+    outline-offset: 0.125rem;
+}
+
+.switchLine {
+    margin-top: 1.625rem;
+    font-size: 0.75rem;
+    color: var(--phosphor);
+    text-shadow: var(--glow-phosphor);
+}
+
+.switchAction {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--terminal-red);
+    text-shadow: var(--glow-red);
+    transition: text-shadow 150ms ease;
+}
+
+.switchAction:hover:not(:disabled) {
+    text-shadow: var(--glow-red-strong);
+}
+
+.switchAction:focus-visible {
+    outline: 0.125rem solid var(--terminal-red);
+    outline-offset: 0.125rem;
+}
+
+@media (max-width: 40rem) {
+    .form {
+        padding: 1.75rem 1.25rem;
+    }
+}

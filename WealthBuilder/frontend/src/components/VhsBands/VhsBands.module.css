@@ -1,0 +1,32 @@
+.bands {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.band {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    /* Read as light, not paint. */
+    mix-blend-mode: screen;
+}
+
+.lead {
+    height: 1.125rem;
+    background: linear-gradient(
+        180deg,
+        transparent,
+        var(--phosphor) 50%,
+        transparent
+    );
+    box-shadow: 0 0 1.5rem var(--phosphor);
+}
+
+.trail {
+    height: 0.375rem;
+    background: var(--phosphor-dim);
+    box-shadow: 0 0 0.5rem var(--phosphor-dim);
+}

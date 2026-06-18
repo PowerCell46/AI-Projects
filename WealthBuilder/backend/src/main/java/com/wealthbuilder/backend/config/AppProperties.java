@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
+import java.util.List;
 
 
 /**
@@ -17,8 +18,8 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-    /** Browser-facing SPA origin, allowed by CORS. */
-    private final String frontendBaseUri;
+    /** Browser-facing SPA origins allowed by CORS (e.g. the localhost and 127.0.0.1 dev URLs). */
+    private final List<String> frontendBaseUris;
 
     /** JWT signing material and lifetime. */
     private final Jwt jwt;

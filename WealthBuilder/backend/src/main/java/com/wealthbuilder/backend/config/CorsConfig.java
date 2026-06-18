@@ -23,7 +23,9 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         final CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(appProperties.getFrontendBaseUri()));
+        // Patterns (not exact origins) so localhost / 127.0.0.1 match on any dev port and
+        // the matched origin is reflected back. Configurable via app.frontend-base-uris.
+        configuration.setAllowedOriginPatterns(appProperties.getFrontendBaseUris());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
 
