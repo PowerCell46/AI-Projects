@@ -30,25 +30,33 @@ const page = (overrides: Partial<PageResponse<Holding>> = {}): PageResponse<Hold
 
 const noop = () => { };
 
+const ADD_FIRST = 'No holdings yet. Add your first purchase.';
+
 
 describe('HoldingsTable', () => {
-    it('shows an empty state when there are no holdings', () => {
-        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+    it('shows the empty label when there are no holdings', () => {
+        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
-        expect(screen.getByText(/no holdings yet/i)).toBeInTheDocument();
+        expect(screen.getByText(ADD_FIRST)).toBeInTheDocument();
+    });
+
+    it('shows a filtered empty label when one is given', () => {
+        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} loading={false} emptyLabel="No holdings match your filters." onEdit={noop} onDelete={noop} onPageChange={noop} />);
+
+        expect(screen.getByText('No holdings match your filters.')).toBeInTheDocument();
     });
 
     it('renders a row with the formatted figures', () => {
-        render(<HoldingsTable page={page()} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
         expect(screen.getByText('Apple')).toBeInTheDocument();
-        expect(screen.getByText('2026-03-01')).toBeInTheDocument();
+        expect(screen.getByText('01/03/2026')).toBeInTheDocument();
         expect(screen.getByText('500.00')).toBeInTheDocument();
     });
 
     it('requires a second click to confirm a delete', async () => {
         const onDelete = vi.fn();
-        render(<HoldingsTable page={page()} onEdit={noop} onDelete={onDelete} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={onDelete} onPageChange={noop} />);
 
         await userEvent.click(screen.getByRole('button', { name: 'delete' }));
         expect(onDelete).not.toHaveBeenCalled();
@@ -57,16 +65,20 @@ describe('HoldingsTable', () => {
         expect(onDelete).toHaveBeenCalledWith(1);
     });
 
-    it('hides pagination for a single page', () => {
-        render(<HoldingsTable page={page()} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+    it('always shows the pager, disabling prev on the first page', () => {
+        render(<HoldingsTable page={page()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
-        expect(screen.queryByRole('button', { name: /prev/i })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /prev/i })).toBeInTheDocument();
+        expect(screen.getByText('page 1 of 1')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /prev/i })).toBeDisabled();
     });
 
     it('disables prev on the first page and pages forward otherwise', async () => {
         const onPageChange = vi.fn();
         render(<HoldingsTable
             page={page({ totalPages: 3, totalElements: 25 })}
+            loading={false}
+            emptyLabel={ADD_FIRST}
             onEdit={noop}
             onDelete={noop}
             onPageChange={onPageChange}

@@ -7,7 +7,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.wealthbuilder.backend.config.AppProperties;
 import com.wealthbuilder.backend.entities.Role;
-import com.wealthbuilder.backend.exceptions.InvalidTokenException;
+import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

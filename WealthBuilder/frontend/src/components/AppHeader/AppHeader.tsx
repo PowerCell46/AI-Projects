@@ -7,7 +7,7 @@ import styles from './AppHeader.module.css';
 
 /**
  * Shared top bar for every authenticated screen: the brand (home link), moderator-only
- * catalog admin link, theme toggle, and logout. Keeps the chrome identical across pages.
+ * manage-assets link, theme toggle, and logout. Keeps the chrome identical across pages.
  */
 export const AppHeader = () => {
     const { user, logout } = useAuth();
@@ -24,7 +24,7 @@ export const AppHeader = () => {
                         to={APP_ROUTES.ADMIN_ASSETS}
                         className={({ isActive }) => (isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink)}
                     >
-                        catalog
+                        manage assets
                     </NavLink>
                 )}
 

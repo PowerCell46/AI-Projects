@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HoldingForm } from './HoldingForm';
 import { createHolding } from '../../services/holdingService';
@@ -11,6 +11,19 @@ vi.mock('../../services/holdingService', () => ({
 }));
 
 const mockedCreate = vi.mocked(createHolding);
+
+
+// Picks the 1st of the currently shown month in the open calendar, and returns its ISO date so
+// the expectation stays in step with the test clock (the 1st is always today-or-earlier).
+const pickFirstOfThisMonth = async (): Promise<string> => {
+    await userEvent.click(screen.getByRole('button', { name: 'Purchase date' }));
+    await userEvent.click(screen.getByRole('button', { name: '1' }));
+
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+
+    return `${now.getFullYear()}-${month}-01`;
+};
 
 
 describe('HoldingForm', () => {
@@ -26,6 +39,7 @@ describe('HoldingForm', () => {
         expect(screen.getByText('Name is required.')).toBeInTheDocument();
         expect(screen.getByText('Enter an amount greater than 0.')).toBeInTheDocument();
         expect(screen.getByText('Enter a quantity greater than 0.')).toBeInTheDocument();
+        expect(screen.getByText('Purchase date is required.')).toBeInTheDocument();
         expect(mockedCreate).not.toHaveBeenCalled();
     });
 
@@ -35,14 +49,13 @@ describe('HoldingForm', () => {
         await userEvent.type(screen.getByLabelText('NAME'), 'Apple');
         await userEvent.type(screen.getByLabelText('AMOUNT'), '0');
         await userEvent.type(screen.getByLabelText('QUANTITY'), '2');
-        fireEvent.change(screen.getByLabelText('PURCHASE DATE'), { target: { value: '2026-03-01' } });
         await userEvent.click(screen.getByRole('button', { name: 'save' }));
 
         expect(screen.getByText('Enter an amount greater than 0.')).toBeInTheDocument();
         expect(mockedCreate).not.toHaveBeenCalled();
     });
 
-    it('creates the holding and signals success when the form is valid', async () => {
+    it('creates the holding from a calendar-picked date when the form is valid', async () => {
         const onSaved = vi.fn();
         mockedCreate.mockResolvedValue({
             id: 1,
@@ -61,14 +74,14 @@ describe('HoldingForm', () => {
         await userEvent.type(screen.getByLabelText('NAME'), 'Apple');
         await userEvent.type(screen.getByLabelText('AMOUNT'), '500');
         await userEvent.type(screen.getByLabelText('QUANTITY'), '2');
-        fireEvent.change(screen.getByLabelText('PURCHASE DATE'), { target: { value: '2026-03-01' } });
+        const expectedDate = await pickFirstOfThisMonth();
         await userEvent.click(screen.getByRole('button', { name: 'save' }));
 
         expect(mockedCreate).toHaveBeenCalledWith(7, {
             name: 'Apple',
             boughtForAmount: 500,
             quantity: 2,
-            date: '2026-03-01',
+            date: expectedDate,
             note: null,
         });
         expect(onSaved).toHaveBeenCalledOnce();

@@ -94,8 +94,8 @@ Mirrors the SpotyStats stack: JPA, validation, security, Lombok, Postgres, Jacks
 | POST | `/assets` | MOD | create (409 on dup name) |
 | PUT | `/assets/{id}` | MOD | edit |
 | DELETE | `/assets/{id}` | MOD | delete |
-| GET | `/assets/{id}/holdings?page=&size=` | auth | **paginated**, current user's, date desc |
-| GET | `/assets/{id}/holdings/summary` | auth | aggregation over ALL the user's holdings |
+| GET | `/assets/{id}/holdings?page=&size=&name=&from=&to=` | auth | **paginated + filtered** (name contains, inclusive date range), current user's, date desc |
+| GET | `/assets/{id}/holdings/summary` | auth | aggregation over ALL the user's holdings (backend only; the FE aggregation panel was removed) |
 | POST | `/assets/{id}/holdings` | auth | create holding (owner = current user) |
 | PUT | `/holdings/{id}` | auth | edit own holding |
 | DELETE | `/holdings/{id}` | auth | delete own holding |
@@ -213,6 +213,8 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
       newest-first (date, id desc), create/edit/delete with ownership check (403 via
       `AccessDeniedException`), `/summary` aggregation (unweighted mean unit price, sums, date span).
       Derived unit price via shared `Money` util; `PageResponse<T>` envelope instead of raw `Page`.
+      List query takes an optional `HoldingFilter` (name contains, inclusive from/to date range) via
+      a `search` repository query — filtering happens in SQL so it composes with pagination.
 - [x] **Dashboard** — `/dashboard/distribution` (grouped query → `AssetInvestment` projection);
       computed **balance** wired into `/auth/me` (`sum(boughtForAmount)` over all holdings).
 - [x] **Validation/error polish** — `HoldingRequest` bean validation (positive, `@PastOrPresent`,
@@ -231,12 +233,16 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
 - [~] **Home dashboard** — asset **carousel** done (scroll-snap, per-tile images fetched via
       the API client + object URLs since `<img>` can't carry the bearer token, links to detail).
       **Donut not built yet** — backend (`/dashboard/distribution`) is now ready.
-- [x] **Asset detail** — route is now **`/assets/:name`** (readable URL; resolves to the asset by
-      unique name from the loaded catalog, API stays id-based). Header + image, the per-user
-      **holdings table** (server-paginated via `PageResponse<T>`, inline two-step delete),
-      **aggregation panel** (`/summary`), and **holding create/edit/delete** via a modal
-      `HoldingForm` (client validation mirroring the server). `holdingService` + `holding`/`page`
-      types + `useHoldings` hook + shared `formatMoney/Quantity/Price` (locale pinned to en-US).
+- [x] **Asset detail** — route is now **`/assets/:slug`** (slugified name: lowercase, non-alnum
+      runs → `-`, e.g. `/assets/precious-metals`; resolves to the asset by re-slugifying catalog
+      names, so matching is case/spacing-insensitive and the API stays id-based). Header is a
+      card (image + title/desc, vertically centred). Per-user **holdings table** (server-paginated
+      via `PageResponse<T>`, larger font, always-visible pager, inline two-step delete) with a
+      **filter bar** (name contains + inclusive from/to date range, filtered server-side across all
+      pages, resets to page 1) and **holding create/edit/delete** via a modal `HoldingForm`.
+      The on-top aggregation panel was **removed** per feedback. `holdingService` (builds the
+      filter query) + `holding`/`page` types + `useHoldings` hook + `slugify` +
+      `formatMoney/Quantity/Price` (locale pinned to en-US).
 - [x] **Moderator asset admin** (`/admin/assets`) — `ModeratorRoute` guard + shared `AppHeader`
       (moderator-only catalog link), list with inline edit/delete-confirm, `AssetForm` with a
       **custom file picker** (hidden native input driven by a styled button + filename label, no
@@ -256,13 +262,13 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
 
 ### Done
 - **Backend: complete.** Auth (JWT register/login/me + moderator seeder), Asset CRUD (+ image
-  endpoint, + persisted `imageName`), Holding CRUD (+ pagination + summary), Dashboard distribution,
-  computed balance, RFC-7807 error handling. **158 tests green** (unit + validation + `@DataJpaTest`
-  + `@WebMvcTest`).
+  endpoint, + persisted `imageName`), Holding CRUD (+ pagination + **name/date-range filtering** +
+  summary), Dashboard distribution, computed balance, RFC-7807 error handling. **163 tests green**
+  (unit + validation + `@DataJpaTest` + `@WebMvcTest`).
 - **Frontend: auth + catalog + holdings.** Auth screen, AuthContext/apiClient/guards, theming,
   asset carousel, full moderator asset admin (custom file picker showing the persisted filename
-  on edit), and the **asset-detail holdings UI** (name-keyed route, paginated table, aggregation,
-  modal CRUD). Vitest suite (16 tests). Lint clean, build passes.
+  on edit), and the **asset-detail holdings UI** (slug route, card header, filterable + paginated
+  table, modal CRUD). Vitest suite (17 tests). Lint clean, build passes.
 
 ### Left (frontend only)
 1. **Home donut** — Recharts pie from `/dashboard/distribution`.

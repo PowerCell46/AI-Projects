@@ -1,7 +1,7 @@
 package com.wealthbuilder.backend.controllers;
 
-import com.wealthbuilder.backend.dtos.asset.AssetRequest;
-import com.wealthbuilder.backend.dtos.asset.AssetResponse;
+import com.wealthbuilder.backend.DTOs.asset.AssetRequest;
+import com.wealthbuilder.backend.DTOs.asset.AssetResponse;
 import com.wealthbuilder.backend.services.interfaces.AssetService;
 import com.wealthbuilder.backend.utils.DataUriImage;
 import jakarta.validation.Valid;

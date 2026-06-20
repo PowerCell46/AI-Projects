@@ -9,7 +9,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.wealthbuilder.backend.config.AppProperties;
 import com.wealthbuilder.backend.entities.Role;
-import com.wealthbuilder.backend.exceptions.InvalidTokenException;
+import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +31,8 @@ public class JwtServiceImpl implements JwtService {
 
     private static final String ROLE_CLAIM = "role";
 
+    private static final int MIN_SECRET_BYTES = 32;
+
     private final byte[] signingKey;
 
     private final Duration tokenTtl;
@@ -43,6 +45,21 @@ public class JwtServiceImpl implements JwtService {
         this.tokenTtl = appProperties
                 .getJwt()
                 .getTtl();
+
+        ensureSecretIsStrongEnough();
+    }
+
+    /**
+     * Fails fast at startup if the configured secret is too short for HS256, which requires a
+     * key of at least 256 bits. Without this the app boots fine and only blows up on the first
+     * login attempt.
+     */
+    private void ensureSecretIsStrongEnough() {
+        if (this.signingKey.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "app.jwt.secret must be at least " + MIN_SECRET_BYTES
+                            + " bytes (256 bits) for HS256; got " + this.signingKey.length);
+        }
     }
 
     @Override

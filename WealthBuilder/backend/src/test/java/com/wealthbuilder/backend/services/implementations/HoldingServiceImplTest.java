@@ -1,15 +1,16 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.dtos.PageResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingRequest;
-import com.wealthbuilder.backend.dtos.holding.HoldingResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingSummaryResponse;
+import com.wealthbuilder.backend.DTOs.PageResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingFilter;
+import com.wealthbuilder.backend.DTOs.holding.HoldingRequest;
+import com.wealthbuilder.backend.DTOs.holding.HoldingResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingSummaryResponse;
 import com.wealthbuilder.backend.entities.Asset;
 import com.wealthbuilder.backend.entities.AssetHolding;
 import com.wealthbuilder.backend.entities.Role;
 import com.wealthbuilder.backend.entities.User;
-import com.wealthbuilder.backend.exceptions.AssetNotFoundException;
-import com.wealthbuilder.backend.exceptions.HoldingNotFoundException;
+import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
+import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.repositories.AssetRepository;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
@@ -35,6 +36,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -77,15 +80,47 @@ class HoldingServiceImplTest {
             givenUserAndAssetExist();
             final AssetHolding holding = holding(HOLDING_ID, OWNER, new BigDecimal("100.0000"),
                     new BigDecimal("2.00000000"), LocalDate.of(2026, 1, 1));
-            given(holdingRepository.findByUserAndAsset(any(User.class), any(Asset.class), any(Pageable.class)))
+            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(holding), PageRequest.of(0, 20), 1));
 
             final PageResponse<HoldingResponse> response =
-                    holdingService.listHoldings(OWNER, ASSET_ID, PageRequest.of(0, 20));
+                    holdingService.listHoldings(OWNER, ASSET_ID, noFilter(), PageRequest.of(0, 20));
 
             assertThat(response.getContent()).hasSize(1);
             assertThat(response.getTotalElements()).isEqualTo(1);
             assertThat(response.getContent().getFirst().getPrice()).isEqualByComparingTo("50");
+        }
+
+        // The service lowercases the fragment and wraps it as a %contains% LIKE pattern; the date
+        // bounds pass through unchanged.
+        @Test
+        void should_PassLoweredLikePatternAndDateRangeToRepository_When_Listing() {
+            givenUserAndAssetExist();
+            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            final HoldingFilter filter = HoldingFilter.of("App", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 1));
+
+            holdingService.listHoldings(OWNER, ASSET_ID, filter, PageRequest.of(0, 20));
+
+            verify(holdingRepository).search(
+                    any(User.class),
+                    any(Asset.class),
+                    eq("%app%"),
+                    eq(LocalDate.of(2026, 1, 1)),
+                    eq(LocalDate.of(2026, 6, 1)),
+                    any(Pageable.class));
+        }
+
+        @Test
+        void should_PassNullPattern_When_NameFilterBlank() {
+            givenUserAndAssetExist();
+            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+
+            holdingService.listHoldings(OWNER, ASSET_ID, HoldingFilter.of("  ", null, null), PageRequest.of(0, 20));
+
+            verify(holdingRepository).search(
+                    any(User.class), any(Asset.class), isNull(), isNull(), isNull(), any(Pageable.class));
         }
 
         // The client's incoming sort must be discarded in favour of date DESC, id DESC so paging
@@ -93,14 +128,15 @@ class HoldingServiceImplTest {
         @Test
         void should_OverrideIncomingSortToDateDescIdDesc_When_Listing() {
             givenUserAndAssetExist();
-            given(holdingRepository.findByUserAndAsset(any(User.class), any(Asset.class), any(Pageable.class)))
+            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of()));
             final Pageable incoming = PageRequest.of(2, 15, Sort.by(Sort.Direction.ASC, "name"));
 
-            holdingService.listHoldings(OWNER, ASSET_ID, incoming);
+            holdingService.listHoldings(OWNER, ASSET_ID, noFilter(), incoming);
 
             final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-            verify(holdingRepository).findByUserAndAsset(any(User.class), any(Asset.class), captor.capture());
+            verify(holdingRepository).search(
+                    any(User.class), any(Asset.class), any(), any(), any(), captor.capture());
             final Pageable used = captor.getValue();
             assertThat(used.getPageNumber()).isEqualTo(2);
             assertThat(used.getPageSize()).isEqualTo(15);
@@ -112,7 +148,7 @@ class HoldingServiceImplTest {
             given(userRepository.findByUsername(OWNER)).willReturn(Optional.of(user(OWNER)));
             given(assetRepository.findById(ASSET_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> holdingService.listHoldings(OWNER, ASSET_ID, PageRequest.of(0, 20)))
+            assertThatThrownBy(() -> holdingService.listHoldings(OWNER, ASSET_ID, noFilter(), PageRequest.of(0, 20)))
                     .isInstanceOf(AssetNotFoundException.class);
         }
     }
@@ -284,6 +320,10 @@ class HoldingServiceImplTest {
     private void givenUserAndAssetExist() {
         given(userRepository.findByUsername(OWNER)).willReturn(Optional.of(user(OWNER)));
         given(assetRepository.findById(ASSET_ID)).willReturn(Optional.of(asset()));
+    }
+
+    private static HoldingFilter noFilter() {
+        return HoldingFilter.of(null, null, null);
     }
 
     private static Asset asset() {

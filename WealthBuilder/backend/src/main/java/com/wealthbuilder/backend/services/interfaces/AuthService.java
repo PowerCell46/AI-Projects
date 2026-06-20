@@ -1,9 +1,9 @@
 package com.wealthbuilder.backend.services.interfaces;
 
-import com.wealthbuilder.backend.dtos.auth.AuthResponse;
-import com.wealthbuilder.backend.dtos.auth.CurrentUserResponse;
-import com.wealthbuilder.backend.dtos.auth.LoginRequest;
-import com.wealthbuilder.backend.dtos.auth.RegisterRequest;
+import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
+import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
+import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
+import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
 
 
 /**

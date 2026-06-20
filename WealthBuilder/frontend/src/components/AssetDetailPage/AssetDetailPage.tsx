@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AppHeader } from '../AppHeader/AppHeader';
 import { AssetImage } from '../AssetImage/AssetImage';
-import { AggregationPanel } from './AggregationPanel';
+import { HoldingFilters } from './HoldingFilters';
 import { HoldingsTable } from './HoldingsTable';
 import { HoldingForm } from './HoldingForm';
 import { useAssets } from '../../hooks/useAssets';
 import { useHoldings } from '../../hooks/useHoldings';
 import { deleteHolding } from '../../services/holdingService';
+import { slugify } from '../../utils/slug';
 import { APP_ROUTES } from '../../constants/routes';
 import type { Asset } from '../../types/asset';
 import type { Holding } from '../../types/holding';
@@ -19,15 +20,15 @@ type Editing = Holding | 'new' | null;
 
 
 /**
- * Single-asset screen: the catalog image and description plus the user's holdings — paginated
- * table, whole-set aggregation, and create/edit/delete. The asset is resolved by its (unique)
- * name from the loaded catalog, so the API stays id-based while the URL stays readable.
+ * Single-asset screen: the catalog image and description plus the user's holdings — a filterable,
+ * paginated table with create/edit/delete. The asset is resolved by its slug from the loaded
+ * catalog, so the API stays id-based while the URL stays readable (e.g. /assets/precious-metals).
  */
 export const AssetDetailPage = () => {
-    const { name } = useParams();
+    const { slug } = useParams();
     const { assets, loading: assetsLoading, error: assetsError } = useAssets();
 
-    const asset = resolveAsset(assets, name);
+    const asset = resolveAsset(assets, slug);
     const holdings = useHoldings(asset?.id ?? null);
 
     const [editing, setEditing] = useState<Editing>(null);
@@ -41,6 +42,10 @@ export const AssetDetailPage = () => {
         await deleteHolding(id);
         holdings.reload();
     };
+
+    const isFiltered = holdings.filter.name.length > 0
+        || holdings.filter.from.length > 0
+        || holdings.filter.to.length > 0;
 
     return (
         <div className={styles.page}>
@@ -57,12 +62,12 @@ export const AssetDetailPage = () => {
 
                 {asset !== undefined && (
                     <>
-                        <article className={styles.detail}>
+                        <article className={styles.header}>
                             <div className={styles.thumb}>
                                 <AssetImage assetId={asset.id} alt={asset.name} />
                             </div>
 
-                            <div className={styles.body}>
+                            <div className={styles.headerBody}>
                                 <h1 className={styles.name}>{asset.name}</h1>
                                 <p className={styles.description}>{asset.description}</p>
                             </div>
@@ -81,9 +86,7 @@ export const AssetDetailPage = () => {
                                 </button>
                             </div>
 
-                            <AggregationPanel summary={holdings.summary} />
-
-                            {holdings.loading && <p className={styles.status}>◌ loading holdings…</p>}
+                            <HoldingFilters filter={holdings.filter} onChange={holdings.setFilter} />
 
                             {holdings.error !== null && (
                                 <p className={styles.statusError} role="alert">! {holdings.error}</p>
@@ -92,6 +95,10 @@ export const AssetDetailPage = () => {
                             {holdings.holdings !== null && (
                                 <HoldingsTable
                                     page={holdings.holdings}
+                                    loading={holdings.loading}
+                                    emptyLabel={isFiltered
+                                        ? 'No holdings match your filters.'
+                                        : 'No holdings yet. Add your first purchase.'}
                                     onEdit={(holding) => setEditing(holding)}
                                     onDelete={handleDelete}
                                     onPageChange={holdings.setPageIndex}
@@ -116,15 +123,13 @@ export const AssetDetailPage = () => {
 
 
 /**
- * Finds the asset whose name matches the route segment, case-insensitively (names are unique
- * that way). Returns undefined while the catalog is still loading or when nothing matches.
+ * Finds the asset whose slug matches the route segment. Slugifying both sides makes the match
+ * case- and spacing-insensitive. Returns undefined while the catalog is loading or on no match.
  */
-const resolveAsset = (assets: Asset[], routeName: string | undefined): Asset | undefined => {
-    if (routeName === undefined) {
+const resolveAsset = (assets: Asset[], routeSlug: string | undefined): Asset | undefined => {
+    if (routeSlug === undefined) {
         return undefined;
     }
 
-    const target = routeName.toLowerCase();
-
-    return assets.find((asset) => asset.name.toLowerCase() === target);
+    return assets.find((asset) => slugify(asset.name) === routeSlug);
 };

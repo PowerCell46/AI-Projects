@@ -1,18 +1,27 @@
 .rail {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: clamp(9rem, 22vw, 13rem);
+    /* Exactly MIN_VISIBLE_TILES columns, each stretched to fill the row edge-to-edge. */
+    grid-template-columns: repeat(8, 1fr);
     gap: 1rem;
     margin: 0;
     padding: 0.5rem 0.25rem 1rem;
     list-style: none;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    overscroll-behavior-x: contain;
 }
 
-.tile {
-    scroll-snap-align: start;
+/* On narrow screens eight full-width columns get cramped, so fall back to a swipeable rail. */
+@media (max-width: 64rem) {
+    .rail {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: 62vw;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: contain;
+    }
+
+    .tile {
+        scroll-snap-align: start;
+    }
 }
 
 .link {
@@ -54,4 +63,92 @@
 .statusError {
     font-size: 0.875rem;
     color: var(--terminal-red);
+}
+
+/* Marquee: a seamless auto-scrolling rail for a full catalog. */
+
+.marqueeViewport {
+    overflow: hidden;
+    padding: 0.5rem 0.25rem 1rem;
+}
+
+.marqueeTrack {
+    display: flex;
+    width: max-content;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    animation-name: marquee;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.marqueeViewport:hover .marqueeTrack,
+.marqueeViewport:focus-within .marqueeTrack {
+    animation-play-state: paused;
+}
+
+.marqueeTile {
+    /* The right margin (not grid gap) makes a translate of exactly -50% land seamlessly. */
+    flex: 0 0 clamp(12rem, 18vw, 17rem);
+    margin-right: 1rem;
+}
+
+@keyframes marquee {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+/* Skeleton tiles: placeholders that flicker to keep a sparse or loading rail alive. */
+
+.skeletonTile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.skeletonThumb {
+    aspect-ratio: 1;
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    background: var(--app-surface);
+    animation: flicker 1.4s ease-in-out infinite;
+}
+
+.skeletonName {
+    height: 0.8125rem;
+    width: 70%;
+    background: var(--app-surface);
+    animation: flicker 1.4s ease-in-out infinite;
+}
+
+@keyframes flicker {
+    0%,
+    100% {
+        opacity: 0.25;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marqueeTrack {
+        animation: none;
+    }
+
+    .marqueeViewport {
+        overflow-x: auto;
+    }
+
+    .skeletonThumb,
+    .skeletonName {
+        animation: none;
+        opacity: 0.4;
+    }
 }

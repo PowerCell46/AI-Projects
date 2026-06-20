@@ -1,17 +1,19 @@
 package com.wealthbuilder.backend.controllers;
 
-import com.wealthbuilder.backend.dtos.PageResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingRequest;
-import com.wealthbuilder.backend.dtos.holding.HoldingResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingSummaryResponse;
-import com.wealthbuilder.backend.exceptions.AssetNotFoundException;
+import com.wealthbuilder.backend.DTOs.PageResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingFilter;
+import com.wealthbuilder.backend.DTOs.holding.HoldingRequest;
+import com.wealthbuilder.backend.DTOs.holding.HoldingResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingSummaryResponse;
+import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
-import com.wealthbuilder.backend.exceptions.HoldingNotFoundException;
+import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.services.interfaces.HoldingService;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +34,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -104,7 +107,7 @@ class HoldingControllerTest {
         void should_Return200WithPageEnvelope_When_RequestedByUser() throws Exception {
             final PageResponse<HoldingResponse> page =
                     new PageResponse<>(List.of(response()), 0, 20, 1, 1);
-            given(holdingService.listHoldings(eq("alice"), eq(ASSET_ID), any()))
+            given(holdingService.listHoldings(eq("alice"), eq(ASSET_ID), any(), any()))
                     .willReturn(page);
 
             mockMvc
@@ -116,8 +119,28 @@ class HoldingControllerTest {
         }
 
         @Test
+        void should_PassNameAndDateRangeToService_When_FilterParamsPresent() throws Exception {
+            given(holdingService.listHoldings(eq("alice"), eq(ASSET_ID), any(), any()))
+                    .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+
+            mockMvc
+                    .perform(get("/api/assets/{assetId}/holdings", ASSET_ID)
+                            .param("name", "app")
+                            .param("from", "2026-01-01")
+                            .param("to", "2026-06-01")
+                            .with(user("alice").roles("USER")))
+                    .andExpect(status().isOk());
+
+            final ArgumentCaptor<HoldingFilter> filter = ArgumentCaptor.forClass(HoldingFilter.class);
+            verify(holdingService).listHoldings(eq("alice"), eq(ASSET_ID), filter.capture(), any());
+            assertThat(filter.getValue().getName()).isEqualTo("app");
+            assertThat(filter.getValue().getFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
+            assertThat(filter.getValue().getTo()).isEqualTo(LocalDate.of(2026, 6, 1));
+        }
+
+        @Test
         void should_Return404Problem_When_AssetMissing() throws Exception {
-            given(holdingService.listHoldings(eq("alice"), eq(ASSET_ID), any()))
+            given(holdingService.listHoldings(eq("alice"), eq(ASSET_ID), any(), any()))
                     .willThrow(new AssetNotFoundException(ASSET_ID));
 
             mockMvc

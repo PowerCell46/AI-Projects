@@ -1,9 +1,10 @@
 package com.wealthbuilder.backend.services.interfaces;
 
-import com.wealthbuilder.backend.dtos.PageResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingRequest;
-import com.wealthbuilder.backend.dtos.holding.HoldingResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingSummaryResponse;
+import com.wealthbuilder.backend.DTOs.PageResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingFilter;
+import com.wealthbuilder.backend.DTOs.holding.HoldingRequest;
+import com.wealthbuilder.backend.DTOs.holding.HoldingResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingSummaryResponse;
 import org.springframework.data.domain.Pageable;
 
 
@@ -14,9 +15,11 @@ import org.springframework.data.domain.Pageable;
 public interface HoldingService {
 
     /**
-     * The caller's holdings for one asset, newest purchase first; 404 if the asset is unknown.
+     * The caller's holdings for one asset, narrowed by {@code filter} and ordered newest
+     * purchase first; 404 if the asset is unknown.
      */
-    PageResponse<HoldingResponse> listHoldings(String username, Long assetId, Pageable pageable);
+    PageResponse<HoldingResponse> listHoldings(
+            String username, Long assetId, HoldingFilter filter, Pageable pageable);
 
     /**
      * Aggregation over all of the caller's holdings for one asset; 404 if the asset is unknown.

@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.dtos.dashboard.AssetDistributionResponse;
+import com.wealthbuilder.backend.DTOs.dashboard.AssetDistributionResponse;
 import com.wealthbuilder.backend.entities.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.HoldingRepository;

@@ -1,0 +1,154 @@
+.container {
+    position: relative;
+}
+
+.field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.625em 0.75em;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    background: var(--app-bg);
+    color: var(--app-fg);
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.field:hover {
+    border-color: var(--app-accent);
+}
+
+.field:focus-visible {
+    outline: none;
+    border-color: var(--app-accent);
+}
+
+.value {
+    color: var(--app-fg);
+    font-variant-numeric: tabular-nums;
+}
+
+.placeholder {
+    color: var(--app-fg-muted);
+}
+
+.icon {
+    color: var(--app-fg-muted);
+}
+
+.popup {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    width: 17rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(127, 127, 127, 0.5);
+    background: var(--app-surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.monthLabel {
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    color: var(--app-fg);
+}
+
+.nav {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    background: transparent;
+    color: var(--app-fg);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.nav:hover {
+    border-color: var(--app-accent);
+    color: var(--app-accent);
+}
+
+.weekdays,
+.grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.weekday {
+    padding: 0.25rem 0;
+    text-align: center;
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    color: var(--app-fg-muted);
+}
+
+.blank {
+    aspect-ratio: 1;
+}
+
+.day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--app-fg);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.day:hover:not(:disabled) {
+    border-color: var(--app-accent);
+}
+
+.day:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.today {
+    border-color: rgba(127, 127, 127, 0.5);
+}
+
+.selected {
+    background: var(--app-accent);
+    color: var(--app-bg);
+}
+
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.clear {
+    padding: 0.25em 0.75em;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    background: transparent;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: var(--app-fg-muted);
+    cursor: pointer;
+}
+
+.clear:hover {
+    color: var(--app-fg);
+    border-color: var(--app-accent);
+}

@@ -1,7 +1,7 @@
 package com.wealthbuilder.backend.services.interfaces;
 
-import com.wealthbuilder.backend.dtos.asset.AssetRequest;
-import com.wealthbuilder.backend.dtos.asset.AssetResponse;
+import com.wealthbuilder.backend.DTOs.asset.AssetRequest;
+import com.wealthbuilder.backend.DTOs.asset.AssetResponse;
 import com.wealthbuilder.backend.utils.DataUriImage;
 
 import java.util.List;

@@ -1,10 +1,10 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.dtos.asset.AssetRequest;
-import com.wealthbuilder.backend.dtos.asset.AssetResponse;
+import com.wealthbuilder.backend.DTOs.asset.AssetRequest;
+import com.wealthbuilder.backend.DTOs.asset.AssetResponse;
 import com.wealthbuilder.backend.entities.Asset;
-import com.wealthbuilder.backend.exceptions.AssetNameAlreadyTakenException;
-import com.wealthbuilder.backend.exceptions.AssetNotFoundException;
+import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException;
+import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.repositories.AssetRepository;
 import com.wealthbuilder.backend.utils.DataUriImage;
 import org.junit.jupiter.api.DisplayName;

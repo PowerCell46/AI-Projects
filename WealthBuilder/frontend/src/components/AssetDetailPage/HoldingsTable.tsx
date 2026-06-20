@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatMoney, formatPrice, formatQuantity } from '../../utils/format';
+import { isoToDisplay } from '../../utils/date';
 import type { Holding } from '../../types/holding';
 import type { PageResponse } from '../../types/page';
 import styles from './HoldingsTable.module.css';
@@ -7,6 +8,8 @@ import styles from './HoldingsTable.module.css';
 
 interface HoldingsTableProps {
     page: PageResponse<Holding>;
+    loading: boolean;
+    emptyLabel: string;
     onEdit: (holding: Holding) => void;
     onDelete: (id: number) => void;
     onPageChange: (page: number) => void;
@@ -15,13 +18,14 @@ interface HoldingsTableProps {
 
 /**
  * Server-paginated table of the user's holdings, newest first. Delete is a two-step inline
- * confirm so a stray click can't drop a record; edit hands the holding back to the parent.
+ * confirm so a stray click can't drop a record; edit hands the holding back to the parent. The
+ * pager is always shown so the table's position in the set is visible even on a single page.
  */
-export const HoldingsTable = ({ page, onEdit, onDelete, onPageChange }: HoldingsTableProps) => {
+export const HoldingsTable = ({ page, loading, emptyLabel, onEdit, onDelete, onPageChange }: HoldingsTableProps) => {
     const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
     if (page.content.length === 0) {
-        return <p className={styles.empty}>No holdings yet. Add your first purchase.</p>;
+        return <p className={styles.empty}>{loading ? '◌ loading…' : emptyLabel}</p>;
     }
 
     const confirmDelete = (id: number): void => {
@@ -30,7 +34,7 @@ export const HoldingsTable = ({ page, onEdit, onDelete, onPageChange }: Holdings
     };
 
     return (
-        <div className={styles.wrapper}>
+        <div className={`${styles.wrapper} ${loading ? styles.loading : ''}`}>
             <div className={styles.scroll}>
                 <table className={styles.table}>
                     <thead>
@@ -53,7 +57,7 @@ export const HoldingsTable = ({ page, onEdit, onDelete, onPageChange }: Holdings
                                         <span className={styles.note}>{holding.note}</span>
                                     )}
                                 </td>
-                                <td className={styles.td}>{holding.date}</td>
+                                <td className={styles.td}>{isoToDisplay(holding.date)}</td>
                                 <td className={`${styles.td} ${styles.numeric}`}>
                                     {formatQuantity(holding.quantity)}
                                 </td>
@@ -107,31 +111,29 @@ export const HoldingsTable = ({ page, onEdit, onDelete, onPageChange }: Holdings
                 </table>
             </div>
 
-            {page.totalPages > 1 && (
-                <div className={styles.pagination}>
-                    <button
-                        type="button"
-                        className={styles.pageButton}
-                        disabled={page.page === 0}
-                        onClick={() => onPageChange(page.page - 1)}
-                    >
-                        ← prev
-                    </button>
+            <div className={styles.pagination}>
+                <button
+                    type="button"
+                    className={styles.pageButton}
+                    disabled={page.page === 0}
+                    onClick={() => onPageChange(page.page - 1)}
+                >
+                    ← prev
+                </button>
 
-                    <span className={styles.pageStatus}>
-                        page {page.page + 1} of {page.totalPages}
-                    </span>
+                <span className={styles.pageStatus}>
+                    page {page.page + 1} of {Math.max(page.totalPages, 1)}
+                </span>
 
-                    <button
-                        type="button"
-                        className={styles.pageButton}
-                        disabled={page.page >= page.totalPages - 1}
-                        onClick={() => onPageChange(page.page + 1)}
-                    >
-                        next →
-                    </button>
-                </div>
-            )}
+                <button
+                    type="button"
+                    className={styles.pageButton}
+                    disabled={page.page >= page.totalPages - 1}
+                    onClick={() => onPageChange(page.page + 1)}
+                >
+                    next →
+                </button>
+            </div>
         </div>
     );
 };

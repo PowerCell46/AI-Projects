@@ -24,13 +24,17 @@ export interface HoldingRequest {
     note: string | null;
 }
 
-// Aggregation over all of the user's holdings for one asset. The price/period fields are
-// null when the user has no holdings yet.
-export interface HoldingSummary {
-    holdingCount: number;
-    averagePrice: number | null;
-    quantitySum: number;
-    amountSum: number;
-    periodStart: string | null;
-    periodEnd: string | null;
+// Client-side filter state for the holdings table. Empty strings mean "not applied"; the
+// service omits them from the request so the backend treats them as null.
+export interface HoldingFilter {
+    name: string;
+    from: string;
+    to: string;
 }
+
+
+export const EMPTY_HOLDING_FILTER: HoldingFilter = {
+    name: '',
+    from: '',
+    to: '',
+};

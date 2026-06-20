@@ -67,7 +67,7 @@ Root-level packages:
 - `/services`
   - `/interfaces` — service interfaces
   - `/implementations` — service implementations
-- `/dtos`
+- `/DTOs`
 - `/utils`
 - `/exceptions`
 

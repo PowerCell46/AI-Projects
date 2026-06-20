@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.controllers;
 
-import com.wealthbuilder.backend.dtos.dashboard.AssetDistributionResponse;
+import com.wealthbuilder.backend.DTOs.dashboard.AssetDistributionResponse;
 import com.wealthbuilder.backend.services.interfaces.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;

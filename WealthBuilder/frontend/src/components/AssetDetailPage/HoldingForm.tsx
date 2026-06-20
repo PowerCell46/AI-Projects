@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { createHolding, updateHolding } from '../../services/holdingService';
+import { todayIso } from '../../utils/date';
+import { DatePicker } from '../DatePicker/DatePicker';
 import { ApiError } from '../../types/problem';
 import type { Holding, HoldingRequest } from '../../types/holding';
 import styles from './HoldingForm.module.css';
@@ -27,6 +29,7 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
     const [name, setName] = useState(holding?.name ?? '');
     const [amount, setAmount] = useState(holding ? String(holding.boughtForAmount) : '');
     const [quantity, setQuantity] = useState(holding ? String(holding.quantity) : '');
+    // ISO date (YYYY-MM-DD); the DatePicker shows and selects it as DD/MM/YYYY.
     const [date, setDate] = useState(holding?.date ?? '');
     const [note, setNote] = useState(holding?.note ?? '');
 
@@ -69,10 +72,9 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
         if (!isPositiveNumber(quantity)) {
             errors.quantity = 'Enter a quantity greater than 0.';
         }
+
         if (date.length === 0) {
             errors.date = 'Purchase date is required.';
-        } else if (date > today()) {
-            errors.date = 'Date cannot be in the future.';
         }
 
         return errors;
@@ -155,17 +157,16 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                     </label>
                 </div>
 
-                <label className={styles.field}>
+                <div className={styles.field}>
                     <span className={styles.label}>PURCHASE DATE</span>
-                    <input
-                        className={styles.input}
-                        type="date"
+                    <DatePicker
                         value={date}
-                        max={today()}
-                        onChange={(event) => setDate(event.target.value)}
+                        onChange={setDate}
+                        ariaLabel="Purchase date"
+                        max={todayIso()}
                     />
                     <FieldError message={fieldErrors.date} />
-                </label>
+                </div>
 
                 <label className={styles.field}>
                     <span className={styles.label}>NOTE (OPTIONAL)</span>
@@ -212,6 +213,3 @@ const isPositiveNumber = (value: string): boolean => {
 
     return value.trim().length > 0 && Number.isFinite(parsed) && parsed > 0;
 };
-
-
-const today = (): string => new Date().toISOString().slice(0, 10);

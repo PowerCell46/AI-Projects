@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.services.interfaces;
 
-import com.wealthbuilder.backend.dtos.dashboard.AssetDistributionResponse;
+import com.wealthbuilder.backend.DTOs.dashboard.AssetDistributionResponse;
 
 import java.util.List;
 

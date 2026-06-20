@@ -38,6 +38,9 @@ public class Asset {
     @Column(nullable = false)
     private String description;
 
+    // Stored as the base64 `data:` URI text exactly as received and served, so it round-trips to
+    // the client with no encode/decode step. bytea would be ~33% smaller and is the conventional
+    // choice for binary, but for this small catalog keeping the URI verbatim is simpler and enough.
     @Column(name = "image_base64", nullable = false, columnDefinition = "text")
     private String imageBase64;
 

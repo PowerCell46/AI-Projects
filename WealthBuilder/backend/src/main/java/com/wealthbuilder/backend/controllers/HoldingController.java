@@ -1,14 +1,16 @@
 package com.wealthbuilder.backend.controllers;
 
-import com.wealthbuilder.backend.dtos.PageResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingRequest;
-import com.wealthbuilder.backend.dtos.holding.HoldingResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingSummaryResponse;
+import com.wealthbuilder.backend.DTOs.PageResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingFilter;
+import com.wealthbuilder.backend.DTOs.holding.HoldingRequest;
+import com.wealthbuilder.backend.DTOs.holding.HoldingResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingSummaryResponse;
 import com.wealthbuilder.backend.services.interfaces.HoldingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,8 +20,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 
 /**
@@ -37,9 +42,14 @@ public class HoldingController {
     @GetMapping("/assets/{assetId}/holdings")
     public PageResponse<HoldingResponse> list(
             @PathVariable Long assetId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @PageableDefault(size = 20) Pageable pageable,
             Authentication authentication) {
-        return holdingService.listHoldings(authentication.getName(), assetId, pageable);
+        final HoldingFilter filter = HoldingFilter.of(name, from, to);
+
+        return holdingService.listHoldings(authentication.getName(), assetId, filter, pageable);
     }
 
     @GetMapping("/assets/{assetId}/holdings/summary")

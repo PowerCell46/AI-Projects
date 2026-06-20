@@ -1,12 +1,12 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.dtos.auth.AuthResponse;
-import com.wealthbuilder.backend.dtos.auth.CurrentUserResponse;
-import com.wealthbuilder.backend.dtos.auth.LoginRequest;
-import com.wealthbuilder.backend.dtos.auth.RegisterRequest;
+import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
+import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
+import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
+import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
 import com.wealthbuilder.backend.entities.Role;
 import com.wealthbuilder.backend.entities.User;
-import com.wealthbuilder.backend.exceptions.UsernameAlreadyTakenException;
+import com.wealthbuilder.backend.exceptions.auth.UsernameAlreadyTakenException;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
 import com.wealthbuilder.backend.services.interfaces.AuthService;
@@ -75,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
 
         final User user = requireUser(request.getUsername());
 
-        log.info("User '{}' logged in", user.getUsername());
+        log.info("User with username '{}' successfully logged in.", user.getUsername());
 
         return issueTokenFor(user);
     }

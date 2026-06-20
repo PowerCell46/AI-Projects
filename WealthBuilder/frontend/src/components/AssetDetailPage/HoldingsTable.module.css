@@ -2,6 +2,12 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    transition: opacity 0.12s ease;
+}
+
+/* Dim (but keep interactive layout) while a page/filter refetch is in flight. */
+.loading {
+    opacity: 0.5;
 }
 
 .scroll {
@@ -12,13 +18,13 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8125rem;
+    font-size: 1rem;
 }
 
 .th {
-    padding: 0.625rem 0.75rem;
+    padding: 0.75rem 1rem;
     text-align: left;
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.16em;
     color: var(--app-fg-muted);
@@ -32,7 +38,7 @@
 }
 
 .td {
-    padding: 0.625rem 0.75rem;
+    padding: 0.875rem 1rem;
     color: var(--app-fg);
     vertical-align: top;
 }
@@ -45,12 +51,13 @@
 
 .name {
     display: block;
+    font-weight: 500;
 }
 
 .note {
     display: block;
-    margin-top: 0.25rem;
-    font-size: 0.6875rem;
+    margin-top: 0.3rem;
+    font-size: 0.8125rem;
     color: var(--app-fg-muted);
 }
 

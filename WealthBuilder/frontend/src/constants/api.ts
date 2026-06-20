@@ -17,9 +17,10 @@ export const ASSET_ENDPOINTS = {
 } as const;
 
 export const HOLDING_ENDPOINTS = {
-    byAsset: (assetId: number, page: number, size: number): string =>
-        `${API_BASE_URL}/assets/${assetId}/holdings?page=${page}&size=${size}`,
-    summary: (assetId: number): string => `${API_BASE_URL}/assets/${assetId}/holdings/summary`,
+    // Query string (paging + filters) is assembled by the service, which knows which filters
+    // are actually set.
+    byAsset: (assetId: number, query: string): string =>
+        `${API_BASE_URL}/assets/${assetId}/holdings?${query}`,
     create: (assetId: number): string => `${API_BASE_URL}/assets/${assetId}/holdings`,
     byId: (id: number): string => `${API_BASE_URL}/holdings/${id}`,
 } as const;

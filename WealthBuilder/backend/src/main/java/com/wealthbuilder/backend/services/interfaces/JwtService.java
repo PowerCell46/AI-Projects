@@ -1,7 +1,7 @@
 package com.wealthbuilder.backend.services.interfaces;
 
 import com.wealthbuilder.backend.entities.Role;
-import com.wealthbuilder.backend.exceptions.InvalidTokenException;
+import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 
 
 /**

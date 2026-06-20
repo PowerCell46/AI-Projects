@@ -164,6 +164,53 @@ class HoldingRepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("Filtered search")
+    class FilteredSearch {
+
+        // The pattern is pre-lowercased by the service; the column is lowered in SQL, so an
+        // uppercase holding name still matches a lowercase pattern.
+        @Test
+        void should_MatchLoweredNameAgainstPattern_When_PatternGiven() {
+            persistNamedHolding(owner, stocks, "APPLE", LocalDate.of(2026, 1, 1));
+            persistNamedHolding(owner, stocks, "Microsoft", LocalDate.of(2026, 1, 2));
+
+            final Page<AssetHolding> page = holdingRepository.search(
+                    owner, stocks, "%app%", null, null, PageRequest.of(0, 10));
+
+            assertThat(page.getContent())
+                    .extracting(AssetHolding::getName)
+                    .containsExactly("APPLE");
+        }
+
+        @Test
+        void should_RestrictToInclusiveDateRange_When_FromAndToGiven() {
+            persistNamedHolding(owner, stocks, "Early", LocalDate.of(2026, 1, 1));
+            persistNamedHolding(owner, stocks, "InRange", LocalDate.of(2026, 3, 15));
+            persistNamedHolding(owner, stocks, "Late", LocalDate.of(2026, 6, 1));
+
+            final Page<AssetHolding> page = holdingRepository.search(
+                    owner, stocks, null, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 4, 1), PageRequest.of(0, 10));
+
+            assertThat(page.getContent())
+                    .extracting(AssetHolding::getName)
+                    .containsExactly("InRange");
+        }
+
+        @Test
+        void should_ReturnAllForUserAndAsset_When_NoCriteriaGiven() {
+            persistNamedHolding(owner, stocks, "One", LocalDate.of(2026, 1, 1));
+            persistNamedHolding(owner, crypto, "Other", LocalDate.of(2026, 1, 1));
+            persistNamedHolding(other, stocks, "NotMine", LocalDate.of(2026, 1, 1));
+
+            final Page<AssetHolding> page = holdingRepository.search(
+                    owner, stocks, null, null, null, PageRequest.of(0, 10));
+
+            assertThat(page.getTotalElements()).isEqualTo(1);
+            assertThat(page.getContent().getFirst().getName()).isEqualTo("One");
+        }
+    }
+
     private void persistHolding(User user, Asset asset, String amount, String quantity, LocalDate date) {
         holdingRepository.save(new AssetHolding(
                 asset,
@@ -171,6 +218,17 @@ class HoldingRepositoryTest {
                 "Holding",
                 new BigDecimal(amount),
                 new BigDecimal(quantity),
+                date,
+                null));
+    }
+
+    private void persistNamedHolding(User user, Asset asset, String name, LocalDate date) {
+        holdingRepository.save(new AssetHolding(
+                asset,
+                user,
+                name,
+                new BigDecimal("100.0000"),
+                new BigDecimal("1.00000000"),
                 date,
                 null));
     }

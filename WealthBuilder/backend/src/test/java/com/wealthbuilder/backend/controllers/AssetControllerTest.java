@@ -1,9 +1,9 @@
 package com.wealthbuilder.backend.controllers;
 
-import com.wealthbuilder.backend.dtos.asset.AssetRequest;
-import com.wealthbuilder.backend.dtos.asset.AssetResponse;
-import com.wealthbuilder.backend.exceptions.AssetNameAlreadyTakenException;
-import com.wealthbuilder.backend.exceptions.AssetNotFoundException;
+import com.wealthbuilder.backend.DTOs.asset.AssetRequest;
+import com.wealthbuilder.backend.DTOs.asset.AssetResponse;
+import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException;
+import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
 import com.wealthbuilder.backend.services.interfaces.AssetService;
 import com.wealthbuilder.backend.services.interfaces.JwtService;

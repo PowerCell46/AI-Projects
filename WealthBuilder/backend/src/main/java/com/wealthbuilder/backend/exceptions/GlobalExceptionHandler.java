@@ -1,5 +1,9 @@
 package com.wealthbuilder.backend.exceptions;
 
+import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException;
+import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
+import com.wealthbuilder.backend.exceptions.auth.UsernameAlreadyTakenException;
+import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

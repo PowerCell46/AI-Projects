@@ -1,14 +1,15 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.dtos.PageResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingRequest;
-import com.wealthbuilder.backend.dtos.holding.HoldingResponse;
-import com.wealthbuilder.backend.dtos.holding.HoldingSummaryResponse;
+import com.wealthbuilder.backend.DTOs.PageResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingFilter;
+import com.wealthbuilder.backend.DTOs.holding.HoldingRequest;
+import com.wealthbuilder.backend.DTOs.holding.HoldingResponse;
+import com.wealthbuilder.backend.DTOs.holding.HoldingSummaryResponse;
 import com.wealthbuilder.backend.entities.Asset;
 import com.wealthbuilder.backend.entities.AssetHolding;
 import com.wealthbuilder.backend.entities.User;
-import com.wealthbuilder.backend.exceptions.AssetNotFoundException;
-import com.wealthbuilder.backend.exceptions.HoldingNotFoundException;
+import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
+import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.repositories.AssetRepository;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
@@ -30,6 +31,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 
 /**
@@ -49,15 +51,29 @@ public class HoldingServiceImpl implements HoldingService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<HoldingResponse> listHoldings(String username, Long assetId, Pageable pageable) {
+    public PageResponse<HoldingResponse> listHoldings(
+            String username, Long assetId, HoldingFilter filter, Pageable pageable) {
         final User user = requireUser(username);
         final Asset asset = requireAsset(assetId);
 
         final Page<HoldingResponse> page = holdingRepository
-                .findByUserAndAsset(user, asset, newestFirst(pageable))
+                .search(user, asset, likePattern(filter.getName()), filter.getFrom(), filter.getTo(),
+                        newestFirst(pageable))
                 .map(HoldingResponse::from);
 
         return PageResponse.of(page);
+    }
+
+    /**
+     * Turns a raw name fragment into a lowercased {@code %fragment%} LIKE pattern, or null when
+     * there is no fragment so the repository skips the name criterion entirely.
+     */
+    private String likePattern(String name) {
+        if (name == null) {
+            return null;
+        }
+
+        return "%" + name.toLowerCase(Locale.ROOT) + "%";
     }
 
     @Override
@@ -87,7 +103,7 @@ public class HoldingServiceImpl implements HoldingService {
                 request.getNote());
         holdingRepository.save(holding);
 
-        log.info("User '{}' added holding id={} to asset id={}", username, holding.getId(), assetId);
+        log.info("User with username '{}' added a holding with id '{}' to asset with id '{}'.", username, holding.getId(), assetId);
 
         return HoldingResponse.from(holding);
     }
@@ -103,7 +119,7 @@ public class HoldingServiceImpl implements HoldingService {
         holding.setDate(request.getDate());
         holding.setNote(request.getNote());
 
-        log.info("User '{}' updated holding id={}", username, holdingId);
+        log.info("User with username '{}' updated holding with id '{}'.", username, holdingId);
 
         return HoldingResponse.from(holding);
     }
@@ -114,7 +130,7 @@ public class HoldingServiceImpl implements HoldingService {
         final AssetHolding holding = requireOwnedHolding(username, holdingId);
         holdingRepository.delete(holding);
 
-        log.info("User '{}' deleted holding id={}", username, holdingId);
+        log.info("User with username '{}' deleted holding with id '{}'.", username, holdingId);
     }
 
     /**
