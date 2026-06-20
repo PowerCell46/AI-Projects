@@ -78,6 +78,15 @@
 			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- In-memory database for @DataJpaTest repository slices. The production runtime
+		     uses PostgreSQL; H2 (PostgreSQL compatibility mode) backs the JPA slice tests so
+		     they need no running database. -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

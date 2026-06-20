@@ -7,6 +7,7 @@ import com.wealthbuilder.backend.dtos.auth.RegisterRequest;
 import com.wealthbuilder.backend.entities.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.exceptions.UsernameAlreadyTakenException;
+import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
 import com.wealthbuilder.backend.services.interfaces.AuthService;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
@@ -32,6 +33,8 @@ import java.math.BigDecimal;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+
+    private final HoldingRepository holdingRepository;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -99,10 +102,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Net invested amount = sum of every holding's {@code boughtForAmount}. Holdings are
-     * introduced in the next build phase; until then a user's net invested is zero.
+     * Net invested amount = sum of every holding's {@code boughtForAmount} across all of the
+     * user's assets. Returns zero when the user holds nothing yet.
      */
     private BigDecimal computeBalance(User user) {
-        return BigDecimal.ZERO;
+        return holdingRepository.sumInvestedByUser(user);
     }
 }

@@ -52,6 +52,24 @@ export const apiRequest = async <TResponse>(
 };
 
 
+/**
+ * Fetches a binary resource (e.g. an asset image) as a Blob, carrying the bearer token a
+ * plain <img> tag can't attach. Throws {@link ApiError} on any non-2xx response.
+ */
+export const apiRequestBlob = async (url: string): Promise<Blob> => {
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: buildHeaders(false),
+    });
+
+    if (!response.ok) {
+        throw await toApiError(response, false);
+    }
+
+    return response.blob();
+};
+
+
 const buildHeaders = (hasBody: boolean): HeadersInit => {
     const headers: Record<string, string> = {
         Accept: 'application/json',

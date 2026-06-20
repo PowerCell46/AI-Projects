@@ -1,0 +1,57 @@
+.rail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: clamp(9rem, 22vw, 13rem);
+    gap: 1rem;
+    margin: 0;
+    padding: 0.5rem 0.25rem 1rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+}
+
+.tile {
+    scroll-snap-align: start;
+}
+
+.link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    text-decoration: none;
+    color: var(--app-fg);
+}
+
+.thumb {
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    background: var(--app-surface);
+    transition: border-color 150ms ease;
+}
+
+.link:hover .thumb,
+.link:focus-visible .thumb {
+    border-color: var(--app-accent);
+}
+
+.link:focus-visible {
+    outline: 0.125rem solid var(--app-accent);
+    outline-offset: 0.25rem;
+}
+
+.name {
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+}
+
+.status {
+    font-size: 0.875rem;
+    color: var(--app-fg-muted);
+}
+
+.statusError {
+    font-size: 0.875rem;
+    color: var(--terminal-red);
+}

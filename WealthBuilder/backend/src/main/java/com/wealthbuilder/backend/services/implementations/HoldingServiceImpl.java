@@ -1,0 +1,197 @@
+package com.wealthbuilder.backend.services.implementations;
+
+import com.wealthbuilder.backend.dtos.PageResponse;
+import com.wealthbuilder.backend.dtos.holding.HoldingRequest;
+import com.wealthbuilder.backend.dtos.holding.HoldingResponse;
+import com.wealthbuilder.backend.dtos.holding.HoldingSummaryResponse;
+import com.wealthbuilder.backend.entities.Asset;
+import com.wealthbuilder.backend.entities.AssetHolding;
+import com.wealthbuilder.backend.entities.User;
+import com.wealthbuilder.backend.exceptions.AssetNotFoundException;
+import com.wealthbuilder.backend.exceptions.HoldingNotFoundException;
+import com.wealthbuilder.backend.repositories.AssetRepository;
+import com.wealthbuilder.backend.repositories.HoldingRepository;
+import com.wealthbuilder.backend.repositories.UserRepository;
+import com.wealthbuilder.backend.services.interfaces.HoldingService;
+import com.wealthbuilder.backend.utils.Money;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+
+
+/**
+ * Default {@link HoldingService}. Listing is forced to a deterministic newest-first order
+ * regardless of the incoming page request, and ownership is checked on every write.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class HoldingServiceImpl implements HoldingService {
+
+    private final HoldingRepository holdingRepository;
+
+    private final AssetRepository assetRepository;
+
+    private final UserRepository userRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<HoldingResponse> listHoldings(String username, Long assetId, Pageable pageable) {
+        final User user = requireUser(username);
+        final Asset asset = requireAsset(assetId);
+
+        final Page<HoldingResponse> page = holdingRepository
+                .findByUserAndAsset(user, asset, newestFirst(pageable))
+                .map(HoldingResponse::from);
+
+        return PageResponse.of(page);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HoldingSummaryResponse summarize(String username, Long assetId) {
+        final User user = requireUser(username);
+        final Asset asset = requireAsset(assetId);
+
+        final List<AssetHolding> holdings = holdingRepository.findByUserAndAsset(user, asset);
+
+        return holdings.isEmpty() ? HoldingSummaryResponse.empty() : aggregate(holdings);
+    }
+
+    @Override
+    @Transactional
+    public HoldingResponse create(String username, Long assetId, HoldingRequest request) {
+        final User user = requireUser(username);
+        final Asset asset = requireAsset(assetId);
+
+        final AssetHolding holding = new AssetHolding(
+                asset,
+                user,
+                request.getName(),
+                request.getBoughtForAmount(),
+                request.getQuantity(),
+                request.getDate(),
+                request.getNote());
+        holdingRepository.save(holding);
+
+        log.info("User '{}' added holding id={} to asset id={}", username, holding.getId(), assetId);
+
+        return HoldingResponse.from(holding);
+    }
+
+    @Override
+    @Transactional
+    public HoldingResponse update(String username, Long holdingId, HoldingRequest request) {
+        final AssetHolding holding = requireOwnedHolding(username, holdingId);
+
+        holding.setName(request.getName());
+        holding.setBoughtForAmount(request.getBoughtForAmount());
+        holding.setQuantity(request.getQuantity());
+        holding.setDate(request.getDate());
+        holding.setNote(request.getNote());
+
+        log.info("User '{}' updated holding id={}", username, holdingId);
+
+        return HoldingResponse.from(holding);
+    }
+
+    @Override
+    @Transactional
+    public void delete(String username, Long holdingId) {
+        final AssetHolding holding = requireOwnedHolding(username, holdingId);
+        holdingRepository.delete(holding);
+
+        log.info("User '{}' deleted holding id={}", username, holdingId);
+    }
+
+    /**
+     * Computes the unweighted average unit price, the quantity/amount sums, and the
+     * purchase-date span over a non-empty holdings list.
+     */
+    private HoldingSummaryResponse aggregate(List<AssetHolding> holdings) {
+        BigDecimal amountSum = BigDecimal.ZERO;
+        BigDecimal quantitySum = BigDecimal.ZERO;
+        BigDecimal priceSum = BigDecimal.ZERO;
+
+        for (final AssetHolding holding : holdings) {
+            amountSum = amountSum.add(holding.getBoughtForAmount());
+            quantitySum = quantitySum.add(holding.getQuantity());
+            priceSum = priceSum.add(Money.unitPrice(holding.getBoughtForAmount(), holding.getQuantity()));
+        }
+
+        final BigDecimal averagePrice = priceSum
+                .divide(BigDecimal.valueOf(holdings.size()), Money.PRICE_SCALE, RoundingMode.HALF_UP);
+
+        return HoldingSummaryResponse.of(
+                holdings.size(),
+                averagePrice,
+                quantitySum,
+                amountSum,
+                earliestDate(holdings),
+                latestDate(holdings));
+    }
+
+    private LocalDate earliestDate(List<AssetHolding> holdings) {
+        return holdings
+                .stream()
+                .map(AssetHolding::getDate)
+                .min(Comparator.naturalOrder())
+                .orElseThrow();
+    }
+
+    private LocalDate latestDate(List<AssetHolding> holdings) {
+        return holdings
+                .stream()
+                .map(AssetHolding::getDate)
+                .max(Comparator.naturalOrder())
+                .orElseThrow();
+    }
+
+    /**
+     * Forces newest-purchase-first ordering (date, then id as a tie-break) so paging is
+     * stable no matter what sort the client passes.
+     */
+    private Pageable newestFirst(Pageable pageable) {
+        return PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "date", "id"));
+    }
+
+    private AssetHolding requireOwnedHolding(String username, Long holdingId) {
+        final AssetHolding holding = holdingRepository
+                .findById(holdingId)
+                .orElseThrow(() -> new HoldingNotFoundException(holdingId));
+
+        if (!holding.getUser().getUsername().equals(username)) {
+            throw new AccessDeniedException("Holding is owned by another user.");
+        }
+
+        return holding;
+    }
+
+    private User requireUser(String username) {
+        return userRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Unknown user: " + username));
+    }
+
+    private Asset requireAsset(Long assetId) {
+        return assetRepository
+                .findById(assetId)
+                .orElseThrow(() -> new AssetNotFoundException(assetId));
+    }
+}

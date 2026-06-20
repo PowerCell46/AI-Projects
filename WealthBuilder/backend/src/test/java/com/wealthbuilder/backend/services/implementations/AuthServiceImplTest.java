@@ -7,6 +7,7 @@ import com.wealthbuilder.backend.dtos.auth.RegisterRequest;
 import com.wealthbuilder.backend.entities.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.exceptions.UsernameAlreadyTakenException;
+import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +52,9 @@ class AuthServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private HoldingRepository holdingRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -139,13 +143,26 @@ class AuthServiceImplTest {
     class CurrentUser {
 
         @Test
-        void should_ReturnSnapshotWithZeroBalance_When_UserExists() {
-            given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(existingUser(Role.USER)));
+        void should_ReturnSnapshotWithSummedBalance_When_UserHasHoldings() {
+            final User user = existingUser(Role.USER);
+            given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(user));
+            given(holdingRepository.sumInvestedByUser(user)).willReturn(new BigDecimal("1250.5000"));
 
             final CurrentUserResponse response = authService.me(USERNAME);
 
             assertThat(response.getUsername()).isEqualTo(USERNAME);
             assertThat(response.getRole()).isEqualTo(Role.USER);
+            assertThat(response.getBalance()).isEqualByComparingTo("1250.5000");
+        }
+
+        @Test
+        void should_ReturnZeroBalance_When_UserHasNoHoldings() {
+            final User user = existingUser(Role.USER);
+            given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(user));
+            given(holdingRepository.sumInvestedByUser(user)).willReturn(BigDecimal.ZERO);
+
+            final CurrentUserResponse response = authService.me(USERNAME);
+
             assertThat(response.getBalance()).isEqualByComparingTo(BigDecimal.ZERO);
         }
     }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext/useAuth';
 import { useEntranceReveal } from '../../hooks/useEntranceReveal';
-import { ThemeToggle } from '../ThemeToggle/ThemeToggle';
+import { AppHeader } from '../AppHeader/AppHeader';
+import { AssetCarousel } from '../AssetCarousel/AssetCarousel';
 import { VhsBands } from '../VhsBands/VhsBands';
 import styles from './HomePage.module.css';
 
@@ -13,11 +14,11 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
 
 
 /**
- * Placeholder authenticated landing. The full dashboard (donut + carousel) is future
- * scope per PLAN.md; for now it confirms the session and shows the computed balance.
+ * Authenticated landing: the computed balance plus the asset carousel. The invested-per-asset
+ * donut is future scope per PLAN.md — it needs the dashboard distribution endpoint.
  */
 export const HomePage = () => {
-    const { user, logout, justAuthenticated, clearJustAuthenticated } = useAuth();
+    const { user, justAuthenticated, clearJustAuthenticated } = useAuth();
 
     // Capture the entrance trigger once on mount, then clear it so a later refresh of the
     // home screen doesn't replay the sweep.
@@ -48,17 +49,7 @@ export const HomePage = () => {
                 </>
             )}
 
-            <header className={styles.header}>
-                <span className={styles.brand}>▮ WEALTHBUILDER</span>
-
-                <div className={styles.actions}>
-                    <ThemeToggle />
-
-                    <button type="button" className={styles.logout} onClick={logout}>
-                        log out
-                    </button>
-                </div>
-            </header>
+            <AppHeader />
 
             <main className={styles.main}>
                 <p className={styles.greeting}>
@@ -70,6 +61,11 @@ export const HomePage = () => {
                     <span className={styles.balanceValue}>
                         {CURRENCY_FORMATTER.format(user.balance)}
                     </span>
+                </section>
+
+                <section className={styles.assets}>
+                    <h2 className={styles.sectionHeading}>ASSETS</h2>
+                    <AssetCarousel />
                 </section>
             </main>
         </div>

@@ -42,6 +42,27 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(AssetNameAlreadyTakenException.class)
+    public ProblemDetail handleDuplicateAssetName(AssetNameAlreadyTakenException ex) {
+        log.warn("Asset conflict: {}", ex.getMessage());
+
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(AssetNotFoundException.class)
+    public ProblemDetail handleAssetNotFound(AssetNotFoundException ex) {
+        log.info("Asset not found: {}", ex.getMessage());
+
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(HoldingNotFoundException.class)
+    public ProblemDetail handleHoldingNotFound(HoldingNotFoundException ex) {
+        log.info("Holding not found: {}", ex.getMessage());
+
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ProblemDetail handleAuthentication(AuthenticationException ex) {
         log.info("Authentication failed: {}", ex.getMessage());

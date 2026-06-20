@@ -33,7 +33,8 @@ and review per-asset aggregations. Moderators manage the asset catalog.
 | id | Long | PK |
 | name | String | @NotBlank, **unique (case-insensitive)** → 409 on dup |
 | description | String | @NotBlank, max len |
-| imageBase64 | text/`@Lob` | required; `data:image/...;base64,...` |
+| imageBase64 | text | required; `data:image/...;base64,...` |
+| imageName | String | required, max 255; original upload filename, shown back on edit |
 
 ### AssetHolding (a user's purchase record)
 | field | type | notes |
@@ -87,8 +88,8 @@ Mirrors the SpotyStats stack: JPA, validation, security, Lombok, Postgres, Jacks
 | POST | `/auth/register` | public | create USER, returns token |
 | POST | `/auth/login` | public | returns `{ token }` |
 | GET | `/auth/me` | auth | current user + computed balance |
-| GET | `/assets` | auth | carousel list (no blob — see image note) |
-| GET | `/assets/{id}` | auth | asset detail (no blob) |
+| GET | `/assets` | auth | carousel list (no blob; includes `imageName`) |
+| GET | `/assets/{id}` | auth | asset detail (no blob; includes `imageName`) |
 | GET | `/assets/{id}/image` | auth | base64 image (lazy-loaded by `<img>`) |
 | POST | `/assets` | MOD | create (409 on dup name) |
 | PUT | `/assets/{id}` | MOD | edit |
@@ -146,7 +147,7 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
 | `/login` | public | login form |
 | `/register` | public | register form |
 | `/` (home) | auth | balance + **donut (invested per asset)** + asset **carousel** |
-| `/assets/:id` | auth | detail: holdings table (paginated) + aggregation panel + holding CRUD |
+| `/assets/:name` | auth | detail: holdings table (paginated) + aggregation panel + holding CRUD |
 | `/admin/assets` | MOD | asset catalog CRUD (create/edit/delete, base64 image upload) |
 
 ### Key components
@@ -202,13 +203,20 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
       (+ request/response DTOs, bean validation).
 - [x] **Moderator seeder** — `DataSeeder` (`ApplicationRunner`, idempotent, env-driven).
 - [x] **Error handling** — `GlobalExceptionHandler` → RFC-7807 `ProblemDetail` (400/401/403/409/500).
-- [ ] **Asset CRUD** — entity/repo, list+detail (no blob), image endpoint, MOD-only writes, 409 on dup.
-- [ ] **Holding CRUD** — entity/repo, paginated list, create/edit/delete (ownership), `/summary`.
-- [ ] **Dashboard** — `/dashboard/distribution`; wire computed **balance** into `/auth/me`.
-- [ ] **Validation/error polish** — 404 for missing asset/holding, ownership 403, edge cases.
-
-> ⏸ **Paused after authentication, as requested.** Note: `/auth/me` returns `balance = 0` for now;
-> it gets wired to `sum(boughtForAmount)` once holdings exist (see the Dashboard item).
+- [x] **Asset CRUD** — `Asset` entity/repo, list+detail DTO (no blob), raw-bytes image endpoint
+      (`DataUriImage` decode), MOD-only writes via `@PreAuthorize`, 409 on case-insensitive dup name,
+      404 on missing; wired into `GlobalExceptionHandler`. (Image column is `text`, not `@Lob`, to
+      avoid the Postgres large-object footgun.) `imageName` persisted alongside the blob and returned
+      in list/detail DTOs so the admin edit form can display the original upload filename.
+- [x] **Holding CRUD** — `AssetHolding` entity (`date` = `LocalDate` purchase day **+** separate
+      `createdAt` `@CreationTimestamp` audit stamp), `HoldingRepository`, paginated list forced to
+      newest-first (date, id desc), create/edit/delete with ownership check (403 via
+      `AccessDeniedException`), `/summary` aggregation (unweighted mean unit price, sums, date span).
+      Derived unit price via shared `Money` util; `PageResponse<T>` envelope instead of raw `Page`.
+- [x] **Dashboard** — `/dashboard/distribution` (grouped query → `AssetInvestment` projection);
+      computed **balance** wired into `/auth/me` (`sum(boughtForAmount)` over all holdings).
+- [x] **Validation/error polish** — `HoldingRequest` bean validation (positive, `@PastOrPresent`,
+      `@Digits` matching column precision); 404 for missing asset/holding; ownership 403.
 
 ### Frontend
 - [x] **Scaffold** — Vite + React 19 + TS (strict), react-router 7, `@stylistic` ESLint
@@ -220,7 +228,58 @@ Sizing via rem token scale + auto-fit/clamp, not media queries.
 - [x] **Login/register** — single CRT auth screen (login + register, VHS sweep mode swap,
       reduced-motion fallback), wired to `/auth/register` + `/auth/login` with field-level
       (400) and form-level (401/409) error handling; placeholder home shows the balance.
-- [ ] Home dashboard (carousel + donut).
-- [ ] Asset detail (table + aggregation + holding CRUD).
-- [ ] Moderator asset admin screen.
-- [ ] Responsive pass + empty/error states.
+- [~] **Home dashboard** — asset **carousel** done (scroll-snap, per-tile images fetched via
+      the API client + object URLs since `<img>` can't carry the bearer token, links to detail).
+      **Donut not built yet** — backend (`/dashboard/distribution`) is now ready.
+- [x] **Asset detail** — route is now **`/assets/:name`** (readable URL; resolves to the asset by
+      unique name from the loaded catalog, API stays id-based). Header + image, the per-user
+      **holdings table** (server-paginated via `PageResponse<T>`, inline two-step delete),
+      **aggregation panel** (`/summary`), and **holding create/edit/delete** via a modal
+      `HoldingForm` (client validation mirroring the server). `holdingService` + `holding`/`page`
+      types + `useHoldings` hook + shared `formatMoney/Quantity/Price` (locale pinned to en-US).
+- [x] **Moderator asset admin** (`/admin/assets`) — `ModeratorRoute` guard + shared `AppHeader`
+      (moderator-only catalog link), list with inline edit/delete-confirm, `AssetForm` with a
+      **custom file picker** (hidden native input driven by a styled button + filename label, no
+      `<img>` preview); edit refetches the current image to avoid forced re-upload and prefills the
+      stored `imageName` so the picker shows the real filename.
+- [ ] **Donut** — Recharts `PieChart` from `/dashboard/distribution` on the home screen.
+      (Recharts is not yet a dependency — needs adding, or hand-roll an SVG donut.)
+- [x] **Holdings on asset detail** — `HoldingsTable`, `AggregationPanel`, `HoldingForm` modal,
+      wired through `useHoldings` + `holdingService` (see Asset detail above).
+- [x] **Vitest** — Vitest 4 + React Testing Library + jsdom (`test`/`test:watch` scripts).
+      16 tests green (formatters, `AggregationPanel`, `HoldingsTable`, `HoldingForm` validation).
+- [ ] Responsive pass + empty/error states (basic empty/error states in place).
+
+---
+
+## 7. Status & what's next
+
+### Done
+- **Backend: complete.** Auth (JWT register/login/me + moderator seeder), Asset CRUD (+ image
+  endpoint, + persisted `imageName`), Holding CRUD (+ pagination + summary), Dashboard distribution,
+  computed balance, RFC-7807 error handling. **158 tests green** (unit + validation + `@DataJpaTest`
+  + `@WebMvcTest`).
+- **Frontend: auth + catalog + holdings.** Auth screen, AuthContext/apiClient/guards, theming,
+  asset carousel, full moderator asset admin (custom file picker showing the persisted filename
+  on edit), and the **asset-detail holdings UI** (name-keyed route, paginated table, aggregation,
+  modal CRUD). Vitest suite (16 tests). Lint clean, build passes.
+
+### Left (frontend only)
+1. **Home donut** — Recharts pie from `/dashboard/distribution`.
+2. **Responsive pass + empty/error states** — final polish.
+
+### Next up
+**Home donut** — Recharts pie from `/dashboard/distribution` (add Recharts, or hand-roll an SVG
+donut to avoid the dep), then a final responsive/empty-state pass. The asset-detail holdings UI is
+now done.
+
+#### Locked decision — asset-detail route: **FE name, API by id**
+Frontend route is `/assets/:name` for readable URLs; it resolves to the asset by name
+(case-insensitive) from the already-loaded catalog list, then calls the **unchanged** id-based
+endpoints (`/assets/{id}/holdings`, `/summary`, …). No backend change, no new lookup endpoint, and
+no rename/encoding fragility on the wire. (Rejected: name-keying the API — mutable key, encoding,
+ripple across every nested path.)
+
+#### Locked decision — frontend tests: **add Vitest**
+Set up Vitest + React Testing Library (`test` script in `package.json`) and cover the holdings
+table/form/aggregation logic as it is built.
