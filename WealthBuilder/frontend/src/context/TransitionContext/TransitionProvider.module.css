@@ -1,0 +1,22 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* The CRT panel that retracts top-down to reveal the destination view. Mirrors the home
+   entrance cover so every sweep in the app looks identical. */
+.cover {
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            var(--scanline) 0px,
+            var(--scanline) 1px,
+            transparent 1px,
+            transparent 3px
+        ),
+        var(--bg-stage);
+}

@@ -36,4 +36,7 @@ export interface AuthContextValue {
     register: (credentials: Credentials) => Promise<void>;
     logout: () => void;
     clearJustAuthenticated: () => void;
+    // Re-reads /auth/me so the cached user (e.g. the computed balance) reflects server-side
+    // changes made elsewhere, such as editing a holding.
+    refreshUser: () => Promise<void>;
 }

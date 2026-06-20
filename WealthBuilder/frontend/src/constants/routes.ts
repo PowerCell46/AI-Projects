@@ -7,7 +7,7 @@ import { slugify } from '../utils/slug';
 export const APP_ROUTES = {
     LOGIN: '/login',
     REGISTER: '/register',
-    HOME: '/',
+    HOME: '/dashboard',
     // `:slug` segment is filled by buildAssetDetailPath when navigating. Asset names are unique
     // (case-insensitive), so the readable slug keys the route while the API stays id-based.
     ASSET_DETAIL: '/assets/:slug',

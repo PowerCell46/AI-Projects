@@ -70,6 +70,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         await establishSession(issuedToken);
     }, [establishSession]);
 
+    // Re-fetch the current user on demand. A 401 is handled globally (logout); any other
+    // failure is swallowed so a transient error just leaves the previous user in place.
+    const refreshUser = useCallback(async () => {
+        if (readStoredToken() === null) {
+            return;
+        }
+
+        try {
+            setUser(await fetchCurrentUser());
+        } catch {
+            // Keep the existing user; a 401 already triggered logout via the global handler.
+        }
+    }, []);
+
     // A 401 on any authenticated request clears the session (apiClient calls this).
     useEffect(() => {
         setUnauthorizedHandler(logout);
@@ -116,7 +130,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         clearJustAuthenticated,
-    }), [user, token, status, justAuthenticated, login, register, logout, clearJustAuthenticated]);
+        refreshUser,
+    }), [user, token, status, justAuthenticated, login, register, logout, clearJustAuthenticated, refreshUser]);
 
     return (
         <AuthContext.Provider value={value}>

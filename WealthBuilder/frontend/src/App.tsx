@@ -8,6 +8,7 @@ import { AssetAdminPage } from './components/AssetAdminPage/AssetAdminPage';
 import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute';
 import { PublicOnlyRoute } from './components/PublicOnlyRoute/PublicOnlyRoute';
 import { ModeratorRoute } from './components/ModeratorRoute/ModeratorRoute';
+import { TransitionProvider } from './context/TransitionContext/TransitionProvider';
 import { APP_ROUTES } from './constants/routes';
 
 
@@ -16,54 +17,56 @@ export const App = () => {
         <ThemeProvider>
             <AuthProvider>
                 <BrowserRouter>
-                    <Routes>
-                        <Route
-                            path={APP_ROUTES.LOGIN}
-                            element={(
-                                <PublicOnlyRoute>
-                                    <AuthScreen mode="login" />
-                                </PublicOnlyRoute>
-                            )}
-                        />
+                    <TransitionProvider>
+                        <Routes>
+                            <Route
+                                path={APP_ROUTES.LOGIN}
+                                element={(
+                                    <PublicOnlyRoute>
+                                        <AuthScreen mode="login" />
+                                    </PublicOnlyRoute>
+                                )}
+                            />
 
-                        <Route
-                            path={APP_ROUTES.REGISTER}
-                            element={(
-                                <PublicOnlyRoute>
-                                    <AuthScreen mode="register" />
-                                </PublicOnlyRoute>
-                            )}
-                        />
+                            <Route
+                                path={APP_ROUTES.REGISTER}
+                                element={(
+                                    <PublicOnlyRoute>
+                                        <AuthScreen mode="register" />
+                                    </PublicOnlyRoute>
+                                )}
+                            />
 
-                        <Route
-                            path={APP_ROUTES.HOME}
-                            element={(
-                                <ProtectedRoute>
-                                    <HomePage />
-                                </ProtectedRoute>
-                            )}
-                        />
+                            <Route
+                                path={APP_ROUTES.HOME}
+                                element={(
+                                    <ProtectedRoute>
+                                        <HomePage />
+                                    </ProtectedRoute>
+                                )}
+                            />
 
-                        <Route
-                            path={APP_ROUTES.ASSET_DETAIL}
-                            element={(
-                                <ProtectedRoute>
-                                    <AssetDetailPage />
-                                </ProtectedRoute>
-                            )}
-                        />
+                            <Route
+                                path={APP_ROUTES.ASSET_DETAIL}
+                                element={(
+                                    <ProtectedRoute>
+                                        <AssetDetailPage />
+                                    </ProtectedRoute>
+                                )}
+                            />
 
-                        <Route
-                            path={APP_ROUTES.ADMIN_ASSETS}
-                            element={(
-                                <ModeratorRoute>
-                                    <AssetAdminPage />
-                                </ModeratorRoute>
-                            )}
-                        />
+                            <Route
+                                path={APP_ROUTES.ADMIN_ASSETS}
+                                element={(
+                                    <ModeratorRoute>
+                                        <AssetAdminPage />
+                                    </ModeratorRoute>
+                                )}
+                            />
 
-                        <Route path="*" element={<Navigate to={APP_ROUTES.HOME} replace />} />
-                    </Routes>
+                            <Route path="*" element={<Navigate to={APP_ROUTES.HOME} replace />} />
+                        </Routes>
+                    </TransitionProvider>
                 </BrowserRouter>
             </AuthProvider>
         </ThemeProvider>

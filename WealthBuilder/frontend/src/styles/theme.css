@@ -60,6 +60,10 @@
     --app-fg: #DFF6E6;
     --app-fg-muted: rgba(223, 246, 230, 0.6);
     --app-accent: #7AFFA0;
+
+    /* Loading-skeleton flicker endpoints — a phosphor tint that reads against the dark ground. */
+    --skeleton-dim: rgba(223, 246, 230, 0.05);
+    --skeleton-bright: rgba(223, 246, 230, 0.13);
 }
 
 /* Light theme: recast the CRT as a "paper terminal" — deep-green type on soft paper, with
@@ -70,6 +74,11 @@
     --app-fg: #0C1610;
     --app-fg-muted: rgba(12, 22, 16, 0.6);
     --app-accent: #137A45;
+
+    /* Skeletons need real ink here: surface and bg are both near-white, so a paper-white
+       placeholder would be invisible. Tint with the dark foreground instead. */
+    --skeleton-dim: rgba(12, 22, 16, 0.05);
+    --skeleton-bright: rgba(12, 22, 16, 0.12);
 
     /* Share the app's light whites so the auth screen and home page read identically:
        stage + margin = the page white, the form half = the surface white. */

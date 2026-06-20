@@ -1,0 +1,77 @@
+.chart {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    background: var(--app-surface);
+}
+
+.ring {
+    flex-shrink: 0;
+    width: clamp(9rem, 18vw, 12rem);
+    height: clamp(9rem, 18vw, 12rem);
+}
+
+.legend {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-width: 14rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.legendItem {
+    display: grid;
+    grid-template-columns: 0.75rem 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.swatch {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 0.125rem;
+}
+
+.legendName {
+    letter-spacing: 0.04em;
+}
+
+.legendValue {
+    color: var(--app-fg-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.legendTotal {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(127, 127, 127, 0.2);
+    font-size: 0.8125rem;
+}
+
+.emptyText {
+    flex: 1;
+    min-width: 14rem;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--app-fg-muted);
+}
+
+.status {
+    font-size: 0.875rem;
+    color: var(--app-fg-muted);
+}
+
+.statusError {
+    font-size: 0.875rem;
+    color: var(--terminal-red);
+}

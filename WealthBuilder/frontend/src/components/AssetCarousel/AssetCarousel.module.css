@@ -30,6 +30,12 @@
     gap: 0.625rem;
     text-decoration: none;
     color: var(--app-fg);
+    transition: transform 250ms ease-in-out;
+}
+
+.link:hover,
+.link:focus-visible {
+    transform: translateY(-0.125rem);
 }
 
 .thumb {
@@ -43,6 +49,7 @@
 .link:hover .thumb,
 .link:focus-visible .thumb {
     border-color: var(--app-accent);
+    border-width: 2px;
 }
 
 .link:focus-visible {
@@ -115,25 +122,25 @@
 .skeletonThumb {
     aspect-ratio: 1;
     border: 1px solid rgba(127, 127, 127, 0.2);
-    background: var(--app-surface);
-    animation: flicker 1.4s ease-in-out infinite;
+    background-color: var(--skeleton-bright);
+    animation: flicker 2.6s ease-in-out infinite;
 }
 
 .skeletonName {
     height: 0.8125rem;
     width: 70%;
-    background: var(--app-surface);
-    animation: flicker 1.4s ease-in-out infinite;
+    background-color: var(--skeleton-bright);
+    animation: flicker 2.6s ease-in-out infinite;
 }
 
 @keyframes flicker {
     0%,
     100% {
-        opacity: 0.25;
+        background-color: var(--skeleton-dim);
     }
 
     50% {
-        opacity: 0.6;
+        background-color: var(--skeleton-bright);
     }
 }
 
@@ -149,6 +156,6 @@
     .skeletonThumb,
     .skeletonName {
         animation: none;
-        opacity: 0.4;
+        background-color: var(--skeleton-bright);
     }
 }

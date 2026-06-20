@@ -3,6 +3,7 @@ import { AppHeader } from '../AppHeader/AppHeader';
 import { AssetImage } from '../AssetImage/AssetImage';
 import { AssetForm } from './AssetForm';
 import { useAssets } from '../../hooks/useAssets';
+import { useViewTransition } from '../../hooks/useViewTransition';
 import { deleteAsset } from '../../services/assetService';
 import type { Asset } from '../../types/asset';
 import styles from './AssetAdminPage.module.css';
@@ -18,12 +19,24 @@ type Editing = Asset | 'new' | null;
  */
 export const AssetAdminPage = () => {
     const { assets, loading, error, reload } = useAssets();
+    const { play } = useViewTransition();
 
     const [editing, setEditing] = useState<Editing>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
-    const handleSaved = (): void => {
+    // The list <-> form swap keeps the same URL, so trigger the sweep imperatively.
+    const startEditing = (target: Asset | 'new'): void => {
+        play();
+        setEditing(target);
+    };
+
+    const stopEditing = (): void => {
+        play();
         setEditing(null);
+    };
+
+    const handleSaved = (): void => {
+        stopEditing();
         reload();
     };
 
@@ -42,7 +55,7 @@ export const AssetAdminPage = () => {
                     <AssetForm
                         asset={editing === 'new' ? null : editing}
                         onSaved={handleSaved}
-                        onCancel={() => setEditing(null)}
+                        onCancel={stopEditing}
                     />
                 </main>
             </div>
@@ -57,7 +70,7 @@ export const AssetAdminPage = () => {
                 <div className={styles.toolbar}>
                     <h1 className={styles.title}>ASSET CATALOG</h1>
 
-                    <button type="button" className={styles.newButton} onClick={() => setEditing('new')}>
+                    <button type="button" className={styles.newButton} onClick={() => startEditing('new')}>
                         + new asset
                     </button>
                 </div>
@@ -108,7 +121,7 @@ export const AssetAdminPage = () => {
                                         <button
                                             type="button"
                                             className={styles.action}
-                                            onClick={() => setEditing(asset)}
+                                            onClick={() => startEditing(asset)}
                                         >
                                             edit
                                         </button>

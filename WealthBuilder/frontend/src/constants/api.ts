@@ -25,4 +25,8 @@ export const HOLDING_ENDPOINTS = {
     byId: (id: number): string => `${API_BASE_URL}/holdings/${id}`,
 } as const;
 
+export const DASHBOARD_ENDPOINTS = {
+    DISTRIBUTION: `${API_BASE_URL}/dashboard/distribution`,
+} as const;
+
 export { API_BASE_URL };

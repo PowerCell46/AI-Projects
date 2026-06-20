@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext/useAuth';
 import { useEntranceReveal } from '../../hooks/useEntranceReveal';
 import { AppHeader } from '../AppHeader/AppHeader';
 import { AssetCarousel } from '../AssetCarousel/AssetCarousel';
+import { DistributionChart } from '../DistributionChart/DistributionChart';
+import { PlatformLinks } from '../PlatformLinks/PlatformLinks';
 import { VhsBands } from '../VhsBands/VhsBands';
 import styles from './HomePage.module.css';
 
@@ -14,11 +16,11 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
 
 
 /**
- * Authenticated landing: the computed balance plus the asset carousel. The invested-per-asset
- * donut is future scope per PLAN.md — it needs the dashboard distribution endpoint.
+ * Authenticated landing: an intro + computed balance, the asset carousel, external platform
+ * shortcuts, and the invested-per-asset distribution donut.
  */
 export const HomePage = () => {
-    const { user, justAuthenticated, clearJustAuthenticated } = useAuth();
+    const { user, justAuthenticated, clearJustAuthenticated, refreshUser } = useAuth();
 
     // Capture the entrance trigger once on mount, then clear it so a later refresh of the
     // home screen doesn't replay the sweep.
@@ -30,6 +32,12 @@ export const HomePage = () => {
             clearJustAuthenticated();
         }
     }, [enteredFromAuth, clearJustAuthenticated]);
+
+    // Re-read the balance every time the dashboard is shown, so a holding edited on a detail
+    // screen is reflected here without a manual page reload.
+    useEffect(() => {
+        void refreshUser();
+    }, [refreshUser]);
 
     if (user === null) {
         return null;
@@ -52,20 +60,37 @@ export const HomePage = () => {
             <AppHeader />
 
             <main className={styles.main}>
-                <p className={styles.greeting}>
-                    Signed in as <strong>{user.username}</strong> · {user.role}
-                </p>
+                <section className={styles.intro}>
+                    <div className={styles.introText}>
+                        <h1 className={styles.introTitle}>One platform, every investment.</h1>
+                        <p className={styles.introLead}>
+                            WealthBuilder is a personal holdings tracker. Record what you buy across
+                            stocks, crypto, and precious metals, watch your net invested balance, and
+                            see how your money is split across asset classes.
+                        </p>
+                    </div>
 
-                <section className={styles.balanceCard}>
-                    <span className={styles.balanceLabel}>NET INVESTED</span>
-                    <span className={styles.balanceValue}>
-                        {CURRENCY_FORMATTER.format(user.balance)}
-                    </span>
+                    <section className={styles.balanceCard}>
+                        <span className={styles.balanceLabel}>NET INVESTED</span>
+                        <span className={styles.balanceValue}>
+                            {CURRENCY_FORMATTER.format(user.balance)}
+                        </span>
+                    </section>
                 </section>
 
                 <section className={styles.assets}>
                     <h2 className={styles.sectionHeading}>ASSETS</h2>
                     <AssetCarousel />
+                </section>
+
+                <section className={styles.section}>
+                    <h2 className={styles.sectionHeading}>PLATFORMS</h2>
+                    <PlatformLinks />
+                </section>
+
+                <section className={styles.section}>
+                    <h2 className={styles.sectionHeading}>DISTRIBUTION</h2>
+                    <DistributionChart />
                 </section>
             </main>
         </div>

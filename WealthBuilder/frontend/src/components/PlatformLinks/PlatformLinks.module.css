@@ -1,0 +1,66 @@
+.grid {
+    /* Single row: every card flexes to an equal share of the width and stretches to fit. */
+    display: flex;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.grid > li {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.card {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    background: var(--app-surface);
+    text-decoration: none;
+    color: var(--app-fg);
+    transition: border-color 250ms ease-in-out, transform 250ms ease-in-out;
+}
+
+.card:hover,
+.card:focus-visible {
+    border-color: var(--app-accent);
+    transform: translateY(-0.125rem);
+}
+
+.card:focus-visible {
+    outline: 0.125rem solid var(--app-accent);
+    outline-offset: 0.25rem;
+}
+
+.name {
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.category {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--app-fg-muted);
+}
+
+.arrow {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.875rem;
+    color: var(--app-fg-muted);
+    transition: color 250ms ease-in-out;
+}
+
+.card:hover .arrow,
+.card:focus-visible .arrow {
+    color: var(--app-accent);
+}

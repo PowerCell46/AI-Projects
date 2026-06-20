@@ -59,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
                 Role.USER);
         userRepository.save(user);
 
-        log.info("Registered new user '{}'", user.getUsername());
+        log.info("Registered new user '{}'.", user.getUsername());
 
         return issueTokenFor(user);
     }

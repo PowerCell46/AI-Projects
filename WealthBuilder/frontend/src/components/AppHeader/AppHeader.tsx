@@ -16,7 +16,15 @@ export const AppHeader = () => {
 
     return (
         <header className={styles.header}>
-            <Link className={styles.brand} to={APP_ROUTES.HOME}>▮ WEALTHBUILDER</Link>
+            <div className={styles.left}>
+                <Link className={styles.brand} to={APP_ROUTES.HOME}>▮ WEALTHBUILDER</Link>
+
+                {user && (
+                    <span className={styles.identity}>
+                        {user.username} <span className={styles.role}>· {user.role}</span>
+                    </span>
+                )}
+            </div>
 
             <nav className={styles.nav}>
                 {isModerator && (
