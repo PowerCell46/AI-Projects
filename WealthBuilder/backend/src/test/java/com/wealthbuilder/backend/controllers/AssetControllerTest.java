@@ -2,6 +2,7 @@ package com.wealthbuilder.backend.controllers;
 
 import com.wealthbuilder.backend.DTOs.asset.AssetRequest;
 import com.wealthbuilder.backend.DTOs.asset.AssetResponse;
+import com.wealthbuilder.backend.exceptions.asset.AssetInUseException;
 import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException;
 import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
@@ -114,7 +115,8 @@ class AssetControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(ASSET_ID))
                     .andExpect(jsonPath("$[0].name").value(NAME))
-                    .andExpect(jsonPath("$[0].description").value(DESCRIPTION));
+                    .andExpect(jsonPath("$[0].description").value(DESCRIPTION))
+                    .andExpect(jsonPath("$[0].inUse").value(false));
         }
 
         @Test
@@ -288,6 +290,20 @@ class AssetControllerTest {
         }
 
         @Test
+        void should_Return409Problem_When_ModeratorDeletesAssetInUse() throws Exception {
+            willThrow(new AssetInUseException(ASSET_ID))
+                    .given(assetService).delete(ASSET_ID);
+
+            mockMvc
+                    .perform(delete("/api/assets/{id}", ASSET_ID)
+                            .with(user("mod").roles("MODERATOR"))
+                            .with(csrf()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail")
+                            .value("Asset is referenced by existing holdings and cannot be deleted: " + ASSET_ID));
+        }
+
+        @Test
         void should_Return403_When_UserAttemptsDelete() throws Exception {
             mockMvc
                     .perform(delete("/api/assets/{id}", ASSET_ID)
@@ -298,7 +314,7 @@ class AssetControllerTest {
     }
 
     private static AssetResponse response() {
-        return new AssetResponse(ASSET_ID, NAME, DESCRIPTION, IMAGE_NAME);
+        return new AssetResponse(ASSET_ID, NAME, DESCRIPTION, IMAGE_NAME, false);
     }
 
     private static String json(String name, String description, String imageBase64) {

@@ -56,6 +56,31 @@
     color: var(--terminal-red);
 }
 
+/* Positioning context for the sweep overlay. It must NOT be the horizontally-scrolling element:
+   an absolute overlay inside a scroll container stops covering the table once the table overflows,
+   so the overlay is anchored here while .tableWrap handles the horizontal scroll. */
+.tableArea {
+    position: relative;
+}
+
+/* The CRT panel that retracts top-down over the table on a page change. Mirrors the app's
+   view-change sweep so every reveal looks identical, scoped to the table rather than the view. */
+.sweepCover {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            var(--scanline) 0px,
+            var(--scanline) 1px,
+            transparent 1px,
+            transparent 3px
+        ),
+        var(--bg-stage);
+}
+
 .tableWrap {
     overflow-x: auto;
     border: 1px solid rgba(127, 127, 127, 0.2);
@@ -121,11 +146,63 @@
     color: var(--app-fg-muted);
 }
 
+/* Filler rows that keep a short page at full table height. They share the data rows' borders so
+   the grid reads continuously, but their cells hold only a faint shimmer in place of content. */
+.skeletonRow:not(:last-child) .td {
+    border-bottom: 1px solid rgba(127, 127, 127, 0.12);
+}
+
+/* Mirrors .thumb so the filler row matches the height a real asset's image gives it. */
+.skeletonThumb {
+    flex-shrink: 0;
+    width: 5rem;
+    height: 5rem;
+    border: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+.skeletonThumb,
+.skeletonBar {
+    background: linear-gradient(
+        90deg,
+        rgba(127, 127, 127, 0.08) 25%,
+        rgba(127, 127, 127, 0.18) 50%,
+        rgba(127, 127, 127, 0.08) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonBar {
+    display: block;
+    height: 0.95rem;
+    width: 60%;
+    border-radius: 2px;
+}
+
+@keyframes skeletonShimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeletonThumb,
+    .skeletonBar {
+        animation: none;
+    }
+}
+
 /* Fixed width sized to the wider "delete? yes no" state so swapping the buttons
-   in and out never resizes the column or reflows the rest of the row. */
+   in and out never resizes the column or reflows the rest of the row. min-width
+   pins it on narrow viewports too, where the table is laid out at min-content
+   and a plain width would otherwise collapse to each state's content width. */
 .actionsHead,
 .actionsCell {
     width: 12rem;
+    min-width: 12rem;
 }
 
 .actionsCell {
@@ -146,8 +223,13 @@
     color: var(--app-fg-muted);
 }
 
-.action:hover {
+.action:hover:not(:disabled) {
     color: var(--app-fg);
+}
+
+.action:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 
 .confirmPrompt {

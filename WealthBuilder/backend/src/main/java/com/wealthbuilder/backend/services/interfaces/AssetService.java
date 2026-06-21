@@ -39,7 +39,7 @@ public interface AssetService {
     AssetResponse update(Long id, AssetRequest request);
 
     /**
-     * Deletes an asset; 404 if the id is unknown.
+     * Deletes an asset; 404 if the id is unknown, 409 if any holding still references it.
      */
     void delete(Long id);
 }

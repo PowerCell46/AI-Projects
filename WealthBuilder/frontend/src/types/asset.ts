@@ -7,6 +7,9 @@ export interface Asset {
     name: string;
     description: string;
     imageName: string;
+    // True when at least one holding (any user) references this asset, so the catalog can
+    // disable its delete control — a referenced asset can't be removed.
+    inUse: boolean;
 }
 
 // Body of POST /api/assets and PUT /api/assets/{id}. `imageBase64` is a

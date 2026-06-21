@@ -13,11 +13,25 @@ import org.springframework.data.jpa.repository.Query;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 
 public interface HoldingRepository extends JpaRepository<AssetHolding, Long> {
 
     Page<AssetHolding> findByUserAndAsset(User user, Asset asset, Pageable pageable);
+
+    /**
+     * Whether any user holds a purchase against this asset. Used to block deletion of an asset
+     * that is still referenced, so the {@code asset_id} foreign key is never violated.
+     */
+    boolean existsByAsset(Asset asset);
+
+    /**
+     * The ids of every asset referenced by at least one holding (across all users). Lets the
+     * catalog mark which assets are in use in a single query rather than one probe per asset.
+     */
+    @Query("select distinct h.asset.id from AssetHolding h")
+    Set<Long> findReferencedAssetIds();
 
     /**
      * The caller's holdings for one asset, narrowed by an optional {@code namePattern} (a

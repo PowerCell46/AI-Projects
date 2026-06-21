@@ -62,6 +62,10 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
         setPendingDeleteId(null);
     };
 
+    // Pad short pages (typically the last one) with inert skeleton rows so the table keeps the
+    // same height whether it holds 1 row or a full page — paging never makes the layout jump.
+    const skeletonRowCount = Math.max(0, page.size - page.content.length);
+
     return (
         <div className={`${styles.wrapper} ${loading ? styles.loading : ''}`}>
             <div className={styles.tableArea}>
@@ -166,6 +170,10 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                                     </td>
                                 </tr>
                             ))}
+
+                            {Array.from({ length: skeletonRowCount }).map((_, index) => (
+                                <SkeletonRow key={`skeleton-${index}`} />
+                            ))}
                         </tbody>
 
                         {summary !== null && summary.holdingCount > 0 && (
@@ -203,6 +211,35 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
         </div>
     );
 };
+
+
+/**
+ * Inert filler row that mirrors the cell layout of a real holding so a short page reads as a
+ * full-height table. Hidden from assistive tech — it carries no data, only keeps the size fixed.
+ */
+const SkeletonRow = () => (
+    <tr className={styles.skeletonRow} aria-hidden="true">
+        <td className={styles.td}>
+            <span className={styles.skeletonBar} />
+        </td>
+        <td className={styles.td}>
+            <span className={styles.skeletonBar} />
+        </td>
+        <td className={styles.td}>
+            <span className={styles.skeletonBar} />
+        </td>
+        <td className={`${styles.td} ${styles.numeric}`}>
+            <span className={styles.skeletonBar} />
+        </td>
+        <td className={`${styles.td} ${styles.numeric}`}>
+            <span className={styles.skeletonBar} />
+        </td>
+        <td className={`${styles.td} ${styles.numeric}`}>
+            <span className={styles.skeletonBar} />
+        </td>
+        <td className={`${styles.td} ${styles.actionsCell}`} />
+    </tr>
+);
 
 
 /**

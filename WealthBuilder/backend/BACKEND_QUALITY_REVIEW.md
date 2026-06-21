@@ -16,7 +16,6 @@ This is a **recall-biased** report: it surfaces real defects and risks a careful
 | 3 | 🟠 High | `JwtSecretValidator` guards a secret string that no longer exists → **dead protection** | `JwtSecretValidator:27` |
 | 5 | 🟠 High | Several common exceptions fall through to **HTTP 500** | `GlobalExceptionHandler` |
 | 7 | 🟠 High | Asset-name uniqueness: TOCTOU race + DB constraint is case-sensitive | `AssetServiceImpl:59` |
-| 8 | 🟠 High | Deleting an in-use asset → `DataIntegrityViolation` → 500 | `AssetServiceImpl:96` |
 
 ---
 
@@ -104,17 +103,6 @@ The doc comment (`AssetServiceImpl:52-55`) claims the shared transaction prevent
 
 ---
 
-### 8. Deleting an asset with holdings throws a raw integrity violation
-**`backend/src/main/java/com/wealthbuilder/backend/services/implementations/AssetServiceImpl.java:96`**
-
-`delete()` does no pre-check; `AssetHolding.asset` is `@ManyToOne(optional=false)` with a `NOT NULL` FK and no cascade.
-
-**Failure scenario:** A moderator deletes asset id 5 while users hold purchases against it → `DataIntegrityViolationException` → (currently unmapped, see #5) **500**, with no clean "asset is in use" message.
-
-**Fix:** Either block deletion when holdings exist (count check → 409 with a clear message) or define the intended cascade/soft-delete policy. Map the integrity violation regardless.
-
----
-
 ## 🟡 Medium
 
 ### 9. No optimistic locking on `Asset` — lost updates
@@ -166,7 +154,7 @@ The doc comment (`AssetServiceImpl:52-55`) claims the shared transaction prevent
 ## Suggested order of work
 
 1. **Stop prod pollution:** gate seeders by profile (#2).
-2. **Close the 500s:** exception-handler gaps (#5), asset-name index + delete guard (#7, #8).
+2. **Close the 500s:** exception-handler gaps (#5), asset-name index (#7).
 3. **Harden auth config:** fix/replace `JwtSecretValidator` and the broken defaults (#3), add rate limiting (#13), bound TTL (#14).
 4. **Correctness/perf:** `@Version` on `Asset` (#9), image size/type limits (#11, #12).
 5. **Polish** the Low list as capacity allows.

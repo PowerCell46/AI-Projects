@@ -1,5 +1,6 @@
 package com.wealthbuilder.backend.exceptions;
 
+import com.wealthbuilder.backend.exceptions.asset.AssetInUseException;
 import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException;
 import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.auth.UsernameAlreadyTakenException;
@@ -49,6 +50,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AssetNameAlreadyTakenException.class)
     public ProblemDetail handleDuplicateAssetName(AssetNameAlreadyTakenException ex) {
         log.warn("Asset conflict: {}", ex.getMessage());
+
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(AssetInUseException.class)
+    public ProblemDetail handleAssetInUse(AssetInUseException ex) {
+        log.warn("Asset deletion blocked: {}", ex.getMessage());
 
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }

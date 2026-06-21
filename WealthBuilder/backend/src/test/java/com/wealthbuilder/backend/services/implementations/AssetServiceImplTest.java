@@ -3,9 +3,11 @@ package com.wealthbuilder.backend.services.implementations;
 import com.wealthbuilder.backend.DTOs.asset.AssetRequest;
 import com.wealthbuilder.backend.DTOs.asset.AssetResponse;
 import com.wealthbuilder.backend.entities.Asset;
+import com.wealthbuilder.backend.exceptions.asset.AssetInUseException;
 import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException;
 import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.repositories.AssetRepository;
+import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.utils.DataUriImage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,10 +17,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +52,9 @@ class AssetServiceImplTest {
     @Mock
     private AssetRepository assetRepository;
 
+    @Mock
+    private HoldingRepository holdingRepository;
+
     @InjectMocks
     private AssetServiceImpl assetService;
 
@@ -57,7 +64,8 @@ class AssetServiceImplTest {
 
         @Test
         void should_ReturnMappedResponsesWithoutImage_When_AssetsExist() {
-            given(assetRepository.findAll()).willReturn(List.of(existingAsset()));
+            given(assetRepository.findAll(any(Sort.class))).willReturn(List.of(existingAsset()));
+            given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of());
 
             final List<AssetResponse> responses = assetService.findAll();
 
@@ -67,11 +75,41 @@ class AssetServiceImplTest {
             assertThat(responses.getFirst().getDescription()).isEqualTo(DESCRIPTION);
         }
 
+        // An asset referenced by at least one holding is flagged in-use so the moderator UI can
+        // disable its delete control; an unreferenced asset is not.
+        @Test
+        void should_FlagReferencedAssetsAsInUse_When_Listing() {
+            final Asset referenced = existingAsset();
+            final Asset free = new Asset("Crypto", DESCRIPTION, IMAGE, IMAGE_NAME);
+            free.setId(99L);
+            given(assetRepository.findAll(any(Sort.class))).willReturn(List.of(referenced, free));
+            given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of(ASSET_ID));
+
+            final List<AssetResponse> responses = assetService.findAll();
+
+            assertThat(responses.getFirst().isInUse()).isTrue();
+            assertThat(responses.get(1).isInUse()).isFalse();
+        }
+
         @Test
         void should_ReturnEmptyList_When_NoAssetsExist() {
-            given(assetRepository.findAll()).willReturn(List.of());
+            given(assetRepository.findAll(any(Sort.class))).willReturn(List.of());
+            given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of());
 
             assertThat(assetService.findAll()).isEmpty();
+        }
+
+        // Newest first: the id is IDENTITY-generated, so descending id is creation order.
+        @Test
+        void should_RequestNewestFirstOrdering_When_Listing() {
+            given(assetRepository.findAll(any(Sort.class))).willReturn(List.of());
+            given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of());
+
+            assetService.findAll();
+
+            final ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+            verify(assetRepository).findAll(sortCaptor.capture());
+            assertThat(sortCaptor.getValue()).isEqualTo(Sort.by(Sort.Direction.DESC, "id"));
         }
     }
 
@@ -206,13 +244,26 @@ class AssetServiceImplTest {
     class Delete {
 
         @Test
-        void should_DeleteAsset_When_AssetExists() {
+        void should_DeleteAsset_When_AssetExistsAndHasNoHoldings() {
             final Asset asset = existingAsset();
             given(assetRepository.findById(ASSET_ID)).willReturn(Optional.of(asset));
+            given(holdingRepository.existsByAsset(asset)).willReturn(false);
 
             assetService.delete(ASSET_ID);
 
             verify(assetRepository).delete(asset);
+        }
+
+        @Test
+        void should_ThrowConflictAndNotDelete_When_AssetIsReferencedByHoldings() {
+            final Asset asset = existingAsset();
+            given(assetRepository.findById(ASSET_ID)).willReturn(Optional.of(asset));
+            given(holdingRepository.existsByAsset(asset)).willReturn(true);
+
+            assertThatThrownBy(() -> assetService.delete(ASSET_ID))
+                    .isInstanceOf(AssetInUseException.class);
+
+            verify(assetRepository, never()).delete(any());
         }
 
         @Test
