@@ -29,6 +29,8 @@ class HoldingRequestTest {
 
     private static final BigDecimal VALID_AMOUNT = new BigDecimal("1500.0000");
 
+    private static final String VALID_UNIT = "shares";
+
     private static final BigDecimal VALID_QUANTITY = new BigDecimal("10.00000000");
 
     private static final LocalDate VALID_DATE = LocalDate.now();
@@ -224,6 +226,37 @@ class HoldingRequestTest {
         }
     }
 
+    @Nested
+    @DisplayName("Unit constraints")
+    class Unit {
+
+        @Test
+        void should_RejectBlankUnit() {
+            assertThat(violatedFields(requestWithUnit("   ")))
+                    .contains("unit");
+        }
+
+        @Test
+        void should_RejectUnitOverThirtyCharacters() {
+            assertThat(violatedFields(requestWithUnit("u".repeat(31))))
+                    .contains("unit");
+        }
+
+        @Test
+        void should_AcceptUnitAtThirtyCharacterBoundary() {
+            assertThat(violatedFields(requestWithUnit("u".repeat(30))))
+                    .doesNotContain("unit");
+        }
+    }
+
+    private static HoldingRequest requestWithUnit(String unit) {
+        final HoldingRequest request =
+                request(VALID_NAME, VALID_AMOUNT, VALID_QUANTITY, VALID_DATE, VALID_NOTE);
+        request.setUnit(unit);
+
+        return request;
+    }
+
     private static Set<String> violatedFields(HoldingRequest request) {
         return validator
                 .validate(request)
@@ -241,6 +274,7 @@ class HoldingRequestTest {
         final HoldingRequest request = new HoldingRequest();
         request.setName(name);
         request.setBoughtForAmount(boughtForAmount);
+        request.setUnit(VALID_UNIT);
         request.setQuantity(quantity);
         request.setDate(date);
         request.setNote(note);

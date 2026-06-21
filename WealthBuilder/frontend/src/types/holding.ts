@@ -7,6 +7,7 @@ export interface Holding {
     assetId: number;
     name: string;
     boughtForAmount: number;
+    unit: string;
     quantity: number;
     price: number;
     date: string;
@@ -19,6 +20,7 @@ export interface Holding {
 export interface HoldingRequest {
     name: string;
     boughtForAmount: number;
+    unit: string;
     quantity: number;
     date: string;
     note: string | null;

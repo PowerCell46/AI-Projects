@@ -28,6 +28,7 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
 
     const [name, setName] = useState(holding?.name ?? '');
     const [amount, setAmount] = useState(holding ? String(holding.boughtForAmount) : '');
+    const [unit, setUnit] = useState(holding?.unit ?? '');
     const [quantity, setQuantity] = useState(holding ? String(holding.quantity) : '');
     // ISO date (YYYY-MM-DD); the DatePicker shows and selects it as DD/MM/YYYY.
     const [date, setDate] = useState(holding?.date ?? '');
@@ -69,6 +70,9 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
         if (!isPositiveNumber(amount)) {
             errors.boughtForAmount = 'Enter a total cost greater than 0.';
         }
+        if (unit.trim().length === 0) {
+            errors.unit = 'Unit is required.';
+        }
         if (!isPositiveNumber(quantity)) {
             errors.quantity = 'Enter a quantity greater than 0.';
         }
@@ -83,6 +87,7 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
     const buildRequest = (): HoldingRequest => ({
         name: name.trim(),
         boughtForAmount: Number(amount),
+        unit: unit.trim(),
         quantity: Number(quantity),
         date,
         note: note.trim().length > 0 ? note.trim() : null,
@@ -129,18 +134,30 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                     <FieldError message={fieldErrors.name} />
                 </label>
 
+                <label className={styles.field}>
+                    <span className={styles.label}>TOTAL COST</span>
+                    <input
+                        className={styles.input}
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={amount}
+                        onChange={(event) => setAmount(event.target.value)}
+                    />
+                    <FieldError message={fieldErrors.boughtForAmount} />
+                </label>
+
                 <div className={styles.pair}>
                     <label className={styles.field}>
-                        <span className={styles.label}>TOTAL COST</span>
+                        <span className={styles.label}>UNIT</span>
                         <input
                             className={styles.input}
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={amount}
-                            onChange={(event) => setAmount(event.target.value)}
+                            type="text"
+                            value={unit}
+                            maxLength={30}
+                            onChange={(event) => setUnit(event.target.value)}
                         />
-                        <FieldError message={fieldErrors.boughtForAmount} />
+                        <FieldError message={fieldErrors.unit} />
                     </label>
 
                     <label className={styles.field}>

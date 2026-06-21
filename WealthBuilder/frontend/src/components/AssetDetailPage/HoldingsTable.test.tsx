@@ -11,6 +11,7 @@ const holding = (overrides: Partial<Holding> = {}): Holding => ({
     assetId: 7,
     name: 'Apple',
     boughtForAmount: 500,
+    unit: 'shares',
     quantity: 2,
     price: 250,
     date: '2026-03-01',

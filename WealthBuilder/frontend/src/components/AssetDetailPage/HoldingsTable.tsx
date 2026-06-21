@@ -82,10 +82,11 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                         <tr>
                             <th className={styles.th}>NAME</th>
                             <th className={styles.th}>DATE</th>
+                            <th className={styles.th}>UNIT</th>
                             <th className={`${styles.th} ${styles.numeric}`}>QUANTITY</th>
                             <th className={`${styles.th} ${styles.numeric}`}>BOUGHT AT PRICE</th>
                             <th className={`${styles.th} ${styles.numeric}`}>TOTAL COST</th>
-                            <th className={styles.th} aria-label="Actions" />
+                            <th className={`${styles.th} ${styles.actionsHead}`} aria-label="Actions" />
                         </tr>
                     </thead>
 
@@ -108,6 +109,7 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                                     <span className={styles.name}>{holding.name}</span>
                                 </td>
                                 <td className={styles.td}>{isoToDisplay(holding.date)}</td>
+                                <td className={styles.td}>{holding.unit}</td>
                                 <td className={`${styles.td} ${styles.numeric}`}>
                                     {formatQuantity(holding.quantity)}
                                 </td>
@@ -122,42 +124,44 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                                     onClick={(event) => event.stopPropagation()}
                                     onKeyDown={(event) => event.stopPropagation()}
                                 >
-                                    {pendingDeleteId === holding.id ? (
-                                        <>
-                                            <span className={styles.confirmPrompt}>delete?</span>
-                                            <button
-                                                type="button"
-                                                className={styles.confirmYes}
-                                                onClick={() => confirmDelete(holding.id)}
-                                            >
-                                                yes
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={styles.action}
-                                                onClick={() => setPendingDeleteId(null)}
-                                            >
-                                                no
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button
-                                                type="button"
-                                                className={styles.action}
-                                                onClick={() => onEdit(holding)}
-                                            >
-                                                edit
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={styles.action}
-                                                onClick={() => setPendingDeleteId(holding.id)}
-                                            >
-                                                delete
-                                            </button>
-                                        </>
-                                    )}
+                                    <div className={styles.actions}>
+                                        {pendingDeleteId === holding.id ? (
+                                            <>
+                                                <span className={styles.confirmPrompt}>delete?</span>
+                                                <button
+                                                    type="button"
+                                                    className={styles.confirmYes}
+                                                    onClick={() => confirmDelete(holding.id)}
+                                                >
+                                                    yes
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={styles.action}
+                                                    onClick={() => setPendingDeleteId(null)}
+                                                >
+                                                    no
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className={styles.action}
+                                                    onClick={() => onEdit(holding)}
+                                                >
+                                                    edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={styles.action}
+                                                    onClick={() => setPendingDeleteId(holding.id)}
+                                                >
+                                                    delete
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -206,7 +210,7 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
  */
 const TotalsRow = ({ summary }: { summary: HoldingSummary }) => (
     <tr className={styles.totalsRow}>
-        <td className={`${styles.td} ${styles.totalsLabel}`} colSpan={2}>
+        <td className={`${styles.td} ${styles.totalsLabel}`} colSpan={3}>
             totals ({summary.holdingCount})
         </td>
         <td className={`${styles.td} ${styles.numeric} ${styles.totalsValue}`}>

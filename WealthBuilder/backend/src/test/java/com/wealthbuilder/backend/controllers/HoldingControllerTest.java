@@ -340,6 +340,7 @@ class HoldingControllerTest {
                 ASSET_ID,
                 "Apple shares",
                 new BigDecimal("100.0000"),
+                "shares",
                 new BigDecimal("2.00000000"),
                 new BigDecimal("50.00000000"),
                 LocalDate.of(2026, 2, 1),
@@ -348,7 +349,7 @@ class HoldingControllerTest {
     }
 
     private static String validBody() {
-        return "{\"name\":\"Apple shares\",\"boughtForAmount\":100,"
+        return "{\"name\":\"Apple shares\",\"boughtForAmount\":100,\"unit\":\"shares\","
                 + "\"quantity\":2,\"date\":\"2026-02-01\",\"note\":\"Bought on the dip.\"}";
     }
 

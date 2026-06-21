@@ -217,6 +217,7 @@ class HoldingRepositoryTest {
                 user,
                 "Holding",
                 new BigDecimal(amount),
+                "shares",
                 new BigDecimal(quantity),
                 date,
                 null));
@@ -228,6 +229,7 @@ class HoldingRepositoryTest {
                 user,
                 name,
                 new BigDecimal("100.0000"),
+                "shares",
                 new BigDecimal("1.00000000"),
                 date,
                 null));

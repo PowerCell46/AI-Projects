@@ -100,6 +100,7 @@ public class HoldingServiceImpl implements HoldingService {
                 user,
                 request.getName(),
                 request.getBoughtForAmount(),
+                request.getUnit(),
                 request.getQuantity(),
                 request.getDate(),
                 request.getNote());
@@ -117,6 +118,7 @@ public class HoldingServiceImpl implements HoldingService {
 
         holding.setName(request.getName());
         holding.setBoughtForAmount(request.getBoughtForAmount());
+        holding.setUnit(request.getUnit());
         holding.setQuantity(request.getQuantity());
         holding.setDate(request.getDate());
         holding.setNote(request.getNote());

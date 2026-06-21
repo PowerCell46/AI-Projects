@@ -28,7 +28,8 @@ export const ThemeToggle = ({ variant = 'app' }: ThemeToggleProps) => {
             onClick={toggleTheme}
             aria-label={`Switch to ${nextTheme} theme`}
         >
-            {theme === 'dark' ? '☾ dark' : '☀ light'}
+            <span className={styles.icon} aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
+            <span className={styles.label}>{theme === 'dark' ? 'dark' : 'light'}</span>
         </button>
     );
 };

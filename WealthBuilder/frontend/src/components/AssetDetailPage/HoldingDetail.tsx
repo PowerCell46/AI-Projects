@@ -40,7 +40,9 @@ export const HoldingDetail = ({ holding, onEdit, onClose }: HoldingDetailProps) 
 
                     <div className={styles.field}>
                         <span className={styles.label}>QUANTITY</span>
-                        <span className={styles.value}>{formatQuantity(holding.quantity)}</span>
+                        <span className={styles.value}>
+                            {formatQuantity(holding.quantity)} {holding.unit}
+                        </span>
                     </div>
                 </div>
 

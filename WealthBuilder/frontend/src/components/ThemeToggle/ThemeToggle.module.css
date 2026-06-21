@@ -1,4 +1,7 @@
 .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
     padding: 0.5em 0.875em;
     border: 1px solid var(--app-accent);
     background: transparent;
@@ -9,6 +12,18 @@
         background-color 150ms ease,
         color var(--theme-transition) ease,
         border-color var(--theme-transition) ease;
+}
+
+/* Fixed slots so the button keeps one width across themes: the moon/sun glyphs differ
+   in advance width, and "light" is a letter longer than "dark". */
+.icon {
+    width: 1em;
+    text-align: center;
+}
+
+.label {
+    width: 3.4em;
+    text-align: left;
 }
 
 .toggle:hover {

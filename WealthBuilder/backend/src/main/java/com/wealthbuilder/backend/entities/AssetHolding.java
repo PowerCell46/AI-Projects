@@ -52,6 +52,9 @@ public class AssetHolding {
     @Column(name = "bought_for_amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal boughtForAmount;
 
+    @Column(nullable = false)
+    private String unit;
+
     @Column(nullable = false, precision = 19, scale = 8)
     private BigDecimal quantity;
 
@@ -70,6 +73,7 @@ public class AssetHolding {
             User user,
             String name,
             BigDecimal boughtForAmount,
+            String unit,
             BigDecimal quantity,
             LocalDate date,
             String note) {
@@ -77,6 +81,7 @@ public class AssetHolding {
         this.user = user;
         this.name = name;
         this.boughtForAmount = boughtForAmount;
+        this.unit = unit;
         this.quantity = quantity;
         this.date = date;
         this.note = note;

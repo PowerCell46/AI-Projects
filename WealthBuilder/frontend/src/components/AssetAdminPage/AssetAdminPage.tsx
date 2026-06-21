@@ -85,7 +85,7 @@ export const AssetAdminPage = () => {
                                 <tr>
                                     <th className={styles.th}>ASSET</th>
                                     <th className={styles.th}>DESCRIPTION</th>
-                                    <th className={styles.th} aria-label="Actions" />
+                                    <th className={`${styles.th} ${styles.actionsHead}`} aria-label="Actions" />
                                 </tr>
                             </thead>
 

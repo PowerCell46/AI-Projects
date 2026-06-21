@@ -38,6 +38,7 @@ describe('HoldingForm', () => {
 
         expect(screen.getByText('Name is required.')).toBeInTheDocument();
         expect(screen.getByText('Enter a total cost greater than 0.')).toBeInTheDocument();
+        expect(screen.getByText('Unit is required.')).toBeInTheDocument();
         expect(screen.getByText('Enter a quantity greater than 0.')).toBeInTheDocument();
         expect(screen.getByText('Purchase date is required.')).toBeInTheDocument();
         expect(mockedCreate).not.toHaveBeenCalled();
@@ -62,6 +63,7 @@ describe('HoldingForm', () => {
             assetId: 7,
             name: 'Apple',
             boughtForAmount: 500,
+            unit: 'shares',
             quantity: 2,
             price: 250,
             date: '2026-03-01',
@@ -73,6 +75,7 @@ describe('HoldingForm', () => {
 
         await userEvent.type(screen.getByLabelText('NAME'), 'Apple');
         await userEvent.type(screen.getByLabelText('TOTAL COST'), '500');
+        await userEvent.type(screen.getByLabelText('UNIT'), 'shares');
         await userEvent.type(screen.getByLabelText('QUANTITY'), '2');
         const expectedDate = await pickFirstOfThisMonth();
         await userEvent.click(screen.getByRole('button', { name: 'save' }));
@@ -80,6 +83,7 @@ describe('HoldingForm', () => {
         expect(mockedCreate).toHaveBeenCalledWith(7, {
             name: 'Apple',
             boughtForAmount: 500,
+            unit: 'shares',
             quantity: 2,
             date: expectedDate,
             note: null,

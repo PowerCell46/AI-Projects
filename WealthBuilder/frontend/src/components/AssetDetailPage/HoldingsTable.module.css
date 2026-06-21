@@ -38,7 +38,7 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 1rem;
+    font-size: 0.875rem;
 }
 
 .th {
@@ -88,7 +88,7 @@
 }
 
 .totalsValue {
-    font-size: 1.0625rem;
+    font-size: 0.9375rem;
     font-weight: 500;
     color: var(--app-fg);
 }
@@ -118,12 +118,24 @@
     font-weight: 500;
 }
 
+/* Fixed width sized to the wider "delete? yes no" state so swapping the buttons
+   in and out never resizes the column or reflows the rest of the row. */
+.actionsHead,
 .actionsCell {
+    width: 10rem;
+}
+
+.actionsCell {
+    white-space: nowrap;
+}
+
+/* Flex lives on an inner wrapper, not the <td>: a flex td drops out of table layout and
+   stops filling the row height, leaving an uncovered strip the hover background can't reach. */
+.actions {
     display: flex;
     gap: 0.5rem;
     align-items: center;
     justify-content: flex-end;
-    white-space: nowrap;
 }
 
 .action {

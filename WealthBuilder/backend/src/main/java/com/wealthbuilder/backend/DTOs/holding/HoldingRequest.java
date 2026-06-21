@@ -33,6 +33,10 @@ public class HoldingRequest {
     @Digits(integer = 15, fraction = 4)
     private BigDecimal boughtForAmount;
 
+    @NotBlank
+    @Size(max = 30)
+    private String unit;
+
     @NotNull
     @Positive
     @Digits(integer = 11, fraction = 8)

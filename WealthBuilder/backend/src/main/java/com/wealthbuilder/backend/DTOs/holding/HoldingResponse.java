@@ -24,6 +24,8 @@ public class HoldingResponse {
 
     BigDecimal boughtForAmount;
 
+    String unit;
+
     BigDecimal quantity;
 
     BigDecimal price;
@@ -40,6 +42,7 @@ public class HoldingResponse {
                 holding.getAsset().getId(),
                 holding.getName(),
                 holding.getBoughtForAmount(),
+                holding.getUnit(),
                 holding.getQuantity(),
                 Money.unitPrice(holding.getBoughtForAmount(), holding.getQuantity()),
                 holding.getDate(),

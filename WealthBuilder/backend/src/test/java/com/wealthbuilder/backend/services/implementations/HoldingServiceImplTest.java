@@ -245,6 +245,7 @@ class HoldingServiceImplTest {
             assertThat(saved.getValue().getUser()).isSameAs(owner);
             assertThat(saved.getValue().getName()).isEqualTo("Apple shares");
             assertThat(saved.getValue().getBoughtForAmount()).isEqualByComparingTo("1500.0000");
+            assertThat(saved.getValue().getUnit()).isEqualTo("shares");
             assertThat(saved.getValue().getQuantity()).isEqualByComparingTo("10.00000000");
             assertThat(saved.getValue().getDate()).isEqualTo(LocalDate.of(2026, 2, 1));
             assertThat(saved.getValue().getNote()).isEqualTo("Bought on the dip.");
@@ -276,6 +277,7 @@ class HoldingServiceImplTest {
 
             assertThat(holding.getName()).isEqualTo("Apple shares");
             assertThat(holding.getBoughtForAmount()).isEqualByComparingTo("1500.0000");
+            assertThat(holding.getUnit()).isEqualTo("shares");
             assertThat(holding.getQuantity()).isEqualByComparingTo("10.00000000");
             assertThat(holding.getDate()).isEqualTo(LocalDate.of(2026, 2, 1));
             assertThat(holding.getNote()).isEqualTo("Bought on the dip.");
@@ -364,7 +366,7 @@ class HoldingServiceImplTest {
     private static AssetHolding holding(
             Long id, String ownerUsername, BigDecimal amount, BigDecimal quantity, LocalDate date) {
         final AssetHolding holding = new AssetHolding(
-                asset(), user(ownerUsername), "Old name", amount, quantity, date, "Old note");
+                asset(), user(ownerUsername), "Old name", amount, "shares", quantity, date, "Old note");
         holding.setId(id);
 
         return holding;
@@ -374,6 +376,7 @@ class HoldingServiceImplTest {
         final HoldingRequest request = new HoldingRequest();
         request.setName("Apple shares");
         request.setBoughtForAmount(new BigDecimal("1500.0000"));
+        request.setUnit("shares");
         request.setQuantity(new BigDecimal("10.00000000"));
         request.setDate(LocalDate.of(2026, 2, 1));
         request.setNote("Bought on the dip.");
