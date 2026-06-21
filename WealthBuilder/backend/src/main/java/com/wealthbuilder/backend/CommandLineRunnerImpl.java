@@ -25,9 +25,10 @@ import java.util.List;
  * "Stocks" holdings, so the UI can be exercised against real-size data instead of an empty
  * portfolio.
  *
- * <p>Idempotent: it does nothing unless the moderator and the "Stocks" asset both already
- * exist, and it never adds a second batch once the moderator has any "Stocks" holding. Runs
- * after {@link com.wealthbuilder.backend.config.DataSeeder} (which creates the moderator).
+ * <p>Idempotent: it does nothing unless the moderator exists, creates the "Stocks" asset on an
+ * empty DB if it's missing, and never adds a second batch once the moderator has any "Stocks"
+ * holding. Runs after {@link com.wealthbuilder.backend.config.DataSeeder} (which creates the
+ * moderator).
  */
 @Component
 @RequiredArgsConstructor
@@ -36,6 +37,16 @@ import java.util.List;
 public class CommandLineRunnerImpl implements CommandLineRunner {
 
     private static final String STOCKS_ASSET_NAME = "Stocks";
+
+    private static final String STOCKS_ASSET_DESCRIPTION =
+            "Publicly traded company shares.";
+
+    private static final String STOCKS_IMAGE_NAME = "stocks-placeholder.png";
+
+    // A 1x1 transparent PNG placeholder, so the non-null image columns are satisfied on an empty
+    // DB. The moderator can replace it with a real image through the UI afterwards.
+    private static final String STOCKS_IMAGE_BASE64 =
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
 
     private final UserRepository userRepository;
 
@@ -56,19 +67,30 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
             return;
         }
 
-        final Asset stocks = assetRepository
-                .findByNameIgnoreCase(STOCKS_ASSET_NAME)
-                .orElse(null);
-        if (stocks == null) {
-            log.warn("No '{}' asset found; skipping holdings seeding.", STOCKS_ASSET_NAME);
-            return;
-        }
+        final Asset stocks = findOrCreateStocksAsset();
 
         if (alreadySeeded(moderator, stocks)) {
             return;
         }
 
         seedHoldings(moderator, stocks);
+    }
+
+    /** Returns the "Stocks" asset, creating it with a placeholder image if it doesn't exist yet. */
+    private Asset findOrCreateStocksAsset() {
+        return assetRepository
+                .findByNameIgnoreCase(STOCKS_ASSET_NAME)
+                .orElseGet(this::createStocksAsset);
+    }
+
+    private Asset createStocksAsset() {
+        final Asset stocks = assetRepository.save(new Asset(
+                STOCKS_ASSET_NAME,
+                STOCKS_ASSET_DESCRIPTION,
+                STOCKS_IMAGE_BASE64,
+                STOCKS_IMAGE_NAME));
+        log.info("Created '{}' asset for seeding.", STOCKS_ASSET_NAME);
+        return stocks;
     }
 
     /** True once the moderator owns at least one holding under the given asset. */

@@ -1,5 +1,5 @@
 import { useDistribution } from '../../hooks/useDistribution';
-import { formatMoney } from '../../utils/format';
+import { formatEuro } from '../../utils/format';
 import type { AssetDistribution } from '../../types/dashboard';
 import styles from './DistributionChart.module.css';
 
@@ -75,14 +75,14 @@ const Donut = ({ slices, total }: DonutProps) => (
                     />
                     <span className={styles.legendName}>{slice.name}</span>
                     <span className={styles.legendValue}>
-                        {formatMoney(slice.amount)} · {formatPercent(slice.fraction)}
+                        {formatEuro(slice.amount)} · {formatPercent(slice.fraction)}
                     </span>
                 </li>
             ))}
 
             <li className={styles.legendTotal}>
                 <span className={styles.legendName}>Total</span>
-                <span className={styles.legendValue}>{formatMoney(total)}</span>
+                <span className={styles.legendValue}>{formatEuro(total)}</span>
             </li>
         </ul>
     </div>

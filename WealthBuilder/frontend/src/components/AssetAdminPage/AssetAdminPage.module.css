@@ -38,6 +38,14 @@
     background: rgba(127, 127, 127, 0.08);
 }
 
+.intro {
+    margin: -0.5rem 0 0;
+    max-width: 42rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--app-fg-muted);
+}
+
 .status {
     font-size: 0.875rem;
     color: var(--app-fg-muted);
@@ -48,56 +56,70 @@
     color: var(--terminal-red);
 }
 
-.list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+.tableWrap {
+    overflow-x: auto;
+    border: 1px solid rgba(127, 127, 127, 0.2);
 }
 
-.row {
-    display: grid;
-    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.th {
+    padding: 0.75rem 1.25rem;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: var(--app-fg-muted);
+    background: var(--app-surface);
+    border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+    white-space: nowrap;
+}
+
+.row:not(:last-child) .td {
+    border-bottom: 1px solid rgba(127, 127, 127, 0.12);
+}
+
+.td {
+    padding: 1rem 1.25rem;
+    color: var(--app-fg);
+    vertical-align: middle;
+}
+
+.asset {
+    display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem;
-    border: 1px solid rgba(127, 127, 127, 0.2);
-    background: var(--app-surface);
 }
 
 .thumb {
-    width: 3.5rem;
-    height: 3.5rem;
+    flex-shrink: 0;
+    width: 5rem;
+    height: 5rem;
     overflow: hidden;
     border: 1px solid rgba(127, 127, 127, 0.2);
-}
-
-.info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-width: 0;
 }
 
 .name {
     font-size: 0.9375rem;
+    font-weight: 500;
     color: var(--app-fg);
 }
 
 .description {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: var(--app-fg-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.rowActions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.actionsCell {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.actionsCell > * + * {
+    margin-left: 0.5rem;
 }
 
 .action {
@@ -126,4 +148,37 @@
     font-size: 0.6875rem;
     letter-spacing: 0.1em;
     color: var(--terminal-red);
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.pageButton {
+    padding: 0.375em 0.875em;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    background: transparent;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--app-fg-muted);
+    cursor: pointer;
+}
+
+.pageButton:hover:not(:disabled) {
+    color: var(--app-fg);
+    border-color: var(--app-accent);
+}
+
+.pageButton:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.pageStatus {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: var(--app-fg-muted);
 }

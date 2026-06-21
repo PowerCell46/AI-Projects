@@ -45,19 +45,19 @@ const ADD_FIRST = 'No holdings yet. Add your first purchase.';
 
 describe('HoldingsTable', () => {
     it('shows the empty label when there are no holdings', () => {
-        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={noop} />);
 
         expect(screen.getByText(ADD_FIRST)).toBeInTheDocument();
     });
 
     it('shows a filtered empty label when one is given', () => {
-        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} summary={null} loading={false} emptyLabel="No holdings match your filters." onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} summary={null} loading={false} emptyLabel="No holdings match your filters." onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={noop} />);
 
         expect(screen.getByText('No holdings match your filters.')).toBeInTheDocument();
     });
 
     it('renders a row with the formatted figures', () => {
-        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={noop} />);
 
         expect(screen.getByText('Apple')).toBeInTheDocument();
         expect(screen.getByText('01/03/2026')).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('HoldingsTable', () => {
     });
 
     it('renders the filter totals row when a summary is given', () => {
-        render(<HoldingsTable page={page()} summary={summary()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={summary()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={noop} />);
 
         expect(screen.getByText('totals (2)')).toBeInTheDocument();
         expect(screen.getByText('3')).toBeInTheDocument();
@@ -74,14 +74,14 @@ describe('HoldingsTable', () => {
     });
 
     it('omits the totals row when no summary is given', () => {
-        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={noop} />);
 
         expect(screen.queryByText(/totals/i)).not.toBeInTheDocument();
     });
 
     it('requires a second click to confirm a delete', async () => {
         const onDelete = vi.fn();
-        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={onDelete} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={onDelete} onPageChange={noop} onRowClick={noop} />);
 
         await userEvent.click(screen.getByRole('button', { name: 'delete' }));
         expect(onDelete).not.toHaveBeenCalled();
@@ -90,8 +90,24 @@ describe('HoldingsTable', () => {
         expect(onDelete).toHaveBeenCalledWith(1);
     });
 
+    it('opens the detail view when a row is clicked', async () => {
+        const onRowClick = vi.fn();
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={onRowClick} />);
+
+        await userEvent.click(screen.getByText('Apple'));
+        expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+    });
+
+    it('does not open the detail view when a row action is clicked', async () => {
+        const onRowClick = vi.fn();
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={onRowClick} />);
+
+        await userEvent.click(screen.getByRole('button', { name: 'edit' }));
+        expect(onRowClick).not.toHaveBeenCalled();
+    });
+
     it('always shows the pager, disabling prev on the first page', () => {
-        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} onRowClick={noop} />);
 
         expect(screen.getByRole('button', { name: /prev/i })).toBeInTheDocument();
         expect(screen.getByText('page 1 of 1')).toBeInTheDocument();
@@ -108,6 +124,7 @@ describe('HoldingsTable', () => {
             onEdit={noop}
             onDelete={noop}
             onPageChange={onPageChange}
+            onRowClick={noop}
         />);
 
         expect(screen.getByRole('button', { name: /prev/i })).toBeDisabled();

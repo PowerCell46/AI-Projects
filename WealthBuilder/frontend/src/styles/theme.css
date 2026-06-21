@@ -23,9 +23,6 @@
     --phosphor: #7AFFA0;
     --phosphor-dim: rgba(122, 255, 160, 0.5);
     --phosphor-faint: rgba(122, 255, 160, 0.18);
-    /* Blood-red counterpart to the phosphor, used to recolour the sweep on logout. */
-    --blood-red: #FF1F1F;
-    --blood-red-dim: rgba(255, 31, 31, 0.5);
     --terminal-red: #FF6B6B;
     --scanline: rgba(0, 0, 0, 0.18);
     --vignette: rgba(0, 0, 0, 0.55);
@@ -91,8 +88,6 @@
     --phosphor: #1C5A33;
     --phosphor-dim: rgba(28, 90, 51, 0.5);
     --phosphor-faint: rgba(28, 90, 51, 0.12);
-    --blood-red: #A30D0D;
-    --blood-red-dim: rgba(163, 13, 13, 0.5);
     --terminal-red: #B23A38;
     --scanline: rgba(0, 0, 0, 0.05);
     --vignette: rgba(0, 0, 0, 0.12);

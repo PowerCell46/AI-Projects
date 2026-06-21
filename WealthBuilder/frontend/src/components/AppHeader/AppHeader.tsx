@@ -16,8 +16,8 @@ export const AppHeader = () => {
 
     const isModerator = user?.role === 'MODERATOR';
 
-    // Play the blood-red exit sweep over the screen, then clear the session — the cover hides
-    // the swap and retracts to reveal the login screen behind it.
+    // Play the reversed (bottom-up) green exit sweep over the screen, then clear the session —
+    // the cover hides the swap and retracts to reveal the login screen behind it.
     const handleLogout = (): void => {
         play('exit');
         logout();

@@ -27,7 +27,7 @@
 }
 
 .input {
-    padding: 0.5em 0.75em;
+    padding: 0.625em 0.75em;
     border: 1px solid rgba(127, 127, 127, 0.4);
     background: var(--app-bg);
     color: var(--app-fg);
@@ -41,24 +41,31 @@
 }
 
 .apply {
-    padding: 0.5em 1.25em;
+    padding: 0.625em 1.25em;
     border: 1px dashed var(--app-accent);
     background: transparent;
-    font-size: 0.75rem;
+    font: inherit;
+    font-size: 0.875rem;
     letter-spacing: 0.12em;
     color: var(--app-accent);
     cursor: pointer;
 }
 
-.apply:hover {
+.apply:hover:not(:disabled) {
     background: rgba(127, 127, 127, 0.08);
 }
 
+.apply:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .clear {
-    padding: 0.5em 1em;
+    padding: 0.625em 1em;
     border: 1px solid rgba(127, 127, 127, 0.4);
     background: transparent;
-    font-size: 0.75rem;
+    font: inherit;
+    font-size: 0.875rem;
     letter-spacing: 0.1em;
     color: var(--app-fg-muted);
     cursor: pointer;

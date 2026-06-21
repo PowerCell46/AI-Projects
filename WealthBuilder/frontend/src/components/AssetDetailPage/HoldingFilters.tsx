@@ -35,6 +35,11 @@ export const HoldingFilters = ({ filter, onChange }: HoldingFiltersProps) => {
 
     const hasActiveFilter = filter.name.length > 0 || filter.from.length > 0 || filter.to.length > 0;
 
+    // Nothing to apply until at least one field is filled in.
+    const isDraftEmpty = draft.name.trim().length === 0
+        && draft.from.length === 0
+        && draft.to.length === 0;
+
     return (
         <form className={styles.bar} onSubmit={apply} noValidate>
             <label className={styles.field}>
@@ -68,7 +73,7 @@ export const HoldingFilters = ({ filter, onChange }: HoldingFiltersProps) => {
                 />
             </div>
 
-            <button type="submit" className={styles.apply}>apply</button>
+            <button type="submit" className={styles.apply} disabled={isDraftEmpty}>apply</button>
 
             {hasActiveFilter && (
                 <button type="button" className={styles.clear} onClick={clear}>clear</button>

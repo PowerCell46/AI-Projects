@@ -2,8 +2,15 @@
 // as a plain grouped decimal; quantity keeps up to 8 fractional digits (matching the column)
 // with trailing zeros trimmed. The locale is pinned so output is deterministic regardless of
 // the user's OS locale (a finance UI shouldn't flip its decimal separator per machine).
+//
+// Thousands are grouped with a space rather than a comma (the Bulgarian convention), while the
+// decimal stays a dot. We format with en-US for a stable structure, then swap the comma grouping
+// for a non-breaking space so the number never wraps onto two lines.
 
 const LOCALE = 'en-US';
+
+// A non-breaking space (U+00A0), so the grouped number can't wrap mid-value.
+const GROUPING_SPACE = ' ';
 
 const moneyFormatter = new Intl.NumberFormat(LOCALE, {
     minimumFractionDigits: 2,
@@ -20,9 +27,18 @@ const priceFormatter = new Intl.NumberFormat(LOCALE, {
     maximumFractionDigits: 4,
 });
 
+const euroFormatter = new Intl.NumberFormat(LOCALE, {
+    style: 'currency',
+    currency: 'EUR',
+});
 
-export const formatMoney = (value: number): string => moneyFormatter.format(value);
+const spaceGrouped = (formatted: string): string => formatted.replace(/,/g, GROUPING_SPACE);
 
-export const formatQuantity = (value: number): string => quantityFormatter.format(value);
 
-export const formatPrice = (value: number): string => priceFormatter.format(value);
+export const formatMoney = (value: number): string => spaceGrouped(moneyFormatter.format(value));
+
+export const formatQuantity = (value: number): string => spaceGrouped(quantityFormatter.format(value));
+
+export const formatPrice = (value: number): string => spaceGrouped(priceFormatter.format(value));
+
+export const formatEuro = (value: number): string => spaceGrouped(euroFormatter.format(value));

@@ -5,6 +5,7 @@ import { AssetImage } from '../AssetImage/AssetImage';
 import { HoldingFilters } from './HoldingFilters';
 import { HoldingsTable } from './HoldingsTable';
 import { HoldingForm } from './HoldingForm';
+import { HoldingDetail } from './HoldingDetail';
 import { useAssets } from '../../hooks/useAssets';
 import { useHoldings } from '../../hooks/useHoldings';
 import { deleteHolding } from '../../services/holdingService';
@@ -32,10 +33,18 @@ export const AssetDetailPage = () => {
     const holdings = useHoldings(asset?.id ?? null);
 
     const [editing, setEditing] = useState<Editing>(null);
+    // The holding whose details are open in the read-only viewer, or null.
+    const [viewing, setViewing] = useState<Holding | null>(null);
 
     const handleSaved = (): void => {
         setEditing(null);
         holdings.reload();
+    };
+
+    // From the detail viewer, hand the holding straight to the edit form.
+    const editFromDetail = (holding: Holding): void => {
+        setViewing(null);
+        setEditing(holding);
     };
 
     const handleDelete = async (id: number): Promise<void> => {
@@ -103,6 +112,7 @@ export const AssetDetailPage = () => {
                                     onEdit={(holding) => setEditing(holding)}
                                     onDelete={handleDelete}
                                     onPageChange={holdings.setPageIndex}
+                                    onRowClick={(holding) => setViewing(holding)}
                                 />
                             )}
                         </section>
@@ -113,6 +123,14 @@ export const AssetDetailPage = () => {
                                 holding={editing === 'new' ? null : editing}
                                 onSaved={handleSaved}
                                 onClose={() => setEditing(null)}
+                            />
+                        )}
+
+                        {viewing !== null && (
+                            <HoldingDetail
+                                holding={viewing}
+                                onEdit={() => editFromDetail(viewing)}
+                                onClose={() => setViewing(null)}
                             />
                         )}
                     </>

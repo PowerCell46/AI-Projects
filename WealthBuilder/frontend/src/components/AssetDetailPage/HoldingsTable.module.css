@@ -53,6 +53,20 @@
     white-space: nowrap;
 }
 
+.row {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.row:hover .td {
+    background: color-mix(in srgb, var(--app-accent) 18%, var(--app-surface));
+}
+
+.row:focus-visible {
+    outline: 1px solid var(--app-accent);
+    outline-offset: -1px;
+}
+
 .row:not(:last-child) .td {
     border-bottom: 1px solid rgba(127, 127, 127, 0.12);
 }
@@ -102,13 +116,6 @@
 .name {
     display: block;
     font-weight: 500;
-}
-
-.note {
-    display: block;
-    margin-top: 0.3rem;
-    font-size: 0.8125rem;
-    color: var(--app-fg-muted);
 }
 
 .actionsCell {

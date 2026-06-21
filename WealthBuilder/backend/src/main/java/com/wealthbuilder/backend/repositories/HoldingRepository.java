@@ -27,14 +27,18 @@ public interface HoldingRepository extends JpaRepository<AssetHolding, Long> {
      * <p>The pattern is built caller-side rather than wrapping the bound parameter in
      * {@code lower(concat(...))}: under PostgreSQL a null parameter inside a function defaults to
      * {@code bytea} and fails ({@code function lower(bytea) does not exist}). Placing the parameter
-     * directly in the {@code like} comparison keeps it in a text context, mirroring the date bounds.
+     * directly in the {@code like} comparison keeps it in a text context.
+     *
+     * <p>The date bounds are cast on the {@code is null} side ({@code cast(:from as date)}): a bare
+     * {@code :from is null} leaves PostgreSQL with no type context for that placeholder and it fails
+     * ({@code could not determine data type of parameter}). The cast pins the type explicitly.
      */
     @Query("""
             select h from AssetHolding h
             where h.user = :user and h.asset = :asset
               and (:namePattern is null or lower(h.name) like :namePattern)
-              and (:from is null or h.date >= :from)
-              and (:to is null or h.date <= :to)
+              and (cast(:from as date) is null or h.date >= :from)
+              and (cast(:to as date) is null or h.date <= :to)
             """)
     Page<AssetHolding> search(
             User user,

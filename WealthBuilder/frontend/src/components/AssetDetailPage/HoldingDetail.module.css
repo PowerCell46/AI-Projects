@@ -10,7 +10,7 @@
     z-index: 10;
 }
 
-.form {
+.panel {
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -45,44 +45,26 @@
     color: var(--app-fg-muted);
 }
 
-.input,
-.textarea {
-    padding: 0.625em 0.75em;
-    border: 1px solid rgba(127, 127, 127, 0.4);
-    background: var(--app-bg);
+.value {
+    font-size: 0.9375rem;
     color: var(--app-fg);
-    font: inherit;
-    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
 }
 
-.textarea {
-    resize: vertical;
-}
-
-/* Strip the native number-input spinners (the up/down arrows), which clash with the
-   terminal styling. Values are still typed directly. */
-.input[type='number'] {
-    -moz-appearance: textfield;
-    appearance: textfield;
-}
-
-.input[type='number']::-webkit-outer-spin-button,
-.input[type='number']::-webkit-inner-spin-button {
+.note {
     margin: 0;
-    -webkit-appearance: none;
-    appearance: none;
+    padding: 0.625em 0.75em;
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    background: var(--app-bg);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--app-fg);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
-.input:focus-visible,
-.textarea:focus-visible {
-    outline: none;
-    border-color: var(--app-accent);
-}
-
-.fieldError,
-.formError {
-    font-size: 0.75rem;
-    color: var(--terminal-red);
+.empty {
+    color: var(--app-fg-muted);
 }
 
 .actions {
@@ -90,7 +72,7 @@
     gap: 0.75rem;
 }
 
-.save {
+.edit {
     padding: 0.625em 1.25em;
     border: 1px dashed var(--app-accent);
     background: transparent;
@@ -100,16 +82,11 @@
     cursor: pointer;
 }
 
-.save:hover:not(:disabled) {
+.edit:hover {
     background: rgba(127, 127, 127, 0.08);
 }
 
-.save:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.cancel {
+.close {
     padding: 0.625em 1.25em;
     border: 1px solid rgba(127, 127, 127, 0.4);
     background: transparent;
@@ -119,7 +96,7 @@
     cursor: pointer;
 }
 
-.cancel:hover {
+.close:hover {
     color: var(--app-fg);
 }
 

@@ -131,74 +131,81 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
     };
 
     return (
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
-            <h2 className={styles.heading}>{isEdit ? 'EDIT ASSET' : 'NEW ASSET'}</h2>
+        <div className={styles.backdrop} onClick={onCancel} role="presentation">
+            <form
+                className={styles.form}
+                onClick={(event) => event.stopPropagation()}
+                onSubmit={handleSubmit}
+                noValidate
+            >
+                <h2 className={styles.heading}>{isEdit ? 'EDIT ASSET' : 'NEW ASSET'}</h2>
 
-            <label className={styles.field}>
-                <span className={styles.label}>NAME</span>
-                <input
-                    className={styles.input}
-                    type="text"
-                    value={name}
-                    maxLength={100}
-                    onChange={(event) => setName(event.target.value)}
-                />
-                {fieldErrors.name !== undefined && (
-                    <span className={styles.fieldError}>{fieldErrors.name}</span>
-                )}
-            </label>
+                <label className={styles.field}>
+                    <span className={styles.label}>NAME</span>
+                    <input
+                        className={styles.input}
+                        type="text"
+                        value={name}
+                        maxLength={100}
+                        onChange={(event) => setName(event.target.value)}
+                    />
+                    {fieldErrors.name !== undefined && (
+                        <span className={styles.fieldError}>{fieldErrors.name}</span>
+                    )}
+                </label>
 
-            <label className={styles.field}>
-                <span className={styles.label}>DESCRIPTION</span>
-                <textarea
-                    className={styles.textarea}
-                    value={description}
-                    maxLength={1000}
-                    rows={4}
-                    onChange={(event) => setDescription(event.target.value)}
-                />
-                {fieldErrors.description !== undefined && (
-                    <span className={styles.fieldError}>{fieldErrors.description}</span>
-                )}
-            </label>
+                <label className={styles.field}>
+                    <span className={styles.label}>DESCRIPTION</span>
+                    <textarea
+                        className={styles.textarea}
+                        value={description}
+                        maxLength={1000}
+                        rows={4}
+                        onChange={(event) => setDescription(event.target.value)}
+                    />
+                    {fieldErrors.description !== undefined && (
+                        <span className={styles.fieldError}>{fieldErrors.description}</span>
+                    )}
+                </label>
 
-            <div className={styles.field}>
-                <span className={styles.label}>IMAGE</span>
+                <div className={styles.field}>
+                    <span className={styles.label}>IMAGE</span>
 
-                <input
-                    ref={fileInputRef}
-                    className={styles.hiddenFileInput}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImagePick}
-                />
+                    <input
+                        ref={fileInputRef}
+                        className={styles.hiddenFileInput}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImagePick}
+                    />
 
-                <div className={styles.filePicker}>
-                    <button type="button" className={styles.fileButton} onClick={openFilePicker}>
-                        {imageBase64.length > 0 ? 'change image' : 'choose image'}
-                    </button>
+                    <div className={styles.filePicker}>
+                        <button type="button" className={styles.fileButton} onClick={openFilePicker}>
+                            {imageBase64.length > 0 ? 'change image' : 'choose image'}
+                        </button>
 
-                    <span className={styles.fileName}>{pickerStatus()}</span>
+                        <span className={styles.fileName}>{pickerStatus()}</span>
+                    </div>
+
+                    {fieldErrors.imageBase64 !== undefined && (
+                        <span className={styles.fieldError}>{fieldErrors.imageBase64}</span>
+                    )}
                 </div>
 
-                {fieldErrors.imageBase64 !== undefined && (
-                    <span className={styles.fieldError}>{fieldErrors.imageBase64}</span>
+                {formError !== null && (
+                    <p className={styles.formError} role="alert">! {formError}</p>
                 )}
-            </div>
 
-            {formError !== null && (
-                <p className={styles.formError} role="alert">! {formError}</p>
-            )}
+                <div className={styles.actions}>
+                    <button type="submit" className={styles.save} disabled={!canSubmit}>
+                        {submitting ? '[ ... ]' : 'save'}
+                    </button>
 
-            <div className={styles.actions}>
-                <button type="submit" className={styles.save} disabled={!canSubmit}>
-                    {submitting ? '[ ... ]' : 'save'}
-                </button>
-
-                <button type="button" className={styles.cancel} onClick={onCancel}>
-                    cancel
-                </button>
-            </div>
-        </form>
+                    <button type="button" className={styles.cancel} onClick={onCancel}>
+                        cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 };

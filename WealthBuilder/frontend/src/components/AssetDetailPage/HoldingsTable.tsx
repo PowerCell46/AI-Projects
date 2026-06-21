@@ -24,6 +24,7 @@ interface HoldingsTableProps {
     onEdit: (holding: Holding) => void;
     onDelete: (id: number) => void;
     onPageChange: (page: number) => void;
+    onRowClick: (holding: Holding) => void;
 }
 
 
@@ -32,7 +33,7 @@ interface HoldingsTableProps {
  * confirm so a stray click can't drop a record; edit hands the holding back to the parent. The
  * pager is always shown so the table's position in the set is visible even on a single page.
  */
-export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDelete, onPageChange }: HoldingsTableProps) => {
+export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDelete, onPageChange, onRowClick }: HoldingsTableProps) => {
     const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
     const prefersReducedMotion = usePrefersReducedMotion();
@@ -90,12 +91,21 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
 
                     <tbody>
                         {page.content.map((holding) => (
-                            <tr key={holding.id} className={styles.row}>
+                            <tr
+                                key={holding.id}
+                                className={styles.row}
+                                onClick={() => onRowClick(holding)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        onRowClick(holding);
+                                    }
+                                }}
+                            >
                                 <td className={styles.td}>
                                     <span className={styles.name}>{holding.name}</span>
-                                    {holding.note !== null && holding.note.length > 0 && (
-                                        <span className={styles.note}>{holding.note}</span>
-                                    )}
                                 </td>
                                 <td className={styles.td}>{isoToDisplay(holding.date)}</td>
                                 <td className={`${styles.td} ${styles.numeric}`}>
@@ -107,7 +117,11 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                                 <td className={`${styles.td} ${styles.numeric}`}>
                                     {formatMoney(holding.boughtForAmount)}
                                 </td>
-                                <td className={`${styles.td} ${styles.actionsCell}`}>
+                                <td
+                                    className={`${styles.td} ${styles.actionsCell}`}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onKeyDown={(event) => event.stopPropagation()}
+                                >
                                     {pendingDeleteId === holding.id ? (
                                         <>
                                             <span className={styles.confirmPrompt}>delete?</span>

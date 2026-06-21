@@ -61,19 +61,21 @@ export const TransitionProvider = ({ children }: TransitionProviderProps) => {
 
     const value = useMemo<TransitionContextValue>(() => ({ play }), [play]);
 
+    const isExit = variant === 'exit';
+
+    // Standard navigation retracts the cover top-to-bottom; logout reverses it (bottom-to-top)
+    // so leaving the app reads as a deliberately different motion, while staying the same green.
+    const coverClip = isExit
+        ? `inset(0 0 ${progress * 100}% 0)`
+        : `inset(${progress * 100}% 0 0 0)`;
+
     return (
         <TransitionContext.Provider value={value}>
             {isRunning && (
-                <div
-                    className={`${styles.overlay} ${variant === 'exit' ? styles.exit : ''}`}
-                    aria-hidden="true"
-                >
-                    <div
-                        className={styles.cover}
-                        style={{ clipPath: `inset(${progress * 100}% 0 0 0)` }}
-                    />
+                <div className={styles.overlay} aria-hidden="true">
+                    <div className={styles.cover} style={{ clipPath: coverClip }} />
 
-                    <VhsBands progress={progress} />
+                    <VhsBands progress={progress} reverse={isExit} />
                 </div>
             )}
 

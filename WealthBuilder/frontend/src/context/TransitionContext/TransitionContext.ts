@@ -1,8 +1,8 @@
 import { createContext } from 'react';
 
 
-// 'standard' is the in-app green sweep; 'exit' recolours it blood-red to signal leaving
-// the app (logout).
+// 'standard' is the in-app green sweep (retracts top-to-bottom); 'exit' is the same green sweep
+// reversed (bottom-to-top) to signal leaving the app (logout).
 export type SweepVariant = 'standard' | 'exit';
 
 

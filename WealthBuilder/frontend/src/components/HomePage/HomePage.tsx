@@ -1,18 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext/useAuth';
+import { useCountUp } from '../../hooks/useCountUp';
 import { useEntranceReveal } from '../../hooks/useEntranceReveal';
 import { AppHeader } from '../AppHeader/AppHeader';
 import { AssetCarousel } from '../AssetCarousel/AssetCarousel';
 import { DistributionChart } from '../DistributionChart/DistributionChart';
 import { PlatformLinks } from '../PlatformLinks/PlatformLinks';
 import { VhsBands } from '../VhsBands/VhsBands';
+import { formatEuro } from '../../utils/format';
 import styles from './HomePage.module.css';
-
-
-const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-});
 
 
 /**
@@ -26,6 +22,10 @@ export const HomePage = () => {
     // home screen doesn't replay the sweep.
     const [enteredFromAuth] = useState(justAuthenticated);
     const { isRevealing, progress } = useEntranceReveal(enteredFromAuth);
+
+    // Hold the balance at 00.00 behind the entrance cover, then spin it up once the page is
+    // revealed (or immediately when there's no entrance animation to wait for).
+    const animatedBalance = useCountUp(user?.balance ?? 0, !isRevealing);
 
     useEffect(() => {
         if (enteredFromAuth) {
@@ -73,7 +73,7 @@ export const HomePage = () => {
                     <section className={styles.balanceCard}>
                         <span className={styles.balanceLabel}>NET INVESTED</span>
                         <span className={styles.balanceValue}>
-                            {CURRENCY_FORMATTER.format(user.balance)}
+                            {formatEuro(animatedBalance)}
                         </span>
                     </section>
                 </section>
