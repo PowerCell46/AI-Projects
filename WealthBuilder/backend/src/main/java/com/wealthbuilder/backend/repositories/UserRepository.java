@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.repositories;
 
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 

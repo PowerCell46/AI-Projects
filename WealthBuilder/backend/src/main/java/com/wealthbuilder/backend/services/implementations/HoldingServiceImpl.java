@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -78,11 +77,14 @@ public class HoldingServiceImpl implements HoldingService {
 
     @Override
     @Transactional(readOnly = true)
-    public HoldingSummaryResponse summarize(String username, Long assetId) {
+    public HoldingSummaryResponse summarize(String username, Long assetId, HoldingFilter filter) {
         final User user = requireUser(username);
         final Asset asset = requireAsset(assetId);
 
-        final List<AssetHolding> holdings = holdingRepository.findByUserAndAsset(user, asset);
+        final List<AssetHolding> holdings = holdingRepository
+                .search(user, asset, likePattern(filter.getName()), filter.getFrom(), filter.getTo(),
+                        Pageable.unpaged())
+                .getContent();
 
         return holdings.isEmpty() ? HoldingSummaryResponse.empty() : aggregate(holdings);
     }
@@ -134,22 +136,19 @@ public class HoldingServiceImpl implements HoldingService {
     }
 
     /**
-     * Computes the unweighted average unit price, the quantity/amount sums, and the
-     * purchase-date span over a non-empty holdings list.
+     * Computes the weighted average price (total spent / total units, the real cost basis),
+     * the quantity/amount sums, and the purchase-date span over a non-empty holdings list.
      */
     private HoldingSummaryResponse aggregate(List<AssetHolding> holdings) {
         BigDecimal amountSum = BigDecimal.ZERO;
         BigDecimal quantitySum = BigDecimal.ZERO;
-        BigDecimal priceSum = BigDecimal.ZERO;
 
         for (final AssetHolding holding : holdings) {
             amountSum = amountSum.add(holding.getBoughtForAmount());
             quantitySum = quantitySum.add(holding.getQuantity());
-            priceSum = priceSum.add(Money.unitPrice(holding.getBoughtForAmount(), holding.getQuantity()));
         }
 
-        final BigDecimal averagePrice = priceSum
-                .divide(BigDecimal.valueOf(holdings.size()), Money.PRICE_SCALE, RoundingMode.HALF_UP);
+        final BigDecimal averagePrice = Money.unitPrice(amountSum, quantitySum);
 
         return HoldingSummaryResponse.of(
                 holdings.size(),

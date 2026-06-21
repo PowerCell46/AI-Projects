@@ -1,8 +1,8 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TransitionContext } from './TransitionContext';
-import type { TransitionContextValue } from './TransitionContext';
+import type { SweepVariant, TransitionContextValue } from './TransitionContext';
 import { useSweepClock } from '../../hooks/useSweepClock';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { VhsBands } from '../../components/VhsBands/VhsBands';
@@ -34,9 +34,11 @@ export const TransitionProvider = ({ children }: TransitionProviderProps) => {
 
     const { progress, isRunning, start } = useSweepClock(NO_OP);
     const previousPathRef = useRef(pathname);
+    const [variant, setVariant] = useState<SweepVariant>('standard');
 
-    const play = useCallback(() => {
+    const play = useCallback((nextVariant: SweepVariant = 'standard') => {
         if (!prefersReducedMotion) {
+            setVariant(nextVariant);
             start(TRANSITION_DURATION_MS);
         }
     }, [prefersReducedMotion, start]);
@@ -52,6 +54,7 @@ export const TransitionProvider = ({ children }: TransitionProviderProps) => {
         }
 
         if (isInternalNavigation(previousPath, pathname)) {
+            setVariant('standard');
             start(TRANSITION_DURATION_MS);
         }
     }, [pathname, prefersReducedMotion, start]);
@@ -61,7 +64,10 @@ export const TransitionProvider = ({ children }: TransitionProviderProps) => {
     return (
         <TransitionContext.Provider value={value}>
             {isRunning && (
-                <div className={styles.overlay} aria-hidden="true">
+                <div
+                    className={`${styles.overlay} ${variant === 'exit' ? styles.exit : ''}`}
+                    aria-hidden="true"
+                >
                     <div
                         className={styles.cover}
                         style={{ clipPath: `inset(${progress * 100}% 0 0 0)` }}

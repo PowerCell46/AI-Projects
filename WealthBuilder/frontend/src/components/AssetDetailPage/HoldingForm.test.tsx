@@ -37,21 +37,21 @@ describe('HoldingForm', () => {
         await userEvent.click(screen.getByRole('button', { name: 'save' }));
 
         expect(screen.getByText('Name is required.')).toBeInTheDocument();
-        expect(screen.getByText('Enter an amount greater than 0.')).toBeInTheDocument();
+        expect(screen.getByText('Enter a total cost greater than 0.')).toBeInTheDocument();
         expect(screen.getByText('Enter a quantity greater than 0.')).toBeInTheDocument();
         expect(screen.getByText('Purchase date is required.')).toBeInTheDocument();
         expect(mockedCreate).not.toHaveBeenCalled();
     });
 
-    it('rejects a zero or negative amount', async () => {
+    it('rejects a zero or negative total cost', async () => {
         render(<HoldingForm assetId={7} holding={null} onSaved={vi.fn()} onClose={vi.fn()} />);
 
         await userEvent.type(screen.getByLabelText('NAME'), 'Apple');
-        await userEvent.type(screen.getByLabelText('AMOUNT'), '0');
+        await userEvent.type(screen.getByLabelText('TOTAL COST'), '0');
         await userEvent.type(screen.getByLabelText('QUANTITY'), '2');
         await userEvent.click(screen.getByRole('button', { name: 'save' }));
 
-        expect(screen.getByText('Enter an amount greater than 0.')).toBeInTheDocument();
+        expect(screen.getByText('Enter a total cost greater than 0.')).toBeInTheDocument();
         expect(mockedCreate).not.toHaveBeenCalled();
     });
 
@@ -72,7 +72,7 @@ describe('HoldingForm', () => {
         render(<HoldingForm assetId={7} holding={null} onSaved={onSaved} onClose={vi.fn()} />);
 
         await userEvent.type(screen.getByLabelText('NAME'), 'Apple');
-        await userEvent.type(screen.getByLabelText('AMOUNT'), '500');
+        await userEvent.type(screen.getByLabelText('TOTAL COST'), '500');
         await userEvent.type(screen.getByLabelText('QUANTITY'), '2');
         const expectedDate = await pickFirstOfThisMonth();
         await userEvent.click(screen.getByRole('button', { name: 'save' }));

@@ -4,7 +4,7 @@ import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
 import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
 import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
 import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.exceptions.auth.UsernameAlreadyTakenException;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
@@ -59,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
                 Role.USER);
         userRepository.save(user);
 
-        log.info("Registered new user '{}'.", user.getUsername());
+        log.info("Registered new user with username '{}'.", user.getUsername());
 
         return issueTokenFor(user);
     }
@@ -84,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public CurrentUserResponse me(String username) {
         final User user = requireUser(username);
-        log.debug("Resolved current user '{}'", username);
+        log.debug("Resolved current user '{}'.", username);
 
         return CurrentUserResponse.of(user.getUsername(), user.getRole(), computeBalance(user));
     }

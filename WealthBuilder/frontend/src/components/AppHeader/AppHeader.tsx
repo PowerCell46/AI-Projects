@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext/useAuth';
+import { useViewTransition } from '../../hooks/useViewTransition';
 import { ThemeToggle } from '../ThemeToggle/ThemeToggle';
 import { APP_ROUTES } from '../../constants/routes';
 import styles from './AppHeader.module.css';
@@ -11,8 +12,16 @@ import styles from './AppHeader.module.css';
  */
 export const AppHeader = () => {
     const { user, logout } = useAuth();
+    const { play } = useViewTransition();
 
     const isModerator = user?.role === 'MODERATOR';
+
+    // Play the blood-red exit sweep over the screen, then clear the session — the cover hides
+    // the swap and retracts to reveal the login screen behind it.
+    const handleLogout = (): void => {
+        play('exit');
+        logout();
+    };
 
     return (
         <header className={styles.header}>
@@ -38,7 +47,7 @@ export const AppHeader = () => {
 
                 <ThemeToggle />
 
-                <button type="button" className={styles.logout} onClick={logout}>
+                <button type="button" className={styles.logout} onClick={handleLogout}>
                     log out
                 </button>
             </nav>

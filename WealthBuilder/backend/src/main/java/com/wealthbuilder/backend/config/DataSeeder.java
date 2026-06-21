@@ -1,12 +1,13 @@
 package com.wealthbuilder.backend.config;
 
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
  * Seeds a single {@link Role#MODERATOR} from configuration at startup, but only when no
  * moderator exists yet — so restarts are idempotent and never clobber an existing one.
  * Registration always creates regular users, so this is the only path to a moderator.
+ *
+ * <p>Ordered ahead of the holdings seeder so the moderator exists before anything tries to
+ * attach data to it.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(1)
 public class DataSeeder implements ApplicationRunner {
 
     private final UserRepository userRepository;

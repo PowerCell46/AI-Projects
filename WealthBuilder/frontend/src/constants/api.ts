@@ -21,6 +21,8 @@ export const HOLDING_ENDPOINTS = {
     // are actually set.
     byAsset: (assetId: number, query: string): string =>
         `${API_BASE_URL}/assets/${assetId}/holdings?${query}`,
+    summary: (assetId: number, query: string): string =>
+        `${API_BASE_URL}/assets/${assetId}/holdings/summary?${query}`,
     create: (assetId: number): string => `${API_BASE_URL}/assets/${assetId}/holdings`,
     byId: (id: number): string => `${API_BASE_URL}/holdings/${id}`,
 } as const;

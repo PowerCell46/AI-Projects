@@ -5,6 +5,13 @@
     pointer-events: none;
 }
 
+/* Logout sweep: recolour the noise bands (and their glow) blood-red by overriding the
+   phosphor tokens they read from. Signals leaving the app — a hard contrast to the green. */
+.exit {
+    --phosphor: var(--blood-red);
+    --phosphor-dim: var(--blood-red-dim);
+}
+
 /* The CRT panel that retracts top-down to reveal the destination view. Mirrors the home
    entrance cover so every sweep in the app looks identical. */
 .cover {

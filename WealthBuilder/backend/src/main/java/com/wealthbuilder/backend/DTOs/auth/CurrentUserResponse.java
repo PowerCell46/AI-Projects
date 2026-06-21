@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.DTOs.auth;
 
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import lombok.Value;
 
 import java.math.BigDecimal;

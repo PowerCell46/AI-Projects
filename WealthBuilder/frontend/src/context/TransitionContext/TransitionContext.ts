@@ -1,9 +1,14 @@
 import { createContext } from 'react';
 
 
+// 'standard' is the in-app green sweep; 'exit' recolours it blood-red to signal leaving
+// the app (logout).
+export type SweepVariant = 'standard' | 'exit';
+
+
 export interface TransitionContextValue {
     // Plays the VHS sweep once. No-op while one is already running or under reduced motion.
-    play: () => void;
+    play: (variant?: SweepVariant) => void;
 }
 
 

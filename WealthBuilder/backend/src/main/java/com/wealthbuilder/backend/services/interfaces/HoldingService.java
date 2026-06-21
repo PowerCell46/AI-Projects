@@ -22,9 +22,11 @@ public interface HoldingService {
             String username, Long assetId, HoldingFilter filter, Pageable pageable);
 
     /**
-     * Aggregation over all of the caller's holdings for one asset; 404 if the asset is unknown.
+     * Aggregation over the caller's holdings for one asset, narrowed by the same {@code filter}
+     * as the listing so the totals match whatever the table currently shows; 404 if the asset
+     * is unknown.
      */
-    HoldingSummaryResponse summarize(String username, Long assetId);
+    HoldingSummaryResponse summarize(String username, Long assetId, HoldingFilter filter);
 
     /**
      * Records a holding owned by the caller; 404 if the asset is unknown.

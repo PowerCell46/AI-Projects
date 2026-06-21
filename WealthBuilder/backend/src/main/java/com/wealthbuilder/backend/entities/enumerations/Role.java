@@ -1,4 +1,4 @@
-package com.wealthbuilder.backend.entities;
+package com.wealthbuilder.backend.entities.enumerations;
 
 
 /**

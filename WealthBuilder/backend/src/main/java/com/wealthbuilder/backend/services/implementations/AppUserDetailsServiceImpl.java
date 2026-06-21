@@ -27,7 +27,7 @@ public class AppUserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) {
-        log.debug("Loading user details for '{}'", username);
+        log.debug("Loading user details for '{}'.", username);
 
         final User user = userRepository
                 .findByUsername(username)

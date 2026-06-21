@@ -67,7 +67,7 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
             errors.name = 'Name is required.';
         }
         if (!isPositiveNumber(amount)) {
-            errors.boughtForAmount = 'Enter an amount greater than 0.';
+            errors.boughtForAmount = 'Enter a total cost greater than 0.';
         }
         if (!isPositiveNumber(quantity)) {
             errors.quantity = 'Enter a quantity greater than 0.';
@@ -131,7 +131,7 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
 
                 <div className={styles.pair}>
                     <label className={styles.field}>
-                        <span className={styles.label}>AMOUNT</span>
+                        <span className={styles.label}>TOTAL COST</span>
                         <input
                             className={styles.input}
                             type="number"

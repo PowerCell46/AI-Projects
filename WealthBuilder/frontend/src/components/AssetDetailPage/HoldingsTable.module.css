@@ -11,8 +11,28 @@
 }
 
 .scroll {
+    position: relative;
     overflow-x: auto;
     border: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+/* The CRT panel that retracts top-down over the table on a page/filter change. Mirrors the
+   app's view-change sweep (see TransitionProvider) so every reveal looks identical, but is
+   scoped to the table rather than the whole view. */
+.sweepCover {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            var(--scanline) 0px,
+            var(--scanline) 1px,
+            transparent 1px,
+            transparent 3px
+        ),
+        var(--bg-stage);
 }
 
 .table {
@@ -35,6 +55,36 @@
 
 .row:not(:last-child) .td {
     border-bottom: 1px solid rgba(127, 127, 127, 0.12);
+}
+
+/* Filter totals: a footer summary, divided off from the data but aligned to the same columns. */
+.totalsRow .td {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+    background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface));
+    border-top: 2px solid var(--app-accent);
+}
+
+.totalsLabel {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--app-accent);
+}
+
+.totalsValue {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    color: var(--app-fg);
+}
+
+.totalsTag {
+    margin-right: 0.4em;
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--app-fg-muted);
 }
 
 .td {

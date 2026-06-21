@@ -156,7 +156,7 @@ class HoldingControllerTest {
 
         @Test
         void should_Return200WithSummary_When_RequestedByUser() throws Exception {
-            given(holdingService.summarize("alice", ASSET_ID))
+            given(holdingService.summarize(eq("alice"), eq(ASSET_ID), any(HoldingFilter.class)))
                     .willReturn(HoldingSummaryResponse.of(
                             2,
                             new BigDecimal("62.5"),

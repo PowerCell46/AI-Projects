@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.config;
 
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.UserRepository;
 import org.junit.jupiter.api.Test;

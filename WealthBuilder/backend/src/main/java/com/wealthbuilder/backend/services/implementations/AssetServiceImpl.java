@@ -86,7 +86,7 @@ public class AssetServiceImpl implements AssetService {
         asset.setImageBase64(request.getImageBase64());
         asset.setImageName(request.getImageName());
 
-        log.info("Updated asset id={}", id);
+        log.info("Updated asset with id '{}'.", id);
 
         return AssetResponse.from(asset);
     }
@@ -97,7 +97,7 @@ public class AssetServiceImpl implements AssetService {
         final Asset asset = requireAsset(id);
         assetRepository.delete(asset);
 
-        log.info("Deleted asset id={}", id);
+        log.info("Deleted asset with id '{}'.", id);
     }
 
     private Asset requireAsset(Long id) {

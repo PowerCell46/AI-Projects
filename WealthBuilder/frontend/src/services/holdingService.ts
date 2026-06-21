@@ -1,6 +1,6 @@
 import { apiRequest } from './apiClient';
 import { HOLDING_ENDPOINTS } from '../constants/api';
-import type { Holding, HoldingFilter, HoldingRequest } from '../types/holding';
+import type { Holding, HoldingFilter, HoldingRequest, HoldingSummary } from '../types/holding';
 import type { PageResponse } from '../types/page';
 
 
@@ -16,6 +16,11 @@ export const fetchHoldings = (
     return apiRequest<PageResponse<Holding>>(
         HOLDING_ENDPOINTS.byAsset(assetId, buildQuery(page, size, filter)),
     );
+};
+
+// Aggregation over the same filtered set as the listing, so the totals match the visible table.
+export const fetchSummary = (assetId: number, filter: HoldingFilter): Promise<HoldingSummary> => {
+    return apiRequest<HoldingSummary>(HOLDING_ENDPOINTS.summary(assetId, buildFilterQuery(filter)));
 };
 
 export const createHolding = (assetId: number, request: HoldingRequest): Promise<Holding> => {
@@ -36,7 +41,18 @@ export const deleteHolding = (id: number): Promise<void> => {
  * left blank so the backend applies only the criteria that are actually present.
  */
 const buildQuery = (page: number, size: number, filter: HoldingFilter): string => {
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const paging = new URLSearchParams({ page: String(page), size: String(size) }).toString();
+    const filters = buildFilterQuery(filter);
+
+    return filters.length > 0 ? `${paging}&${filters}` : paging;
+};
+
+/**
+ * Serialises only the set filters (name contains, inclusive from/to), omitting any the user left
+ * blank. Shared by the listing and the summary so both narrow to the exact same set.
+ */
+const buildFilterQuery = (filter: HoldingFilter): string => {
+    const params = new URLSearchParams();
 
     if (filter.name.trim().length > 0) {
         params.set('name', filter.name.trim());

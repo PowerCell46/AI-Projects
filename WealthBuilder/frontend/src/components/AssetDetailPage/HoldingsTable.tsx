@@ -1,13 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatMoney, formatPrice, formatQuantity } from '../../utils/format';
 import { isoToDisplay } from '../../utils/date';
-import type { Holding } from '../../types/holding';
+import { useSweepClock } from '../../hooks/useSweepClock';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
+import { VhsBands } from '../VhsBands/VhsBands';
+import type { Holding, HoldingSummary } from '../../types/holding';
 import type { PageResponse } from '../../types/page';
 import styles from './HoldingsTable.module.css';
 
 
+// Matches the app-wide view-change sweep so the table reveal feels like the same animation.
+const SWEEP_DURATION_MS = 1100;
+
+const NO_OP = (): void => undefined;
+
+
 interface HoldingsTableProps {
     page: PageResponse<Holding>;
+    // Totals for the active filter, rendered as a band above the rows; null when unfiltered.
+    summary: HoldingSummary | null;
     loading: boolean;
     emptyLabel: string;
     onEdit: (holding: Holding) => void;
@@ -21,8 +32,25 @@ interface HoldingsTableProps {
  * confirm so a stray click can't drop a record; edit hands the holding back to the parent. The
  * pager is always shown so the table's position in the set is visible even on a single page.
  */
-export const HoldingsTable = ({ page, loading, emptyLabel, onEdit, onDelete, onPageChange }: HoldingsTableProps) => {
+export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDelete, onPageChange }: HoldingsTableProps) => {
     const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+    const prefersReducedMotion = usePrefersReducedMotion();
+    const { progress, isRunning, start } = useSweepClock(NO_OP);
+
+    // Replay the scanline sweep over the table whenever a fresh page arrives — paging and
+    // filtering both hand down a new `page` object. The ref guards against re-firing when
+    // `start` merely changes identity as the clock starts/stops (which would loop forever).
+    const previousPageRef = useRef(page);
+
+    useEffect(() => {
+        const pageChanged = previousPageRef.current !== page;
+        previousPageRef.current = page;
+
+        if (pageChanged && !prefersReducedMotion) {
+            start(SWEEP_DURATION_MS);
+        }
+    }, [page, prefersReducedMotion, start]);
 
     if (page.content.length === 0) {
         return <p className={styles.empty}>{loading ? '◌ loading…' : emptyLabel}</p>;
@@ -36,14 +64,26 @@ export const HoldingsTable = ({ page, loading, emptyLabel, onEdit, onDelete, onP
     return (
         <div className={`${styles.wrapper} ${loading ? styles.loading : ''}`}>
             <div className={styles.scroll}>
+                {isRunning && (
+                    <>
+                        <div
+                            className={styles.sweepCover}
+                            style={{ clipPath: `inset(${progress * 100}% 0 0 0)` }}
+                            aria-hidden="true"
+                        />
+
+                        <VhsBands progress={progress} />
+                    </>
+                )}
+
                 <table className={styles.table}>
                     <thead>
                         <tr>
                             <th className={styles.th}>NAME</th>
                             <th className={styles.th}>DATE</th>
                             <th className={`${styles.th} ${styles.numeric}`}>QUANTITY</th>
-                            <th className={`${styles.th} ${styles.numeric}`}>PRICE</th>
-                            <th className={`${styles.th} ${styles.numeric}`}>AMOUNT</th>
+                            <th className={`${styles.th} ${styles.numeric}`}>BOUGHT AT PRICE</th>
+                            <th className={`${styles.th} ${styles.numeric}`}>TOTAL COST</th>
                             <th className={styles.th} aria-label="Actions" />
                         </tr>
                     </thead>
@@ -108,6 +148,12 @@ export const HoldingsTable = ({ page, loading, emptyLabel, onEdit, onDelete, onP
                             </tr>
                         ))}
                     </tbody>
+
+                    {summary !== null && summary.holdingCount > 0 && (
+                        <tfoot>
+                            <TotalsRow summary={summary} />
+                        </tfoot>
+                    )}
                 </table>
             </div>
 
@@ -137,3 +183,28 @@ export const HoldingsTable = ({ page, loading, emptyLabel, onEdit, onDelete, onP
         </div>
     );
 };
+
+
+/**
+ * Aggregates for the active filter, rendered as the table's footer so each figure stays aligned
+ * to its column (total quantity under QUANTITY, etc.) while reading unmistakably as a summary
+ * rather than a data row. The average is the only non-additive figure, so it carries an "avg" tag.
+ */
+const TotalsRow = ({ summary }: { summary: HoldingSummary }) => (
+    <tr className={styles.totalsRow}>
+        <td className={`${styles.td} ${styles.totalsLabel}`} colSpan={2}>
+            totals ({summary.holdingCount})
+        </td>
+        <td className={`${styles.td} ${styles.numeric} ${styles.totalsValue}`}>
+            {formatQuantity(summary.quantitySum)}
+        </td>
+        <td className={`${styles.td} ${styles.numeric} ${styles.totalsValue}`}>
+            <span className={styles.totalsTag}>avg</span>
+            {summary.averagePrice === null ? '—' : formatPrice(summary.averagePrice)}
+        </td>
+        <td className={`${styles.td} ${styles.numeric} ${styles.totalsValue}`}>
+            {formatMoney(summary.amountSum)}
+        </td>
+        <td className={styles.td} aria-hidden="true" />
+    </tr>
+);

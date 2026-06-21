@@ -95,6 +95,7 @@ export const AssetDetailPage = () => {
                             {holdings.holdings !== null && (
                                 <HoldingsTable
                                     page={holdings.holdings}
+                                    summary={isFiltered ? holdings.summary : null}
                                     loading={holdings.loading}
                                     emptyLabel={isFiltered
                                         ? 'No holdings match your filters.'

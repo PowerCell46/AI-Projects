@@ -4,7 +4,7 @@ import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
 import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
 import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
 import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.exceptions.auth.UsernameAlreadyTakenException;
 import com.wealthbuilder.backend.repositories.HoldingRepository;

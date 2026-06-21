@@ -18,8 +18,6 @@ public interface HoldingRepository extends JpaRepository<AssetHolding, Long> {
 
     Page<AssetHolding> findByUserAndAsset(User user, Asset asset, Pageable pageable);
 
-    List<AssetHolding> findByUserAndAsset(User user, Asset asset);
-
     /**
      * The caller's holdings for one asset, narrowed by an optional {@code namePattern} (a
      * pre-lowercased {@code %fragment%} LIKE pattern, matched against {@code lower(name)}) and an

@@ -53,8 +53,15 @@ public class HoldingController {
     }
 
     @GetMapping("/assets/{assetId}/holdings/summary")
-    public HoldingSummaryResponse summary(@PathVariable Long assetId, Authentication authentication) {
-        return holdingService.summarize(authentication.getName(), assetId);
+    public HoldingSummaryResponse summary(
+            @PathVariable Long assetId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            Authentication authentication) {
+        final HoldingFilter filter = HoldingFilter.of(name, from, to);
+
+        return holdingService.summarize(authentication.getName(), assetId, filter);
     }
 
     @PostMapping("/assets/{assetId}/holdings")

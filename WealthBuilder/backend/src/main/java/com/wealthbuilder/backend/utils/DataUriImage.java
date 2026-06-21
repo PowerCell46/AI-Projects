@@ -31,6 +31,7 @@ public class DataUriImage {
         final String mediaTypePart = dataUri
                 .substring("data:".length(), commaIndex)
                 .replace(";base64", "");
+
         final byte[] bytes = Base64
                 .getDecoder()
                 .decode(dataUri.substring(commaIndex + 1).replaceAll("\\s", ""));

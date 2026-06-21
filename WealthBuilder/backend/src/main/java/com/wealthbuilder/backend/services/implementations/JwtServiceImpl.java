@@ -8,7 +8,7 @@ import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.wealthbuilder.backend.config.AppProperties;
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +42,7 @@ public class JwtServiceImpl implements JwtService {
                 .getJwt()
                 .getSecret()
                 .getBytes(StandardCharsets.UTF_8);
+
         this.tokenTtl = appProperties
                 .getJwt()
                 .getTtl();
@@ -86,6 +87,7 @@ public class JwtServiceImpl implements JwtService {
             ensureNotExpired(claims);
 
             return claims.getSubject();
+
         } catch (ParseException ex) {
             throw new InvalidTokenException("Malformed JWT", ex);
         }
@@ -97,6 +99,7 @@ public class JwtServiceImpl implements JwtService {
             signedToken.sign(new MACSigner(signingKey));
 
             return signedToken.serialize();
+
         } catch (JOSEException ex) {
             throw new IllegalStateException("Failed to sign JWT", ex);
         }
@@ -107,6 +110,7 @@ public class JwtServiceImpl implements JwtService {
             if (!token.verify(new MACVerifier(signingKey))) {
                 throw new InvalidTokenException("JWT signature verification failed");
             }
+
         } catch (JOSEException ex) {
             throw new InvalidTokenException("Unable to verify JWT signature", ex);
         }

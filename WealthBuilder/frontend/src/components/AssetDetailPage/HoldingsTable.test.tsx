@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HoldingsTable } from './HoldingsTable';
-import type { Holding } from '../../types/holding';
+import type { Holding, HoldingSummary } from '../../types/holding';
 import type { PageResponse } from '../../types/page';
 
 
@@ -28,6 +28,16 @@ const page = (overrides: Partial<PageResponse<Holding>> = {}): PageResponse<Hold
     ...overrides,
 });
 
+const summary = (overrides: Partial<HoldingSummary> = {}): HoldingSummary => ({
+    holdingCount: 2,
+    averagePrice: 94.3333,
+    quantitySum: 3,
+    amountSum: 283,
+    periodStart: '2026-06-01',
+    periodEnd: '2026-06-19',
+    ...overrides,
+});
+
 const noop = () => { };
 
 const ADD_FIRST = 'No holdings yet. Add your first purchase.';
@@ -35,28 +45,43 @@ const ADD_FIRST = 'No holdings yet. Add your first purchase.';
 
 describe('HoldingsTable', () => {
     it('shows the empty label when there are no holdings', () => {
-        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
         expect(screen.getByText(ADD_FIRST)).toBeInTheDocument();
     });
 
     it('shows a filtered empty label when one is given', () => {
-        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} loading={false} emptyLabel="No holdings match your filters." onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page({ content: [], totalElements: 0 })} summary={null} loading={false} emptyLabel="No holdings match your filters." onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
         expect(screen.getByText('No holdings match your filters.')).toBeInTheDocument();
     });
 
     it('renders a row with the formatted figures', () => {
-        render(<HoldingsTable page={page()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
         expect(screen.getByText('Apple')).toBeInTheDocument();
         expect(screen.getByText('01/03/2026')).toBeInTheDocument();
         expect(screen.getByText('500.00')).toBeInTheDocument();
     });
 
+    it('renders the filter totals row when a summary is given', () => {
+        render(<HoldingsTable page={page()} summary={summary()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+
+        expect(screen.getByText('totals (2)')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument();
+        expect(screen.getByText('94.3333')).toBeInTheDocument();
+        expect(screen.getByText('283.00')).toBeInTheDocument();
+    });
+
+    it('omits the totals row when no summary is given', () => {
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+
+        expect(screen.queryByText(/totals/i)).not.toBeInTheDocument();
+    });
+
     it('requires a second click to confirm a delete', async () => {
         const onDelete = vi.fn();
-        render(<HoldingsTable page={page()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={onDelete} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={onDelete} onPageChange={noop} />);
 
         await userEvent.click(screen.getByRole('button', { name: 'delete' }));
         expect(onDelete).not.toHaveBeenCalled();
@@ -66,7 +91,7 @@ describe('HoldingsTable', () => {
     });
 
     it('always shows the pager, disabling prev on the first page', () => {
-        render(<HoldingsTable page={page()} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
+        render(<HoldingsTable page={page()} summary={null} loading={false} emptyLabel={ADD_FIRST} onEdit={noop} onDelete={noop} onPageChange={noop} />);
 
         expect(screen.getByRole('button', { name: /prev/i })).toBeInTheDocument();
         expect(screen.getByText('page 1 of 1')).toBeInTheDocument();
@@ -77,6 +102,7 @@ describe('HoldingsTable', () => {
         const onPageChange = vi.fn();
         render(<HoldingsTable
             page={page({ totalPages: 3, totalElements: 25 })}
+            summary={null}
             loading={false}
             emptyLabel={ADD_FIRST}
             onEdit={noop}

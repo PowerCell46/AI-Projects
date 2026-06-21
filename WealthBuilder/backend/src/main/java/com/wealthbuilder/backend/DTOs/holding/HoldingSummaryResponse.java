@@ -7,9 +7,9 @@ import java.time.LocalDate;
 
 
 /**
- * Aggregation over all of a user's holdings for one asset. {@code averagePrice} is the simple
- * (unweighted) mean of each holding's unit price. When the user has no holdings yet the
- * monetary figures are zero and the price/period fields are null.
+ * Aggregation over a filtered set of a user's holdings for one asset. {@code averagePrice} is
+ * the weighted average price ({@code amountSum / quantitySum}, i.e. the real cost basis). When
+ * no holdings match the monetary figures are zero and the price/period fields are null.
  */
 @Value
 public class HoldingSummaryResponse {

@@ -1,5 +1,6 @@
 package com.wealthbuilder.backend.entities;
 
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

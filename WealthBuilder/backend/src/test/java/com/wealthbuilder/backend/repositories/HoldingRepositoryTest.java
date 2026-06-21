@@ -2,7 +2,7 @@ package com.wealthbuilder.backend.repositories;
 
 import com.wealthbuilder.backend.entities.Asset;
 import com.wealthbuilder.backend.entities.AssetHolding;
-import com.wealthbuilder.backend.entities.Role;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.projections.AssetInvestment;
 import org.junit.jupiter.api.BeforeEach;
