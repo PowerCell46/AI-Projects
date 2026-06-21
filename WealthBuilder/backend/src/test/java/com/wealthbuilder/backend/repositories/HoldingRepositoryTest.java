@@ -5,6 +5,7 @@ import com.wealthbuilder.backend.entities.AssetHolding;
 import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.projections.AssetInvestment;
+import com.wealthbuilder.backend.repositories.projections.HoldingAggregate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -161,6 +162,61 @@ class HoldingRepositoryTest {
 
             assertThat(page.getTotalElements()).isEqualTo(1);
             assertThat(page.getContent().getFirst().getBoughtForAmount()).isEqualByComparingTo("100.0000");
+        }
+    }
+
+    @Nested
+    @DisplayName("Aggregate")
+    class Aggregate {
+
+        @Test
+        void should_ReportZeroCountAndZeroSumsAndNullSpan_When_NoHoldingsMatch() {
+            final HoldingAggregate aggregate = holdingRepository.aggregate(owner, stocks, null, null, null);
+
+            assertThat(aggregate.getHoldingCount()).isZero();
+            assertThat(aggregate.getAmountSum()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(aggregate.getQuantitySum()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(aggregate.getPeriodStart()).isNull();
+            assertThat(aggregate.getPeriodEnd()).isNull();
+        }
+
+        @Test
+        void should_SumAmountsAndQuantitiesAndSpanDates_When_HoldingsMatch() {
+            persistHolding(owner, stocks, "100.0000", "2.00000000", LocalDate.of(2026, 3, 10));
+            persistHolding(owner, stocks, "300.0000", "4.00000000", LocalDate.of(2026, 1, 5));
+
+            final HoldingAggregate aggregate = holdingRepository.aggregate(owner, stocks, null, null, null);
+
+            assertThat(aggregate.getHoldingCount()).isEqualTo(2);
+            assertThat(aggregate.getAmountSum()).isEqualByComparingTo("400.0000");
+            assertThat(aggregate.getQuantitySum()).isEqualByComparingTo("6.00000000");
+            assertThat(aggregate.getPeriodStart()).isEqualTo(LocalDate.of(2026, 1, 5));
+            assertThat(aggregate.getPeriodEnd()).isEqualTo(LocalDate.of(2026, 3, 10));
+        }
+
+        @Test
+        void should_AggregateOnlyTheFilteredSet_When_NameAndDateCriteriaGiven() {
+            persistNamedHolding(owner, stocks, "Apple", LocalDate.of(2026, 3, 15));
+            persistNamedHolding(owner, stocks, "Apple", LocalDate.of(2026, 6, 1));
+            persistNamedHolding(owner, stocks, "Microsoft", LocalDate.of(2026, 3, 15));
+
+            final HoldingAggregate aggregate = holdingRepository.aggregate(
+                    owner, stocks, "%app%", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 4, 1));
+
+            assertThat(aggregate.getHoldingCount()).isEqualTo(1);
+            assertThat(aggregate.getAmountSum()).isEqualByComparingTo("100.0000");
+        }
+
+        @Test
+        void should_ScopeToTheGivenUserAndAsset_When_OthersAlsoInvested() {
+            persistHolding(owner, stocks, "100.0000", "1.00000000", LocalDate.of(2026, 1, 1));
+            persistHolding(owner, crypto, "200.0000", "1.00000000", LocalDate.of(2026, 1, 1));
+            persistHolding(other, stocks, "999.0000", "1.00000000", LocalDate.of(2026, 1, 1));
+
+            final HoldingAggregate aggregate = holdingRepository.aggregate(owner, stocks, null, null, null);
+
+            assertThat(aggregate.getHoldingCount()).isEqualTo(1);
+            assertThat(aggregate.getAmountSum()).isEqualByComparingTo("100.0000");
         }
     }
 

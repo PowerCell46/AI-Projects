@@ -1,0 +1,84 @@
+# WealthBuilder full-stack deployment.
+#
+# Network isolation (the backend is reachable ONLY by the nginx edge proxy):
+#   web  : nginx  <-> frontend
+#   app  : nginx  <-> backend
+#   data : backend <-> db
+# The frontend shares no network with the backend, and the backend/db/frontend publish
+# no host ports — only nginx exposes 80/443 to the host.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wealth_builder_db}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      POSTGRE_SQL_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-wealth_builder_db}
+      POSTGRE_SQL_USERNAME: ${POSTGRES_USER}
+      POSTGRE_SQL_PASSWORD: ${POSTGRES_PASSWORD}
+      # 'create' (the in-code default) drops the schema on every boot. 'update' keeps data
+      # across restarts; switch to 'validate' once schema migrations are introduced.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${DDL_AUTO:-update}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (>= 32 chars)}
+      JWT_TTL: ${JWT_TTL:-1h}
+      APP_MODERATOR_USERNAME: ${APP_MODERATOR_USERNAME}
+      APP_MODERATOR_PASSWORD: ${APP_MODERATOR_PASSWORD}
+      FRONTEND_BASE_URIS: ${FRONTEND_BASE_URIS:-https://localhost}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app
+      - data
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Same-origin relative path: the browser calls the edge proxy, never the backend.
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    networks:
+      - web
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - web
+      - app
+
+volumes:
+  db-data:
+
+networks:
+  web:
+  app:
+  data:

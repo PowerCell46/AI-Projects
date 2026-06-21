@@ -64,7 +64,7 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
 
     return (
         <div className={`${styles.wrapper} ${loading ? styles.loading : ''}`}>
-            <div className={styles.scroll}>
+            <div className={styles.tableArea}>
                 {isRunning && (
                     <>
                         <div
@@ -77,102 +77,104 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                     </>
                 )}
 
-                <table className={styles.table}>
-                    <thead>
-                        <tr>
-                            <th className={styles.th}>NAME</th>
-                            <th className={styles.th}>DATE</th>
-                            <th className={styles.th}>UNIT</th>
-                            <th className={`${styles.th} ${styles.numeric}`}>QUANTITY</th>
-                            <th className={`${styles.th} ${styles.numeric}`}>BOUGHT AT PRICE</th>
-                            <th className={`${styles.th} ${styles.numeric}`}>TOTAL COST</th>
-                            <th className={`${styles.th} ${styles.actionsHead}`} aria-label="Actions" />
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {page.content.map((holding) => (
-                            <tr
-                                key={holding.id}
-                                className={styles.row}
-                                onClick={() => onRowClick(holding)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        onRowClick(holding);
-                                    }
-                                }}
-                            >
-                                <td className={styles.td}>
-                                    <span className={styles.name}>{holding.name}</span>
-                                </td>
-                                <td className={styles.td}>{isoToDisplay(holding.date)}</td>
-                                <td className={styles.td}>{holding.unit}</td>
-                                <td className={`${styles.td} ${styles.numeric}`}>
-                                    {formatQuantity(holding.quantity)}
-                                </td>
-                                <td className={`${styles.td} ${styles.numeric}`}>
-                                    {formatPrice(holding.price)}
-                                </td>
-                                <td className={`${styles.td} ${styles.numeric}`}>
-                                    {formatMoney(holding.boughtForAmount)}
-                                </td>
-                                <td
-                                    className={`${styles.td} ${styles.actionsCell}`}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onKeyDown={(event) => event.stopPropagation()}
-                                >
-                                    <div className={styles.actions}>
-                                        {pendingDeleteId === holding.id ? (
-                                            <>
-                                                <span className={styles.confirmPrompt}>delete?</span>
-                                                <button
-                                                    type="button"
-                                                    className={styles.confirmYes}
-                                                    onClick={() => confirmDelete(holding.id)}
-                                                >
-                                                    yes
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={styles.action}
-                                                    onClick={() => setPendingDeleteId(null)}
-                                                >
-                                                    no
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    className={styles.action}
-                                                    onClick={() => onEdit(holding)}
-                                                >
-                                                    edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={styles.action}
-                                                    onClick={() => setPendingDeleteId(holding.id)}
-                                                >
-                                                    delete
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
+                <div className={styles.scroll}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>NAME</th>
+                                <th className={styles.th}>DATE</th>
+                                <th className={styles.th}>UNIT</th>
+                                <th className={`${styles.th} ${styles.numeric}`}>QUANTITY</th>
+                                <th className={`${styles.th} ${styles.numeric}`}>BOUGHT AT PRICE</th>
+                                <th className={`${styles.th} ${styles.numeric}`}>TOTAL COST</th>
+                                <th className={`${styles.th} ${styles.actionsHead}`} aria-label="Actions" />
                             </tr>
-                        ))}
-                    </tbody>
+                        </thead>
 
-                    {summary !== null && summary.holdingCount > 0 && (
-                        <tfoot>
-                            <TotalsRow summary={summary} />
-                        </tfoot>
-                    )}
-                </table>
+                        <tbody>
+                            {page.content.map((holding) => (
+                                <tr
+                                    key={holding.id}
+                                    className={styles.row}
+                                    onClick={() => onRowClick(holding)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            onRowClick(holding);
+                                        }
+                                    }}
+                                >
+                                    <td className={styles.td}>
+                                        <span className={styles.name}>{holding.name}</span>
+                                    </td>
+                                    <td className={styles.td}>{isoToDisplay(holding.date)}</td>
+                                    <td className={styles.td}>{holding.unit}</td>
+                                    <td className={`${styles.td} ${styles.numeric}`}>
+                                        {formatQuantity(holding.quantity)}
+                                    </td>
+                                    <td className={`${styles.td} ${styles.numeric}`}>
+                                        {formatPrice(holding.price)}
+                                    </td>
+                                    <td className={`${styles.td} ${styles.numeric}`}>
+                                        {formatMoney(holding.boughtForAmount)}
+                                    </td>
+                                    <td
+                                        className={`${styles.td} ${styles.actionsCell}`}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onKeyDown={(event) => event.stopPropagation()}
+                                    >
+                                        <div className={styles.actions}>
+                                            {pendingDeleteId === holding.id ? (
+                                                <>
+                                                    <span className={styles.confirmPrompt}>delete?</span>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.confirmYes}
+                                                        onClick={() => confirmDelete(holding.id)}
+                                                    >
+                                                        yes
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.action}
+                                                        onClick={() => setPendingDeleteId(null)}
+                                                    >
+                                                        no
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.action}
+                                                        onClick={() => onEdit(holding)}
+                                                    >
+                                                        edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.action}
+                                                        onClick={() => setPendingDeleteId(holding.id)}
+                                                    >
+                                                        delete
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+
+                        {summary !== null && summary.holdingCount > 0 && (
+                            <tfoot>
+                                <TotalsRow summary={summary} />
+                            </tfoot>
+                        )}
+                    </table>
+                </div>
             </div>
 
             <div className={styles.pagination}>

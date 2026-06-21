@@ -13,6 +13,26 @@
     min-width: 0;
 }
 
+/* Below the asset-rail breakpoint, six equal-share cards squeeze to unreadable slivers, so fall
+   back to the same swipeable scroll-snap rail the asset carousel uses: each card keeps a legible
+   fixed width and the row scrolls horizontally instead of cramming everything into view. */
+@media (max-width: 64rem) {
+    .grid {
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: contain;
+        /* overflow-x:auto forces overflow-y to clip, which would cut the card's hover lift and
+           top border — pad the top (and bottom) so the lifted card stays fully visible. */
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .grid > li {
+        flex: 0 0 clamp(10rem, 46vw, 14rem);
+        scroll-snap-align: start;
+    }
+}
+
 .card {
     position: relative;
     display: flex;

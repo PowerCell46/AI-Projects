@@ -106,14 +106,28 @@
     color: var(--app-accent);
 }
 
-/* Stack the image above the body on narrow viewports. */
+/* Stack the image above the body on narrow viewports, and dial the image and
+   type down a step so the asset header sits in proportion on phones. */
 @media (max-width: 40rem) {
     .header {
         grid-template-columns: minmax(0, 1fr);
         align-items: start;
+        gap: 1.25rem;
+        padding: 1.25rem;
     }
 
     .thumb {
-        max-width: 14rem;
+        width: 100%;
+        max-width: 11rem;
+        margin: 0 auto;
+    }
+
+    .name {
+        font-size: 1.25rem;
+    }
+
+    .description {
+        font-size: 0.875rem;
+        line-height: 1.55;
     }
 }

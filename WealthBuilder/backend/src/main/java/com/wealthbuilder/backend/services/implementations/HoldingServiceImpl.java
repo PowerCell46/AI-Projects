@@ -13,6 +13,7 @@ import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.repositories.AssetRepository;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
+import com.wealthbuilder.backend.repositories.projections.HoldingAggregate;
 import com.wealthbuilder.backend.services.interfaces.HoldingService;
 import com.wealthbuilder.backend.utils.Money;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Locale;
 
 
@@ -81,12 +79,10 @@ public class HoldingServiceImpl implements HoldingService {
         final User user = requireUser(username);
         final Asset asset = requireAsset(assetId);
 
-        final List<AssetHolding> holdings = holdingRepository
-                .search(user, asset, likePattern(filter.getName()), filter.getFrom(), filter.getTo(),
-                        Pageable.unpaged())
-                .getContent();
+        final HoldingAggregate aggregate = holdingRepository
+                .aggregate(user, asset, likePattern(filter.getName()), filter.getFrom(), filter.getTo());
 
-        return holdings.isEmpty() ? HoldingSummaryResponse.empty() : aggregate(holdings);
+        return toSummary(aggregate);
     }
 
     @Override
@@ -138,43 +134,25 @@ public class HoldingServiceImpl implements HoldingService {
     }
 
     /**
-     * Computes the weighted average price (total spent / total units, the real cost basis),
-     * the quantity/amount sums, and the purchase-date span over a non-empty holdings list.
+     * Turns the SQL aggregate into a summary, deriving the weighted average price (total spent /
+     * total units, the real cost basis) the same way per-holding rows do. An empty match set
+     * (count zero) has no price or period.
      */
-    private HoldingSummaryResponse aggregate(List<AssetHolding> holdings) {
-        BigDecimal amountSum = BigDecimal.ZERO;
-        BigDecimal quantitySum = BigDecimal.ZERO;
-
-        for (final AssetHolding holding : holdings) {
-            amountSum = amountSum.add(holding.getBoughtForAmount());
-            quantitySum = quantitySum.add(holding.getQuantity());
+    private HoldingSummaryResponse toSummary(HoldingAggregate aggregate) {
+        if (aggregate.getHoldingCount() == 0) {
+            return HoldingSummaryResponse.empty();
         }
 
-        final BigDecimal averagePrice = Money.unitPrice(amountSum, quantitySum);
+        final BigDecimal averagePrice =
+                Money.unitPrice(aggregate.getAmountSum(), aggregate.getQuantitySum());
 
         return HoldingSummaryResponse.of(
-                holdings.size(),
+                aggregate.getHoldingCount(),
                 averagePrice,
-                quantitySum,
-                amountSum,
-                earliestDate(holdings),
-                latestDate(holdings));
-    }
-
-    private LocalDate earliestDate(List<AssetHolding> holdings) {
-        return holdings
-                .stream()
-                .map(AssetHolding::getDate)
-                .min(Comparator.naturalOrder())
-                .orElseThrow();
-    }
-
-    private LocalDate latestDate(List<AssetHolding> holdings) {
-        return holdings
-                .stream()
-                .map(AssetHolding::getDate)
-                .max(Comparator.naturalOrder())
-                .orElseThrow();
+                aggregate.getQuantitySum(),
+                aggregate.getAmountSum(),
+                aggregate.getPeriodStart(),
+                aggregate.getPeriodEnd());
     }
 
     /**

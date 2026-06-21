@@ -36,9 +36,11 @@
         height: auto;
     }
 
-    /* Cover always renders first in the DOM, so it stays on top regardless of mode. */
+    /* Cover always renders first in the DOM, so it stays on top regardless of mode.
+       Sized to its content (logo + mini chart) rather than a fixed slice, so it reads as a
+       compact header instead of reserving dead space above the form. */
     .half:first-child {
-        flex: 0 0 20vh;
+        flex: 0 0 auto;
         order: 0;
     }
 

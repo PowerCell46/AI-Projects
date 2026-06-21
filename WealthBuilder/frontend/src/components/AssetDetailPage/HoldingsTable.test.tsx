@@ -115,6 +115,17 @@ describe('HoldingsTable', () => {
         expect(screen.getByRole('button', { name: /prev/i })).toBeDisabled();
     });
 
+    it('plays the sweep over the table when a new page object arrives', () => {
+        const props = { summary: null, loading: false, emptyLabel: ADD_FIRST, onEdit: noop, onDelete: noop, onPageChange: noop, onRowClick: noop };
+        const { container, rerender } = render(<HoldingsTable page={page({ page: 0 })} {...props} />);
+
+        expect(container.querySelector('[class*="sweepCover"]')).toBeNull();
+
+        rerender(<HoldingsTable page={page({ page: 1 })} {...props} />);
+
+        expect(container.querySelector('[class*="sweepCover"]')).not.toBeNull();
+    });
+
     it('disables prev on the first page and pages forward otherwise', async () => {
         const onPageChange = vi.fn();
         render(<HoldingsTable

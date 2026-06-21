@@ -10,8 +10,15 @@
     opacity: 0.5;
 }
 
-.scroll {
+/* Positioning context for the sweep overlay. It must NOT be the horizontally-scrolling element:
+   an absolute overlay inside a scroll container stops covering the table once the table overflows
+   (on mobile), which silently dropped the reveal there. Anchoring the overlay here instead keeps
+   it over the visible table at every width while .scroll handles the horizontal scroll. */
+.tableArea {
     position: relative;
+}
+
+.scroll {
     overflow-x: auto;
     border: 1px solid rgba(127, 127, 127, 0.2);
 }

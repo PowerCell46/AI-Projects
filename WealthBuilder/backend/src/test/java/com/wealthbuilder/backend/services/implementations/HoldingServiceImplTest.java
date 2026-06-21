@@ -14,6 +14,7 @@ import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.repositories.AssetRepository;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.repositories.UserRepository;
+import com.wealthbuilder.backend.repositories.projections.HoldingAggregate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -160,8 +162,9 @@ class HoldingServiceImplTest {
         @Test
         void should_ReturnEmptySummary_When_NoHoldings() {
             givenUserAndAssetExist();
-            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
-                    .willReturn(new PageImpl<>(List.of()));
+            final HoldingAggregate aggregate = aggregateWithCount(0L);
+            given(holdingRepository.aggregate(any(User.class), any(Asset.class), any(), any(), any()))
+                    .willReturn(aggregate);
 
             final HoldingSummaryResponse summary = holdingService.summarize(OWNER, ASSET_ID, noFilter());
 
@@ -173,18 +176,20 @@ class HoldingServiceImplTest {
             assertThat(summary.getPeriodEnd()).isNull();
         }
 
-        // Two holdings: 100 for 2 units and 300 for 4 units. Weighted average price (cost basis)
-        // = amount sum / quantity sum = 400 / 6 = 66.66666667. Quantity sum = 6, amount sum = 400,
-        // period spans the earliest and latest dates.
+        // The SQL aggregate reports 2 holdings, amount sum 400 and quantity sum 6. The service
+        // derives the weighted average price (cost basis) = amount sum / quantity sum = 66.66666667
+        // and passes the summed figures and the date span straight through.
         @Test
-        void should_ComputeWeightedAveragePriceAndSumsAndSpan_When_HoldingsExist() {
+        void should_DeriveWeightedAveragePrice_When_AggregateHasHoldings() {
             givenUserAndAssetExist();
-            final AssetHolding first = holding(1L, OWNER, new BigDecimal("100.0000"),
-                    new BigDecimal("2.00000000"), LocalDate.of(2026, 3, 10));
-            final AssetHolding second = holding(2L, OWNER, new BigDecimal("300.0000"),
-                    new BigDecimal("4.00000000"), LocalDate.of(2026, 1, 5));
-            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
-                    .willReturn(new PageImpl<>(List.of(first, second)));
+            final HoldingAggregate aggregate = mock(HoldingAggregate.class);
+            given(aggregate.getHoldingCount()).willReturn(2L);
+            given(aggregate.getAmountSum()).willReturn(new BigDecimal("400"));
+            given(aggregate.getQuantitySum()).willReturn(new BigDecimal("6"));
+            given(aggregate.getPeriodStart()).willReturn(LocalDate.of(2026, 1, 5));
+            given(aggregate.getPeriodEnd()).willReturn(LocalDate.of(2026, 3, 10));
+            given(holdingRepository.aggregate(any(User.class), any(Asset.class), any(), any(), any()))
+                    .willReturn(aggregate);
 
             final HoldingSummaryResponse summary = holdingService.summarize(OWNER, ASSET_ID, noFilter());
 
@@ -197,23 +202,23 @@ class HoldingServiceImplTest {
         }
 
         // The summary must aggregate over the same filtered set as the listing, so the filter is
-        // lowercased/wrapped and forwarded to the repository search exactly as it is for the list.
+        // lowercased/wrapped and forwarded to the repository aggregate exactly as it is for the list.
         @Test
-        void should_ForwardFilterToRepositorySearch_When_Summarizing() {
+        void should_ForwardFilterToRepositoryAggregate_When_Summarizing() {
             givenUserAndAssetExist();
-            given(holdingRepository.search(any(User.class), any(Asset.class), any(), any(), any(), any(Pageable.class)))
-                    .willReturn(new PageImpl<>(List.of()));
+            final HoldingAggregate aggregate = aggregateWithCount(0L);
+            given(holdingRepository.aggregate(any(User.class), any(Asset.class), any(), any(), any()))
+                    .willReturn(aggregate);
             final HoldingFilter filter = HoldingFilter.of("Net", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 1));
 
             holdingService.summarize(OWNER, ASSET_ID, filter);
 
-            verify(holdingRepository).search(
+            verify(holdingRepository).aggregate(
                     any(User.class),
                     any(Asset.class),
                     eq("%net%"),
                     eq(LocalDate.of(2026, 1, 1)),
-                    eq(LocalDate.of(2026, 6, 1)),
-                    any(Pageable.class));
+                    eq(LocalDate.of(2026, 6, 1)));
         }
 
         @Test
@@ -347,6 +352,13 @@ class HoldingServiceImplTest {
 
     private static HoldingFilter noFilter() {
         return HoldingFilter.of(null, null, null);
+    }
+
+    private static HoldingAggregate aggregateWithCount(long holdingCount) {
+        final HoldingAggregate aggregate = mock(HoldingAggregate.class);
+        given(aggregate.getHoldingCount()).willReturn(holdingCount);
+
+        return aggregate;
     }
 
     private static Asset asset() {

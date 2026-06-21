@@ -33,6 +33,39 @@ body {
     text-rendering: optimizeLegibility;
 }
 
+/* Themed scrollbars: a phosphor-tinted thumb on the app ground so the default white/grey
+   bar doesn't break the terminal aesthetic. Both tokens switch with [data-theme], so this
+   reads correctly in dark and light. Firefox uses scrollbar-*; WebKit/Blink the pseudo-els. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--phosphor-dim) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--phosphor-faint);
+    border: 0.1875rem solid transparent;
+    border-radius: 1rem;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--phosphor-dim);
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
 button {
     font: inherit;
     color: inherit;

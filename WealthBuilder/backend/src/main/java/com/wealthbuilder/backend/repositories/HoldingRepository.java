@@ -4,6 +4,7 @@ import com.wealthbuilder.backend.entities.Asset;
 import com.wealthbuilder.backend.entities.AssetHolding;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.projections.AssetInvestment;
+import com.wealthbuilder.backend.repositories.projections.HoldingAggregate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -47,6 +48,32 @@ public interface HoldingRepository extends JpaRepository<AssetHolding, Long> {
             LocalDate from,
             LocalDate to,
             Pageable pageable);
+
+    /**
+     * Aggregates the same filtered set as {@link #search} into a single row (count, summed amount
+     * and quantity, earliest/latest date) so the summary endpoint never loads the holdings
+     * themselves. The optional criteria are skipped exactly as in {@code search}; see its JavaDoc
+     * for why the LIKE pattern is built caller-side and the date bounds are cast on the
+     * {@code is null} side.
+     */
+    @Query("""
+            select count(h) as holdingCount,
+                   coalesce(sum(h.boughtForAmount), 0) as amountSum,
+                   coalesce(sum(h.quantity), 0) as quantitySum,
+                   min(h.date) as periodStart,
+                   max(h.date) as periodEnd
+            from AssetHolding h
+            where h.user = :user and h.asset = :asset
+              and (:namePattern is null or lower(h.name) like :namePattern)
+              and (cast(:from as date) is null or h.date >= :from)
+              and (cast(:to as date) is null or h.date <= :to)
+            """)
+    HoldingAggregate aggregate(
+            User user,
+            Asset asset,
+            String namePattern,
+            LocalDate from,
+            LocalDate to);
 
     @Query("select coalesce(sum(h.boughtForAmount), 0) from AssetHolding h where h.user = :user")
     BigDecimal sumInvestedByUser(User user);

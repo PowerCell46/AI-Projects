@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -136,6 +137,22 @@ class HoldingControllerTest {
             assertThat(filter.getValue().getName()).isEqualTo("app");
             assertThat(filter.getValue().getFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
             assertThat(filter.getValue().getTo()).isEqualTo(LocalDate.of(2026, 6, 1));
+        }
+
+        @Test
+        void should_CapPageSize_When_ClientRequestsAnEnormousSize() throws Exception {
+            given(holdingService.listHoldings(eq("alice"), eq(ASSET_ID), any(), any()))
+                    .willReturn(new PageResponse<>(List.of(), 0, 100, 0, 0));
+
+            mockMvc
+                    .perform(get("/api/assets/{assetId}/holdings", ASSET_ID)
+                            .param("size", "2000000")
+                            .with(user("alice").roles("USER")))
+                    .andExpect(status().isOk());
+
+            final ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+            verify(holdingService).listHoldings(eq("alice"), eq(ASSET_ID), any(), pageable.capture());
+            assertThat(pageable.getValue().getPageSize()).isEqualTo(100);
         }
 
         @Test

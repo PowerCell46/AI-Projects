@@ -124,7 +124,10 @@
 }
 
 @media (max-width: 40rem) {
+    /* Top-align instead of centering: on a tall phone column the desktop's vertical centering
+       leaves a large empty gap between the cover header and the first field. */
     .form {
+        justify-content: flex-start;
         padding: 1.75rem 1.25rem;
     }
 }

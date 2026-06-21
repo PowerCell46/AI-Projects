@@ -1,0 +1,4 @@
+# TLS certificates live here (gitignored). The edge nginx expects:
+#   fullchain.pem  - server certificate (+ chain)
+#   privkey.pem    - private key
+# For local/testing, generate a self-signed pair with ../generate-dev-certs.sh

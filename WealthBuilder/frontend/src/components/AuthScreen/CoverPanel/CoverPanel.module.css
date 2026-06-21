@@ -51,7 +51,8 @@
     }
 
     .chart {
-        margin: 0.5rem 0 0;
+        align-self: center;
+        margin: 2.5rem 0 0;
         font-size: 0.625rem;
         overflow: hidden;
     }

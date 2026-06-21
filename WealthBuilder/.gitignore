@@ -2,6 +2,10 @@
 .env
 *.env.local
 
+# TLS certificates / keys (never commit) — keep the dir via .gitkeep
+nginx/certs/*
+!nginx/certs/.gitkeep
+
 # OS / editor
 .DS_Store
 Thumbs.db

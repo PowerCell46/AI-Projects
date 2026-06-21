@@ -53,6 +53,22 @@
     --space-12: 3rem;
 }
 
+/*
+ * Large-screen scaling band (≥1920px, e.g. QHD / 4K / 5K).
+ *
+ * The base root clamp above tops out at 20px around ~1428px wide, after which the entire
+ * rem-based layout (type, the spacing scale, and the 48/64/78rem container caps) freezes —
+ * so on a 3840px display everything floats tiny inside huge empty gutters. This band resumes
+ * smooth growth past 1920px. It is continuous with the base clamp (11 + 0.469vw = 20px exactly
+ * at 1920px, so no snap at the handoff) and caps at 30px so 5K+ doesn't overshoot. Nothing
+ * below 1920px is touched, so laptop / 1080p layouts are unchanged.
+ */
+@media (min-width: 1920px) {
+    :root {
+        font-size: clamp(20px, 11px + 0.469vw, 30px);
+    }
+}
+
 /* Dark theme: the CRT keeps its default phosphor-on-black palette (declared in :root). */
 :root[data-theme='dark'] {
     --app-bg: #040506;
