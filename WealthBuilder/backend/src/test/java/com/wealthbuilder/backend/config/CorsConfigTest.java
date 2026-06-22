@@ -28,6 +28,7 @@ class CorsConfigTest {
         final AppProperties properties = new AppProperties(
                 List.of("http://localhost:[*]", "http://127.0.0.1:[*]"),
                 null,
+                null,
                 null);
 
         final CorsConfigurationSource source = new CorsConfig(properties).corsConfigurationSource();

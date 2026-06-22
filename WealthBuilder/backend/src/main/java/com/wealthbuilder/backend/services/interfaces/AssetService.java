@@ -24,6 +24,12 @@ public interface AssetService {
     AssetResponse findById(Long id);
 
     /**
+     * Single asset (no blob) resolved by its name slug, so the detail page can deep-link by a
+     * readable URL without loading the whole catalog; 404 if no name slugifies to the given value.
+     */
+    AssetResponse findBySlug(String slug);
+
+    /**
      * Decoded image bytes for the dedicated image endpoint; 404 if the id is unknown.
      */
     DataUriImage findImage(Long id);

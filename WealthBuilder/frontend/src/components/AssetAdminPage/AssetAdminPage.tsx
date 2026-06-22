@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { AppHeader } from '../AppHeader/AppHeader';
 import { AssetImage } from '../AssetImage/AssetImage';
 import { AssetForm } from './AssetForm';
+import { InlineDeleteConfirm } from '../InlineDeleteConfirm/InlineDeleteConfirm';
 import { VhsBands } from '../VhsBands/VhsBands';
 import { useAssets } from '../../hooks/useAssets';
-import { useSweepClock } from '../../hooks/useSweepClock';
-import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
+import { useSweepOnChange } from '../../hooks/useSweepOnChange';
 import { deleteAsset } from '../../services/assetService';
 import type { Asset } from '../../types/asset';
 import { ApiError } from '../../types/problem';
@@ -24,11 +24,6 @@ const IN_USE_MESSAGE = 'This asset has holdings and cannot be deleted.';
 // to paginate client-side rather than plumbing paging through the backend.
 const PAGE_SIZE = 5;
 
-// Matches the app-wide view-change sweep so the table reveal feels like the same animation.
-const SWEEP_DURATION_MS = 1100;
-
-const NO_OP = (): void => undefined;
-
 
 /**
  * Moderator-only catalog management: list the assets and create, edit, or delete them. Route
@@ -38,37 +33,21 @@ export const AssetAdminPage = () => {
     const { assets, loading, error, reload } = useAssets();
 
     const [editing, setEditing] = useState<Editing>(null);
-    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [page, setPage] = useState(0);
 
-    const prefersReducedMotion = usePrefersReducedMotion();
-    const { progress, isRunning, start } = useSweepClock(NO_OP);
-
     const pageCount = Math.max(1, Math.ceil(assets.length / PAGE_SIZE));
 
-    // Deleting the last asset on a page (or a shrinking list) can leave us past the end.
-    useEffect(() => {
-        if (page > pageCount - 1) {
-            setPage(pageCount - 1);
-        }
-    }, [page, pageCount]);
+    // Deleting the last asset on a page (or a shrinking list) can leave `page` past the end, so the
+    // effective page is clamped on read rather than written back via an effect. The prev/next
+    // buttons step from this clamped value, so stale state self-corrects on the next interaction.
+    const currentPage = Math.min(page, pageCount - 1);
 
-    // Replay the scanline sweep over the table whenever the visible page changes, mirroring the
-    // reveal on /assets/{name}. The ref guards against re-firing when `start` merely changes
-    // identity as the clock starts/stops (which would loop forever).
-    const previousPageRef = useRef(page);
+    // Replays the scanline sweep over the table whenever the visible page changes (and on demand
+    // after a delete), mirroring the reveal on /assets/{name}.
+    const { progress, isRunning, replay } = useSweepOnChange(currentPage);
 
-    useEffect(() => {
-        const pageChanged = previousPageRef.current !== page;
-        previousPageRef.current = page;
-
-        if (pageChanged && !prefersReducedMotion) {
-            start(SWEEP_DURATION_MS);
-        }
-    }, [page, prefersReducedMotion, start]);
-
-    const visibleAssets = assets.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+    const visibleAssets = assets.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
 
     // Pad short pages (typically the last one) with inert skeleton rows so the table keeps the
     // same height whether it holds 1 row or a full page — paging never makes the layout jump.
@@ -84,17 +63,13 @@ export const AssetAdminPage = () => {
 
         try {
             await deleteAsset(id);
-            setPendingDeleteId(null);
             reload();
 
             // Replay the scanline sweep as the row drops out, so a delete reveals the new table
             // the same way paging does. A page-shrinking delete (last row on the final page) also
             // moves the page index, but the sweep is idempotent while running so it won't double up.
-            if (!prefersReducedMotion) {
-                start(SWEEP_DURATION_MS);
-            }
+            replay();
         } catch (caught) {
-            setPendingDeleteId(null);
             setDeleteError(
                 caught instanceof ApiError && caught.isConflict
                     ? IN_USE_MESSAGE
@@ -179,44 +154,12 @@ export const AssetAdminPage = () => {
                                                 </td>
 
                                                 <td className={`${styles.td} ${styles.actionsCell}`}>
-                                                    {pendingDeleteId === asset.id ? (
-                                                        <>
-                                                            <span className={styles.confirmPrompt}>delete?</span>
-                                                            <button
-                                                                type="button"
-                                                                className={styles.confirmYes}
-                                                                onClick={() => handleDelete(asset.id)}
-                                                            >
-                                                                yes
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className={styles.action}
-                                                                onClick={() => setPendingDeleteId(null)}
-                                                            >
-                                                                no
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                className={styles.action}
-                                                                onClick={() => setEditing(asset)}
-                                                            >
-                                                                edit
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className={styles.action}
-                                                                disabled={asset.inUse}
-                                                                title={asset.inUse ? IN_USE_MESSAGE : undefined}
-                                                                onClick={() => setPendingDeleteId(asset.id)}
-                                                            >
-                                                                delete
-                                                            </button>
-                                                        </>
-                                                    )}
+                                                    <InlineDeleteConfirm
+                                                        onEdit={() => setEditing(asset)}
+                                                        onDelete={() => handleDelete(asset.id)}
+                                                        deleteDisabled={asset.inUse}
+                                                        deleteDisabledReason={IN_USE_MESSAGE}
+                                                    />
                                                 </td>
                                             </tr>
                                         ))}
@@ -233,21 +176,21 @@ export const AssetAdminPage = () => {
                             <button
                                 type="button"
                                 className={styles.pageButton}
-                                disabled={page === 0}
-                                onClick={() => setPage(page - 1)}
+                                disabled={currentPage === 0}
+                                onClick={() => setPage(currentPage - 1)}
                             >
                                 ← prev
                             </button>
 
                             <span className={styles.pageStatus}>
-                                page {page + 1} of {pageCount}
+                                page {currentPage + 1} of {pageCount}
                             </span>
 
                             <button
                                 type="button"
                                 className={styles.pageButton}
-                                disabled={page >= pageCount - 1}
-                                onClick={() => setPage(page + 1)}
+                                disabled={currentPage >= pageCount - 1}
+                                onClick={() => setPage(currentPage + 1)}
                             >
                                 next →
                             </button>

@@ -24,6 +24,9 @@ public class AppProperties {
     /** JWT signing material and lifetime. */
     private final Jwt jwt;
 
+    /** Auth-cookie settings (the JWT rides in an httpOnly cookie, not the response body). */
+    private final Auth auth;
+
     /** Credentials for the moderator seeded at startup. */
     private final Moderator moderator;
 
@@ -36,6 +39,20 @@ public class AppProperties {
 
         /** How long an issued access token stays valid. */
         private final Duration ttl;
+    }
+
+    @Getter
+    @RequiredArgsConstructor
+    public static class Auth {
+
+        /** Name of the httpOnly cookie carrying the JWT. */
+        private final String cookieName;
+
+        /** Whether the cookie is flagged {@code Secure} (true on https; false for http dev). */
+        private final boolean cookieSecure;
+
+        /** SameSite policy — {@code Lax} is the CSRF defense for the same-site SPA. */
+        private final String cookieSameSite;
     }
 
     @Getter

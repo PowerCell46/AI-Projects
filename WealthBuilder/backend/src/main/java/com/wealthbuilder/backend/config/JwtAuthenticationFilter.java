@@ -3,6 +3,7 @@ package com.wealthbuilder.backend.config;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,22 +21,20 @@ import java.io.IOException;
 
 
 /**
- * Reads the {@code Authorization: Bearer <token>} header on each request and, when the
- * token is valid, populates the security context. Anything wrong with the token leaves
- * the request unauthenticated; the security entry point then returns 401.
+ * Reads the JWT from the httpOnly auth cookie on each request and, when the token is valid,
+ * populates the security context. Anything wrong with the token leaves the request
+ * unauthenticated; the security entry point then returns 401.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-
-    private static final String BEARER_PREFIX = "Bearer ";
-
     private final JwtService jwtService;
 
     private final UserDetailsService userDetailsService;
+
+    private final AuthTokenCookie authTokenCookie;
 
     @Override
     protected void doFilterInternal(
@@ -43,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        final String token = resolveBearerToken(request);
+        final String token = resolveTokenFromCookie(request);
 
         if (token != null && isNotAlreadyAuthenticated()) {
             authenticate(token, request);
@@ -72,11 +71,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    private String resolveBearerToken(HttpServletRequest request) {
-        final String header = request.getHeader(AUTHORIZATION_HEADER);
+    private String resolveTokenFromCookie(HttpServletRequest request) {
+        final Cookie[] cookies = request.getCookies();
 
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
-            return header.substring(BEARER_PREFIX.length());
+        if (cookies == null) {
+            return null;
+        }
+
+        final String cookieName = authTokenCookie.getName();
+
+        for (final Cookie cookie : cookies) {
+            if (cookieName.equals(cookie.getName()) && !cookie.getValue().isBlank()) {
+                return cookie.getValue();
+            }
         }
 
         return null;

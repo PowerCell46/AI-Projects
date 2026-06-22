@@ -11,8 +11,9 @@ import java.util.List;
 
 
 /**
- * Allows the Vite dev SPA to call the API from a different origin. Credentials stay
- * disabled because authentication rides on a bearer token, not cookies.
+ * Allows the Vite dev SPA (a different origin in dev) to call the API. Credentials are enabled so
+ * the browser sends the httpOnly auth cookie; that requires reflecting a specific origin rather
+ * than {@code *}, which {@code setAllowedOriginPatterns} does.
  */
 @Configuration
 @RequiredArgsConstructor
@@ -28,6 +29,8 @@ public class CorsConfig {
         configuration.setAllowedOriginPatterns(appProperties.getFrontendBaseUris());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        // Required for the browser to send and accept the httpOnly auth cookie cross-origin.
+        configuration.setAllowCredentials(true);
 
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);

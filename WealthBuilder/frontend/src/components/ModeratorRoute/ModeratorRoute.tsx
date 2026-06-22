@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../../context/AuthContext/useAuth';
+import { SessionLoader } from '../SessionLoader/SessionLoader';
 import { APP_ROUTES } from '../../constants/routes';
 
 
@@ -17,7 +18,7 @@ export const ModeratorRoute = ({ children }: ModeratorRouteProps) => {
     const { status, user } = useAuth();
 
     if (status === 'loading') {
-        return null;
+        return <SessionLoader />;
     }
 
     if (status === 'unauthenticated') {

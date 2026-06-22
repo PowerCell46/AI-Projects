@@ -7,12 +7,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080
 export const AUTH_ENDPOINTS = {
     REGISTER: `${API_BASE_URL}/auth/register`,
     LOGIN: `${API_BASE_URL}/auth/login`,
+    LOGOUT: `${API_BASE_URL}/auth/logout`,
     ME: `${API_BASE_URL}/auth/me`,
 } as const;
 
 export const ASSET_ENDPOINTS = {
     LIST: `${API_BASE_URL}/assets`,
     byId: (id: number): string => `${API_BASE_URL}/assets/${id}`,
+    bySlug: (slug: string): string => `${API_BASE_URL}/assets/by-slug/${encodeURIComponent(slug)}`,
     image: (id: number): string => `${API_BASE_URL}/assets/${id}/image`,
 } as const;
 

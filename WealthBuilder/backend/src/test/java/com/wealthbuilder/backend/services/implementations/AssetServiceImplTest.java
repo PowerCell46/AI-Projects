@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 
@@ -171,7 +172,7 @@ class AssetServiceImplTest {
 
             assertThat(response.getName()).isEqualTo(NAME);
             final ArgumentCaptor<Asset> saved = ArgumentCaptor.forClass(Asset.class);
-            verify(assetRepository).save(saved.capture());
+            verify(assetRepository).saveAndFlush(saved.capture());
             assertThat(saved.getValue().getName()).isEqualTo(NAME);
             assertThat(saved.getValue().getDescription()).isEqualTo(DESCRIPTION);
             assertThat(saved.getValue().getImageBase64()).isEqualTo(IMAGE);
@@ -185,7 +186,19 @@ class AssetServiceImplTest {
             assertThatThrownBy(() -> assetService.create(request(NAME)))
                     .isInstanceOf(AssetNameAlreadyTakenException.class);
 
-            verify(assetRepository, never()).save(any());
+            verify(assetRepository, never()).saveAndFlush(any());
+        }
+
+        // The read check can pass for two concurrent creates; the DB unique constraint is the
+        // real backstop, and the service must translate its violation into the same conflict.
+        @Test
+        void should_ThrowConflict_When_FlushViolatesUniqueConstraint() {
+            given(assetRepository.existsByNameIgnoreCase(NAME)).willReturn(false);
+            given(assetRepository.saveAndFlush(any()))
+                    .willThrow(new DataIntegrityViolationException("unique violation"));
+
+            assertThatThrownBy(() -> assetService.create(request(NAME)))
+                    .isInstanceOf(AssetNameAlreadyTakenException.class);
         }
     }
 

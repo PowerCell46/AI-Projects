@@ -1,8 +1,8 @@
 import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../../context/AuthContext/useAuth';
+import { SessionLoader } from '../SessionLoader/SessionLoader';
 import { APP_ROUTES } from '../../constants/routes';
-import styles from './ProtectedRoute.module.css';
 
 
 interface ProtectedRouteProps {
@@ -18,7 +18,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     const { status } = useAuth();
 
     if (status === 'loading') {
-        return <div className={styles.loader}>booting…</div>;
+        return <SessionLoader />;
     }
 
     if (status === 'unauthenticated') {

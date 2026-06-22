@@ -1,15 +1,18 @@
 package com.wealthbuilder.backend.repositories;
 
 import com.wealthbuilder.backend.entities.Asset;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.test.context.TestPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 /**
@@ -32,6 +35,9 @@ class AssetRepositoryTest {
 
     @Autowired
     private AssetRepository assetRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @BeforeEach
     void seedAsset() {
@@ -87,6 +93,32 @@ class AssetRepositoryTest {
 
             assertThat(assetRepository.existsByNameIgnoreCaseAndIdNot("Bonds", stocks.getId()))
                     .isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("Optimistic locking")
+    class OptimisticLocking {
+
+        // Two writers load the same asset; the one that commits second holds a stale @Version and
+        // must be rejected rather than silently overwriting the first — the lost-update guarantee.
+        @Test
+        void should_RejectStaleUpdate_When_VersionChangedConcurrently() {
+            final Long id = assetRepository.findAll().getFirst().getId();
+            entityManager.clear();
+
+            final Asset staleWriter = assetRepository.findById(id).orElseThrow();
+            entityManager.detach(staleWriter);
+
+            final Asset winningWriter = assetRepository.findById(id).orElseThrow();
+            winningWriter.setDescription("Committed first.");
+            assetRepository.saveAndFlush(winningWriter);
+            entityManager.clear();
+
+            staleWriter.setDescription("Committed second on a stale version.");
+
+            assertThatThrownBy(() -> assetRepository.saveAndFlush(staleWriter))
+                    .isInstanceOf(OptimisticLockingFailureException.class);
         }
     }
 }

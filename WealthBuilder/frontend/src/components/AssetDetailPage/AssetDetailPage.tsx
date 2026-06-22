@@ -6,12 +6,10 @@ import { HoldingFilters } from './HoldingFilters';
 import { HoldingsTable } from './HoldingsTable';
 import { HoldingForm } from './HoldingForm';
 import { HoldingDetail } from './HoldingDetail';
-import { useAssets } from '../../hooks/useAssets';
+import { useAsset } from '../../hooks/useAsset';
 import { useHoldings } from '../../hooks/useHoldings';
 import { deleteHolding } from '../../services/holdingService';
-import { slugify } from '../../utils/slug';
 import { APP_ROUTES } from '../../constants/routes';
-import type { Asset } from '../../types/asset';
 import type { Holding } from '../../types/holding';
 import styles from './AssetDetailPage.module.css';
 
@@ -22,19 +20,19 @@ type Editing = Holding | 'new' | null;
 
 /**
  * Single-asset screen: the catalog image and description plus the user's holdings — a filterable,
- * paginated table with create/edit/delete. The asset is resolved by its slug from the loaded
- * catalog, so the API stays id-based while the URL stays readable (e.g. /assets/precious-metals).
+ * paginated table with create/edit/delete. The asset is resolved by its slug through a dedicated
+ * endpoint, so the API stays id-based while the URL stays readable (e.g. /assets/precious-metals).
  */
 export const AssetDetailPage = () => {
     const { slug } = useParams();
-    const { assets, loading: assetsLoading, error: assetsError } = useAssets();
+    const { asset, loading: assetLoading, error: assetError } = useAsset(slug);
 
-    const asset = resolveAsset(assets, slug);
     const holdings = useHoldings(asset?.id ?? null);
 
     const [editing, setEditing] = useState<Editing>(null);
     // The holding whose details are open in the read-only viewer, or null.
     const [viewing, setViewing] = useState<Holding | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const handleSaved = (): void => {
         setEditing(null);
@@ -48,8 +46,13 @@ export const AssetDetailPage = () => {
     };
 
     const handleDelete = async (id: number): Promise<void> => {
-        await deleteHolding(id);
-        holdings.reload();
+        try {
+            await deleteHolding(id);
+            setDeleteError(null);
+            holdings.reload();
+        } catch {
+            setDeleteError('Could not delete the holding. Try again.');
+        }
     };
 
     const isFiltered = holdings.filter.name.length > 0
@@ -63,13 +66,13 @@ export const AssetDetailPage = () => {
             <main className={styles.main}>
                 <Link className={styles.back} to={APP_ROUTES.HOME}>← back</Link>
 
-                {assetsLoading && <p className={styles.status}>◌ loading…</p>}
+                {assetLoading && <p className={styles.status}>◌ loading…</p>}
 
-                {!assetsLoading && (assetsError !== null || asset === undefined) && (
+                {!assetLoading && (assetError !== null || asset === null) && (
                     <p className={styles.statusError} role="alert">! Asset not found.</p>
                 )}
 
-                {asset !== undefined && (
+                {asset !== null && (
                     <>
                         <article className={styles.header}>
                             <div className={styles.thumb}>
@@ -99,6 +102,10 @@ export const AssetDetailPage = () => {
 
                             {holdings.error !== null && (
                                 <p className={styles.statusError} role="alert">! {holdings.error}</p>
+                            )}
+
+                            {deleteError !== null && (
+                                <p className={styles.statusError} role="alert">! {deleteError}</p>
                             )}
 
                             {holdings.holdings !== null && (
@@ -138,17 +145,4 @@ export const AssetDetailPage = () => {
             </main>
         </div>
     );
-};
-
-
-/**
- * Finds the asset whose slug matches the route segment. Slugifying both sides makes the match
- * case- and spacing-insensitive. Returns undefined while the catalog is loading or on no match.
- */
-const resolveAsset = (assets: Asset[], routeSlug: string | undefined): Asset | undefined => {
-    if (routeSlug === undefined) {
-        return undefined;
-    }
-
-    return assets.find((asset) => slugify(asset.name) === routeSlug);
 };

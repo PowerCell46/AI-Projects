@@ -19,6 +19,22 @@ interface AuthFormProps {
 type FieldErrors = Partial<Record<keyof Credentials, string>>;
 
 
+// Keeps only the keys this form actually renders, so an unexpected server field doesn't get
+// silently dropped into state where nothing displays it.
+const pickFieldErrors = (errors: Record<string, string>): FieldErrors => {
+    const mapped: FieldErrors = {};
+
+    if (errors.username !== undefined) {
+        mapped.username = errors.username;
+    }
+    if (errors.password !== undefined) {
+        mapped.password = errors.password;
+    }
+
+    return mapped;
+};
+
+
 /**
  * The login/register form half. Submits to the backend through the auth context, surfaces
  * field-level and form-level errors, and on success routes to the home screen.
@@ -72,11 +88,15 @@ export const AuthForm = ({ mode, interactive, onSwitchMode }: AuthFormProps) => 
         return register(credentials);
     };
 
-    // Split an ApiError into per-field helpers (validation) and a form-level banner.
+    // Split an ApiError into per-field helpers (validation) and a form-level banner. Only the
+    // fields this form renders are mapped; if the server reports an error against some other
+    // key it can't be attached to an input, so it falls through to the form-level banner.
     const applyError = (error: unknown): void => {
         if (error instanceof ApiError) {
-            setFieldErrors(error.fieldErrors as FieldErrors);
-            setFormError(Object.keys(error.fieldErrors).length > 0 ? null : error.detail);
+            const mapped = pickFieldErrors(error.fieldErrors);
+
+            setFieldErrors(mapped);
+            setFormError(Object.keys(mapped).length > 0 ? null : error.detail);
 
             return;
         }

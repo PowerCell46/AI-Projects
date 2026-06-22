@@ -14,6 +14,10 @@ export const fetchAsset = (id: number): Promise<Asset> => {
     return apiRequest<Asset>(ASSET_ENDPOINTS.byId(id));
 };
 
+export const fetchAssetBySlug = (slug: string): Promise<Asset> => {
+    return apiRequest<Asset>(ASSET_ENDPOINTS.bySlug(slug));
+};
+
 export const createAsset = (request: AssetRequest): Promise<Asset> => {
     return apiRequest<Asset>(ASSET_ENDPOINTS.LIST, { method: 'POST', body: request });
 };
@@ -50,7 +54,13 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                resolve(reader.result);
+            } else {
+                reject(new Error('Expected a data URL string from FileReader.'));
+            }
+        };
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(blob);
     });

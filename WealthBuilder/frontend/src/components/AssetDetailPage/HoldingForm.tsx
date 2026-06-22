@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createHolding, updateHolding } from '../../services/holdingService';
 import { todayIso } from '../../utils/date';
 import { DatePicker } from '../DatePicker/DatePicker';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 import { ApiError } from '../../types/problem';
 import type { Holding, HoldingRequest } from '../../types/holding';
 import styles from './HoldingForm.module.css';
@@ -19,12 +20,42 @@ interface HoldingFormProps {
 type FieldErrors = Partial<Record<keyof HoldingRequest, string>>;
 
 
+// Keeps only the keys this form actually renders, so an unexpected server field doesn't get
+// silently dropped into state where nothing displays it.
+const pickFieldErrors = (errors: Record<string, string>): FieldErrors => {
+    const mapped: FieldErrors = {};
+
+    if (errors.name !== undefined) {
+        mapped.name = errors.name;
+    }
+    if (errors.boughtForAmount !== undefined) {
+        mapped.boughtForAmount = errors.boughtForAmount;
+    }
+    if (errors.unit !== undefined) {
+        mapped.unit = errors.unit;
+    }
+    if (errors.quantity !== undefined) {
+        mapped.quantity = errors.quantity;
+    }
+    if (errors.date !== undefined) {
+        mapped.date = errors.date;
+    }
+    if (errors.note !== undefined) {
+        mapped.note = errors.note;
+    }
+
+    return mapped;
+};
+
+
 /**
  * Modal create/edit form for a single holding. Client validation mirrors the server contract
  * (positive amount/quantity, non-future date) so the common cases fail fast without a round trip.
  */
 export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormProps) => {
     const isEdit = holding !== null;
+
+    const formRef = useModalBehavior<HTMLFormElement>(onClose);
 
     const [name, setName] = useState(holding?.name ?? '');
     const [amount, setAmount] = useState(holding ? String(holding.boughtForAmount) : '');
@@ -79,6 +110,8 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
 
         if (date.length === 0) {
             errors.date = 'Purchase date is required.';
+        } else if (date > todayIso()) {
+            errors.date = 'Purchase date can’t be in the future.';
         }
 
         return errors;
@@ -103,8 +136,10 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
 
     const applyError = (error: unknown): void => {
         if (error instanceof ApiError) {
-            setFieldErrors(error.fieldErrors as FieldErrors);
-            setFormError(Object.keys(error.fieldErrors).length > 0 ? null : error.detail);
+            const mapped = pickFieldErrors(error.fieldErrors);
+
+            setFieldErrors(mapped);
+            setFormError(Object.keys(mapped).length > 0 ? null : error.detail);
             return;
         }
 
@@ -114,9 +149,14 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
     return (
         <div className={styles.backdrop} onClick={onClose} role="presentation">
             <form
+                ref={formRef}
                 className={styles.form}
                 onClick={(event) => event.stopPropagation()}
                 onSubmit={handleSubmit}
+                role="dialog"
+                aria-modal="true"
+                aria-label={isEdit ? 'Edit holding' : 'New holding'}
+                tabIndex={-1}
                 noValidate
             >
                 <h2 className={styles.heading}>{isEdit ? 'EDIT HOLDING' : 'NEW HOLDING'}</h2>
@@ -129,9 +169,11 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                         value={name}
                         maxLength={200}
                         autoFocus
+                        aria-invalid={fieldErrors.name !== undefined}
+                        aria-describedby={fieldErrors.name !== undefined ? 'holding-name-error' : undefined}
                         onChange={(event) => setName(event.target.value)}
                     />
-                    <FieldError message={fieldErrors.name} />
+                    <FieldError id="holding-name-error" message={fieldErrors.name} />
                 </label>
 
                 <label className={styles.field}>
@@ -142,9 +184,11 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                         min="0"
                         step="any"
                         value={amount}
+                        aria-invalid={fieldErrors.boughtForAmount !== undefined}
+                        aria-describedby={fieldErrors.boughtForAmount !== undefined ? 'holding-amount-error' : undefined}
                         onChange={(event) => setAmount(event.target.value)}
                     />
-                    <FieldError message={fieldErrors.boughtForAmount} />
+                    <FieldError id="holding-amount-error" message={fieldErrors.boughtForAmount} />
                 </label>
 
                 <div className={styles.pair}>
@@ -155,9 +199,11 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                             type="text"
                             value={unit}
                             maxLength={30}
+                            aria-invalid={fieldErrors.unit !== undefined}
+                            aria-describedby={fieldErrors.unit !== undefined ? 'holding-unit-error' : undefined}
                             onChange={(event) => setUnit(event.target.value)}
                         />
-                        <FieldError message={fieldErrors.unit} />
+                        <FieldError id="holding-unit-error" message={fieldErrors.unit} />
                     </label>
 
                     <label className={styles.field}>
@@ -168,9 +214,11 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                             min="0"
                             step="any"
                             value={quantity}
+                            aria-invalid={fieldErrors.quantity !== undefined}
+                            aria-describedby={fieldErrors.quantity !== undefined ? 'holding-quantity-error' : undefined}
                             onChange={(event) => setQuantity(event.target.value)}
                         />
-                        <FieldError message={fieldErrors.quantity} />
+                        <FieldError id="holding-quantity-error" message={fieldErrors.quantity} />
                     </label>
                 </div>
 
@@ -181,8 +229,10 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                         onChange={setDate}
                         ariaLabel="Purchase date"
                         max={todayIso()}
+                        invalid={fieldErrors.date !== undefined}
+                        describedBy={fieldErrors.date !== undefined ? 'holding-date-error' : undefined}
                     />
-                    <FieldError message={fieldErrors.date} />
+                    <FieldError id="holding-date-error" message={fieldErrors.date} />
                 </div>
 
                 <label className={styles.field}>
@@ -192,9 +242,11 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
                         value={note}
                         maxLength={1000}
                         rows={3}
+                        aria-invalid={fieldErrors.note !== undefined}
+                        aria-describedby={fieldErrors.note !== undefined ? 'holding-note-error' : undefined}
                         onChange={(event) => setNote(event.target.value)}
                     />
-                    <FieldError message={fieldErrors.note} />
+                    <FieldError id="holding-note-error" message={fieldErrors.note} />
                 </label>
 
                 {formError !== null && (
@@ -216,12 +268,12 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
 };
 
 
-const FieldError = ({ message }: { message: string | undefined }) => {
+const FieldError = ({ id, message }: { id: string; message: string | undefined }) => {
     if (message === undefined) {
         return null;
     }
 
-    return <span className={styles.fieldError}>{message}</span>;
+    return <span id={id} className={styles.fieldError}>{message}</span>;
 };
 
 

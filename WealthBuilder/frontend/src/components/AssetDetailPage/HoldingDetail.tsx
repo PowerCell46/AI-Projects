@@ -1,5 +1,6 @@
 import { formatMoney, formatPrice, formatQuantity } from '../../utils/format';
 import { isoToDisplay } from '../../utils/date';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 import type { Holding } from '../../types/holding';
 import styles from './HoldingDetail.module.css';
 
@@ -17,13 +18,18 @@ interface HoldingDetailProps {
  * the full note is shown here instead of being crammed into the table.
  */
 export const HoldingDetail = ({ holding, onEdit, onClose }: HoldingDetailProps) => {
+    const panelRef = useModalBehavior<HTMLDivElement>(onClose);
+
     return (
         <div className={styles.backdrop} onClick={onClose} role="presentation">
             <div
+                ref={panelRef}
                 className={styles.panel}
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
+                aria-modal="true"
                 aria-label={`Holding: ${holding.name}`}
+                tabIndex={-1}
             >
                 <h2 className={styles.heading}>HOLDING</h2>
 

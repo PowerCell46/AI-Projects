@@ -9,6 +9,7 @@ import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
 import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.services.interfaces.HoldingService;
+import com.wealthbuilder.backend.config.AuthTokenCookie;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -77,6 +78,9 @@ class HoldingControllerTest {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private AuthTokenCookie authTokenCookie;
 
     @Nested
     @DisplayName("Authentication required")
@@ -164,6 +168,16 @@ class HoldingControllerTest {
                     .perform(get("/api/assets/{assetId}/holdings", ASSET_ID).with(user("alice").roles("USER")))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.detail").value("Asset not found: " + ASSET_ID));
+        }
+
+        @Test
+        void should_Return400_When_FromDateIsAfterToDate() throws Exception {
+            mockMvc
+                    .perform(get("/api/assets/{assetId}/holdings", ASSET_ID)
+                            .param("from", "2999-01-01")
+                            .param("to", "1900-01-01")
+                            .with(user("alice").roles("USER")))
+                    .andExpect(status().isBadRequest());
         }
     }
 

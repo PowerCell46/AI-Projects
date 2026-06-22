@@ -6,6 +6,7 @@ import com.wealthbuilder.backend.services.interfaces.AssetService;
 import com.wealthbuilder.backend.utils.DataUriImage;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.util.List;
 
 
@@ -44,13 +46,20 @@ public class AssetController {
         return assetService.findById(id);
     }
 
+    @GetMapping("/by-slug/{slug}")
+    public AssetResponse detailBySlug(@PathVariable String slug) {
+        return assetService.findBySlug(slug);
+    }
+
     @GetMapping("/{id}/image")
     public ResponseEntity<byte[]> image(@PathVariable Long id) {
         final DataUriImage image = assetService.findImage(id);
 
         return ResponseEntity
                 .ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePublic())
                 .contentType(image.getMediaType())
+                .contentLength(image.getBytes().length)
                 .body(image.getBytes());
     }
 

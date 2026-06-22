@@ -73,7 +73,7 @@ export const TerminalInput = ({
             </div>
 
             {hasError && (
-                <p id={helperId} className={styles.helper}>! {error}</p>
+                <p id={helperId} className={styles.helper} role="alert" aria-live="polite">! {error}</p>
             )}
         </div>
     );

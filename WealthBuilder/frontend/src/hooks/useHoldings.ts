@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchHoldings, fetchSummary } from '../services/holdingService';
 import { EMPTY_HOLDING_FILTER } from '../types/holding';
 import type { Holding, HoldingFilter, HoldingSummary } from '../types/holding';
@@ -38,43 +38,76 @@ export const useHoldings = (assetId: number | null): UseHoldingsResult => {
     const [summary, setSummary] = useState<HoldingSummary | null>(null);
     const [pageIndex, setPageIndex] = useState(0);
     const [filter, setFilterState] = useState<HoldingFilter>(EMPTY_HOLDING_FILTER);
-    const [loading, setLoading] = useState(true);
+    // Seed from whether there's an asset to load: with no asset the hook is idle (never stuck
+    // 'loading'); with one, the initial fetch below is already in flight.
+    const [loading, setLoading] = useState(assetId !== null);
     const [error, setError] = useState<string | null>(null);
+    // Bumped by reload() to force a refetch after a write, without re-running the fetchers
+    // imperatively (which would race the effects below and risk a stale write).
+    const [reloadToken, setReloadToken] = useState(0);
 
-    // State is only set inside the async continuation (or the handlers below), never
-    // synchronously in the effect body — that keeps the react-hooks set-state-in-effect rule happy.
-    const fetchPage = useCallback(() => {
+    // Loads the current page, guarded by `active` so a response that arrives after the asset,
+    // page, or filter has changed (or the hook unmounted) can't write a stale page into state.
+    useEffect(() => {
         if (assetId === null) {
             return;
         }
 
+        let active = true;
+
         fetchHoldings(assetId, pageIndex, HOLDINGS_PAGE_SIZE, filter)
             .then((page) => {
-                setHoldings(page);
-                setError(null);
+                if (active) {
+                    setHoldings(page);
+                    setError(null);
+                }
             })
-            .catch(() => setError('Could not load holdings.'))
-            .finally(() => setLoading(false));
-    }, [assetId, pageIndex, filter]);
+            .catch(() => {
+                if (active) {
+                    setError('Could not load holdings.');
+                }
+            })
+            .finally(() => {
+                if (active) {
+                    setLoading(false);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [assetId, pageIndex, filter, reloadToken]);
 
     // The summary is independent of paging (it spans the whole filtered set), so it refetches
     // only on asset/filter changes — not when the user merely pages through the table. It is
     // fetched only while a filter is active; the caller hides it otherwise, so a stale value left
-    // over from a since-cleared filter is never shown. setSummary runs only in the async
-    // continuation, never synchronously in the effect body (the set-state-in-effect rule).
-    const fetchTotals = useCallback(() => {
+    // over from a since-cleared filter is never shown.
+    useEffect(() => {
         if (assetId === null || !isFilterActive(filter)) {
             return;
         }
 
+        let active = true;
+
         fetchSummary(assetId, filter)
-            .then(setSummary)
-            .catch(() => setSummary(null));
-    }, [assetId, filter]);
+            .then((next) => {
+                if (active) {
+                    setSummary(next);
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setSummary(null);
+                }
+            });
 
-    useEffect(fetchPage, [fetchPage]);
-    useEffect(fetchTotals, [fetchTotals]);
+        return () => {
+            active = false;
+        };
+    }, [assetId, filter, reloadToken]);
 
+    // The handlers below set the loading flag (and bump the reload token) from event callbacks,
+    // so the effect body never has to set state synchronously.
     const changePage = (page: number): void => {
         setLoading(true);
         setPageIndex(page);
@@ -88,8 +121,7 @@ export const useHoldings = (assetId: number | null): UseHoldingsResult => {
 
     const reload = (): void => {
         setLoading(true);
-        fetchPage();
-        fetchTotals();
+        setReloadToken((token) => token + 1);
     };
 
     return {

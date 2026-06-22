@@ -82,7 +82,7 @@ class DataSeederTest {
         final AppProperties.Moderator moderator =
                 new AppProperties.Moderator(MOD_USERNAME, moderatorPassword);
         final AppProperties appProperties =
-                new AppProperties(java.util.List.of("http://localhost"), jwt, moderator);
+                new AppProperties(java.util.List.of("http://localhost"), jwt, null, moderator);
 
         return new DataSeeder(userRepository, passwordEncoder, appProperties);
     }

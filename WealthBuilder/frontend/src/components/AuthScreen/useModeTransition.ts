@@ -39,10 +39,13 @@ export const useModeTransition = (mode: AuthMode): ModeTransition => {
 
     const [pendingTarget, setPendingTarget] = useState<AuthMode | null>(null);
 
-    // Promote the revealed mode by updating the URL; the base layer follows the new prop.
+    // Promote the revealed mode by updating the URL; the base layer follows the new prop. Clearing
+    // the pending target as we commit retires the overlay and keeps later sweeps from misreading a
+    // leftover value.
     const commitTarget = useCallback(() => {
         if (pendingTarget !== null) {
             navigate(routeOf(pendingTarget), { replace: true });
+            setPendingTarget(null);
         }
     }, [navigate, pendingTarget]);
 

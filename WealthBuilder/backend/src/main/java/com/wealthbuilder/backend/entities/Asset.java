@@ -6,11 +6,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.Locale;
 
 
 /**
@@ -32,8 +35,22 @@ public class Asset {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    // Optimistic-lock counter, managed entirely by Hibernate. Two transactions that load the same
+    // asset and both try to commit will collide: the second's UPDATE matches zero rows (the version
+    // moved) and Hibernate raises an optimistic-lock failure instead of silently overwriting.
+    @Setter(AccessLevel.NONE)
+    @Version
+    private Long version;
+
+    @Column(nullable = false)
     private String name;
+
+    // Lower-cased copy of `name`, kept in sync by setName. The unique constraint here — not the
+    // one on `name` — is what enforces case-insensitive uniqueness atomically at the DB level, so
+    // "Stocks" and "stocks" can't coexist and concurrent creates can't both slip through.
+    @Setter(AccessLevel.NONE)
+    @Column(name = "name_key", nullable = false, unique = true)
+    private String nameKey;
 
     @Column(nullable = false)
     private String description;
@@ -48,9 +65,15 @@ public class Asset {
     private String imageName;
 
     public Asset(String name, String description, String imageBase64, String imageName) {
-        this.name = name;
+        setName(name);
         this.description = description;
         this.imageBase64 = imageBase64;
         this.imageName = imageName;
+    }
+
+    /** Sets the display name and re-derives the normalized {@code nameKey} that backs uniqueness. */
+    public void setName(String name) {
+        this.name = name;
+        this.nameKey = name == null ? null : name.toLowerCase(Locale.ROOT);
     }
 }

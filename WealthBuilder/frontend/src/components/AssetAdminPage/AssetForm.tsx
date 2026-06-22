@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createAsset, fetchAssetImageDataUrl, updateAsset } from '../../services/assetService';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 import { ApiError } from '../../types/problem';
 import type { Asset, AssetRequest } from '../../types/asset';
 import styles from './AssetForm.module.css';
@@ -16,12 +17,33 @@ interface AssetFormProps {
 type FieldErrors = Partial<Record<keyof AssetRequest, string>>;
 
 
+// Keeps only the keys this form actually renders, so an unexpected server field doesn't get
+// silently dropped into state where nothing displays it.
+const pickFieldErrors = (errors: Record<string, string>): FieldErrors => {
+    const mapped: FieldErrors = {};
+
+    if (errors.name !== undefined) {
+        mapped.name = errors.name;
+    }
+    if (errors.description !== undefined) {
+        mapped.description = errors.description;
+    }
+    if (errors.imageBase64 !== undefined) {
+        mapped.imageBase64 = errors.imageBase64;
+    }
+
+    return mapped;
+};
+
+
 /**
  * Create/edit form for a catalog asset. On edit it fetches the current image back (the list
  * DTO omits the blob) so the moderator can change name or description without re-uploading.
  */
 export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
     const isEdit = asset !== null;
+
+    const formRef = useModalBehavior<HTMLFormElement>(onCancel);
 
     const [name, setName] = useState(asset?.name ?? '');
     const [description, setDescription] = useState(asset?.description ?? '');
@@ -56,11 +78,6 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
         };
     }, [asset]);
 
-    const canSubmit = !submitting
-        && name.trim().length > 0
-        && description.trim().length > 0
-        && imageBase64.length > 0;
-
     const handleImagePick = (event: React.ChangeEvent<HTMLInputElement>): void => {
         const file = event.target.files?.[0];
 
@@ -71,7 +88,11 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
         setFileName(file.name);
 
         const reader = new FileReader();
-        reader.onload = () => setImageBase64(reader.result as string);
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                setImageBase64(reader.result);
+            }
+        };
         reader.readAsDataURL(file);
     };
 
@@ -86,7 +107,10 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
         event.preventDefault();
 
-        if (!canSubmit) {
+        const clientErrors = validate();
+        if (Object.keys(clientErrors).length > 0) {
+            setFieldErrors(clientErrors);
+
             return;
         }
 
@@ -111,6 +135,24 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
         }
     };
 
+    // Mirrors HoldingForm: surface the missing requirement on submit rather than silently
+    // disabling save, so the moderator knows what's left to fill in.
+    const validate = (): FieldErrors => {
+        const errors: FieldErrors = {};
+
+        if (name.trim().length === 0) {
+            errors.name = 'Name is required.';
+        }
+        if (description.trim().length === 0) {
+            errors.description = 'Description is required.';
+        }
+        if (imageBase64.length === 0) {
+            errors.imageBase64 = 'An image is required.';
+        }
+
+        return errors;
+    };
+
     const persist = (request: AssetRequest): Promise<Asset> => {
         if (isEdit) {
             return updateAsset(asset.id, request);
@@ -121,8 +163,10 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
 
     const applyError = (error: unknown): void => {
         if (error instanceof ApiError) {
-            setFieldErrors(error.fieldErrors as FieldErrors);
-            setFormError(Object.keys(error.fieldErrors).length > 0 ? null : error.detail);
+            const mapped = pickFieldErrors(error.fieldErrors);
+
+            setFieldErrors(mapped);
+            setFormError(Object.keys(mapped).length > 0 ? null : error.detail);
 
             return;
         }
@@ -133,9 +177,14 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
     return (
         <div className={styles.backdrop} onClick={onCancel} role="presentation">
             <form
+                ref={formRef}
                 className={styles.form}
                 onClick={(event) => event.stopPropagation()}
                 onSubmit={handleSubmit}
+                role="dialog"
+                aria-modal="true"
+                aria-label={isEdit ? 'Edit asset' : 'New asset'}
+                tabIndex={-1}
                 noValidate
             >
                 <h2 className={styles.heading}>{isEdit ? 'EDIT ASSET' : 'NEW ASSET'}</h2>
@@ -147,10 +196,13 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
                         type="text"
                         value={name}
                         maxLength={100}
+                        autoFocus
+                        aria-invalid={fieldErrors.name !== undefined}
+                        aria-describedby={fieldErrors.name !== undefined ? 'asset-name-error' : undefined}
                         onChange={(event) => setName(event.target.value)}
                     />
                     {fieldErrors.name !== undefined && (
-                        <span className={styles.fieldError}>{fieldErrors.name}</span>
+                        <span id="asset-name-error" className={styles.fieldError}>{fieldErrors.name}</span>
                     )}
                 </label>
 
@@ -161,10 +213,12 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
                         value={description}
                         maxLength={1000}
                         rows={4}
+                        aria-invalid={fieldErrors.description !== undefined}
+                        aria-describedby={fieldErrors.description !== undefined ? 'asset-description-error' : undefined}
                         onChange={(event) => setDescription(event.target.value)}
                     />
                     {fieldErrors.description !== undefined && (
-                        <span className={styles.fieldError}>{fieldErrors.description}</span>
+                        <span id="asset-description-error" className={styles.fieldError}>{fieldErrors.description}</span>
                     )}
                 </label>
 
@@ -176,6 +230,9 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
                         className={styles.hiddenFileInput}
                         type="file"
                         accept="image/*"
+                        aria-label="Image"
+                        aria-invalid={fieldErrors.imageBase64 !== undefined}
+                        aria-describedby={fieldErrors.imageBase64 !== undefined ? 'asset-image-error' : undefined}
                         onChange={handleImagePick}
                     />
 
@@ -188,7 +245,7 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
                     </div>
 
                     {fieldErrors.imageBase64 !== undefined && (
-                        <span className={styles.fieldError}>{fieldErrors.imageBase64}</span>
+                        <span id="asset-image-error" className={styles.fieldError}>{fieldErrors.imageBase64}</span>
                     )}
                 </div>
 
@@ -197,7 +254,7 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
                 )}
 
                 <div className={styles.actions}>
-                    <button type="submit" className={styles.save} disabled={!canSubmit}>
+                    <button type="submit" className={styles.save} disabled={submitting}>
                         {submitting ? '[ ... ]' : 'save'}
                     </button>
 

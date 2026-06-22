@@ -2,17 +2,12 @@ import { ApiError } from '../types/problem';
 import type { ProblemDetail } from '../types/problem';
 
 
-// A thin fetch wrapper that injects the bearer token, parses RFC-7807 errors into
-// ApiError, and notifies a global handler on 401 so the app can clear auth + redirect.
-
-let authToken: string | null = null;
+// A thin fetch wrapper that sends the httpOnly auth cookie with every request (credentials:
+// 'include'), parses RFC-7807 errors into ApiError, and notifies a global handler on 401 so the
+// app can clear auth + redirect.
 
 let unauthorizedHandler: () => void = () => { };
 
-
-export const setAuthToken = (token: string | null): void => {
-    authToken = token;
-};
 
 export const setUnauthorizedHandler = (handler: () => void): void => {
     unauthorizedHandler = handler;
@@ -41,6 +36,7 @@ export const apiRequest = async <TResponse>(
     const response = await fetch(url, {
         method,
         headers: buildHeaders(body !== undefined),
+        credentials: 'include',
         body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
@@ -60,6 +56,7 @@ export const apiRequestBlob = async (url: string): Promise<Blob> => {
     const response = await fetch(url, {
         method: 'GET',
         headers: buildHeaders(false),
+        credentials: 'include',
     });
 
     if (!response.ok) {
@@ -77,10 +74,6 @@ const buildHeaders = (hasBody: boolean): HeadersInit => {
 
     if (hasBody) {
         headers['Content-Type'] = 'application/json';
-    }
-
-    if (authToken !== null) {
-        headers['Authorization'] = `Bearer ${authToken}`;
     }
 
     return headers;

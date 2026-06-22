@@ -11,7 +11,7 @@ export const CoverPanel = () => {
         <div className={styles.cover}>
             <span className={styles.logo}>▮ WEALTHBUILDER v0.1</span>
 
-            <pre className={styles.chart}>{ASCII_CHART}</pre>
+            <pre className={styles.chart} aria-hidden="true">{ASCII_CHART}</pre>
 
             <span className={styles.footer}>[ END_OF_TRANSMISSION ]</span>
         </div>

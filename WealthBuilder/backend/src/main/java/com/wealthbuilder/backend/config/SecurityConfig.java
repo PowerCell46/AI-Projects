@@ -20,9 +20,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 
 /**
- * Stateless JWT security: only register and login are public, every other API call must
- * carry a valid bearer token, and unauthenticated calls receive 401 (never a redirect)
- * so the SPA can react. Method-level {@code @PreAuthorize} guards moderator-only writes.
+ * Stateless JWT security: register, login, and logout are public, every other API call must
+ * carry a valid token in the httpOnly auth cookie, and unauthenticated calls receive 401 (never
+ * a redirect) so the SPA can react. CSRF is disabled because the auth cookie is SameSite=Lax —
+ * the browser won't attach it to cross-site state-changing requests, which is the same threat
+ * CSRF tokens defend against. Method-level {@code @PreAuthorize} guards moderator-only writes.
  */
 @Configuration
 @EnableWebSecurity
@@ -43,7 +45,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers("/error", "/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions

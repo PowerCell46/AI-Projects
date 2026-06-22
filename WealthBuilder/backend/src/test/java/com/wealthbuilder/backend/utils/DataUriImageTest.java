@@ -82,5 +82,13 @@ class DataUriImageTest {
             assertThatThrownBy(() -> DataUriImage.parse("data:image/png;base64,@@@not-base64@@@"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
+
+        // Defense-in-depth: a non-image media type must be refused so it can never be served back
+        // with a script-executing content type, regardless of how it got stored.
+        @Test
+        void should_Throw_When_MediaTypeIsNotAnImage() {
+            assertThatThrownBy(() -> DataUriImage.parse("data:text/html;base64," + BASE64_PAYLOAD))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 }

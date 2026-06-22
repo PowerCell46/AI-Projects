@@ -27,11 +27,6 @@ const priceFormatter = new Intl.NumberFormat(LOCALE, {
     maximumFractionDigits: 4,
 });
 
-const euroFormatter = new Intl.NumberFormat(LOCALE, {
-    style: 'currency',
-    currency: 'EUR',
-});
-
 const spaceGrouped = (formatted: string): string => formatted.replace(/,/g, GROUPING_SPACE);
 
 
@@ -40,5 +35,3 @@ export const formatMoney = (value: number): string => spaceGrouped(moneyFormatte
 export const formatQuantity = (value: number): string => spaceGrouped(quantityFormatter.format(value));
 
 export const formatPrice = (value: number): string => spaceGrouped(priceFormatter.format(value));
-
-export const formatEuro = (value: number): string => spaceGrouped(euroFormatter.format(value));

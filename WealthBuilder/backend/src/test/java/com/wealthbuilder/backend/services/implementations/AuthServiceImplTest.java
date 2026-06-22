@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
+import com.wealthbuilder.backend.DTOs.auth.AuthenticatedUser;
 import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
 import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
 import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
@@ -73,14 +73,17 @@ class AuthServiceImplTest {
     class Registration {
 
         @Test
-        void should_SaveUserAndReturnToken_When_UsernameIsFree() {
+        void should_SaveUserAndReturnTokenWithUser_When_UsernameIsFree() {
             given(userRepository.existsByUsername(USERNAME)).willReturn(false);
             given(passwordEncoder.encode(RAW_PASSWORD)).willReturn(ENCODED_PASSWORD);
             given(jwtService.issueToken(USERNAME, Role.USER)).willReturn(TOKEN);
+            given(holdingRepository.sumInvestedByUser(any())).willReturn(BigDecimal.ZERO);
 
-            final AuthResponse response = authService.register(registerRequest());
+            final AuthenticatedUser response = authService.register(registerRequest());
 
             assertThat(response.getToken()).isEqualTo(TOKEN);
+            assertThat(response.getUser().getUsername()).isEqualTo(USERNAME);
+            assertThat(response.getUser().getRole()).isEqualTo(Role.USER);
         }
 
         @Test
@@ -115,13 +118,15 @@ class AuthServiceImplTest {
     class Login {
 
         @Test
-        void should_AuthenticateAndReturnToken_When_CredentialsValid() {
+        void should_AuthenticateAndReturnTokenWithUser_When_CredentialsValid() {
             given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(existingUser(Role.USER)));
             given(jwtService.issueToken(USERNAME, Role.USER)).willReturn(TOKEN);
+            given(holdingRepository.sumInvestedByUser(any())).willReturn(BigDecimal.ZERO);
 
-            final AuthResponse response = authService.login(loginRequest());
+            final AuthenticatedUser response = authService.login(loginRequest());
 
             assertThat(response.getToken()).isEqualTo(TOKEN);
+            assertThat(response.getUser().getUsername()).isEqualTo(USERNAME);
             verify(authenticationManager).authenticate(
                     new UsernamePasswordAuthenticationToken(USERNAME, RAW_PASSWORD));
         }

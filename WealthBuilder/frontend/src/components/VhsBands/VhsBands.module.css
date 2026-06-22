@@ -6,8 +6,20 @@
     overflow: hidden;
 }
 
+/* A full-height track moved with translateY (compositor) instead of an animated `top` (layout),
+   so the per-frame sweep never triggers reflow. The visible bar is pinned to the track's top
+   edge, so translateY by a percentage of the track's own height reads as a percentage of the
+   container — matching the old `top: %` positioning exactly. */
 .band {
     position: absolute;
+    inset: 0;
+    width: 100%;
+    will-change: transform;
+}
+
+.band > * {
+    position: absolute;
+    top: 0;
     left: 0;
     width: 100%;
     /* Read as light, not paint. */

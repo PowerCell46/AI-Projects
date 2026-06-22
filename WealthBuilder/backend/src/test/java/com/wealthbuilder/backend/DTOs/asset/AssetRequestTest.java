@@ -142,6 +142,14 @@ class AssetRequestTest {
 
             assertThat(violatedFields(request)).contains("imageBase64");
         }
+
+        @Test
+        void should_RejectImageExceedingMaxSize() {
+            final String oversized = "data:image/png;base64," + "A".repeat(AssetRequest.MAX_IMAGE_BASE64_LENGTH);
+
+            assertThat(violatedFields(request(VALID_NAME, VALID_DESCRIPTION, oversized)))
+                    .contains("imageBase64");
+        }
     }
 
     @Nested

@@ -12,6 +12,9 @@ interface DatePickerProps {
     // Optional inclusive bounds; days outside the range are disabled.
     min?: string;
     max?: string;
+    // Mirrors the form-field error state onto the trigger for assistive tech.
+    invalid?: boolean;
+    describedBy?: string;
 }
 
 
@@ -28,24 +31,37 @@ const MONTH_NAMES = [
     'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+// Arrow keys move the roving focus by these day deltas; a week is 7 days.
+const KEY_DELTAS: Record<string, number> = {
+    ArrowLeft: -1,
+    ArrowRight: 1,
+    ArrowUp: -7,
+    ArrowDown: 7,
+};
+
 
 /**
  * A self-contained date picker: a read-only field showing the selected date as DD/MM/YYYY and a
  * calendar popup for choosing one. Emits an ISO date so callers keep working in YYYY-MM-DD while
- * the user always sees and picks in DD/MM/YYYY, independent of the browser locale.
+ * the user always sees and picks in DD/MM/YYYY, independent of the browser locale. The grid is
+ * keyboard-navigable (arrows/Home/End) with a roving tabstop, and focus returns to the trigger
+ * when the popup closes.
  */
-export const DatePicker = ({ value, onChange, ariaLabel, min, max }: DatePickerProps) => {
+export const DatePicker = ({ value, onChange, ariaLabel, min, max, invalid, describedBy }: DatePickerProps) => {
     const [open, setOpen] = useState(false);
     const [view, setView] = useState<MonthView>(() => initialView(value));
+    const [focusedDay, setFocusedDay] = useState(1);
     const containerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
 
-    // While open, close on an outside click or Escape.
+    // While open, close on an outside pointer (covers mouse, touch, and pen) or Escape.
     useEffect(() => {
         if (!open) {
             return;
         }
 
-        const onPointerDown = (event: MouseEvent): void => {
+        const onPointerDown = (event: PointerEvent): void => {
             if (containerRef.current !== null && !containerRef.current.contains(event.target as Node)) {
                 setOpen(false);
             }
@@ -54,43 +70,91 @@ export const DatePicker = ({ value, onChange, ariaLabel, min, max }: DatePickerP
         const onKeyDown = (event: KeyboardEvent): void => {
             if (event.key === 'Escape') {
                 setOpen(false);
+                triggerRef.current?.focus();
             }
         };
 
-        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('pointerdown', onPointerDown);
         document.addEventListener('keydown', onKeyDown);
 
         return () => {
-            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('pointerdown', onPointerDown);
             document.removeEventListener('keydown', onKeyDown);
         };
     }, [open]);
 
+    // On open, move focus to the day carrying the roving tabstop so the grid is usable from the
+    // keyboard immediately.
+    useEffect(() => {
+        if (open) {
+            gridRef.current?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus();
+        }
+    }, [open]);
+
     const openCalendar = (): void => {
-        setView(initialView(value));
+        const startView = initialView(value);
+        setView(startView);
+        setFocusedDay(initialFocusedDay(value, startView));
         setOpen(true);
+    };
+
+    const closeAndRestoreFocus = (): void => {
+        setOpen(false);
+        triggerRef.current?.focus();
     };
 
     const selectDay = (day: number): void => {
         onChange(toIso(view.year, view.month, day));
-        setOpen(false);
+        closeAndRestoreFocus();
     };
 
     const clear = (): void => {
         onChange('');
-        setOpen(false);
+        closeAndRestoreFocus();
     };
 
     const goToPreviousMonth = (): void => setView(shiftMonth(view, -1));
 
     const goToNextMonth = (): void => setView(shiftMonth(view, 1));
 
+    // Move the roving focus within the month with the arrow keys plus Home/End.
+    const handleGridKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+        const daysInMonth = daysInMonthOf(view);
+        const delta = KEY_DELTAS[event.key];
+
+        const target = event.key === 'Home'
+            ? 1
+            : event.key === 'End'
+                ? daysInMonth
+                : delta !== undefined ? focusedDay + delta : null;
+
+        if (target === null) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const clamped = Math.min(Math.max(target, 1), daysInMonth);
+        setFocusedDay(clamped);
+        focusDay(clamped);
+    };
+
+    const focusDay = (day: number): void => {
+        const button = gridRef.current?.querySelector<HTMLButtonElement>(`button[data-day="${day}"]`);
+        button?.focus();
+    };
+
     return (
         <div className={styles.container} ref={containerRef}>
             <button
+                ref={triggerRef}
                 type="button"
                 className={styles.field}
                 aria-label={ariaLabel}
+                aria-invalid={invalid}
+                aria-describedby={describedBy}
+                aria-haspopup="dialog"
+                aria-expanded={open}
                 onClick={openCalendar}
             >
                 <span className={value.length > 0 ? styles.value : styles.placeholder}>
@@ -125,13 +189,19 @@ export const DatePicker = ({ value, onChange, ariaLabel, min, max }: DatePickerP
                         </button>
                     </div>
 
-                    <div className={styles.weekdays}>
+                    <div className={styles.weekdays} aria-hidden="true">
                         {WEEKDAYS.map((weekday) => (
                             <span key={weekday} className={styles.weekday}>{weekday}</span>
                         ))}
                     </div>
 
-                    <div className={styles.grid}>
+                    <div
+                        className={styles.grid}
+                        ref={gridRef}
+                        role="grid"
+                        aria-label={`${MONTH_NAMES[view.month]} ${view.year}`}
+                        onKeyDown={handleGridKeyDown}
+                    >
                         {buildCells(view).map((day, index) => (
                             day === null
                                 ? <span key={`blank-${index}`} className={styles.blank} />
@@ -139,8 +209,11 @@ export const DatePicker = ({ value, onChange, ariaLabel, min, max }: DatePickerP
                                     <button
                                         key={day}
                                         type="button"
+                                        data-day={day}
                                         className={dayClassName(view, day, value)}
                                         disabled={isOutOfRange(view, day, min, max)}
+                                        tabIndex={day === focusedDay ? 0 : -1}
+                                        aria-current={toIso(view.year, view.month, day) === value ? 'date' : undefined}
                                         onClick={() => selectDay(day)}
                                     >
                                         {day}
@@ -171,11 +244,25 @@ const initialView = (iso: string): MonthView => {
     return { year: now.getFullYear(), month: now.getMonth() };
 };
 
+// The day to land the roving focus on when the popup opens: the selected day if it's in view,
+// otherwise the first of the month.
+const initialFocusedDay = (iso: string, view: MonthView): number => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+
+    if (match !== null && Number(match[1]) === view.year && Number(match[2]) - 1 === view.month) {
+        return Number(match[3]);
+    }
+
+    return 1;
+};
+
 const shiftMonth = (view: MonthView, delta: number): MonthView => {
     const date = new Date(view.year, view.month + delta, 1);
 
     return { year: date.getFullYear(), month: date.getMonth() };
 };
+
+const daysInMonthOf = (view: MonthView): number => new Date(view.year, view.month + 1, 0).getDate();
 
 /**
  * The cells for a month grid: leading blanks so the first day lands under its weekday (week
@@ -183,7 +270,7 @@ const shiftMonth = (view: MonthView, delta: number): MonthView => {
  */
 const buildCells = (view: MonthView): Array<number | null> => {
     const firstWeekday = (new Date(view.year, view.month, 1).getDay() + 6) % 7;
-    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+    const daysInMonth = daysInMonthOf(view);
 
     const leadingBlanks: Array<number | null> = Array(firstWeekday).fill(null);
     const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);

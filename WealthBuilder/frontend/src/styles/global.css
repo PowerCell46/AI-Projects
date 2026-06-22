@@ -14,11 +14,13 @@ body,
     height: 100%;
 }
 
-/* Smooth the light <-> dark swap: cross-fade only the theme-driven properties. Components
-   that declare their own transition (e.g. the input glow) override this for themselves. */
-*,
-*::before,
-*::after {
+/* Cross-fade the light <-> dark swap by transitioning only the theme-driven properties.
+   Gated behind `.theme-transitioning`, which ThemeProvider adds to the root only for the
+   duration of a swap and then removes — so the browser isn't evaluating a transition on
+   every element during normal interaction, only while the theme is actually changing. */
+:root.theme-transitioning *,
+:root.theme-transitioning *::before,
+:root.theme-transitioning *::after {
     transition:
         background-color var(--theme-transition) ease,
         border-color var(--theme-transition) ease,

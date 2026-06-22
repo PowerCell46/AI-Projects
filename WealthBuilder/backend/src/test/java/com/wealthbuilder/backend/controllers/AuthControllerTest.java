@@ -1,8 +1,11 @@
 package com.wealthbuilder.backend.controllers;
 
-import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
+import com.wealthbuilder.backend.DTOs.auth.AuthenticatedUser;
+import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
 import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
 import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
+import com.wealthbuilder.backend.config.AuthTokenCookie;
+import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
 import com.wealthbuilder.backend.services.interfaces.AuthService;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
@@ -17,15 +20,20 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,7 +41,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Web-slice test for the auth endpoints. Security filters are disabled
  * ({@code addFilters = false}) so the slice exercises request mapping, bean validation and
- * the global exception handler without needing the JWT security chain or a database.
+ * the global exception handler without needing the JWT security chain or a database. The token
+ * now rides in an httpOnly cookie, so success is asserted via the {@code Set-Cookie} header and
+ * the current-user body — never a token in the JSON.
  */
 @WebMvcTest(value = AuthController.class, excludeAutoConfiguration = {
         SecurityAutoConfiguration.class,
@@ -44,6 +54,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthControllerTest {
 
     private static final String TOKEN = "signed.jwt.token";
+
+    private static final String USERNAME = "valid-user";
+
+    private static final CurrentUserResponse USER =
+            CurrentUserResponse.of(USERNAME, Role.USER, BigDecimal.ZERO);
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,35 +74,43 @@ class AuthControllerTest {
     @MockitoBean
     private UserDetailsService userDetailsService;
 
+    // Collaborator of both AuthController (issue/clear) and JwtAuthenticationFilter (getName).
+    @MockitoBean
+    private AuthTokenCookie authTokenCookie;
+
     @Nested
     @DisplayName("Register")
     class Register {
 
         @Test
-        void should_Return201WithToken_When_RequestValid() throws Exception {
-            given(authService.register(any(RegisterRequest.class))).willReturn(AuthResponse.of(TOKEN));
+        void should_Return201WithUserAndSetCookie_When_RequestValid() throws Exception {
+            given(authService.register(any(RegisterRequest.class))).willReturn(AuthenticatedUser.of(TOKEN, USER));
+            given(authTokenCookie.issue(anyString())).willReturn(sampleCookie());
 
             mockMvc
                     .perform(post("/api/auth/register")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json("valid-user", "valid-password")))
+                            .content(json(USERNAME, "valid-password")))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.token").value(TOKEN));
+                    .andExpect(jsonPath("$.username").value(USERNAME))
+                    .andExpect(jsonPath("$.token").doesNotExist())
+                    .andExpect(header().exists("Set-Cookie"));
         }
 
         @Test
         void should_DelegateToServiceWithBody_When_Registering() throws Exception {
-            given(authService.register(any(RegisterRequest.class))).willReturn(AuthResponse.of(TOKEN));
+            given(authService.register(any(RegisterRequest.class))).willReturn(AuthenticatedUser.of(TOKEN, USER));
+            given(authTokenCookie.issue(anyString())).willReturn(sampleCookie());
 
             mockMvc
                     .perform(post("/api/auth/register")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json("valid-user", "valid-password")))
+                            .content(json(USERNAME, "valid-password")))
                     .andExpect(status().isCreated());
 
             final ArgumentCaptor<RegisterRequest> captor = ArgumentCaptor.forClass(RegisterRequest.class);
             verify(authService).register(captor.capture());
-            assertThat(captor.getValue().getUsername()).isEqualTo("valid-user");
+            assertThat(captor.getValue().getUsername()).isEqualTo(USERNAME);
             assertThat(captor.getValue().getPassword()).isEqualTo("valid-password");
         }
 
@@ -106,7 +129,7 @@ class AuthControllerTest {
             mockMvc
                     .perform(post("/api/auth/register")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json("valid-user", "short")))
+                            .content(json(USERNAME, "short")))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors.password").exists());
         }
@@ -117,15 +140,18 @@ class AuthControllerTest {
     class Login {
 
         @Test
-        void should_Return200WithToken_When_RequestValid() throws Exception {
-            given(authService.login(any(LoginRequest.class))).willReturn(AuthResponse.of(TOKEN));
+        void should_Return200WithUserAndSetCookie_When_RequestValid() throws Exception {
+            given(authService.login(any(LoginRequest.class))).willReturn(AuthenticatedUser.of(TOKEN, USER));
+            given(authTokenCookie.issue(anyString())).willReturn(sampleCookie());
 
             mockMvc
                     .perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json("valid-user", "any-password")))
+                            .content(json(USERNAME, "any-password")))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.token").value(TOKEN));
+                    .andExpect(jsonPath("$.username").value(USERNAME))
+                    .andExpect(jsonPath("$.token").doesNotExist())
+                    .andExpect(header().exists("Set-Cookie"));
         }
 
         @Test
@@ -133,10 +159,35 @@ class AuthControllerTest {
             mockMvc
                     .perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json("valid-user", "")))
+                            .content(json(USERNAME, "")))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors.password").exists());
         }
+    }
+
+    @Nested
+    @DisplayName("Logout")
+    class Logout {
+
+        @Test
+        void should_Return204AndClearCookie_When_LoggingOut() throws Exception {
+            given(authTokenCookie.clear()).willReturn(clearedCookie());
+
+            mockMvc
+                    .perform(post("/api/auth/logout"))
+                    .andExpect(status().isNoContent())
+                    .andExpect(header().exists("Set-Cookie"));
+
+            verify(authTokenCookie).clear();
+        }
+    }
+
+    private static ResponseCookie sampleCookie() {
+        return ResponseCookie.from("wb_token", TOKEN).httpOnly(true).path("/").build();
+    }
+
+    private static ResponseCookie clearedCookie() {
+        return ResponseCookie.from("wb_token", "").httpOnly(true).path("/").maxAge(0).build();
     }
 
     private static String json(String username, String password) {

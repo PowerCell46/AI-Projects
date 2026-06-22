@@ -69,9 +69,11 @@
     background: color-mix(in srgb, var(--app-accent) 18%, var(--app-surface));
 }
 
-.row:focus-visible {
+/* The holding name is the row's keyboard-accessible activator (the row click is a mouse-only
+   convenience), so the focus ring lives on it. */
+.name:focus-visible {
     outline: 1px solid var(--app-accent);
-    outline-offset: -1px;
+    outline-offset: 0.125rem;
 }
 
 .row:not(:last-child) .td {
@@ -122,7 +124,14 @@
 
 .name {
     display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
     font-weight: 500;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
 }
 
 /* Filler rows that keep a short page at full table height. They share the data rows' borders so
@@ -179,45 +188,6 @@
 
 .actionsCell {
     white-space: nowrap;
-}
-
-/* Flex lives on an inner wrapper, not the <td>: a flex td drops out of table layout and
-   stops filling the row height, leaving an uncovered strip the hover background can't reach. */
-.actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    justify-content: flex-end;
-}
-
-.action {
-    padding: 0.25em 0.5em;
-    border: 1px solid rgba(127, 127, 127, 0.4);
-    background: transparent;
-    font-size: 0.6875rem;
-    letter-spacing: 0.08em;
-    color: var(--app-fg-muted);
-    cursor: pointer;
-}
-
-.action:hover {
-    color: var(--app-fg);
-    border-color: var(--app-accent);
-}
-
-.confirmPrompt {
-    font-size: 0.6875rem;
-    color: var(--terminal-red);
-}
-
-.confirmYes {
-    padding: 0.25em 0.5em;
-    border: 1px solid var(--terminal-red);
-    background: transparent;
-    font-size: 0.6875rem;
-    letter-spacing: 0.08em;
-    color: var(--terminal-red);
-    cursor: pointer;
 }
 
 .empty {

@@ -1,5 +1,5 @@
 import { useDistribution } from '../../hooks/useDistribution';
-import { formatEuro } from '../../utils/format';
+import { formatMoney } from '../../utils/format';
 import type { AssetDistribution } from '../../types/dashboard';
 import styles from './DistributionChart.module.css';
 
@@ -12,10 +12,13 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 // Distinct but on-brand slice colors; the list cycles if there are more assets than entries.
 const SLICE_COLORS = ['#7AFFA0', '#39C97E', '#C9A24B', '#5BAEA0', '#B26BD8', '#E0795B', '#4D89D6'];
 
+// The modulo keeps the index in range, so this only ever satisfies the compiler under
+// noUncheckedIndexedAccess — it isn't reachable at runtime.
 const FALLBACK_COLOR = '#7AFFA0';
 
 
 interface Slice {
+    id: number;
     name: string;
     amount: number;
     fraction: number;
@@ -67,7 +70,7 @@ const Donut = ({ slices, total }: DonutProps) => (
 
         <ul className={styles.legend}>
             {slices.map((slice) => (
-                <li key={slice.name} className={styles.legendItem}>
+                <li key={slice.id} className={styles.legendItem}>
                     <span
                         className={styles.swatch}
                         style={{ background: slice.color }}
@@ -75,14 +78,14 @@ const Donut = ({ slices, total }: DonutProps) => (
                     />
                     <span className={styles.legendName}>{slice.name}</span>
                     <span className={styles.legendValue}>
-                        {formatEuro(slice.amount)} · {formatPercent(slice.fraction)}
+                        {formatMoney(slice.amount)} · {formatPercent(slice.fraction)}
                     </span>
                 </li>
             ))}
 
             <li className={styles.legendTotal}>
                 <span className={styles.legendName}>Total</span>
-                <span className={styles.legendValue}>{formatEuro(total)}</span>
+                <span className={styles.legendValue}>{formatMoney(total)}</span>
             </li>
         </ul>
     </div>
@@ -121,7 +124,7 @@ const renderArcs = (slices: Slice[]) => {
 
         return (
             <circle
-                key={slice.name}
+                key={slice.id}
                 cx={CENTER}
                 cy={CENTER}
                 r={RADIUS}
@@ -141,6 +144,7 @@ const toSlices = (distribution: AssetDistribution[], total: number): Slice[] => 
     return [...distribution]
         .sort((a, b) => b.amountInvested - a.amountInvested)
         .map((item, index) => ({
+            id: item.assetId,
             name: item.assetName,
             amount: item.amountInvested,
             fraction: item.amountInvested / total,

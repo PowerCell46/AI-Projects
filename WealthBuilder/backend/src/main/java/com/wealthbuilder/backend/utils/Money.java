@@ -16,9 +16,15 @@ public final class Money {
     }
 
     /**
-     * Unit price = total spent / units, rounded half-up to {@link #PRICE_SCALE} decimals.
+     * Unit price = total spent / units, rounded half-up to {@link #PRICE_SCALE} decimals. A zero
+     * quantity has no meaningful unit price, so it yields zero rather than letting {@code divide}
+     * throw — keeping callers safe against any zero-quantity row regardless of how it was stored.
      */
     public static BigDecimal unitPrice(BigDecimal boughtForAmount, BigDecimal quantity) {
+        if (quantity.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO.setScale(PRICE_SCALE, RoundingMode.HALF_UP);
+        }
+
         return boughtForAmount.divide(quantity, PRICE_SCALE, RoundingMode.HALF_UP);
     }
 }

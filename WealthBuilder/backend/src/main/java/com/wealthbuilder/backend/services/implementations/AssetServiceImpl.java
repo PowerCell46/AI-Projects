@@ -10,8 +10,10 @@ import com.wealthbuilder.backend.repositories.AssetRepository;
 import com.wealthbuilder.backend.repositories.HoldingRepository;
 import com.wealthbuilder.backend.services.interfaces.AssetService;
 import com.wealthbuilder.backend.utils.DataUriImage;
+import com.wealthbuilder.backend.utils.Slug;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +59,23 @@ public class AssetServiceImpl implements AssetService {
         return AssetResponse.from(asset, holdingRepository.existsByAsset(asset));
     }
 
+    /**
+     * Resolves a name slug against the catalog. The catalog is small (asset *types*), so a scan
+     * that slugifies each name in-memory is cheap and keeps the same slug rules as the frontend
+     * without a stored slug column.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public AssetResponse findBySlug(String slug) {
+        return assetRepository
+                .findAll()
+                .stream()
+                .filter(asset -> Slug.of(asset.getName()).equals(slug))
+                .findFirst()
+                .map(asset -> AssetResponse.from(asset, holdingRepository.existsByAsset(asset)))
+                .orElseThrow(() -> new AssetNotFoundException(slug));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public DataUriImage findImage(Long id) {
@@ -64,8 +83,10 @@ public class AssetServiceImpl implements AssetService {
     }
 
     /**
-     * The duplicate check and insert share one transaction so two concurrent creates with the
-     * same name can't both pass the check before either commits.
+     * The {@code existsByNameIgnoreCase} read gives a friendly error on the common path, but it
+     * is not race-safe on its own: two concurrent creates can both pass it. The DB unique index
+     * on the normalized name is the real guard — the flush below is what atomically rejects the
+     * loser, which we translate back into the same conflict.
      */
     @Override
     @Transactional
@@ -79,7 +100,7 @@ public class AssetServiceImpl implements AssetService {
                 request.getDescription(),
                 request.getImageBase64(),
                 request.getImageName());
-        assetRepository.save(asset);
+        saveEnforcingNameUniqueness(asset, request.getName());
 
         log.info("Created asset with name '{}' and id '{}'.", asset.getName(), asset.getId());
 
@@ -99,6 +120,7 @@ public class AssetServiceImpl implements AssetService {
         asset.setDescription(request.getDescription());
         asset.setImageBase64(request.getImageBase64());
         asset.setImageName(request.getImageName());
+        saveEnforcingNameUniqueness(asset, request.getName());
 
         log.info("Updated asset with id '{}'.", id);
 
@@ -122,6 +144,19 @@ public class AssetServiceImpl implements AssetService {
         assetRepository.delete(asset);
 
         log.info("Deleted asset with id '{}'.", id);
+    }
+
+    /**
+     * Flushes immediately so the DB unique constraint on the normalized name is checked now,
+     * inside this try, rather than silently at commit. A violation means a concurrent write won
+     * the race, so we surface it as the same conflict the read check would have raised.
+     */
+    private void saveEnforcingNameUniqueness(Asset asset, String name) {
+        try {
+            assetRepository.saveAndFlush(asset);
+        } catch (DataIntegrityViolationException ex) {
+            throw new AssetNameAlreadyTakenException(name);
+        }
     }
 
     private Asset requireAsset(Long id) {

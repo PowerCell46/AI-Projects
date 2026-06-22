@@ -31,12 +31,11 @@ export const VhsBands = ({ progress, reverse = false }: VhsBandsProps) => {
                 return (
                     <span
                         key={offset}
-                        className={`${styles.band} ${isLead ? styles.lead : styles.trail}`}
-                        style={{
-                            top: `${topPercent}%`,
-                            transform: `translateX(${jitterRem}rem)`,
-                        }}
-                    />
+                        className={styles.band}
+                        style={{ transform: `translateY(${topPercent}%) translateX(${jitterRem}rem)` }}
+                    >
+                        <span className={isLead ? styles.lead : styles.trail} />
+                    </span>
                 );
             })}
         </div>

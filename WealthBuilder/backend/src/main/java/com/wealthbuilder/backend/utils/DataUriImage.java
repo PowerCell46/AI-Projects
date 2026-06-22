@@ -21,6 +21,10 @@ public class DataUriImage {
     /**
      * Splits a data URI into its media type and decoded payload. The stored value is already
      * validated on write, so a malformed URI here signals corrupt data and fails loudly.
+     *
+     * <p>Defense-in-depth: the media type is re-checked to be an {@code image/*} type before the
+     * bytes are ever served, so a value that slipped past the write-side validation (e.g.
+     * {@code data:text/html;...}) can never be echoed back with a script-executing content type.
      */
     public static DataUriImage parse(String dataUri) {
         final int commaIndex = dataUri.indexOf(',');
@@ -32,10 +36,19 @@ public class DataUriImage {
                 .substring("data:".length(), commaIndex)
                 .replace(";base64", "");
 
+        final MediaType mediaType = MediaType.parseMediaType(mediaTypePart);
+        requireImageType(mediaType);
+
         final byte[] bytes = Base64
                 .getDecoder()
                 .decode(dataUri.substring(commaIndex + 1).replaceAll("\\s", ""));
 
-        return new DataUriImage(MediaType.parseMediaType(mediaTypePart), bytes);
+        return new DataUriImage(mediaType, bytes);
+    }
+
+    private static void requireImageType(MediaType mediaType) {
+        if (!"image".equals(mediaType.getType())) {
+            throw new IllegalArgumentException("Not an image data URI: " + mediaType);
+        }
     }
 }

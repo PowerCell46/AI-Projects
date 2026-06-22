@@ -1,5 +1,6 @@
 package com.wealthbuilder.backend.DTOs.holding;
 
+import com.wealthbuilder.backend.exceptions.holding.InvalidDateRangeException;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -26,7 +27,15 @@ public class HoldingFilter {
     }
 
     public static HoldingFilter of(String name, LocalDate from, LocalDate to) {
+        requireOrderedRange(from, to);
+
         return new HoldingFilter(blankToNull(name), from, to);
+    }
+
+    private static void requireOrderedRange(LocalDate from, LocalDate to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new InvalidDateRangeException(from, to);
+        }
     }
 
     private static String blankToNull(String value) {

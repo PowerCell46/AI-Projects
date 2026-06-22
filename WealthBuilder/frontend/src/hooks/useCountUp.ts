@@ -62,6 +62,7 @@ export const useCountUp = (
         return () => {
             if (frameRef.current !== null) {
                 cancelAnimationFrame(frameRef.current);
+                frameRef.current = null;
             }
         };
     }, [target, enabled, durationMs, prefersReducedMotion]);

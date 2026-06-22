@@ -11,7 +11,8 @@ COPY pom.xml .
 RUN mvn -B -q dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -q clean package -DskipTests
+# Run the test suite as part of the image build so a regression fails the build, not production.
+RUN mvn -B -q clean package
 
 
 # ---- Runtime stage: a slim JRE that runs the jar as a non-root user ----

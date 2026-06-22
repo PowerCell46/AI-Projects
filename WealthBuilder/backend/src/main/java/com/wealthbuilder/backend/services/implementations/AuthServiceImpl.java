@@ -1,6 +1,6 @@
 package com.wealthbuilder.backend.services.implementations;
 
-import com.wealthbuilder.backend.DTOs.auth.AuthResponse;
+import com.wealthbuilder.backend.DTOs.auth.AuthenticatedUser;
 import com.wealthbuilder.backend.DTOs.auth.CurrentUserResponse;
 import com.wealthbuilder.backend.DTOs.auth.LoginRequest;
 import com.wealthbuilder.backend.DTOs.auth.RegisterRequest;
@@ -48,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthenticatedUser register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new UsernameAlreadyTakenException(request.getUsername());
         }
@@ -69,7 +69,8 @@ public class AuthServiceImpl implements AuthService {
      * {@code BadCredentialsException}, surfaced as 401.
      */
     @Override
-    public AuthResponse login(LoginRequest request) {
+    @Transactional(readOnly = true)
+    public AuthenticatedUser login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
@@ -89,10 +90,12 @@ public class AuthServiceImpl implements AuthService {
         return CurrentUserResponse.of(user.getUsername(), user.getRole(), computeBalance(user));
     }
 
-    private AuthResponse issueTokenFor(User user) {
+    private AuthenticatedUser issueTokenFor(User user) {
         final String token = jwtService.issueToken(user.getUsername(), user.getRole());
+        final CurrentUserResponse snapshot =
+                CurrentUserResponse.of(user.getUsername(), user.getRole(), computeBalance(user));
 
-        return AuthResponse.of(token);
+        return AuthenticatedUser.of(token, snapshot);
     }
 
     private User requireUser(String username) {

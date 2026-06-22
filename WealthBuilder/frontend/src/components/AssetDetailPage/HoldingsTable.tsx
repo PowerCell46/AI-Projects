@@ -1,18 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
 import { formatMoney, formatPrice, formatQuantity } from '../../utils/format';
 import { isoToDisplay } from '../../utils/date';
-import { useSweepClock } from '../../hooks/useSweepClock';
-import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
+import { useSweepOnChange } from '../../hooks/useSweepOnChange';
+import { InlineDeleteConfirm } from '../InlineDeleteConfirm/InlineDeleteConfirm';
 import { VhsBands } from '../VhsBands/VhsBands';
 import type { Holding, HoldingSummary } from '../../types/holding';
 import type { PageResponse } from '../../types/page';
 import styles from './HoldingsTable.module.css';
-
-
-// Matches the app-wide view-change sweep so the table reveal feels like the same animation.
-const SWEEP_DURATION_MS = 1100;
-
-const NO_OP = (): void => undefined;
 
 
 interface HoldingsTableProps {
@@ -33,38 +26,30 @@ interface HoldingsTableProps {
  * confirm so a stray click can't drop a record; edit hands the holding back to the parent. The
  * pager is always shown so the table's position in the set is visible even on a single page.
  */
-export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDelete, onPageChange, onRowClick }: HoldingsTableProps) => {
-    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-
-    const prefersReducedMotion = usePrefersReducedMotion();
-    const { progress, isRunning, start } = useSweepClock(NO_OP);
-
+export const HoldingsTable = ({
+    page,
+    summary,
+    loading,
+    emptyLabel,
+    onEdit,
+    onDelete,
+    onPageChange,
+    onRowClick,
+}: HoldingsTableProps) => {
     // Replay the scanline sweep over the table whenever a fresh page arrives — paging and
-    // filtering both hand down a new `page` object. The ref guards against re-firing when
-    // `start` merely changes identity as the clock starts/stops (which would loop forever).
-    const previousPageRef = useRef(page);
-
-    useEffect(() => {
-        const pageChanged = previousPageRef.current !== page;
-        previousPageRef.current = page;
-
-        if (pageChanged && !prefersReducedMotion) {
-            start(SWEEP_DURATION_MS);
-        }
-    }, [page, prefersReducedMotion, start]);
+    // filtering both hand down a new `page` object.
+    const { progress, isRunning } = useSweepOnChange(page);
 
     if (page.content.length === 0) {
         return <p className={styles.empty}>{loading ? '◌ loading…' : emptyLabel}</p>;
     }
 
-    const confirmDelete = (id: number): void => {
-        onDelete(id);
-        setPendingDeleteId(null);
-    };
-
     // Pad short pages (typically the last one) with inert skeleton rows so the table keeps the
     // same height whether it holds 1 row or a full page — paging never makes the layout jump.
     const skeletonRowCount = Math.max(0, page.size - page.content.length);
+
+    // Clamp to at least one page so the label and the "next" guard never disagree on an empty set.
+    const lastPageIndex = Math.max(page.totalPages, 1) - 1;
 
     return (
         <div className={`${styles.wrapper} ${loading ? styles.loading : ''}`}>
@@ -101,17 +86,18 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                                     key={holding.id}
                                     className={styles.row}
                                     onClick={() => onRowClick(holding)}
-                                    role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            onRowClick(holding);
-                                        }
-                                    }}
                                 >
                                     <td className={styles.td}>
-                                        <span className={styles.name}>{holding.name}</span>
+                                        <button
+                                            type="button"
+                                            className={styles.name}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                onRowClick(holding);
+                                            }}
+                                        >
+                                            {holding.name}
+                                        </button>
                                     </td>
                                     <td className={styles.td}>{isoToDisplay(holding.date)}</td>
                                     <td className={styles.td}>{holding.unit}</td>
@@ -129,44 +115,10 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                                         onClick={(event) => event.stopPropagation()}
                                         onKeyDown={(event) => event.stopPropagation()}
                                     >
-                                        <div className={styles.actions}>
-                                            {pendingDeleteId === holding.id ? (
-                                                <>
-                                                    <span className={styles.confirmPrompt}>delete?</span>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.confirmYes}
-                                                        onClick={() => confirmDelete(holding.id)}
-                                                    >
-                                                        yes
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.action}
-                                                        onClick={() => setPendingDeleteId(null)}
-                                                    >
-                                                        no
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.action}
-                                                        onClick={() => onEdit(holding)}
-                                                    >
-                                                        edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.action}
-                                                        onClick={() => setPendingDeleteId(holding.id)}
-                                                    >
-                                                        delete
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        <InlineDeleteConfirm
+                                            onEdit={() => onEdit(holding)}
+                                            onDelete={() => onDelete(holding.id)}
+                                        />
                                     </td>
                                 </tr>
                             ))}
@@ -196,13 +148,13 @@ export const HoldingsTable = ({ page, summary, loading, emptyLabel, onEdit, onDe
                 </button>
 
                 <span className={styles.pageStatus}>
-                    page {page.page + 1} of {Math.max(page.totalPages, 1)}
+                    page {page.page + 1} of {lastPageIndex + 1}
                 </span>
 
                 <button
                     type="button"
                     className={styles.pageButton}
-                    disabled={page.page >= page.totalPages - 1}
+                    disabled={page.page >= lastPageIndex}
                     onClick={() => onPageChange(page.page + 1)}
                 >
                     next →

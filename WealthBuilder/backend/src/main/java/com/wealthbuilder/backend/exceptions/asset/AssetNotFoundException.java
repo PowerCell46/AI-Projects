@@ -10,4 +10,8 @@ public class AssetNotFoundException extends RuntimeException {
     public AssetNotFoundException(Long id) {
         super("Asset not found: " + id);
     }
+
+    public AssetNotFoundException(String slug) {
+        super("Asset not found: " + slug);
+    }
 }

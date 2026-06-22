@@ -7,7 +7,7 @@ import { AssetCarousel } from '../AssetCarousel/AssetCarousel';
 import { DistributionChart } from '../DistributionChart/DistributionChart';
 import { PlatformLinks } from '../PlatformLinks/PlatformLinks';
 import { VhsBands } from '../VhsBands/VhsBands';
-import { formatEuro } from '../../utils/format';
+import { formatMoney } from '../../utils/format';
 import styles from './HomePage.module.css';
 
 
@@ -73,7 +73,7 @@ export const HomePage = () => {
                     <section className={styles.balanceCard}>
                         <span className={styles.balanceLabel}>NET INVESTED</span>
                         <span className={styles.balanceValue}>
-                            {formatEuro(animatedBalance)}
+                            {formatMoney(animatedBalance)}
                         </span>
                     </section>
                 </section>

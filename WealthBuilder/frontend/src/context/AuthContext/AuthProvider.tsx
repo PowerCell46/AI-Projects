@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
-import { fetchCurrentUser, loginUser, registerUser } from '../../services/authService';
-import { setAuthToken, setUnauthorizedHandler } from '../../services/apiClient';
-import { STORAGE_KEYS } from '../../constants/storage';
+import { fetchCurrentUser, loginUser, logoutUser, registerUser } from '../../services/authService';
+import { setUnauthorizedHandler } from '../../services/apiClient';
 import type { AuthContextValue, AuthStatus, Credentials, CurrentUser } from '../../types/auth';
 
 
@@ -13,93 +12,69 @@ interface AuthProviderProps {
 
 
 /**
- * Owns the auth session: the bearer token (mirrored to localStorage so a refresh stays
- * logged in) and the current user. Rehydrates on load and clears itself on any 401.
+ * Owns the auth session. The token itself lives in an httpOnly cookie the browser manages, so
+ * there's nothing to store here — only the current user. On load it asks the server who we are
+ * (the cookie rides along); a 401 anywhere clears the session.
  */
-const readStoredToken = (): string | null => {
-    return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-};
-
-
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-    // Seed from localStorage so a page refresh keeps the session: a stored token starts
-    // us in 'loading' (verified by the rehydrate effect), no token means 'unauthenticated'.
-    const [token, setToken] = useState<string | null>(readStoredToken);
     const [user, setUser] = useState<CurrentUser | null>(null);
-    const [status, setStatus] = useState<AuthStatus>(
-        () => (readStoredToken() === null ? 'unauthenticated' : 'loading'),
-    );
+    // Starts 'loading': we don't know if the cookie is valid until the rehydrate call answers.
+    const [status, setStatus] = useState<AuthStatus>('loading');
     const [justAuthenticated, setJustAuthenticated] = useState(false);
 
     const clearJustAuthenticated = useCallback(() => {
         setJustAuthenticated(false);
     }, []);
 
-    const logout = useCallback(() => {
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-        setAuthToken(null);
-        setToken(null);
+    // Drops the in-memory session. Used both by the explicit logout and by the global 401 handler
+    // (where the cookie is already invalid, so there's nothing more to clear server-side).
+    const clearSession = useCallback(() => {
         setUser(null);
         setStatus('unauthenticated');
         setJustAuthenticated(false);
     }, []);
 
-    // Exchange a freshly issued token for a populated, authenticated session. The
-    // justAuthenticated flag is set only here (interactive sign-in), never on rehydrate.
-    const establishSession = useCallback(async (issuedToken: string) => {
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, issuedToken);
-        setAuthToken(issuedToken);
-        setToken(issuedToken);
-
-        const currentUser = await fetchCurrentUser();
-
+    // Populate the session from a register/login response. justAuthenticated is set only here
+    // (interactive sign-in), never on rehydrate, so the home screen plays its entrance once.
+    const establishSession = useCallback((currentUser: CurrentUser) => {
         setUser(currentUser);
         setStatus('authenticated');
         setJustAuthenticated(true);
     }, []);
 
     const login = useCallback(async (credentials: Credentials) => {
-        const { token: issuedToken } = await loginUser(credentials);
-
-        await establishSession(issuedToken);
+        establishSession(await loginUser(credentials));
     }, [establishSession]);
 
     const register = useCallback(async (credentials: Credentials) => {
-        const { token: issuedToken } = await registerUser(credentials);
-
-        await establishSession(issuedToken);
+        establishSession(await registerUser(credentials));
     }, [establishSession]);
 
-    // Re-fetch the current user on demand. A 401 is handled globally (logout); any other
+    const logout = useCallback(() => {
+        // Ask the server to clear the cookie, then drop local state regardless of the outcome.
+        logoutUser()
+            .catch(() => undefined)
+            .finally(clearSession);
+    }, [clearSession]);
+
+    // Re-fetch the current user on demand. A 401 is handled globally (session clear); any other
     // failure is swallowed so a transient error just leaves the previous user in place.
     const refreshUser = useCallback(async () => {
-        if (readStoredToken() === null) {
-            return;
-        }
-
         try {
             setUser(await fetchCurrentUser());
         } catch {
-            // Keep the existing user; a 401 already triggered logout via the global handler.
+            // Keep the existing user; a 401 already cleared the session via the global handler.
         }
     }, []);
 
-    // A 401 on any authenticated request clears the session (apiClient calls this).
+    // A 401 on any request clears the session (apiClient calls this).
     useEffect(() => {
-        setUnauthorizedHandler(logout);
-    }, [logout]);
+        setUnauthorizedHandler(clearSession);
+    }, [clearSession]);
 
-    // On first load, verify the seeded token by fetching the user. State was already
-    // initialized from localStorage above, so the effect only does the async work.
+    // On first load, ask the server who we are. The httpOnly cookie (if any) rides along; a
+    // success authenticates us, anything else leaves us unauthenticated.
     useEffect(() => {
-        const storedToken = readStoredToken();
-
-        if (storedToken === null) {
-            return;
-        }
-
-        setAuthToken(storedToken);
-
         let active = true;
 
         fetchCurrentUser()
@@ -111,18 +86,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             })
             .catch(() => {
                 if (active) {
-                    logout();
+                    setStatus('unauthenticated');
                 }
             });
 
         return () => {
             active = false;
         };
-    }, [logout]);
+    }, []);
 
     const value = useMemo<AuthContextValue>(() => ({
         user,
-        token,
         status,
         isAuthenticated: status === 'authenticated',
         justAuthenticated,
@@ -131,7 +105,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         logout,
         clearJustAuthenticated,
         refreshUser,
-    }), [user, token, status, justAuthenticated, login, register, logout, clearJustAuthenticated, refreshUser]);
+    }), [user, status, justAuthenticated, login, register, logout, clearJustAuthenticated, refreshUser]);
 
     return (
         <AuthContext.Provider value={value}>

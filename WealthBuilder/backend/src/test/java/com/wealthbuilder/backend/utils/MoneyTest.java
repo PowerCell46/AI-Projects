@@ -55,5 +55,14 @@ class MoneyTest {
 
             assertThat(price).isEqualByComparingTo("200");
         }
+
+        // A zero quantity must not blow up with ArithmeticException; it has no unit price, so zero.
+        @Test
+        void should_ReturnZeroAtPriceScale_When_QuantityIsZero() {
+            final BigDecimal price = Money.unitPrice(new BigDecimal("100.00"), BigDecimal.ZERO);
+
+            assertThat(price).isEqualByComparingTo("0");
+            assertThat(price.scale()).isEqualTo(Money.PRICE_SCALE);
+        }
     }
 }

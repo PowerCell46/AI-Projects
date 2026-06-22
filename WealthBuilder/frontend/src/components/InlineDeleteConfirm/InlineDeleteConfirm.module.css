@@ -1,0 +1,42 @@
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.action {
+    padding: 0.375em 0.75em;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    background: transparent;
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--app-fg-muted);
+    cursor: pointer;
+}
+
+.action:hover:not(:disabled) {
+    color: var(--app-fg);
+    border-color: var(--app-accent);
+}
+
+.action:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.confirmPrompt {
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--terminal-red);
+}
+
+.confirmYes {
+    padding: 0.375em 0.75em;
+    border: 1px solid var(--terminal-red);
+    background: transparent;
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    color: var(--terminal-red);
+    cursor: pointer;
+}

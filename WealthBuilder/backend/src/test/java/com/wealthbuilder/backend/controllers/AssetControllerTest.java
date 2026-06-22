@@ -7,6 +7,7 @@ import com.wealthbuilder.backend.exceptions.asset.AssetNameAlreadyTakenException
 import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
 import com.wealthbuilder.backend.services.interfaces.AssetService;
+import com.wealthbuilder.backend.config.AuthTokenCookie;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import com.wealthbuilder.backend.utils.DataUriImage;
 import org.junit.jupiter.api.DisplayName;
@@ -79,6 +80,9 @@ class AssetControllerTest {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private AuthTokenCookie authTokenCookie;
 
     @Nested
     @DisplayName("Authentication required")
@@ -155,6 +159,8 @@ class AssetControllerTest {
                     .perform(get("/api/assets/{id}/image", ASSET_ID).with(user("alice").roles("USER")))
                     .andExpect(status().isOk())
                     .andExpect(header().string("Content-Type", MediaType.IMAGE_PNG_VALUE))
+                    .andExpect(header().string("Cache-Control", "max-age=3600, public"))
+                    .andExpect(header().longValue("Content-Length", bytes.length))
                     .andExpect(content().bytes(bytes));
         }
 

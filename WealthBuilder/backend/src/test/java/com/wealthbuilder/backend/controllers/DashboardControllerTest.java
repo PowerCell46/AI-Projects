@@ -3,6 +3,7 @@ package com.wealthbuilder.backend.controllers;
 import com.wealthbuilder.backend.DTOs.dashboard.AssetDistributionResponse;
 import com.wealthbuilder.backend.exceptions.GlobalExceptionHandler;
 import com.wealthbuilder.backend.services.interfaces.DashboardService;
+import com.wealthbuilder.backend.config.AuthTokenCookie;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,6 +52,9 @@ class DashboardControllerTest {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private AuthTokenCookie authTokenCookie;
 
     @Nested
     @DisplayName("Authentication required")
