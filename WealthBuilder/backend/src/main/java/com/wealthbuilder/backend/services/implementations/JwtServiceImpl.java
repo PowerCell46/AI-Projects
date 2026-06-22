@@ -22,8 +22,9 @@ import java.util.Date;
 
 
 /**
- * Nimbus-backed HS256 implementation. Verification re-checks the signature and expiry so
- * a tampered or stale token is rejected.
+ * Nimbus-backed HS256 implementation. Verification re-checks the signature, algorithm header,
+ * issuer/audience binding, and expiry (with clock-skew tolerance) so tampered, cross-deployment,
+ * and stale tokens are all rejected.
  */
 @Service
 @Slf4j
@@ -31,11 +32,19 @@ public class JwtServiceImpl implements JwtService {
 
     private static final String VERSION_CLAIM = "ver";
 
+    private static final String TOKEN_ISSUER = "wealthbuilder";
+
+    private static final String TOKEN_AUDIENCE = "wealthbuilder";
+
     private static final int MIN_SECRET_BYTES = 32;
 
     // Safety ceiling so a misconfigured JWT_TTL (e.g. PT720H) can't mint month-long tokens that
-    // stay valid long after a logout or password change. Keep the configured value well below this.
+    // stay valid long after a logout or password change.
     private static final Duration MAX_TTL = Duration.ofHours(24);
+
+    // Tolerate up to 30 s of clock drift between the issuer and verifier. Without this, a token
+    // verified on a machine whose clock runs slightly fast can be rejected at the exact boundary.
+    private static final Duration CLOCK_SKEW = Duration.ofSeconds(30);
 
     private final byte[] signingKey;
 
@@ -82,6 +91,8 @@ public class JwtServiceImpl implements JwtService {
         final Instant now = Instant.now();
         final JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(username)
+                .issuer(TOKEN_ISSUER)
+                .audience(TOKEN_AUDIENCE)
                 .claim(VERSION_CLAIM, tokenVersion)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(now.plus(tokenTtl)))
@@ -96,8 +107,10 @@ public class JwtServiceImpl implements JwtService {
     public TokenClaims verify(String token) {
         try {
             final SignedJWT parsedToken = SignedJWT.parse(token);
+            ensureAlgorithmIsHS256(parsedToken);
             verifySignature(parsedToken);
             final JWTClaimsSet claims = parsedToken.getJWTClaimsSet();
+            ensureIssuerAndAudience(claims);
             ensureNotExpired(claims);
 
             return new TokenClaims(claims.getSubject(), tokenVersionOf(claims));
@@ -107,22 +120,15 @@ public class JwtServiceImpl implements JwtService {
         }
     }
 
-    /** Reads the version claim, treating a token issued without one (legacy) as version 0. */
-    private int tokenVersionOf(JWTClaimsSet claims) throws ParseException {
-        final Integer version = claims.getIntegerClaim(VERSION_CLAIM);
-
-        return version == null ? 0 : version;
-    }
-
-    private String sign(JWTClaimsSet claims) {
-        try {
-            final SignedJWT signedToken = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-            signedToken.sign(new MACSigner(signingKey));
-
-            return signedToken.serialize();
-
-        } catch (JOSEException ex) {
-            throw new IllegalStateException("Failed to sign JWT", ex);
+    /**
+     * Rejects any token whose header declares an algorithm other than HS256. {@code MACVerifier}
+     * only supports HMAC families, but explicitly checking here is cheap defense-in-depth against
+     * algorithm-confusion attacks before the key material is even touched.
+     */
+    private void ensureAlgorithmIsHS256(SignedJWT token) {
+        if (!JWSAlgorithm.HS256.equals(token.getHeader().getAlgorithm())) {
+            throw new InvalidTokenException(
+                    "Unexpected JWT algorithm: " + token.getHeader().getAlgorithm());
         }
     }
 
@@ -137,10 +143,50 @@ public class JwtServiceImpl implements JwtService {
         }
     }
 
+    /**
+     * Checks issuer and audience so a token signed with the same secret by a different deployment
+     * (e.g. a staging instance sharing the secret) cannot be used here.
+     */
+    private void ensureIssuerAndAudience(JWTClaimsSet claims) {
+        if (!TOKEN_ISSUER.equals(claims.getIssuer())) {
+            throw new InvalidTokenException("JWT issuer mismatch");
+        }
+
+        if (!claims.getAudience().contains(TOKEN_AUDIENCE)) {
+            throw new InvalidTokenException("JWT audience mismatch");
+        }
+    }
+
     private void ensureNotExpired(JWTClaimsSet claims) {
         final Date expiry = claims.getExpirationTime();
-        if (expiry == null || expiry.toInstant().isBefore(Instant.now())) {
+        if (expiry == null || expiry.toInstant().isBefore(Instant.now().minus(CLOCK_SKEW))) {
             throw new InvalidTokenException("JWT is expired");
+        }
+    }
+
+    /**
+     * Reads the version claim. Rejects tokens that omit it — all tokens issued by this service
+     * carry the claim, so its absence means the token is either tampered or from a foreign issuer.
+     */
+    private int tokenVersionOf(JWTClaimsSet claims) throws ParseException {
+        final Integer version = claims.getIntegerClaim(VERSION_CLAIM);
+
+        if (version == null) {
+            throw new InvalidTokenException("JWT is missing the required '" + VERSION_CLAIM + "' claim");
+        }
+
+        return version;
+    }
+
+    private String sign(JWTClaimsSet claims) {
+        try {
+            final SignedJWT signedToken = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
+            signedToken.sign(new MACSigner(signingKey));
+
+            return signedToken.serialize();
+
+        } catch (JOSEException ex) {
+            throw new IllegalStateException("Failed to sign JWT", ex);
         }
     }
 }

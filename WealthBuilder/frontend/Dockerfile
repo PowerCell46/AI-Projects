@@ -20,11 +20,17 @@ RUN npm run build
 
 
 # ---- Runtime stage: serve the static bundle with nginx ----
-FROM nginx:1.27-alpine AS runtime
+# nginx-unprivileged runs as a non-root user (UID 101) and listens on 8080.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
 
 # Replaces the stock server block with our SPA config (history-API fallback + asset caching).
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 8080
+
+# Alpine's BusyBox wget is available in nginx-unprivileged; a HEAD request to / is enough
+# to confirm nginx is up and serving the SPA before the edge proxy is allowed to start.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO /dev/null http://localhost:8080/ || exit 1

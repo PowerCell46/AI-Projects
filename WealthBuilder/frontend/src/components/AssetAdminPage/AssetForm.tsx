@@ -119,6 +119,7 @@ export const AssetForm = ({ asset, onSaved, onCancel }: AssetFormProps) => {
         setFieldErrors({});
 
         const request: AssetRequest = {
+            version: asset?.version,
             name: name.trim(),
             description: description.trim(),
             imageBase64,

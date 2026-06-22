@@ -47,7 +47,7 @@ npm test           # tests
 4. If a method contains complex logic, write a short and concise doc comment (e.g. JavaDoc, JSDoc).
 5. When chaining, put each call on a new line so it's easier to read.
 6. Take effort when naming variables, classes, interfaces, etc. The name should be cognitive — **readability is the end goal.**
-7. Don't forget to initialize and update .gitignore files, so only worhy files are commited to Git.
+7. Don't forget to initialize and update .gitignore files, so only worthy files are commited to Git.
 
 ---
 

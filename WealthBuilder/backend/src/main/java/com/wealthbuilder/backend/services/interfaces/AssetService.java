@@ -14,20 +14,23 @@ import java.util.List;
 public interface AssetService {
 
     /**
-     * All assets for the carousel, without their image blobs.
+     * All assets for the carousel, without their image blobs. {@code inUse} is computed
+     * globally (any user holds it) for moderators, or per-caller (only the requesting user
+     * holds it) for regular users — preventing information about other users' holdings leaking.
      */
-    List<AssetResponse> findAll();
+    List<AssetResponse> findAll(String callerUsername, boolean globalScope);
 
     /**
-     * Single asset (no blob); 404 if the id is unknown.
+     * Single asset (no blob); 404 if the id is unknown. {@code inUse} scoping follows the same
+     * rule as {@link #findAll}.
      */
-    AssetResponse findById(Long id);
+    AssetResponse findById(Long id, String callerUsername, boolean globalScope);
 
     /**
-     * Single asset (no blob) resolved by its name slug, so the detail page can deep-link by a
-     * readable URL without loading the whole catalog; 404 if no name slugifies to the given value.
+     * Single asset (no blob) resolved by its name slug; 404 if no name slugifies to the given
+     * value. {@code inUse} scoping follows the same rule as {@link #findAll}.
      */
-    AssetResponse findBySlug(String slug);
+    AssetResponse findBySlug(String slug, String callerUsername, boolean globalScope);
 
     /**
      * Decoded image bytes for the dedicated image endpoint; 404 if the id is unknown.

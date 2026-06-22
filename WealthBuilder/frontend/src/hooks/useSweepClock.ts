@@ -72,7 +72,10 @@ export const useSweepClock = (onComplete: () => void): SweepClock => {
         return () => {
             if (frameRef.current !== null) {
                 cancelAnimationFrame(frameRef.current);
+                frameRef.current = null;
             }
+            // Reset so the clock starts clean if the component remounts (e.g. StrictMode).
+            setIsRunning(false);
         };
     }, [isRunning]);
 

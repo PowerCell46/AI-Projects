@@ -18,6 +18,7 @@ import com.wealthbuilder.backend.services.interfaces.HoldingService;
 import com.wealthbuilder.backend.utils.Money;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -111,6 +112,10 @@ public class HoldingServiceImpl implements HoldingService {
     @Transactional
     public HoldingResponse update(String username, Long holdingId, HoldingRequest request) {
         final AssetHolding holding = requireOwnedHolding(username, holdingId);
+
+        if (request.getVersion() != null && !request.getVersion().equals(holding.getVersion())) {
+            throw new OptimisticLockingFailureException("Stale holding: version mismatch.");
+        }
 
         holding.setName(request.getName());
         holding.setBoughtForAmount(request.getBoughtForAmount());

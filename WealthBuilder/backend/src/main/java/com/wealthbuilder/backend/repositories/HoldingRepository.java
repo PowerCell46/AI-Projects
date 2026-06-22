@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,11 +28,24 @@ public interface HoldingRepository extends JpaRepository<AssetHolding, Long> {
     boolean existsByAsset(Asset asset);
 
     /**
-     * The ids of every asset referenced by at least one holding (across all users). Lets the
-     * catalog mark which assets are in use in a single query rather than one probe per asset.
+     * The ids of every asset referenced by at least one holding (across all users). Used by
+     * moderator-scoped catalog reads where the delete-guard must reflect any user's holdings.
      */
     @Query("select distinct h.asset.id from AssetHolding h")
     Set<Long> findReferencedAssetIds();
+
+    /**
+     * The ids of assets referenced by holdings belonging to one specific user. Used for
+     * non-moderator catalog reads so {@code inUse} reflects only the caller's own holdings.
+     */
+    @Query("select distinct h.asset.id from AssetHolding h where h.user.username = :username")
+    Set<Long> findReferencedAssetIdsByUsername(@Param("username") String username);
+
+    /**
+     * Whether a specific user holds any purchase against this asset. User-scoped equivalent of
+     * {@link #existsByAsset} for non-moderator callers.
+     */
+    boolean existsByUserUsernameAndAsset(String username, Asset asset);
 
     /**
      * The caller's holdings for one asset, narrowed by an optional {@code namePattern} (a

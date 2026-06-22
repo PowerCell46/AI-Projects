@@ -18,6 +18,8 @@ public class HoldingResponse {
 
     Long id;
 
+    Long version;
+
     Long assetId;
 
     String name;
@@ -39,6 +41,7 @@ public class HoldingResponse {
     public static HoldingResponse from(AssetHolding holding) {
         return new HoldingResponse(
                 holding.getId(),
+                holding.getVersion(),
                 holding.getAsset().getId(),
                 holding.getName(),
                 holding.getBoughtForAmount(),

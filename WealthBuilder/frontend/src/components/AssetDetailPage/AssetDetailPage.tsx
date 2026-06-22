@@ -7,7 +7,7 @@ import { HoldingsTable } from './HoldingsTable';
 import { HoldingForm } from './HoldingForm';
 import { HoldingDetail } from './HoldingDetail';
 import { useAsset } from '../../hooks/useAsset';
-import { useHoldings } from '../../hooks/useHoldings';
+import { useHoldings, isFilterActive } from '../../hooks/useHoldings';
 import { deleteHolding } from '../../services/holdingService';
 import { APP_ROUTES } from '../../constants/routes';
 import type { Holding } from '../../types/holding';
@@ -55,9 +55,7 @@ export const AssetDetailPage = () => {
         }
     };
 
-    const isFiltered = holdings.filter.name.length > 0
-        || holdings.filter.from.length > 0
-        || holdings.filter.to.length > 0;
+    const isFiltered = isFilterActive(holdings.filter);
 
     return (
         <div className={styles.page}>

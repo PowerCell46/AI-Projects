@@ -6,8 +6,6 @@ import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 // Matches the app-wide view-change sweep so every table reveal feels like the same animation.
 const SWEEP_DURATION_MS = 1100;
 
-const NO_OP = (): void => undefined;
-
 
 export interface SweepOnChange {
     // Sweep clock, 0 -> 1, for positioning the cover/bands.
@@ -26,7 +24,7 @@ export interface SweepOnChange {
  */
 export const useSweepOnChange = <T>(dependency: T): SweepOnChange => {
     const prefersReducedMotion = usePrefersReducedMotion();
-    const { progress, isRunning, start } = useSweepClock(NO_OP);
+    const { progress, isRunning, start } = useSweepClock(() => undefined);
     const previousRef = useRef(dependency);
 
     useEffect(() => {

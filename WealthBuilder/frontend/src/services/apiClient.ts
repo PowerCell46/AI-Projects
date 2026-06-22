@@ -49,8 +49,9 @@ export const apiRequest = async <TResponse>(
 
 
 /**
- * Fetches a binary resource (e.g. an asset image) as a Blob, carrying the bearer token a
- * plain <img> tag can't attach. Throws {@link ApiError} on any non-2xx response.
+ * Fetches a binary resource (e.g. an asset image) as a Blob, sending the httpOnly auth cookie
+ * that a plain {@code <img>} tag can't attach to a cross-origin request. Throws {@link ApiError}
+ * on any non-2xx response.
  */
 export const apiRequestBlob = async (url: string): Promise<Blob> => {
     const response = await fetch(url, {

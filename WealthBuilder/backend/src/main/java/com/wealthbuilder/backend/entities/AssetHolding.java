@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -37,6 +38,13 @@ public class AssetHolding {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // Optimistic-lock counter managed by Hibernate. Concurrent updates to the same holding
+    // collide at commit: the second writer's UPDATE matches zero rows and raises an
+    // optimistic-lock failure instead of silently overwriting the first writer's changes.
+    @Setter(AccessLevel.NONE)
+    @Version
+    private Long version;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_id", nullable = false)

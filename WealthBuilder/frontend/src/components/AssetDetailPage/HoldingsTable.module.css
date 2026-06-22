@@ -61,7 +61,6 @@
 }
 
 .row {
-    cursor: pointer;
     transition: background 0.12s ease;
 }
 
@@ -69,8 +68,8 @@
     background: color-mix(in srgb, var(--app-accent) 18%, var(--app-surface));
 }
 
-/* The holding name is the row's keyboard-accessible activator (the row click is a mouse-only
-   convenience), so the focus ring lives on it. */
+/* The holding name button is the sole interactive activator for the row — both mouse and
+   keyboard navigate through it. The focus ring lives here. */
 .name:focus-visible {
     outline: 1px solid var(--app-accent);
     outline-offset: 0.125rem;

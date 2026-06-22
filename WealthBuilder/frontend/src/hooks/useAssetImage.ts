@@ -10,9 +10,9 @@ interface UseAssetImageResult {
 
 
 /**
- * Loads an asset's image through the API client (so the bearer token rides along) and
- * exposes it as an object URL, revoked on cleanup. Replaces the native lazy <img>, which
- * can't carry the Authorization header the image endpoint requires.
+ * Loads an asset's image through the API client (so the httpOnly auth cookie is sent) and
+ * exposes it as an object URL, revoked on cleanup. Replaces a plain {@code <img>}, which
+ * can't attach the cookie to cross-origin requests.
  */
 export const useAssetImage = (assetId: number): UseAssetImageResult => {
     const [objectUrl, setObjectUrl] = useState<string | null>(null);

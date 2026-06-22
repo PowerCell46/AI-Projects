@@ -4,6 +4,7 @@
 
 export interface Holding {
     id: number;
+    version: number;
     assetId: number;
     name: string;
     boughtForAmount: number;
@@ -16,8 +17,10 @@ export interface Holding {
 }
 
 // Body of POST /api/assets/{id}/holdings and PUT /api/holdings/{id}. Price is never sent —
-// the backend derives it from amount and quantity.
+// the backend derives it from amount and quantity. `version` is omitted on create; on update
+// it echoes the version from the last read so the backend can detect stale-form overwrites.
 export interface HoldingRequest {
+    version?: number;
     name: string;
     boughtForAmount: number;
     unit: string;

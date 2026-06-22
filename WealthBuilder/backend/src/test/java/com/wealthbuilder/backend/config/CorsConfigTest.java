@@ -3,6 +3,7 @@ package com.wealthbuilder.backend.config;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,7 +32,7 @@ class CorsConfigTest {
                 null,
                 null);
 
-        final CorsConfigurationSource source = new CorsConfig(properties).corsConfigurationSource();
+        final CorsConfigurationSource source = new CorsConfig(properties, new StandardEnvironment()).corsConfigurationSource();
 
         this.configuration = source.getCorsConfiguration(optionsPreflightTo(LOGIN_PATH));
     }

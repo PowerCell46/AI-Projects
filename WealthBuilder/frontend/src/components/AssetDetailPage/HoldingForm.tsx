@@ -118,6 +118,7 @@ export const HoldingForm = ({ assetId, holding, onSaved, onClose }: HoldingFormP
     };
 
     const buildRequest = (): HoldingRequest => ({
+        version: holding?.version,
         name: name.trim(),
         boughtForAmount: Number(amount),
         unit: unit.trim(),

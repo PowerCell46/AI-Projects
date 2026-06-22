@@ -167,7 +167,7 @@ class HoldingControllerTest {
             mockMvc
                     .perform(get("/api/assets/{assetId}/holdings", ASSET_ID).with(user("alice").roles("USER")))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.detail").value("Asset not found: " + ASSET_ID));
+                    .andExpect(jsonPath("$.detail").value("Asset not found: id=" + ASSET_ID));
         }
 
         @Test
@@ -271,7 +271,7 @@ class HoldingControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(validBody()))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.detail").value("Asset not found: " + ASSET_ID));
+                    .andExpect(jsonPath("$.detail").value("Asset not found: id=" + ASSET_ID));
         }
     }
 
@@ -368,6 +368,7 @@ class HoldingControllerTest {
     private static HoldingResponse response() {
         return new HoldingResponse(
                 HOLDING_ID,
+                null,
                 ASSET_ID,
                 "Apple shares",
                 new BigDecimal("100.0000"),

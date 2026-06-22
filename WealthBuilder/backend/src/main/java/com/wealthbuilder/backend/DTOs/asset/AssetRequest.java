@@ -17,6 +17,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AssetRequest {
 
+    // Null on create. On update the moderator client echoes back the version it received so
+    // the service can detect a stale-form submission before Hibernate's own commit-time check.
+    private Long version;
+
     private static final int MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
     // A 10 MB image base64-encodes to ~4/3 its size; the +64 covers the `data:image/...;base64,`

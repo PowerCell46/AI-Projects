@@ -14,6 +14,7 @@ import com.wealthbuilder.backend.utils.Slug;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,22 +42,27 @@ public class AssetServiceImpl implements AssetService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssetResponse> findAll() {
-        final Set<Long> referencedAssetIds = holdingRepository.findReferencedAssetIds();
+    public List<AssetResponse> findAll(String callerUsername, boolean globalScope) {
+        final Set<Long> inUseIds = globalScope
+                ? holdingRepository.findReferencedAssetIds()
+                : holdingRepository.findReferencedAssetIdsByUsername(callerUsername);
 
         return assetRepository
                 .findAll(NEWEST_FIRST)
                 .stream()
-                .map(asset -> AssetResponse.from(asset, referencedAssetIds.contains(asset.getId())))
+                .map(asset -> AssetResponse.from(asset, inUseIds.contains(asset.getId())))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AssetResponse findById(Long id) {
+    public AssetResponse findById(Long id, String callerUsername, boolean globalScope) {
         final Asset asset = requireAsset(id);
+        final boolean inUse = globalScope
+                ? holdingRepository.existsByAsset(asset)
+                : holdingRepository.existsByUserUsernameAndAsset(callerUsername, asset);
 
-        return AssetResponse.from(asset, holdingRepository.existsByAsset(asset));
+        return AssetResponse.from(asset, inUse);
     }
 
     /**
@@ -66,13 +72,19 @@ public class AssetServiceImpl implements AssetService {
      */
     @Override
     @Transactional(readOnly = true)
-    public AssetResponse findBySlug(String slug) {
+    public AssetResponse findBySlug(String slug, String callerUsername, boolean globalScope) {
         return assetRepository
                 .findAll()
                 .stream()
                 .filter(asset -> Slug.of(asset.getName()).equals(slug))
                 .findFirst()
-                .map(asset -> AssetResponse.from(asset, holdingRepository.existsByAsset(asset)))
+                .map(asset -> {
+                    final boolean inUse = globalScope
+                            ? holdingRepository.existsByAsset(asset)
+                            : holdingRepository.existsByUserUsernameAndAsset(callerUsername, asset);
+
+                    return AssetResponse.from(asset, inUse);
+                })
                 .orElseThrow(() -> new AssetNotFoundException(slug));
     }
 
@@ -111,6 +123,10 @@ public class AssetServiceImpl implements AssetService {
     @Transactional
     public AssetResponse update(Long id, AssetRequest request) {
         final Asset asset = requireAsset(id);
+
+        if (request.getVersion() != null && !request.getVersion().equals(asset.getVersion())) {
+            throw new OptimisticLockingFailureException("Stale asset: version mismatch.");
+        }
 
         if (assetRepository.existsByNameIgnoreCaseAndIdNot(request.getName(), id)) {
             throw new AssetNameAlreadyTakenException(request.getName());

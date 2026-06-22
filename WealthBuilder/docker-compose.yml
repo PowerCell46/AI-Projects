@@ -34,9 +34,10 @@ services:
       POSTGRE_SQL_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-wealth_builder_db}
       POSTGRE_SQL_USERNAME: ${POSTGRES_USER}
       POSTGRE_SQL_PASSWORD: ${POSTGRES_PASSWORD}
-      # 'create' (the in-code default) drops the schema on every boot. 'update' keeps data
-      # across restarts; switch to 'validate' once schema migrations are introduced.
-      SPRING_JPA_HIBERNATE_DDL_AUTO: ${DDL_AUTO:-update}
+      # 'validate' (the prod-profile default) checks schema/entity alignment at boot and fails
+      # fast on drift without touching data. Override with DDL_AUTO=update in your .env for the
+      # first boot on a fresh database, then remove the override once the schema is established.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${DDL_AUTO:-validate}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (>= 32 chars)}
       JWT_TTL: ${JWT_TTL:-1h}
       APP_MODERATOR_USERNAME: ${APP_MODERATOR_USERNAME}
@@ -69,8 +70,10 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks:
       - web
       - app

@@ -15,6 +15,8 @@ public class AssetResponse {
 
     Long id;
 
+    Long version;
+
     String name;
 
     String description;
@@ -26,6 +28,7 @@ public class AssetResponse {
     public static AssetResponse from(Asset asset, boolean inUse) {
         return new AssetResponse(
                 asset.getId(),
+                asset.getVersion(),
                 asset.getName(),
                 asset.getDescription(),
                 asset.getImageName(),

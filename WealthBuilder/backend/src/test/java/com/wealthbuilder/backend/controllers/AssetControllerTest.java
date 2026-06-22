@@ -31,6 +31,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -112,7 +114,7 @@ class AssetControllerTest {
 
         @Test
         void should_Return200WithAssets_When_ListRequestedByUser() throws Exception {
-            given(assetService.findAll()).willReturn(List.of(response()));
+            given(assetService.findAll(anyString(), anyBoolean())).willReturn(List.of(response()));
 
             mockMvc
                     .perform(get("/api/assets").with(user("alice").roles("USER")))
@@ -125,7 +127,7 @@ class AssetControllerTest {
 
         @Test
         void should_Return200WithAsset_When_DetailRequestedByUser() throws Exception {
-            given(assetService.findById(ASSET_ID)).willReturn(response());
+            given(assetService.findById(eq(ASSET_ID), anyString(), anyBoolean())).willReturn(response());
 
             mockMvc
                     .perform(get("/api/assets/{id}", ASSET_ID).with(user("alice").roles("USER")))
@@ -135,13 +137,13 @@ class AssetControllerTest {
 
         @Test
         void should_Return404Problem_When_AssetMissing() throws Exception {
-            given(assetService.findById(ASSET_ID))
+            given(assetService.findById(eq(ASSET_ID), anyString(), anyBoolean()))
                     .willThrow(new AssetNotFoundException(ASSET_ID));
 
             mockMvc
                     .perform(get("/api/assets/{id}", ASSET_ID).with(user("alice").roles("USER")))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.detail").value("Asset not found: " + ASSET_ID));
+                    .andExpect(jsonPath("$.detail").value("Asset not found: id=" + ASSET_ID));
         }
     }
 
@@ -320,7 +322,7 @@ class AssetControllerTest {
     }
 
     private static AssetResponse response() {
-        return new AssetResponse(ASSET_ID, NAME, DESCRIPTION, IMAGE_NAME, false);
+        return new AssetResponse(ASSET_ID, null, NAME, DESCRIPTION, IMAGE_NAME, false);
     }
 
     private static String json(String name, String description, String imageBase64) {

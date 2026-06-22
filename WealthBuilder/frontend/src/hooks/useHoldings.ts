@@ -11,7 +11,6 @@ export const HOLDINGS_PAGE_SIZE = 10;
 interface UseHoldingsResult {
     holdings: PageResponse<Holding> | null;
     summary: HoldingSummary | null;
-    pageIndex: number;
     filter: HoldingFilter;
     loading: boolean;
     error: string | null;
@@ -21,7 +20,7 @@ interface UseHoldingsResult {
 }
 
 
-const isFilterActive = (filter: HoldingFilter): boolean => {
+export const isFilterActive = (filter: HoldingFilter): boolean => {
     return filter.name.trim().length > 0 || filter.from.length > 0 || filter.to.length > 0;
 };
 
@@ -127,7 +126,6 @@ export const useHoldings = (assetId: number | null): UseHoldingsResult => {
     return {
         holdings,
         summary,
-        pageIndex,
         filter,
         loading,
         error,

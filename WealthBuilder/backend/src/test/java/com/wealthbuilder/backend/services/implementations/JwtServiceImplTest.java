@@ -145,6 +145,9 @@ class JwtServiceImplTest {
     private static String signTokenExpiringAt(Instant expiry) throws Exception {
         final JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(USERNAME)
+                .issuer("wealthbuilder")
+                .audience("wealthbuilder")
+                .claim("ver", TOKEN_VERSION)
                 .issueTime(Date.from(expiry.minusSeconds(600)))
                 .expirationTime(Date.from(expiry))
                 .build();

@@ -6,6 +6,7 @@ import com.wealthbuilder.backend.exceptions.asset.AssetNotFoundException;
 import com.wealthbuilder.backend.exceptions.auth.UsernameAlreadyTakenException;
 import com.wealthbuilder.backend.exceptions.holding.HoldingNotFoundException;
 import com.wealthbuilder.backend.exceptions.holding.InvalidDateRangeException;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,6 +16,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -58,12 +60,20 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST, "Parameter '" + ex.getName() + "' has an invalid value.");
     }
 
-    /** Constraint failures on {@code @Validated} request params or path variables. */
+    /**
+     * Constraint failures on {@code @Validated} request params or path variables. The per-field
+     * {@code errors} extension matches the shape returned by {@link #handleValidation} so the SPA
+     * can handle both validation failure paths uniformly.
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
         log.info("Constraint violation: {}", ex.getMessage());
 
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed.");
+        final ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Request validation failed.");
+        problem.setProperty("errors", fieldErrorsOf(ex));
+
+        return problem;
     }
 
     /** A holdings filter supplied a {@code from} date after its {@code to} date. */
@@ -142,6 +152,20 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    /**
+     * An authenticated principal's account was deleted while their session was still active.
+     * {@link UsernameNotFoundException} extends {@link AuthenticationException}, but the message
+     * "Invalid username or password" would be misleading here — the user knows their credentials
+     * were correct. The more specific handler fires first (Spring picks the closest match).
+     */
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ProblemDetail handleMidSessionUserDeletion(UsernameNotFoundException ex) {
+        log.warn("Authenticated user no longer exists: {}", ex.getMessage());
+
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED, "Your session is no longer valid. Please log in again.");
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ProblemDetail handleAuthentication(AuthenticationException ex) {
         log.info("Authentication failed: {}", ex.getMessage());
@@ -169,6 +193,16 @@ public class GlobalExceptionHandler {
 
         for (final FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        return errors;
+    }
+
+    private Map<String, String> fieldErrorsOf(ConstraintViolationException ex) {
+        final Map<String, String> errors = new HashMap<>();
+
+        for (final ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            errors.put(violation.getPropertyPath().toString(), violation.getMessage());
         }
 
         return errors;

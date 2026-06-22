@@ -10,6 +10,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,18 +38,18 @@ public class AssetController {
     private final AssetService assetService;
 
     @GetMapping
-    public List<AssetResponse> list() {
-        return assetService.findAll();
+    public List<AssetResponse> list(Authentication authentication) {
+        return assetService.findAll(authentication.getName(), isModerator(authentication));
     }
 
     @GetMapping("/{id}")
-    public AssetResponse detail(@PathVariable Long id) {
-        return assetService.findById(id);
+    public AssetResponse detail(@PathVariable Long id, Authentication authentication) {
+        return assetService.findById(id, authentication.getName(), isModerator(authentication));
     }
 
     @GetMapping("/by-slug/{slug}")
-    public AssetResponse detailBySlug(@PathVariable String slug) {
-        return assetService.findBySlug(slug);
+    public AssetResponse detailBySlug(@PathVariable String slug, Authentication authentication) {
+        return assetService.findBySlug(slug, authentication.getName(), isModerator(authentication));
     }
 
     @GetMapping("/{id}/image")
@@ -81,5 +82,11 @@ public class AssetController {
     @PreAuthorize("hasRole('MODERATOR')")
     public void delete(@PathVariable Long id) {
         assetService.delete(id);
+    }
+
+    private boolean isModerator(Authentication authentication) {
+        return authentication.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MODERATOR"));
     }
 }

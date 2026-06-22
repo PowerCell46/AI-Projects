@@ -85,16 +85,12 @@ export const HoldingsTable = ({
                                 <tr
                                     key={holding.id}
                                     className={styles.row}
-                                    onClick={() => onRowClick(holding)}
                                 >
                                     <td className={styles.td}>
                                         <button
                                             type="button"
                                             className={styles.name}
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                onRowClick(holding);
-                                            }}
+                                            onClick={() => onRowClick(holding)}
                                         >
                                             {holding.name}
                                         </button>

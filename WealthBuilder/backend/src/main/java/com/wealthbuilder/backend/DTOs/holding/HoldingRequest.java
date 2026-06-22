@@ -24,6 +24,10 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class HoldingRequest {
 
+    // Null on create (no version yet). On update the client echoes back the version it received
+    // so the service can detect a stale-form submission before Hibernate's own commit-time check.
+    private Long version;
+
     @NotBlank
     @Size(max = 200)
     private String name;

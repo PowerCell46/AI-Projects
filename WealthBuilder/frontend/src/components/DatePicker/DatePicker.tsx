@@ -56,30 +56,41 @@ export const DatePicker = ({ value, onChange, ariaLabel, min, max, invalid, desc
     const gridRef = useRef<HTMLDivElement>(null);
 
     // While open, close on an outside pointer (covers mouse, touch, and pen) or Escape.
+    // The pointer listener lives on document (needs to detect outside clicks by definition).
+    // The keydown listener lives on the picker's own container element rather than document so
+    // that it fires during the bubble phase BEFORE any ancestor modal's keydown handler —
+    // stopPropagation() then prevents the modal from also closing on the same Escape press.
     useEffect(() => {
         if (!open) {
             return;
         }
 
+        const container = containerRef.current;
+
+        if (container === null) {
+            return;
+        }
+
         const onPointerDown = (event: PointerEvent): void => {
-            if (containerRef.current !== null && !containerRef.current.contains(event.target as Node)) {
+            if (!container.contains(event.target as Node)) {
                 setOpen(false);
             }
         };
 
         const onKeyDown = (event: KeyboardEvent): void => {
             if (event.key === 'Escape') {
+                event.stopPropagation();
                 setOpen(false);
                 triggerRef.current?.focus();
             }
         };
 
         document.addEventListener('pointerdown', onPointerDown);
-        document.addEventListener('keydown', onKeyDown);
+        container.addEventListener('keydown', onKeyDown);
 
         return () => {
             document.removeEventListener('pointerdown', onPointerDown);
-            document.removeEventListener('keydown', onKeyDown);
+            container.removeEventListener('keydown', onKeyDown);
         };
     }, [open]);
 

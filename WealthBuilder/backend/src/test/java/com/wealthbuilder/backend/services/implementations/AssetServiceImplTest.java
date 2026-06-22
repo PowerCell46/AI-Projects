@@ -68,7 +68,7 @@ class AssetServiceImplTest {
             given(assetRepository.findAll(any(Sort.class))).willReturn(List.of(existingAsset()));
             given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of());
 
-            final List<AssetResponse> responses = assetService.findAll();
+            final List<AssetResponse> responses = assetService.findAll("testuser", true);
 
             assertThat(responses).hasSize(1);
             assertThat(responses.getFirst().getId()).isEqualTo(ASSET_ID);
@@ -86,7 +86,7 @@ class AssetServiceImplTest {
             given(assetRepository.findAll(any(Sort.class))).willReturn(List.of(referenced, free));
             given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of(ASSET_ID));
 
-            final List<AssetResponse> responses = assetService.findAll();
+            final List<AssetResponse> responses = assetService.findAll("testuser", true);
 
             assertThat(responses.getFirst().isInUse()).isTrue();
             assertThat(responses.get(1).isInUse()).isFalse();
@@ -97,7 +97,7 @@ class AssetServiceImplTest {
             given(assetRepository.findAll(any(Sort.class))).willReturn(List.of());
             given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of());
 
-            assertThat(assetService.findAll()).isEmpty();
+            assertThat(assetService.findAll("testuser", true)).isEmpty();
         }
 
         // Newest first: the id is IDENTITY-generated, so descending id is creation order.
@@ -106,7 +106,7 @@ class AssetServiceImplTest {
             given(assetRepository.findAll(any(Sort.class))).willReturn(List.of());
             given(holdingRepository.findReferencedAssetIds()).willReturn(Set.of());
 
-            assetService.findAll();
+            assetService.findAll("testuser", true);
 
             final ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
             verify(assetRepository).findAll(sortCaptor.capture());
@@ -122,7 +122,7 @@ class AssetServiceImplTest {
         void should_ReturnResponse_When_AssetExists() {
             given(assetRepository.findById(ASSET_ID)).willReturn(Optional.of(existingAsset()));
 
-            final AssetResponse response = assetService.findById(ASSET_ID);
+            final AssetResponse response = assetService.findById(ASSET_ID, "testuser", false);
 
             assertThat(response.getId()).isEqualTo(ASSET_ID);
             assertThat(response.getName()).isEqualTo(NAME);
@@ -132,7 +132,7 @@ class AssetServiceImplTest {
         void should_ThrowNotFound_When_AssetMissing() {
             given(assetRepository.findById(ASSET_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> assetService.findById(ASSET_ID))
+            assertThatThrownBy(() -> assetService.findById(ASSET_ID, "testuser", false))
                     .isInstanceOf(AssetNotFoundException.class);
         }
     }

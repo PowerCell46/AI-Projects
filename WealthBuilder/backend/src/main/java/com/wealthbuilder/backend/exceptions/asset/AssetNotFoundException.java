@@ -8,10 +8,10 @@ package com.wealthbuilder.backend.exceptions.asset;
 public class AssetNotFoundException extends RuntimeException {
 
     public AssetNotFoundException(Long id) {
-        super("Asset not found: " + id);
+        super("Asset not found: id=" + id);
     }
 
     public AssetNotFoundException(String slug) {
-        super("Asset not found: " + slug);
+        super("Asset not found: slug='" + slug + "'");
     }
 }

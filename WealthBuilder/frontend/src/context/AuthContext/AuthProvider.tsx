@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import { fetchCurrentUser, loginUser, logoutUser, registerUser } from '../../services/authService';
 import { setUnauthorizedHandler } from '../../services/apiClient';
+import { ApiError } from '../../types/problem';
 import type { AuthContextValue, AuthStatus, Credentials, CurrentUser } from '../../types/auth';
 
 
@@ -20,10 +21,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [user, setUser] = useState<CurrentUser | null>(null);
     // Starts 'loading': we don't know if the cookie is valid until the rehydrate call answers.
     const [status, setStatus] = useState<AuthStatus>('loading');
-    const [justAuthenticated, setJustAuthenticated] = useState(false);
+
+    // A ref rather than state so that clearing the flag never causes a re-render, and so that
+    // StrictMode's double-invoke doesn't let the flag persist into the remounted component. The
+    // flag becomes visible in the context value on the same re-render triggered by setUser /
+    // setStatus in establishSession, which runs synchronously before the context is read.
+    const justAuthenticatedRef = useRef(false);
 
     const clearJustAuthenticated = useCallback(() => {
-        setJustAuthenticated(false);
+        justAuthenticatedRef.current = false;
     }, []);
 
     // Drops the in-memory session. Used both by the explicit logout and by the global 401 handler
@@ -31,15 +37,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const clearSession = useCallback(() => {
         setUser(null);
         setStatus('unauthenticated');
-        setJustAuthenticated(false);
+        justAuthenticatedRef.current = false;
     }, []);
 
     // Populate the session from a register/login response. justAuthenticated is set only here
     // (interactive sign-in), never on rehydrate, so the home screen plays its entrance once.
     const establishSession = useCallback((currentUser: CurrentUser) => {
+        justAuthenticatedRef.current = true;
         setUser(currentUser);
         setStatus('authenticated');
-        setJustAuthenticated(true);
     }, []);
 
     const login = useCallback(async (credentials: Credentials) => {
@@ -58,12 +64,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }, [clearSession]);
 
     // Re-fetch the current user on demand. A 401 is handled globally (session clear); any other
-    // failure is swallowed so a transient error just leaves the previous user in place.
+    // failure leaves the previous user in place but is logged so it stays diagnosable.
     const refreshUser = useCallback(async () => {
         try {
             setUser(await fetchCurrentUser());
-        } catch {
-            // Keep the existing user; a 401 already cleared the session via the global handler.
+        } catch (error) {
+            if (!(error instanceof ApiError && error.isUnauthorized)) {
+                console.warn('[Auth] Failed to refresh user:', error);
+            }
         }
     }, []);
 
@@ -99,13 +107,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         user,
         status,
         isAuthenticated: status === 'authenticated',
-        justAuthenticated,
+        justAuthenticated: justAuthenticatedRef.current,
         login,
         register,
         logout,
         clearJustAuthenticated,
         refreshUser,
-    }), [user, status, justAuthenticated, login, register, logout, clearJustAuthenticated, refreshUser]);
+    }), [user, status, login, register, logout, clearJustAuthenticated, refreshUser]);
 
     return (
         <AuthContext.Provider value={value}>
