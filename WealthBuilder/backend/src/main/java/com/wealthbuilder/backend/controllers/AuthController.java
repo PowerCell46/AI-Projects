@@ -47,7 +47,11 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(HttpServletResponse response) {
+    public void logout(Authentication authentication, HttpServletResponse response) {
+        if (authentication != null) {
+            authService.logout(authentication.getName());
+        }
+
         response.addHeader(HttpHeaders.SET_COOKIE, authTokenCookie.clear().toString());
     }
 

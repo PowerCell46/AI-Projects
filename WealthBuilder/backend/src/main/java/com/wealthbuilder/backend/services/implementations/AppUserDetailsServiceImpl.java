@@ -1,5 +1,6 @@
 package com.wealthbuilder.backend.services.implementations;
 
+import com.wealthbuilder.backend.config.AppUserDetails;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 
 /**
@@ -33,10 +36,10 @@ public class AppUserDetailsServiceImpl implements UserDetailsService {
                 .findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown user: " + username));
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getUsername())
-                .password(user.getPasswordHash())
-                .authorities(new SimpleGrantedAuthority(ROLE_PREFIX + user.getRole().name()))
-                .build();
+        return new AppUserDetails(
+                user.getUsername(),
+                user.getPasswordHash(),
+                user.getTokenVersion(),
+                List.of(new SimpleGrantedAuthority(ROLE_PREFIX + user.getRole().name())));
     }
 }

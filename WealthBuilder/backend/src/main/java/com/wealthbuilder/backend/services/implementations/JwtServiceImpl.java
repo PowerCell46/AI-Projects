@@ -7,8 +7,8 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.wealthbuilder.backend.DTOs.auth.TokenClaims;
 import com.wealthbuilder.backend.config.AppProperties;
-import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +29,13 @@ import java.util.Date;
 @Slf4j
 public class JwtServiceImpl implements JwtService {
 
-    private static final String ROLE_CLAIM = "role";
+    private static final String VERSION_CLAIM = "ver";
 
     private static final int MIN_SECRET_BYTES = 32;
+
+    // Safety ceiling so a misconfigured JWT_TTL (e.g. PT720H) can't mint month-long tokens that
+    // stay valid long after a logout or password change. Keep the configured value well below this.
+    private static final Duration MAX_TTL = Duration.ofHours(24);
 
     private final byte[] signingKey;
 
@@ -48,6 +52,7 @@ public class JwtServiceImpl implements JwtService {
                 .getTtl();
 
         ensureSecretIsStrongEnough();
+        ensureTtlWithinBound();
     }
 
     /**
@@ -63,34 +68,50 @@ public class JwtServiceImpl implements JwtService {
         }
     }
 
+    /** Fails fast if the TTL is missing, non-positive, or longer than the {@link #MAX_TTL} ceiling. */
+    private void ensureTtlWithinBound() {
+        if (this.tokenTtl == null || this.tokenTtl.isZero() || this.tokenTtl.isNegative()
+                || this.tokenTtl.compareTo(MAX_TTL) > 0) {
+            throw new IllegalStateException(
+                    "app.jwt.ttl must be positive and at most " + MAX_TTL + "; got " + this.tokenTtl);
+        }
+    }
+
     @Override
-    public String issueToken(String username, Role role) {
+    public String issueToken(String username, int tokenVersion) {
         final Instant now = Instant.now();
         final JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(username)
-                .claim(ROLE_CLAIM, role.name())
+                .claim(VERSION_CLAIM, tokenVersion)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(now.plus(tokenTtl)))
                 .build();
 
-        log.debug("Issuing JWT for '{}' (role {}, valid {})", username, role, tokenTtl);
+        log.debug("Issuing JWT for '{}' (version {}, valid {})", username, tokenVersion, tokenTtl);
 
         return sign(claims);
     }
 
     @Override
-    public String extractUsername(String token) {
+    public TokenClaims verify(String token) {
         try {
             final SignedJWT parsedToken = SignedJWT.parse(token);
             verifySignature(parsedToken);
             final JWTClaimsSet claims = parsedToken.getJWTClaimsSet();
             ensureNotExpired(claims);
 
-            return claims.getSubject();
+            return new TokenClaims(claims.getSubject(), tokenVersionOf(claims));
 
         } catch (ParseException ex) {
             throw new InvalidTokenException("Malformed JWT", ex);
         }
+    }
+
+    /** Reads the version claim, treating a token issued without one (legacy) as version 0. */
+    private int tokenVersionOf(JWTClaimsSet claims) throws ParseException {
+        final Integer version = claims.getIntegerClaim(VERSION_CLAIM);
+
+        return version == null ? 0 : version;
     }
 
     private String sign(JWTClaimsSet claims) {

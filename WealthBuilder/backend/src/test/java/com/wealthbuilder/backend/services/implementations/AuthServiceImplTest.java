@@ -29,6 +29,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -76,7 +77,7 @@ class AuthServiceImplTest {
         void should_SaveUserAndReturnTokenWithUser_When_UsernameIsFree() {
             given(userRepository.existsByUsername(USERNAME)).willReturn(false);
             given(passwordEncoder.encode(RAW_PASSWORD)).willReturn(ENCODED_PASSWORD);
-            given(jwtService.issueToken(USERNAME, Role.USER)).willReturn(TOKEN);
+            given(jwtService.issueToken(USERNAME, 0)).willReturn(TOKEN);
             given(holdingRepository.sumInvestedByUser(any())).willReturn(BigDecimal.ZERO);
 
             final AuthenticatedUser response = authService.register(registerRequest());
@@ -90,7 +91,7 @@ class AuthServiceImplTest {
         void should_PersistUserWithRoleUserAndEncodedPassword_When_Registering() {
             given(userRepository.existsByUsername(USERNAME)).willReturn(false);
             given(passwordEncoder.encode(RAW_PASSWORD)).willReturn(ENCODED_PASSWORD);
-            given(jwtService.issueToken(USERNAME, Role.USER)).willReturn(TOKEN);
+            given(jwtService.issueToken(USERNAME, 0)).willReturn(TOKEN);
 
             authService.register(registerRequest());
 
@@ -109,7 +110,7 @@ class AuthServiceImplTest {
                     .isInstanceOf(UsernameAlreadyTakenException.class);
 
             verify(userRepository, never()).save(any());
-            verify(jwtService, never()).issueToken(anyString(), any());
+            verify(jwtService, never()).issueToken(anyString(), anyInt());
         }
     }
 
@@ -120,7 +121,7 @@ class AuthServiceImplTest {
         @Test
         void should_AuthenticateAndReturnTokenWithUser_When_CredentialsValid() {
             given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(existingUser(Role.USER)));
-            given(jwtService.issueToken(USERNAME, Role.USER)).willReturn(TOKEN);
+            given(jwtService.issueToken(USERNAME, 0)).willReturn(TOKEN);
             given(holdingRepository.sumInvestedByUser(any())).willReturn(BigDecimal.ZERO);
 
             final AuthenticatedUser response = authService.login(loginRequest());
@@ -139,7 +140,31 @@ class AuthServiceImplTest {
             assertThatThrownBy(() -> authService.login(loginRequest()))
                     .isInstanceOf(BadCredentialsException.class);
 
-            verify(jwtService, never()).issueToken(anyString(), any());
+            verify(jwtService, never()).issueToken(anyString(), anyInt());
+        }
+    }
+
+    @Nested
+    @DisplayName("Logout")
+    class Logout {
+
+        @Test
+        void should_RevokeIssuedTokens_When_UserExists() {
+            final User user = existingUser(Role.USER);
+            given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(user));
+
+            authService.logout(USERNAME);
+
+            assertThat(user.getTokenVersion()).isEqualTo(1);
+        }
+
+        @Test
+        void should_DoNothing_When_UserMissing() {
+            given(userRepository.findByUsername(USERNAME)).willReturn(Optional.empty());
+
+            authService.logout(USERNAME);
+
+            verify(userRepository).findByUsername(USERNAME);
         }
     }
 

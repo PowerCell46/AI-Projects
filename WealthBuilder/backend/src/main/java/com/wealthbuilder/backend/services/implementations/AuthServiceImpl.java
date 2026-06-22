@@ -90,8 +90,19 @@ public class AuthServiceImpl implements AuthService {
         return CurrentUserResponse.of(user.getUsername(), user.getRole(), computeBalance(user));
     }
 
+    @Override
+    @Transactional
+    public void logout(String username) {
+        userRepository
+                .findByUsername(username)
+                .ifPresent(user -> {
+                    user.revokeIssuedTokens();
+                    log.info("Revoked all tokens for user '{}' on logout.", user.getUsername());
+                });
+    }
+
     private AuthenticatedUser issueTokenFor(User user) {
-        final String token = jwtService.issueToken(user.getUsername(), user.getRole());
+        final String token = jwtService.issueToken(user.getUsername(), user.getTokenVersion());
         final CurrentUserResponse snapshot =
                 CurrentUserResponse.of(user.getUsername(), user.getRole(), computeBalance(user));
 

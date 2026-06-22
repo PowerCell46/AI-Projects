@@ -21,6 +21,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -179,6 +180,18 @@ class AuthControllerTest {
                     .andExpect(header().exists("Set-Cookie"));
 
             verify(authTokenCookie).clear();
+        }
+
+        @Test
+        void should_RevokeTokens_When_LoggingOutAuthenticated() throws Exception {
+            given(authTokenCookie.clear()).willReturn(clearedCookie());
+
+            mockMvc
+                    .perform(post("/api/auth/logout")
+                            .principal(new UsernamePasswordAuthenticationToken(USERNAME, null)))
+                    .andExpect(status().isNoContent());
+
+            verify(authService).logout(USERNAME);
         }
     }
 

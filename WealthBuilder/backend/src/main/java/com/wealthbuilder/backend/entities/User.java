@@ -43,9 +43,19 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    // Incremented to invalidate every token already issued for this account. Each token carries
+    // the version it was signed with; the auth filter rejects any token whose version is stale.
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
     public User(String username, String passwordHash, Role role) {
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
+    }
+
+    /** Invalidates every token already issued for this account (e.g. on logout or compromise). */
+    public void revokeIssuedTokens() {
+        this.tokenVersion++;
     }
 }

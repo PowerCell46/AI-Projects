@@ -1,5 +1,6 @@
 package com.wealthbuilder.backend.services.implementations;
 
+import com.wealthbuilder.backend.config.AppUserDetails;
 import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.entities.User;
 import com.wealthbuilder.backend.repositories.UserRepository;
@@ -48,6 +49,19 @@ class AppUserDetailsServiceImplTest {
         assertThat(details.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
                 .containsExactly("ROLE_MODERATOR");
+    }
+
+    @Test
+    void should_CarryTokenVersion_When_UserExists() {
+        final User user = new User(USERNAME, PASSWORD_HASH, Role.USER);
+        user.revokeIssuedTokens();
+        user.revokeIssuedTokens();
+        given(userRepository.findByUsername(USERNAME)).willReturn(Optional.of(user));
+
+        final UserDetails details = userDetailsService.loadUserByUsername(USERNAME);
+
+        assertThat(details).isInstanceOf(AppUserDetails.class);
+        assertThat(((AppUserDetails) details).getTokenVersion()).isEqualTo(2);
     }
 
     @Test

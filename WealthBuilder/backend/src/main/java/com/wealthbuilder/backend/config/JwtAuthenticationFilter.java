@@ -1,5 +1,7 @@
 package com.wealthbuilder.backend.config;
 
+import com.wealthbuilder.backend.DTOs.auth.TokenClaims;
+import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 import com.wealthbuilder.backend.services.interfaces.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -53,8 +55,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private void authenticate(String token, HttpServletRequest request) {
         try {
-            final String username = jwtService.extractUsername(token);
-            final UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            final TokenClaims claims = jwtService.verify(token);
+            final UserDetails userDetails = userDetailsService.loadUserByUsername(claims.getUsername());
+            ensureTokenNotRevoked(claims, userDetails);
 
             final UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -64,10 +67,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .getContext()
                     .setAuthentication(authentication);
         } catch (RuntimeException ex) {
-            // Invalid/expired token or unknown user: leave the context empty so the
+            // Invalid/expired/revoked token or unknown user: leave the context empty so the
             // request proceeds anonymously and the entry point answers with 401.
             log.debug("Rejected bearer token: {}", ex.getMessage());
             SecurityContextHolder.clearContext();
+        }
+    }
+
+    /** Rejects a token whose version is behind the account's current one (revoked on logout). */
+    private void ensureTokenNotRevoked(TokenClaims claims, UserDetails userDetails) {
+        if (userDetails instanceof AppUserDetails appUser
+                && claims.getTokenVersion() != appUser.getTokenVersion()) {
+            throw new InvalidTokenException("Token has been revoked");
         }
     }
 

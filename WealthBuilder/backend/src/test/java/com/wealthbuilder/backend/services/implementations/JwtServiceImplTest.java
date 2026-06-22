@@ -6,7 +6,6 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.wealthbuilder.backend.config.AppProperties;
-import com.wealthbuilder.backend.entities.enumerations.Role;
 import com.wealthbuilder.backend.exceptions.auth.InvalidTokenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +34,8 @@ class JwtServiceImplTest {
 
     private static final String USERNAME = "alice";
 
+    private static final int TOKEN_VERSION = 3;
+
     private static final Duration TTL = Duration.ofMinutes(30);
 
     private JwtServiceImpl jwtService;
@@ -50,18 +51,33 @@ class JwtServiceImplTest {
 
         @Test
         void should_RoundTripSubject_When_TokenIssuedThenRead() {
-            final String token = jwtService.issueToken(USERNAME, Role.USER);
+            final String token = jwtService.issueToken(USERNAME, TOKEN_VERSION);
 
-            final String extracted = jwtService.extractUsername(token);
-
-            assertThat(extracted).isEqualTo(USERNAME);
+            assertThat(jwtService.verify(token).getUsername()).isEqualTo(USERNAME);
         }
 
         @Test
-        void should_PreserveSubject_When_RoleIsModerator() {
-            final String token = jwtService.issueToken(USERNAME, Role.MODERATOR);
+        void should_RoundTripTokenVersion_When_TokenIssuedThenRead() {
+            final String token = jwtService.issueToken(USERNAME, TOKEN_VERSION);
 
-            assertThat(jwtService.extractUsername(token)).isEqualTo(USERNAME);
+            assertThat(jwtService.verify(token).getTokenVersion()).isEqualTo(TOKEN_VERSION);
+        }
+    }
+
+    @Nested
+    @DisplayName("TTL bound")
+    class TtlBound {
+
+        @Test
+        void should_FailFast_When_TtlExceedsTheCeiling() {
+            assertThatThrownBy(() -> new JwtServiceImpl(propertiesWithSecret(SIGNING_SECRET, Duration.ofHours(25))))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        void should_FailFast_When_TtlIsNotPositive() {
+            assertThatThrownBy(() -> new JwtServiceImpl(propertiesWithSecret(SIGNING_SECRET, Duration.ZERO)))
+                    .isInstanceOf(IllegalStateException.class);
         }
     }
 
@@ -71,10 +87,10 @@ class JwtServiceImplTest {
 
         @Test
         void should_ThrowInvalidToken_When_SignatureTampered() {
-            final String token = jwtService.issueToken(USERNAME, Role.USER);
+            final String token = jwtService.issueToken(USERNAME, TOKEN_VERSION);
             final String tampered = tamperSignature(token);
 
-            assertThatThrownBy(() -> jwtService.extractUsername(tampered))
+            assertThatThrownBy(() -> jwtService.verify(tampered))
                     .isInstanceOf(InvalidTokenException.class);
         }
 
@@ -82,14 +98,14 @@ class JwtServiceImplTest {
         void should_ThrowExpired_When_TokenAlreadyExpired() throws Exception {
             final String expiredToken = signTokenExpiringAt(Instant.now().minusSeconds(60));
 
-            assertThatThrownBy(() -> jwtService.extractUsername(expiredToken))
+            assertThatThrownBy(() -> jwtService.verify(expiredToken))
                     .isInstanceOf(InvalidTokenException.class)
                     .hasMessage("JWT is expired");
         }
 
         @Test
         void should_ThrowMalformed_When_TokenIsGarbage() {
-            assertThatThrownBy(() -> jwtService.extractUsername("not-a-real-jwt"))
+            assertThatThrownBy(() -> jwtService.verify("not-a-real-jwt"))
                     .isInstanceOf(InvalidTokenException.class)
                     .hasMessage("Malformed JWT");
         }
@@ -98,9 +114,9 @@ class JwtServiceImplTest {
         void should_ThrowInvalidToken_When_SignedWithDifferentKey() {
             final JwtServiceImpl foreignService =
                     new JwtServiceImpl(propertiesWithSecret(OTHER_SECRET, TTL));
-            final String foreignToken = foreignService.issueToken(USERNAME, Role.USER);
+            final String foreignToken = foreignService.issueToken(USERNAME, TOKEN_VERSION);
 
-            final Throwable thrown = catchThrowable(() -> jwtService.extractUsername(foreignToken));
+            final Throwable thrown = catchThrowable(() -> jwtService.verify(foreignToken));
 
             assertThat(thrown).isInstanceOf(InvalidTokenException.class);
         }
@@ -129,7 +145,6 @@ class JwtServiceImplTest {
     private static String signTokenExpiringAt(Instant expiry) throws Exception {
         final JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(USERNAME)
-                .claim("role", Role.USER.name())
                 .issueTime(Date.from(expiry.minusSeconds(600)))
                 .expirationTime(Date.from(expiry))
                 .build();

@@ -26,4 +26,10 @@ public interface AuthService {
      * Returns the authenticated account plus its derived balance.
      */
     CurrentUserResponse me(String username);
+
+    /**
+     * Revokes every token previously issued for the user, so logging out kills the session
+     * everywhere rather than merely dropping the cookie in the current browser.
+     */
+    void logout(String username);
 }
