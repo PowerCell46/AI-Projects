@@ -15,6 +15,6 @@ openssl req -x509 -nodes -newkey rsa:2048 \
   -keyout "$CERT_DIR/privkey.pem" \
   -out    "$CERT_DIR/fullchain.pem" \
   -subj   "/CN=$CN" \
-  -addext "subjectAltName=DNS:$CN,DNS:localhost,IP:127.0.0.1"
+  -addext "subjectAltName=DNS:$CN,DNS:localhost,IP:127.0.0.1,IP:$CN"
 
 echo "Self-signed cert written to $CERT_DIR (CN=$CN)."

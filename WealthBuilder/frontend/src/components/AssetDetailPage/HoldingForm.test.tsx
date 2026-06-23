@@ -60,6 +60,7 @@ describe('HoldingForm', () => {
         const onSaved = vi.fn();
         mockedCreate.mockResolvedValue({
             id: 1,
+            version: 0,
             assetId: 7,
             name: 'Apple',
             boughtForAmount: 500,

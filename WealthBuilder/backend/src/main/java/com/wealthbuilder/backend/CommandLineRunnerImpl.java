@@ -131,11 +131,11 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
 
     private List<AssetSeed> assetSeeds() {
         return List.of(
-                stocksSeed(),
-                bondsSeed(),
-                cryptocurrenciesSeed(),
+                personalGrowthSeed(),
                 preciousMetalsSeed(),
-                personalGrowthSeed());
+                cryptocurrenciesSeed(),
+                bondsSeed(),
+                stocksSeed());
     }
 
     /**

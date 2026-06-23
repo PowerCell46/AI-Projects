@@ -8,6 +8,7 @@ import type { PageResponse } from '../../types/page';
 
 const holding = (overrides: Partial<Holding> = {}): Holding => ({
     id: 1,
+    version: 0,
     assetId: 7,
     name: 'Apple',
     boughtForAmount: 500,

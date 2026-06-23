@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      POSTGRE_SQL_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-wealth_builder_db}
+      POSTGRE_SQL_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       POSTGRE_SQL_USERNAME: ${POSTGRES_USER}
       POSTGRE_SQL_PASSWORD: ${POSTGRES_PASSWORD}
       # 'validate' (the prod-profile default) checks schema/entity alignment at boot and fails
