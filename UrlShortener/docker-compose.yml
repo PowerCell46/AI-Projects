@@ -42,7 +42,7 @@ services:
       start_period: 5s
 
   app:
-    build: ./url-shortener-backend
+    build: ./backend
     restart: unless-stopped
     # ports:
     #   - "${APP_PORT:-8080}:8080"
@@ -71,7 +71,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./url-shortener-frontend
+    build: ./frontend
     restart: unless-stopped
     # ports:
     #   - "${FRONTEND_PORT:-5173}:80"

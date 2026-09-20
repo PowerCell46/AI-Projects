@@ -23,7 +23,7 @@ services:
       start_period: 5s
 
   app:
-    build: ../url-shortener-backend
+    build: ../backend
     ports:
       - "8081:8080"
     environment:
@@ -44,7 +44,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ../url-shortener-frontend
+    build: ../frontend
     ports:
       - "8082:80"
     healthcheck:
