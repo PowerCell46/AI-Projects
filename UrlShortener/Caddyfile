@@ -1,0 +1,4 @@
+{$SERVER_IP}.nip.io {
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    reverse_proxy frontend:80
+}

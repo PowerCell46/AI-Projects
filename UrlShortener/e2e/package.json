@@ -1,0 +1,17 @@
+{
+  "name": "url-shortener-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:slow": "SLOWMO=1000 playwright test --headed --workers=1",
+    "stack:down": "docker compose -p url-shortener-e2e -f docker-compose.e2e.yml down -v"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2"
+  }
+}
