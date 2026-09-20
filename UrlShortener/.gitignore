@@ -1,0 +1,8 @@
+.env
+
+DEPLOYMENT.md
+
+# Editor / OS
+.idea
+.vscode/
+.DS_Store
