@@ -10,8 +10,7 @@ import com.peter_gerdzhikov.signal_flow_api_gateway.support.AbstractPostgresInte
 @ActiveProfiles("test")
 class SignalFlowApiGatewayApplicationTests extends AbstractPostgresIntegrationTest {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void contextLoads() {
+    }
 }

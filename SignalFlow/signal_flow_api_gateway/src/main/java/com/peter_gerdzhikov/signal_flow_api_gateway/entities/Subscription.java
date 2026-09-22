@@ -22,7 +22,8 @@ import lombok.Setter;
 @Table(
         name = "subscriptions",
         indexes = @Index(columnList = "user_id"),
-        uniqueConstraints = @UniqueConstraint(columnNames = {"interest_topic_id", "user_id"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"interest_topic_id", "user_id"})
+)
 public class Subscription extends CommonEntity {
 
     @JoinColumn(name = "user_id", nullable = false)

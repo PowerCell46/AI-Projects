@@ -401,3 +401,20 @@ path — it now stores data in a version-specific subdirectory for `pg_ctlcluste
 treats that path as an "unused mount" containing stray data, erroring instead of initializing. Mount
 the volume one level up, at `/var/lib/postgresql`; the image creates the versioned subdirectory itself.
 Verified: `contextLoads` green against compose Postgres with this mount (step 1's gate).
+
+## `handleExceptionInternal` returns a fixed message, never the exception's
+
+`ResponseEntityExceptionHandler`'s catch-all previously echoed `e.getMessage()` for every Spring MVC
+exception not explicitly overridden — an unbounded leak surface on the one service that shouldn't have
+one, since any framework exception added by a future Spring version reaches it unreviewed. It now returns
+a fixed `"The request could not be processed."` and logs the real message at `warn`.
+
+The exceptions whose messages are genuinely useful to a client are overridden individually with curated
+strings (`405`, `415`, `404`), so the fixed fallback costs nothing on the paths that matter. Each override
+passes the inherited `headers` through — that's what preserves the `Allow` header RFC 9110 requires on a
+`405`, which a hand-rolled `@ExceptionHandler` would silently drop.
+
+Probe logging for scanner traffic was considered and **not** added here: `anyRequest().authenticated()`
+means an unauthenticated probe is answered `401` by `RestAuthenticationEntryPoint` and never reaches
+`NoResourceFoundException`, so logging in the advice would cover almost nothing. The entry point is where
+that belongs.

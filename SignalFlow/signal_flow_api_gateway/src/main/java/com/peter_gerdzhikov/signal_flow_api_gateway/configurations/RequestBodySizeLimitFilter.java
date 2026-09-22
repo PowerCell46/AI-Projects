@@ -36,7 +36,9 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     public RequestBodySizeLimitFilter(
-            @Value("${app.request.max-body-bytes}") long maxBodyBytes, ObjectMapper objectMapper) {
+            @Value("${app.request.max-body-bytes}") long maxBodyBytes,
+            ObjectMapper objectMapper
+    ) {
         this.maxBodyBytes = maxBodyBytes;
         this.objectMapper = objectMapper;
     }
@@ -49,8 +51,7 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         if (request.getContentLengthLong() > maxBodyBytes) {
             log.warn("Rejected a request to '{}' declaring an oversized body.", request.getRequestURI());
-            ErrorResponseWriter.write(
-                    response, objectMapper, HttpStatus.CONTENT_TOO_LARGE, RequestBodyTooLargeException.MESSAGE);
+            ErrorResponseWriter.write(response, objectMapper, HttpStatus.CONTENT_TOO_LARGE, RequestBodyTooLargeException.MESSAGE);
             return;
         }
 

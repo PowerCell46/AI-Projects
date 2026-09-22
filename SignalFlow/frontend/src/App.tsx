@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import AuthPage from './components/AuthPage/AuthPage'
 import HomePage from './components/HomePage/HomePage'
 import { me } from './api/auth'
@@ -37,11 +38,29 @@ function App() {
         return null
     }
 
-    if (status === 'authenticated' && user) {
-        return <HomePage user={user} onSignedOut={() => setStatus('unauthenticated')} />
-    }
-
-    return <AuthPage />
+    return (
+        <Routes>
+            <Route
+                path="/login"
+                element={status === 'authenticated' ? <Navigate to="/" replace /> : <AuthPage mode="signin" />}
+            />
+            <Route
+                path="/register"
+                element={status === 'authenticated' ? <Navigate to="/" replace /> : <AuthPage mode="register" />}
+            />
+            <Route
+                path="/"
+                element={
+                    status === 'authenticated' && user ? (
+                        <HomePage user={user} onSignedOut={() => setStatus('unauthenticated')} />
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    )
 }
 
 export default App

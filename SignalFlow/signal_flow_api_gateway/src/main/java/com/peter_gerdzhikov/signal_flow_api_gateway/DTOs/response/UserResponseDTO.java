@@ -18,7 +18,11 @@ public class UserResponseDTO {
 
     private String email;
 
-    private Role role; // ? Why do we send the role?
+    /**
+     * The SPA cannot read the HttpOnly JWT, so this is its only source for role-dependent rendering.
+     * Never an authorization input - the gateway authorizes from the token's claims alone.
+     */
+    private Role role;
 
     private Instant createdAt;
 }

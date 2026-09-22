@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AuthForm from './AuthForm/AuthForm'
 import Panel from './Panel/Panel'
 import type { Mode } from './Panel/Panel'
 import './AuthPage.css'
+
+const PATH_BY_MODE: Record<Mode, string> = {
+    signin: '/login',
+    register: '/register',
+}
 
 const COVER_AT_MS = 300
 const UNCOVER_AT_MS = 360
@@ -30,8 +36,12 @@ function useMediaQuery(query: string): boolean {
     return matches
 }
 
-function AuthPage() {
-    const [mode, setMode] = useState<Mode>('signin')
+interface AuthPageProps {
+    mode: Mode
+}
+
+function AuthPage({ mode }: AuthPageProps) {
+    const navigate = useNavigate()
     const [covered, setCovered] = useState(false)
     const [mobileFading, setMobileFading] = useState(false)
 
@@ -61,8 +71,10 @@ function AuthPage() {
             return
         }
 
+        const path = PATH_BY_MODE[target]
+
         if (prefersReducedMotion) {
-            setMode(target)
+            navigate(path)
             focusEmail(target)
             return
         }
@@ -72,7 +84,7 @@ function AuthPage() {
             setMobileFading(true)
 
             const swapId = window.setTimeout(() => {
-                setMode(target)
+                navigate(path)
             }, MOBILE_FADE_SWAP_MS)
 
             const revealId = window.setTimeout(() => {
@@ -89,7 +101,7 @@ function AuthPage() {
         setCovered(true)
 
         const swapId = window.setTimeout(() => {
-            setMode(target)
+            navigate(path)
         }, COVER_AT_MS)
 
         const uncoverId = window.setTimeout(() => {

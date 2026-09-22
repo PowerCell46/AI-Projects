@@ -46,7 +46,9 @@ public class SubscriptionController {
 
     @PostMapping
     public ResponseEntity<SubscriptionResponseDTO> subscribe(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SubscribeRequestDTO request) {
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody SubscribeRequestDTO request
+    ) {
         log.info("Received subscribe request.");
         Subscription subscription = subscriptionService.subscribe(callerId(jwt), request.getInterestTopicId());
 
@@ -75,6 +77,9 @@ public class SubscriptionController {
 
     private SubscriptionResponseDTO toResponse(Subscription subscription) {
         return new SubscriptionResponseDTO(
-                subscription.getId(), subscription.getInterestTopicId(), subscription.getCreatedAt());
+                subscription.getId(),
+                subscription.getInterestTopicId(),
+                subscription.getCreatedAt()
+        );
     }
 }

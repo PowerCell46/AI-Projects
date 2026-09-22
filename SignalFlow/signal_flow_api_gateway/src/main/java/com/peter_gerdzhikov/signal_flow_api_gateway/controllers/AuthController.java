@@ -80,7 +80,12 @@ public class AuthController {
     }
 
     private UserResponseDTO toResponse(User user) {
-        return new UserResponseDTO(user.getId(), user.getEmail(), user.getRole(), user.getCreatedAt());
+        return new UserResponseDTO(
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getCreatedAt()
+        );
     }
 
     private UserResponseDTO toResponse(Jwt jwt) {

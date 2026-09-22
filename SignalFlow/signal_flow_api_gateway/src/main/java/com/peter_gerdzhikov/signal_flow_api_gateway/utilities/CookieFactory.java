@@ -19,7 +19,10 @@ public class CookieFactory {
 
     private final boolean secure;
 
-    public CookieFactory(@Value("${app.jwt.ttl}") Duration ttl, @Value("${app.cookie.secure}") boolean secure) {
+    public CookieFactory(
+            @Value("${app.jwt.ttl}") Duration ttl,
+            @Value("${app.cookie.secure}") boolean secure
+    ) {
         this.ttl = ttl;
         this.secure = secure;
     }

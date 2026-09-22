@@ -4,7 +4,10 @@ The **auth** phase (2026-09-21) and the **subscriptions** phase (2026-09-22) hav
 green. Their design, step-by-step gates and `/grill-me` interview records are no longer carried here —
 read them from git history (`git log -p -- PLAN.md`). Calls made during implementation live in
 `DECISIONS.md`, the e2e catalog in `TESTING.md`, the latest audit in
-`exploit-report-2026-09-22-subscriptions.md`.
+`exploit-report-2026-09-22-subscriptions.md`. Three of that audit's findings — the cap's check-then-act
+race, a non-UUID `sub` reaching a controller, and the missing request body cap — have since been fixed
+and were dropped from it (its status note records what closed each). Its four remaining findings are
+open by decision and appear under *Accepted gaps* below with their triggers.
 
 This file now holds only what is still to do, fix or improve. Same rule as before for anything picked up
 from it: **no step starts on a red or missing test, and each step ends green.**
@@ -26,7 +29,10 @@ Nothing open.
   unexposed until then, so nothing leaks yet.
 - **Request forwarding.** `spring-cloud-gateway-server-webmvc` (the blocking variant — reactive was
   rejected, it rules out JPA for throughput this project doesn't need). Nothing built so far has to
-  change to accommodate it.
+  change to accommodate it. When this lands and starts forwarding to
+  `signal_flow_interest_topic_service`: enforce `ADMIN` on its topic/category write endpoints and
+  require authentication (any role) on `GET /interest-topics` — that service has no Spring Security of
+  its own and trusts every caller (see its `PLAN.md`'s Known gaps).
 - **The SPA's subscription screens.** `../frontend/` has shipped — single origin, nginx proxying `/api/`
   and Vite's `server.proxy` in dev, no CORS config anywhere as planned — but it calls `/api/v1/auth/*`
   only. Subscribe/unsubscribe/list are still to wire; all three endpoints exist.
@@ -45,8 +51,8 @@ Nothing open.
   writes, not just the read-only `/me`. Direct consequence of "no DB read on an authenticated request."
   **Trigger:** needing to cut off an account immediately.
 - **No server-side logout revocation.** A stolen token lives until it expires (≤1h). Same trigger.
-- **Any UUID is subscribable.** Bounded by the per-user cap; closes with topic-existence validation
-  above.
+- **Any UUID is subscribable.** Bounded by the per-user cap, which a `SELECT ... FOR UPDATE` on the
+  caller's user row now holds under concurrency too; closes with topic-existence validation above.
 - **The service's `catch (DataIntegrityViolationException)` assumes the unique constraint.** A
   subscription insert can also break the `user_id` FK, and both surface as the same exception — a user
   whose row had been deleted would be told "already subscribed." Unreachable today: no user-delete path

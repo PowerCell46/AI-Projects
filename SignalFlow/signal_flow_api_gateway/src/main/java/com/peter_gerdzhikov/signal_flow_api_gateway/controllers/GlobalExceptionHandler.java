@@ -2,7 +2,6 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.controllers;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,11 +11,14 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateEmailException;
@@ -32,20 +34,14 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(DuplicateEmailException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDuplicateEmail(DuplicateEmailException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(errorBody(HttpStatus.CONFLICT, List.of(e.getMessage())));
-    }
+    private static final String UNPROCESSABLE_REQUEST_MESSAGE = "The request could not be processed.";
 
-    @ExceptionHandler(DuplicateSubscriptionException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDuplicateSubscription(DuplicateSubscriptionException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(errorBody(HttpStatus.CONFLICT, List.of(e.getMessage())));
-    }
-
-    @ExceptionHandler(SubscriptionLimitExceededException.class)
-    public ResponseEntity<ErrorResponseDTO> handleSubscriptionLimitExceeded(SubscriptionLimitExceededException e) {
+    @ExceptionHandler({
+            DuplicateEmailException.class,
+            DuplicateSubscriptionException.class,
+            SubscriptionLimitExceededException.class
+    })
+    public ResponseEntity<ErrorResponseDTO> handleConflict(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(errorBody(HttpStatus.CONFLICT, List.of(e.getMessage())));
     }
@@ -117,13 +113,42 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
+    protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        // The inherited headers carry the Allow header RFC 9110 requires on a 405.
+        return ResponseEntity.status(status)
+                .headers(headers)
+                .body(errorBody(status, List.of("This method is not supported for this endpoint.")));
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return ResponseEntity.status(status)
+                .headers(headers)
+                .body(errorBody(status, List.of("This content type is not supported for this endpoint.")));
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleNoResourceFoundException(
+            NoResourceFoundException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        log.warn("No resource found for {} '{}'.", e.getHttpMethod(), e.getResourcePath());
+        return ResponseEntity.status(status)
+                .headers(headers)
+                .body(errorBody(status, List.of("No resource found for this path.")));
+    }
+
+    /**
+     * The catch-all for every Spring MVC exception not overridden above. The message is fixed rather
+     * than taken from the exception, so an un-anticipated framework message can never reach a client.
+     */
+    @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception e, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         log.warn("Unhandled Spring MVC exception: {}.", e.getMessage());
-        List<String> messages = List.of(Objects.requireNonNullElse(e.getMessage(), "Request could not be processed."));
         return ResponseEntity.status(status)
                 .headers(headers)
-                .body(errorBody(status, messages));
+                .body(errorBody(status, List.of(UNPROCESSABLE_REQUEST_MESSAGE)));
     }
 
     private String describe(FieldError fieldError) {

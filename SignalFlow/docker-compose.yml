@@ -22,5 +22,57 @@ services:
       retries: 5
       start_period: 10s
 
+  postgres-topics:
+    image: postgres:18
+    restart: unless-stopped
+    # ports:
+    #   - "5433:5432"
+    environment:
+      POSTGRES_USER: ${TOPICS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TOPICS_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TOPICS_POSTGRES_DB:-signal_flow_topics}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    volumes:
+      - postgres_topics_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TOPICS_POSTGRES_USER} -d ${TOPICS_POSTGRES_DB:-signal_flow_topics}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafka:
+    image: apache/kafka:4.3.1
+    restart: unless-stopped
+    # ports:
+    #   - "9092:9092"
+    environment:
+      CLUSTER_ID: oFL-WUJpDNGgQBFoinoXJQ
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 volumes:
   postgres_data:
+  postgres_topics_data:

@@ -31,7 +31,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionServiceImpl(
             @Value("${app.subscriptions.max-per-user}") int maxSubscriptionsPerUser,
             UserRepository userRepository,
-            SubscriptionRepository subscriptionRepository) {
+            SubscriptionRepository subscriptionRepository
+    ) {
         this.maxSubscriptionsPerUser = maxSubscriptionsPerUser;
         this.userRepository = userRepository;
         this.subscriptionRepository = subscriptionRepository;
@@ -57,8 +58,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         try {
             // Flushed inside the transaction so a constraint violation surfaces here, not at commit.
-            Subscription savedSubscription =
-                    subscriptionRepository.saveAndFlush(newSubscription(userId, interestTopicId));
+            Subscription savedSubscription = subscriptionRepository
+                    .saveAndFlush(newSubscription(userId, interestTopicId));
             log.info("User '{}' subscribed to interest topic '{}'.", userId, interestTopicId);
             return savedSubscription;
 
