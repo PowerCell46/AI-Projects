@@ -1,0 +1,6 @@
+.env
+
+# Editor / OS
+.idea
+.vscode/
+.DS_Store

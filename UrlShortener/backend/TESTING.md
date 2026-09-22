@@ -26,6 +26,8 @@ Hand-maintained — see `CLAUDE.md`'s "Writing code" section for the rule keepin
 
 - Redirects (302) to the original URL and warms the Redis cache (`should_redirect_to_the_original_url_and_warm_the_cache`)
 - Unknown code returns 404 with an error body, no code/exception/package leakage (`should_return_404_with_an_error_body_for_an_unknown_code`)
+- Single-segment scanner probe (`/.env`, `/wp-config.php`, `/backup.sql`, `/docker-compose.yml`) returns the same 404 error body as an unknown code, rejected by `ScannerProbeInterceptor` before any lookup (`should_return_404_for_a_scanner_probe_path_without_a_database_lookup`)
+- Multi-segment scanner probe (`/.git/HEAD`, `/.ssh/id_rsa`, `/actuator/heapdump`, `/storage/logs/laravel.log`) returns 404 — never matches the `/{code}` route at all (`should_return_404_for_a_multi_segment_scanner_probe_path`)
 
 ## Known gaps
 

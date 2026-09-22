@@ -1,0 +1,261 @@
+# Decisions
+
+Non-obvious calls made *during* implementation — the ones that would be hard to re-derive from the
+code alone. Design settled up front lives in `PLAN.md`; conventions live in `CLAUDE.md`.
+
+One entry per decision: what was chosen, what it was chosen over, and why.
+
+---
+
+## Step 1 — `app.jwt.secret` ships a committed dev-only default
+
+Resolves `PLAN.md`'s open question #2. A short, obviously-fake default
+(`dev-only-secret-do-not-use-in-prod`) is committed so `mvn spring-boot:run` works with no `.env`
+setup. It is not a usable secret outside dev — a fixed, publicly-known HS256 key signs nothing
+safely — so it satisfies "no secret is ever committed" (step 1's other rule) while keeping local
+onboarding frictionless. Prod must set `JWT_SECRET` or authentication is trivially forgeable.
+
+## Step 1 — `docker-compose.yml` lives at the SignalFlow root, Postgres only
+
+Mirrors `UrlShortener`'s root-level compose file, one level above the backend module. No `app` or
+`frontend` service yet — neither exists this phase (forwarding and the SPA are later phases) — so the
+compose file only brings up Postgres. `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` come from
+`.env` (see `.env.example`), never a committed default, matching the Mongo/Redis credential pattern in
+`UrlShortener/docker-compose.yml`.
+
+## Step 1 — app datasource env vars (`DATASOURCE_*`) are separate from compose's `POSTGRES_*`
+
+There's no `app` service in this compose yet to build a `DATASOURCE_URL` from `POSTGRES_*` the way
+`UrlShortener`'s `app` service builds `MONGODB_URI` from `MONGO_ROOT_*`. `application.properties`
+instead reads its own `DATASOURCE_URL`/`DATASOURCE_USERNAME`/`DATASOURCE_PASSWORD`, defaulting to
+`localhost:5432` with the same values `.env.example` suggests for `POSTGRES_*` — so a dev who copies
+`.env.example` to `.env` unchanged gets a working `docker compose up postgres` + `mvn
+spring-boot:run` with no further wiring. When the `app` service is added (alongside forwarding), this
+should collapse to one set of vars the way UrlShortener does.
+
+## Step 2 — `User` lowercases its own email via `@PrePersist`/`@PreUpdate`
+
+Both readings of PLAN.md's "unique, stored lowercased" were valid: enforce it on the entity, or leave
+it to `AuthService.register` (step 5, not yet built) and treat step 2's repo test as a trivial
+round-trip. Asked; chose entity-level. A `lowercaseEmail()` lifecycle callback on `User` normalizes the
+field on every insert/update regardless of caller, so the invariant holds even if a future write path
+forgets to lower it, and the repository test in `UserRepositoryIntegrationTest` has a real assertion
+behind it (mixed-case in, lowercase out) instead of a no-op round-trip. Step 5's "lowercase the email"
+note becomes a description of the outcome, not a second place doing the work.
+
+## Step 2 — Boot 4.2.0-M1 split `@DataJpaTest`/`@AutoConfigureTestDatabase` into new artifacts and packages
+
+Neither class lives under `org.springframework.boot.test.autoconfigure.*` (the 3.x location) anymore.
+`@DataJpaTest` moved to `spring-boot-data-jpa-test` →
+`org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest`; `@AutoConfigureTestDatabase` moved
+to `spring-boot-jdbc-test` → `org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase`.
+Both ship transitively via `spring-boot-starter-data-jpa-test`, already in the pom — no dependency
+change needed, just the new import paths. Confirms `CLAUDE.md`'s warning to verify 3.x-era APIs before
+relying on them.
+
+## Step 4 — `spring-boot-starter-webmvc` pulls Jackson 3, package renamed to `tools.jackson.*`
+
+Another Boot 4-era relocation, same category as step 2's `@DataJpaTest` move: Jackson 3 (pulled in
+transitively as `tools.jackson.core:jackson-databind`) renamed its groupId and root package from
+`com.fasterxml.jackson.*` to `tools.jackson.*`. `ObjectMapper` is `tools.jackson.databind.ObjectMapper`.
+Confirmed by inspecting the resolved jar directly (`unzip -l`) rather than trusting the 2.x import.
+Affects `RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`, `ErrorResponseWriter`.
+
+## Step 4 — `CookieFactory` is a plain `@Component`, not a `Service`/`ServiceImpl` pair
+
+PLAN.md names it "the cookie factory," not "the cookie service" — read literally against `CLAUDE.md`'s
+service rule ("an interface `FooService` + `FooServiceImpl`"), a class not named `...Service` isn't bound
+by that pattern. `CookieFactory` holds no business logic, only `ResponseCookie` formatting from
+config (`app.jwt.ttl`, `app.cookie.secure`), so it stays a single concrete class in `/utilities`,
+constructor-injected (no field/setter injection, so still within the DI hard rule). Same reasoning for
+`CookieBearerTokenResolver`, which needs no config at all and isn't Spring-managed - `SecurityConfiguration`
+instantiates it directly with `new`.
+
+## Step 4 — `JwtDecoder`'s validator explicitly requires `sub`/`email`/`role`/`exp`, not just Spring's default
+
+`NimbusJwtDecoder.withSecretKey(...).build()` sets no validator by default - no `exp` check at all unless
+one is wired in. `JwtValidators.createDefault()` adds `iat`/`exp`/`nbf` timestamp checks, but a *missing*
+`exp` still passes it (no expiry present, nothing to compare). PLAN.md step 4's gate explicitly calls for
+a "missing claims" unit test, and the claims contract (`sub`, `email`, `role`, `iat`, `exp`) is pinned in
+step 4's own "Decided here" section, so `jwtDecoder` composes `JwtValidators.createDefault()` with a
+`JwtClaimValidator` per required claim via `DelegatingOAuth2TokenValidator`. Verified in
+`TokenServiceImplTest.should_reject_a_token_missing_required_claims`.
+
+## Step 4 — `TokenService`/`TokenServiceImpl` minted now, ahead of `AuthService` (step 5)
+
+PLAN.md's step 4 gate needs a testable mint/parse round-trip before `AuthService` exists. Splitting
+minting into its own service now (`TokenService.mint(User)`) means step 5/6's `AuthService` just calls
+it rather than duplicating JWT-building logic, and `TokenServiceImplTest` can unit-test mint/expired/
+wrong-signature/tampered/missing-claims without a controller or a Postgres user to hang them off.
+
+## Step 4 — Docker port conflict confirmed pre-existing, not caused by this step
+
+`SignalFlowApiGatewayApplicationTests.contextLoads` (`@SpringBootTest`, no Testcontainers, connects to
+`localhost:5432` per its default datasource) fails in this environment: host port 5432 is already bound
+by an unrelated Postgres container from another project. `../docker-compose.yml`'s `ports:` mapping is
+already commented out for exactly this reason. Verified by temporarily uncommenting it and reproducing
+Docker's "port is already allocated" error, then reverting. Not a step 4 regression - every Testcontainers
+test (`UserRepositoryIntegrationTest`, `AuthControllerIntegrationTest`, and the new unit tests) is green;
+only this one host-dependent smoke test is blocked, and only in this environment.
+
+## Step 1 — Postgres image pinned to `postgres:18`
+
+Latest stable major as of this phase; no compatibility constraint forces an older line the way
+`mongo:8.2` was pinned in UrlShortener (SERVER-121912). Revisit if a later dependency needs otherwise.
+
+## Step 3 — `ErrorResponseDTO` added even though it's not in step 3's DTO list
+
+`PLAN.md`'s step 3 "Build" section only names `RegisterRequestDTO`/`LoginRequestDTO`/`UserResponseDTO`,
+but the scenario table pins the error contract to "UrlShortener's `ErrorResponseDTO` verbatim" — and the
+disabled test methods need a concrete type to compile their assertions against. Copied verbatim from
+`UrlShortener`'s `DTOs/response/ErrorResponseDTO` (`status`, `messages`, `timestamp`). `GlobalExceptionHandler`
+itself still lands in step 4 — this only adds the response shape it will produce.
+
+## Step 3 — all four `@Nested` blocks are `@Disabled` in the catalog, not just Login/Logout/Me
+
+`PLAN.md`'s "Everything past register carries `@Disabled`" reads ambiguously in isolation, but step 5's
+gate ("Remove the Register block's `@Disableds`; green") only makes sense if Register's tests are
+already disabled going into step 5. `AuthController`/`AuthService` don't exist yet in step 3, so Register
+tests would fail, not just the later blocks. Each `@Test` carries its own `@Disabled("Enabled in PLAN.md
+step N")` rather than one class-level annotation, matching the plural "`@Disableds`" wording in the step
+5–8 gates.
+
+## Step 3 — `Me`'s signature/expiry negative cases mint real Nimbus JWTs, not garbage strings
+
+`should_return_401_with_a_token_signed_by_a_different_secret` and `..._with_an_expired_token` need to be
+distinguishable from `should_return_401_with_a_garbage_cookie` once step 8's decoder exists — a garbage
+string only exercises the parse-failure path. `PLAN.md` step 4 already pins the exact claims (`sub`,
+`email`, `role`, `iat`, `exp`) and the HS256/shared-secret scheme, so there's nothing left to guess: a
+small `mintToken(secret, issuedAt, expiresAt)` helper in the test uses `com.nimbusds.jwt.SignedJWT`
+directly (already on the classpath via `spring-boot-starter-oauth2-resource-server`) to build one. This
+duplicates what will likely become step 4's `NimbusJwtEncoder` usage, but that bean doesn't exist yet
+in step 3 — revisit at step 8 and switch to the app's own encoder if that removes the duplication.
+
+## Step 7 — `AuthControllerIntegrationTest` needs `@AutoConfigureMockMvc` alongside `@AutoConfigureRestTestClient`
+
+Discovered while enabling the `Logout` block: a garbage cookie and no cookie at all produced the *same*
+404 on `GET /api/v1/auth/me`, not 401 - meaning Spring Security's filter chain never ran. Root cause:
+`RestTestClientTestAutoConfiguration.getBuilder()` falls back to `RestTestClient.bindToApplicationContext(...)`
+whenever no `MockMvc` bean and no live server exist in the context, and that path does not register any
+servlet `Filter` beans (including `springSecurityFilterChain`) the way Boot's `@AutoConfigureMockMvc`
+does. `UrlShortener` never hit this because it has no security layer to miss. Fix: add
+`org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` (Boot 4.2's relocated package)
+next to `@AutoConfigureRestTestClient` on `AuthControllerIntegrationTest`, so `RestTestClientTestAutoConfiguration`
+finds that pre-built, filter-carrying `MockMvc` bean (`hasBean(applicationContext, MockMvc.class)`) and
+binds to it instead. Verified with a throwaway probe test: same garbage cookie now returns 401 with the
+annotation present, 404 without it. Without this, none of the suite's 401 assertions (this step's, and
+step 8's) actually exercise Spring Security - they'd pass or fail on routing alone.
+
+## Step 7 — `should_prevent_the_old_cookie_from_authenticating_me` rewritten to drop the cookie, not resend it
+
+The scenario as written in step 3 resent the exact raw JWT captured at login on the post-logout `/me`
+call and expected 401. That can never pass: `PLAN.md` step 4 and the Known gaps section both commit to
+best-effort logout with **no server-side revocation** - an unexpired token authenticates regardless of
+logout, by design. Asked; user chose testing the cookie-jar path over removing the scenario or adding
+revocation. Renamed to `should_prevent_a_browser_that_dropped_the_cleared_cookie_from_authenticating_me`
+and reworked to not resend any cookie on the `/me` call - modelling a real browser, which stops sending
+`access_token` once it receives the `Max-Age=0` clearing cookie. This still needs the `@AutoConfigureMockMvc`
+fix above to hit the 401 path instead of a 404 from the unmapped `/me` route (step 8 isn't built yet).
+
+## Step 8 — `createdAt` added as a new JWT claim, not read from the DB in `/me`
+
+Step 4 pinned the claims contract to `sub`/`email`/`role`/`iat`/`exp` — no `createdAt`. But
+`UserResponseDTO` (the `/me` response shape, pinned in step 3) carries `createdAt`, and CLAUDE.md's hard
+rule is "no DB read on an authenticated request — authorization comes from the JWT claims alone." Step
+8's own build note ("read the authenticated principal's claims, return `UserResponseDTO`") only makes
+sense if the token carries everything the DTO needs. `TokenServiceImpl.mint` now also stamps
+`createdAt` (`user.getCreatedAt().toString()`, ISO-8601) and `AuthController.me` reads it back via
+`jwt.getClaimAsInstant("createdAt")`. Stored as a string, not epoch seconds — epoch seconds truncate to
+whole seconds and `should_return_the_callers_id_email_role_and_created_at` asserts exact equality with
+the DB value (which carries microsecond precision from Postgres); `Instant.toString()`/`Instant.parse()`
+round-trips without losing precision, and Spring Security's `ClaimConversionService` already falls back
+to `Instant.parse()` for a string claim it can't read as an epoch number. Not added to the required-claims
+validator: a missing `createdAt` doesn't enable an auth bypass the way a missing `role`/`sub` would — it
+would just null out one response field — and the only party able to mint a validly-signed token is this
+gateway itself.
+
+## Step 9 — Audit findings provisionally logged as Known gaps, not fixed inline
+
+`exploit-hunter` found three real, demonstrable issues (`exploit-report-2026-09-22.md`): a login timing
+side-channel that leaks whether an email is registered despite the generic 401 body (undermines step 6's
+explicit anti-enumeration goal), a missing `@Size` cap on `LoginRequestDTO` letting an anonymous client
+force oversized input into bcrypt, and a check-then-act race in `register` (`existsByEmail` then `save()`)
+that can surface as an unhandled `500` instead of the documented `409` under concurrent identical
+registrations. All three are cheap, well-scoped fixes, but CLAUDE.md's autonomy rule ("never implement
+unless explicitly told") and the `exploit-hunter` skill's own report-only stance both say not to patch
+without asking first — this only becomes a "fold into `DECISIONS.md`" entry once a fix actually lands.
+Logged into PLAN.md's Known gaps for now so step 9's gate (audit run, findings recorded) is satisfied
+either way; move each one from Known gaps to its own dated entry here if/when fixed.
+
+## Post-step-9 — PLAN.md's five open questions resolved
+
+1. **Cookie name stays `access_token`.** The neutral-name alternative was only ever a marginal benefit
+   (PLAN.md's own wording); not worth the churn.
+2. **`app.jwt.secret` default removed — supersedes the step 1 entry above.** `application.properties`
+   now reads `${JWT_SECRET}` with no fallback, so the app refuses to start without it set in the
+   environment. This is a deliberate reversal of step 1's "committed dev-only default" call: asked
+   directly, chosen for consistency with step 1's own rule ("no secret is ever committed") over dev
+   convenience. Consequence: `mvn spring-boot:run` and `mvn test` both need `JWT_SECRET` exported in the
+   shell first — `.env` is not read into the app process (see the "app datasource env vars" entry below
+   for why — same limitation applies here, no auto-loading was added).
+3. **Domain confirmed: `ADMIN`/`USER` stays sufficient.** First real detail on what a "signal" is —
+   users subscribe to `interestTopics`, created only by admins; each day a notification goes out to
+   every subscriber of a topic. Nothing in that shape needs a third role yet.
+4. **Admin seeding: `DatabaseLoader implements CommandLineRunner`.** Runs once on startup, checks
+   whether an admin already exists, creates one if not. Replaces the "manual SQL, no runbook" gap.
+   Register-created users are unaffected — still always `USER`.
+5. **Prod `Caddyfile` reuses UrlShortener's `{SERVER_IP}.nip.io` approach.** No domain purchase needed;
+   consistent with the sibling project.
+
+## Post-step-9 — `DatabaseLoader` built
+
+Item 4 above, implemented. `configurations/DatabaseLoader` (constructor-injected `AuthService` +
+`@Value("${app.admin.email}")`/`@Value("${app.admin.password}")`, matching `TokenServiceImpl`'s style
+for mixing a bean with config values rather than `@RequiredArgsConstructor`) runs on every startup.
+`app.admin.email`/`app.admin.password` default to empty strings (`${ADMIN_EMAIL:}`/`${ADMIN_PASSWORD:}`)
+— **both optional**, unlike `app.jwt.secret`: leaving them unset is a valid, common case (most local runs
+don't need an admin yet), so the loader logs a `WARN` and no-ops rather than failing startup. Business
+logic (the existence check via a new `UserRepository.existsByRole`, hashing, and the save) lives in
+`AuthService.ensureAdminExists` — not in `DatabaseLoader` itself — matching the controller/service split:
+the loader only reads config and delegates, same as a thin controller. Not merged into `AuthService
+.register`: that method hard-codes `Role.USER` and is tied to the register HTTP contract (auto-login,
+duplicate-email 409); admin seeding needed different exists-check semantics (by role, not email) and
+different failure behaviour (silent no-op, not an exception) so it stayed a separate method rather than
+a parameterized one. Covered by `AuthServiceImplTest.EnsureAdminExists` and `DatabaseLoaderTest`.
+
+## Post-step-9 — all three exploit-hunter findings patched
+
+Asked one by one; all three chosen to patch now over staying as Known gaps
+(`exploit-report-2026-09-22.md`).
+
+1. **Login timing oracle (#1).** `AuthServiceImpl.login` now calls `passwordEncoder.encode(request
+   .getPassword())` on the unknown-email path before throwing `InvalidCredentialsException`, burning the
+   same bcrypt cost as the known-email path's `matches()` call. Simpler than a precomputed dummy-hash
+   field (no `@PostConstruct`, no extra state on a singleton bean) — `encode()` and `matches()` cost the
+   same for a given bcrypt strength regardless of which string is hashed. Covered by
+   `AuthServiceImplTest.Login.should_encode_a_dummy_password_and_throw_when_the_email_is_unknown` (mocks
+   `PasswordEncoder`, asserts `encode` is called and `matches` never is) — a unit test, not a wall-clock
+   assertion in the e2e suite, because timing thresholds in an HTTP-layer test are inherently flaky.
+2. **No size cap on `LoginRequestDTO` (#2).** Added `@Size(max = 254)` on `email` and `@Size(min = 8, max
+   = 72)` on `password`, matching `RegisterRequestDTO` exactly. `min = 8` is safe for login specifically
+   because register already enforces the same floor — no existing real password can be shorter. Covered
+   by two new `AuthControllerIntegrationTest.Login` scenarios (`should_return_400_for_a_password_under_8
+   _characters`, `should_return_400_for_a_password_over_72_characters`); `TESTING.md` updated in the same
+   change per `CLAUDE.md`.
+3. **Duplicate-email registration race (#3).** `GlobalExceptionHandler` gained a
+   `DataIntegrityViolationException` → `409` handler, reusing `DuplicateEmailException`'s message (now a
+   public `MESSAGE` constant, so both paths present an identical error body to the client). Covered by a
+   new unit test (`GlobalExceptionHandlerTest`) asserting the mapping directly, rather than an e2e test
+   that fires two concurrent identical registrations — that would only *sometimes* land both requests
+   inside the `existsByEmail`-then-`save()` window, making the test flaky for no extra coverage: the
+   change is entirely in the exception mapping, which the unit test exercises deterministically.
+   `AuthServiceImpl.register` itself is unchanged; the race and its window still exist, only the response
+   code for the losing request changed from `500` to `409`.
+
+## Step 1 — named volume mounts at `/var/lib/postgresql`, not `/var/lib/postgresql/data`
+
+The 18+ `postgres` image refuses to start against a volume mounted at the old `/var/lib/postgresql/data`
+path — it now stores data in a version-specific subdirectory for `pg_ctlcluster` compatibility and
+treats that path as an "unused mount" containing stray data, erroring instead of initializing. Mount
+the volume one level up, at `/var/lib/postgresql`; the image creates the versioned subdirectory itself.
+Verified: `contextLoads` green against compose Postgres with this mount (step 1's gate).

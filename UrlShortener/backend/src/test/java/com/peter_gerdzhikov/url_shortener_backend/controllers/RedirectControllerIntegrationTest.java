@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -64,6 +66,31 @@ class RedirectControllerIntegrationTest extends AbstractMongoAndRedisIntegration
         assertThat(body.getStatus()).isEqualTo(404);
         assertThat(body.getMessages()).hasSize(1);
         assertThat(body.getMessages().getFirst()).doesNotContain("nOpE42", "Exception", "com.peter_gerdzhikov");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/.env", "/wp-config.php", "/backup.sql", "/docker-compose.yml"})
+    void should_return_404_for_a_scanner_probe_path_without_a_database_lookup(String path) {
+        ErrorResponseDTO body = restTestClient.get()
+                .uri(path)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody(ErrorResponseDTO.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(body.getStatus()).isEqualTo(404);
+        assertThat(body.getMessages()).hasSize(1);
+        assertThat(body.getMessages().getFirst()).doesNotContain("Exception", "com.peter_gerdzhikov");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/.git/HEAD", "/.ssh/id_rsa", "/actuator/heapdump", "/storage/logs/laravel.log"})
+    void should_return_404_for_a_multi_segment_scanner_probe_path(String path) {
+        restTestClient.get()
+                .uri(path)
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     private String createShortUrl(String url) {

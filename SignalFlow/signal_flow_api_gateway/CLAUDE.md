@@ -1,10 +1,10 @@
 ## What this is
 
-A URL shortener. **MongoDB is the source of truth** — the original URL *is* the document `_id`, so
-"does this URL already exist" is a primary-key lookup and `POST /api/v1/urls` is idempotent.
-**Redis is a TTL cache on the redirect path only** — never authoritative; a Redis outage degrades to
-Mongo and logs, it does not fail the request. `GET /{code}` returns a **302** (revocable; a 301 is
-cached by browsers forever). Codes are Base62-encoded Snowflake ids. No auth, no stats, no expiry.
+The single front door for SignalFlow — it owns users and **all** access rules; downstream services
+know nothing about authorization and are reachable only through this gateway. This phase builds
+**auth only**: `register` / `login` / `logout` / `me` over a JWT cookie. Request forwarding lands
+later as `spring-cloud-gateway-server-webmvc` (blocking, not reactive — reactive would rule out JPA
+for no throughput this project needs).
 
 `PLAN.md` is the roadmap — the design, the step order and the acceptance gate for each step. Read it
 before starting a step.
@@ -13,21 +13,12 @@ before starting a step.
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
-The repo-root `../docker-compose.yml` runs the full project (mongo + redis + app + frontend). For local
-backend dev, `docker compose up mongo redis` from the repo root brings up just the infra, then `mvn
-spring-boot:run` serves the app on **:8080** against it. Other goals: `mvn clean install`, `mvn test`,
-`mvn verify`.
+`../docker-compose.yml` (the SignalFlow root, one level up) runs **Postgres only** — there's no app
+or frontend container yet. For local dev: `docker compose up postgres` from the SignalFlow root, then
+`mvn spring-boot:run` serves the app on **:8080** against it. Other goals: `mvn clean install`, `mvn
+test`, `mvn verify`.
 
 Tests use **Testcontainers**, never embedded fakes — a running Docker daemon is a hard prerequisite.
-
-Mongo must be reachable at startup: `spring.data.mongodb.auto-index-creation=true` builds the indexes
-while the mapping context initialises, so every Spring context — the `contextLoads` smoke test included
-— needs a live Mongo. Pin `mongo:8.2` or newer; 8.0 refuses to boot on Docker Desktop's kernel
-(SERVER-121912).
-
-Actuator's `/actuator/health` backs the `app` container's compose healthcheck. Swagger UI is at
-`/swagger-ui/index.html`, the OpenAPI spec at `/v3/api-docs` (springdoc, no `OpenApiConfiguration` —
-default title/spec).
 
 ## Spring Boot 4
 
@@ -35,11 +26,9 @@ The pom is on **4.2.0-M1**, a milestone. Boot 4 renamed the starters — `spring
 (not `-web`) — and ships a separate `*-test` starter per module. Copy the artifactId pattern already in
 `pom.xml` rather than reaching for the 3.x name, and verify any 3.x-era API before relying on it.
 
-Careful with the two Mongo families: `spring-boot-starter-mongodb` is **driver-level only** (a
-`MongoClient`, no `spring-data-mongodb`), while `spring-boot-starter-data-mongodb` adds Spring Data on
-top and depends on it. Repositories, `@Document`, auditing and `@DataMongoTest` all need the `-data-`
-one, which is what this pom uses. Test-slice annotations moved too — `@DataMongoTest` now lives in
-`org.springframework.boot.data.mongodb.test.autoconfigure`.
+`spring-boot-starter-oauth2-resource-server` provides the JWT filter despite the name — nothing here
+talks to an OAuth provider. `NimbusJwtEncoder`/`NimbusJwtDecoder` mint and verify over one shared
+HS256 secret, because the gateway is the only verifier (see `PLAN.md` step 4).
 
 ## Writing code
 
@@ -53,11 +42,11 @@ Hard rules — these hold whether or not the skill is loaded:
 - Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation.
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
-- Endpoints live under `/api/v1`. The one exception is the redirect `GET /{code}` — root-level on purpose, because that path *is* the public short link.
-- If a paginated endpoint is ever added: take Spring's `Pageable` and return `PagedModel`, never `Page` — `PageImpl`'s JSON shape is not a stable contract.
-- Adding, removing, or changing a scenario in `*ControllerIntegrationTest` (the HTTP-layer e2e suite) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
+- Endpoints live under `/api/v1`.
+- No DB read on an authenticated request — authorization comes from the JWT claims alone (see `PLAN.md` step 4).
+- Adding, removing, or changing a scenario in `AuthControllerIntegrationTest` (the HTTP-layer e2e suite) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
 
-Root-level packages, under `com.peter_gerdzhikov.url_shortener_backend`:
+Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
 - `/configurations` — Spring configuration
 - `/controllers` — the REST surface, plus the `@RestControllerAdvice`
 - `/DTOs`
@@ -65,7 +54,6 @@ Root-level packages, under `com.peter_gerdzhikov.url_shortener_backend`:
     - `/response` — outbound payloads
 - `/entities`
 - `/exceptions`
-- `/interceptors` — `HandlerInterceptor`s registered by a `/configurations` `WebMvcConfigurer`
 - `/repositories`
 - `/services`
     - `/interfaces` — service interfaces
@@ -96,7 +84,7 @@ Done = re-check touched files against any loaded skill's rules.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
 - **A step isn't done until its own tests are written and green.** No step starts on a red or missing test.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (repo root) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds the design decided up front, `DECISIONS.md` holds calls made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds the design decided up front, `DECISIONS.md` holds calls made *during* implementation.
 
 ### Autonomy
 
