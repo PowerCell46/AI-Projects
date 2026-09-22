@@ -1,13 +1,15 @@
 ## What this is
 
 The single front door for SignalFlow — it owns users and **all** access rules; downstream services
-know nothing about authorization and are reachable only through this gateway. This phase builds
-**auth only**: `register` / `login` / `logout` / `me` over a JWT cookie. Request forwarding lands
+know nothing about authorization and are reachable only through this gateway. Shipped so far: **auth**
+(`register` / `login` / `logout` / `me` over a JWT cookie) and **subscriptions** (`POST
+/api/v1/subscriptions`, `DELETE /api/v1/subscriptions/{interestTopicId}`). Request forwarding lands
 later as `spring-cloud-gateway-server-webmvc` (blocking, not reactive — reactive would rule out JPA
 for no throughput this project needs).
 
-`PLAN.md` is the roadmap — the design, the step order and the acceptance gate for each step. Read it
-before starting a step.
+`PLAN.md` is the backlog — what's still to build, fix or improve, plus the gaps accepted on purpose and
+what should trigger revisiting each. Read it before starting a task. The design and step gates of the
+shipped phases are in its git history (`git log -p -- PLAN.md`).
 
 ## Running the project
 
@@ -28,7 +30,7 @@ The pom is on **4.2.0-M1**, a milestone. Boot 4 renamed the starters — `spring
 
 `spring-boot-starter-oauth2-resource-server` provides the JWT filter despite the name — nothing here
 talks to an OAuth provider. `NimbusJwtEncoder`/`NimbusJwtDecoder` mint and verify over one shared
-HS256 secret, because the gateway is the only verifier (see `PLAN.md` step 4).
+HS256 secret, because the gateway is the only verifier.
 
 ## Writing code
 
@@ -43,8 +45,8 @@ Hard rules — these hold whether or not the skill is loaded:
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
 - Endpoints live under `/api/v1`.
-- No DB read on an authenticated request — authorization comes from the JWT claims alone (see `PLAN.md` step 4).
-- Adding, removing, or changing a scenario in `AuthControllerIntegrationTest` (the HTTP-layer e2e suite) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
+- No DB read on an authenticated request — authorization comes from the JWT claims alone.
+- Adding, removing, or changing a scenario in any HTTP-layer e2e suite (`*ControllerIntegrationTest`) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
 
 Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
 - `/configurations` — Spring configuration
@@ -84,7 +86,7 @@ Done = re-check touched files against any loaded skill's rules.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
 - **A step isn't done until its own tests are written and green.** No step starts on a red or missing test.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds the design decided up front, `DECISIONS.md` holds calls made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
 
 ### Autonomy
 

@@ -70,7 +70,8 @@ class TokenServiceImplTest {
 
     @Test
     void should_reject_an_expired_token() throws JOSEException {
-        String token = mintRawToken(SECRET, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600), true);
+        String token = mintRawToken(
+                SECRET, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600), randomSubject());
 
         assertThatThrownBy(() -> jwtDecoder.decode(token)).isInstanceOf(JwtException.class);
     }
@@ -78,7 +79,7 @@ class TokenServiceImplTest {
     @Test
     void should_reject_a_token_signed_with_a_different_secret() throws JOSEException {
         String token = mintRawToken(
-                "a-completely-different-signing-secret-that-is-long-enough", Instant.now(), Instant.now().plusSeconds(3600), true);
+                "a-completely-different-signing-secret-that-is-long-enough", Instant.now(), Instant.now().plusSeconds(3600), randomSubject());
 
         assertThatThrownBy(() -> jwtDecoder.decode(token)).isInstanceOf(JwtException.class);
     }
@@ -96,9 +97,20 @@ class TokenServiceImplTest {
 
     @Test
     void should_reject_a_token_missing_required_claims() throws JOSEException {
-        String token = mintRawToken(SECRET, Instant.now(), Instant.now().plusSeconds(3600), false);
+        String token = mintRawToken(SECRET, Instant.now(), Instant.now().plusSeconds(3600), null);
 
         assertThatThrownBy(() -> jwtDecoder.decode(token)).isInstanceOf(JwtException.class);
+    }
+
+    @Test
+    void should_reject_a_token_whose_subject_is_not_a_uuid() throws JOSEException {
+        String token = mintRawToken(SECRET, Instant.now(), Instant.now().plusSeconds(3600), "not-a-uuid");
+
+        assertThatThrownBy(() -> jwtDecoder.decode(token)).isInstanceOf(JwtException.class);
+    }
+
+    private String randomSubject() {
+        return UUID.randomUUID().toString();
     }
 
     private User newUser() {
@@ -111,14 +123,14 @@ class TokenServiceImplTest {
         return user;
     }
 
-    private String mintRawToken(String secret, Instant issuedAt, Instant expiresAt, boolean includeSubject) throws JOSEException {
+    private String mintRawToken(String secret, Instant issuedAt, Instant expiresAt, String subject) throws JOSEException {
         JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
                 .claim("email", EMAIL)
                 .claim("role", Role.USER.name())
                 .issueTime(Date.from(issuedAt))
                 .expirationTime(Date.from(expiresAt));
-        if (includeSubject) {
-            claims.subject(UUID.randomUUID().toString());
+        if (subject != null) {
+            claims.subject(subject);
         }
 
         SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims.build());

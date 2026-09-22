@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateEmailException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateSubscriptionException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InvalidCredentialsException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionLimitExceededException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,11 +38,39 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(errorBody(HttpStatus.CONFLICT, List.of(e.getMessage())));
     }
 
+    @ExceptionHandler(DuplicateSubscriptionException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDuplicateSubscription(DuplicateSubscriptionException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(errorBody(HttpStatus.CONFLICT, List.of(e.getMessage())));
+    }
+
+    @ExceptionHandler(SubscriptionLimitExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handleSubscriptionLimitExceeded(SubscriptionLimitExceededException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(errorBody(HttpStatus.CONFLICT, List.of(e.getMessage())));
+    }
+
+    @ExceptionHandler(SubscriptionNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleSubscriptionNotFound(SubscriptionNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(errorBody(HttpStatus.NOT_FOUND, List.of(e.getMessage())));
+    }
+
+    /**
+     * A genuine fallback only - each service translates its own constraint into a domain exception, so
+     * the message stays neutral rather than naming any one constraint.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolation(DataIntegrityViolationException e) {
         log.warn("Unique constraint violated on save: {}.", e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(errorBody(HttpStatus.CONFLICT, List.of(DuplicateEmailException.MESSAGE)));
+                .body(errorBody(HttpStatus.CONFLICT, List.of("The request conflicts with existing data.")));
+    }
+
+    @ExceptionHandler(RequestBodyTooLargeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRequestBodyTooLarge(RequestBodyTooLargeException e) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(errorBody(HttpStatus.CONTENT_TOO_LARGE, List.of(e.getMessage())));
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -72,6 +105,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(status)
                 .headers(headers)
                 .body(errorBody(status, List.of("Malformed request body.")));
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(
+            TypeMismatchException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        // The default body names the target type and the failing value - both leak internals.
+        return ResponseEntity.status(status)
+                .headers(headers)
+                .body(errorBody(status, List.of("Malformed request parameter.")));
     }
 
     @Override

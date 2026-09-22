@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.LoginRequestDTO;
@@ -65,6 +66,16 @@ class AuthServiceImplTest {
         @Test
         void should_throw_duplicate_email_exception_when_the_email_already_exists() {
             when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
+
+            assertThatThrownBy(() -> authService.register(registerRequest(EMAIL, PASSWORD)))
+                    .isInstanceOf(DuplicateEmailException.class);
+        }
+
+        @Test
+        void should_translate_a_constraint_violation_into_a_duplicate_email() {
+            when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+            when(passwordEncoder.encode(PASSWORD)).thenReturn("hashed-password");
+            when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException("duplicate key"));
 
             assertThatThrownBy(() -> authService.register(registerRequest(EMAIL, PASSWORD)))
                     .isInstanceOf(DuplicateEmailException.class);

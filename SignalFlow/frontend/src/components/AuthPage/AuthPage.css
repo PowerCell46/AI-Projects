@@ -1,0 +1,116 @@
+.auth-page {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg);
+    padding: 2rem;
+    --auth-scale: 1;
+}
+
+.auth-container {
+    position: relative;
+    width: 72vw;
+    min-width: 51.25rem;
+    max-width: calc(var(--auth-scale) * 67.5rem);
+    height: calc(var(--auth-scale) * 37.5rem);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background-color: var(--bg);
+}
+
+.auth-half {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    display: flex;
+    align-items: center;
+    padding-inline: calc(var(--auth-scale) * 4rem);
+}
+
+.auth-half-left {
+    left: 0;
+}
+
+.auth-half-right {
+    right: 0;
+}
+
+@media (max-width: 900px) {
+    .auth-container {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        height: auto;
+        padding-block: 2.75rem;
+        padding-inline: 1.75rem;
+    }
+
+    .auth-half {
+        position: static;
+        width: 100%;
+        padding-inline: 0;
+        opacity: 1;
+        transition: opacity 200ms ease;
+    }
+
+    .auth-half[data-active='false'] {
+        display: none;
+    }
+
+    .auth-container[data-mobile-fading='true'] .auth-half[data-active='true'] {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-half {
+        transition: none;
+    }
+}
+
+@media (min-width: 1920px) {
+    .auth-page {
+        --auth-scale: 1.2;
+    }
+
+    .auth-container {
+        max-width: 84rem;
+        height: 42rem;
+    }
+}
+
+@media (min-width: 2560px) {
+    .auth-page {
+        --auth-scale: 1.5;
+    }
+
+    .auth-container {
+        max-width: 100rem;
+        height: 56rem;
+    }
+}
+
+@media (min-width: 3440px) {
+    .auth-page {
+        --auth-scale: 1.65;
+    }
+
+    .auth-container {
+        max-width: 122rem;
+        height: 60rem;
+    }
+}
+
+@media (min-width: 3840px) {
+    .auth-page {
+        --auth-scale: 2;
+    }
+
+    .auth-container {
+        max-width: 140rem;
+        height: 80rem;
+    }
+}

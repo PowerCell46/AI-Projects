@@ -277,6 +277,123 @@ so the happy-path tests still satisfy the new composition rule; the `wrong-passw
 needs to differ from `PASSWORD`, not violate the new format rule and return 400 instead of the intended
 401.
 
+## Subscriptions step 2 — the cap is a property, and the test profile lowers it to 3
+
+`app.subscriptions.max-per-user=${MAX_SUBSCRIPTIONS_PER_USER:100}` in `application.properties`, with
+`src/test/resources/application-test.properties` overriding it to `3`. Same precedent as
+`app.security.bcrypt-strength=4` there: the e2e limit scenario fills the cap in three requests instead
+of a hundred, keeping the suite fast without weakening what it proves.
+`SubscriptionControllerIntegrationTest` reads the value back with `@Value` and loops to it rather than
+hard-coding `3`, so the scenario stays correct at any cap. The shipped default is untouched at 100.
+
+## Subscriptions step 3 — `handleDataIntegrityViolation` went neutral, superseding post-step-9 entry #3
+
+That earlier entry recorded the global handler answering *every* integrity violation with
+`DuplicateEmailException.MESSAGE`. With a second unique constraint in play (subscriptions), that would
+have told a losing double-subscribe "An account with this email already exists." The message is now the
+neutral *"The request conflicts with existing data."* and each service translates its own constraint:
+`SubscriptionServiceImpl.subscribe` and, newly, `AuthServiceImpl.register` both wrap their `save` in
+`catch (DataIntegrityViolationException) → <domain exception>`. Register's 409 body is byte-identical to
+before (the whole `AuthControllerIntegrationTest` suite is still green); the global handler is now a
+genuine fallback rather than a second place encoding the email contract.
+
+## Subscriptions step 4 — the e2e suite duplicates the auth suite's registration helper
+
+`SubscriptionControllerIntegrationTest.registerAndGetCookie` repeats what
+`AuthControllerIntegrationTest` does inline, rather than extracting a shared helper into `support/`.
+Deliberate, per `PLAN.md`'s interview #9: refactoring a green suite to serve a new one risks the suite
+that already passes, and two callers is not yet a pattern. Extract at the third caller.
+
+## Subscriptions step 5 — the blind `catch (DataIntegrityViolationException)` assumes the unique constraint
+
+`SubscriptionServiceImpl` translates *any* integrity violation on `save` into
+`DuplicateSubscriptionException`, but an insert can also break the `user_id` FK (SQLState 23503 rather
+than 23505) — a user whose row had been deleted mid-token would be told "already subscribed". Left
+undiscriminated because no user-delete path exists anywhere in the codebase, so the branch is
+unreachable; discriminating on SQLState now would be untestable code guarding an impossible state.
+**Revisit the moment a user-delete path lands.** Same shape applies to `AuthServiceImpl.register`, where
+`users` has exactly one constraint and the assumption is safe.
+
+## Subscriptions step 5 — audit findings logged as Known gaps, not patched
+
+`exploit-report-2026-09-22-subscriptions.md` (named with a `-subscriptions` suffix because the auth-phase
+audit already used today's date). Seven findings, none Critical or High: the cap's check-then-act
+overrun, the unvalidated topic id, registration spam amplified 100× by the cap, writes from a disabled
+account inside the stale-claims window, a non-UUID `sub` producing a 500, the blind catch above, and no
+raw body-size cap. All five new ones are in `PLAN.md`'s subscriptions Known gaps. Not patched, matching
+the post-step-9 precedent: `exploit-hunter` is report-only and CLAUDE.md's autonomy rule says to ask
+before implementing. Move any that gets fixed out of Known gaps and into a dated entry here.
+
+## Post-subscriptions — the cap race closed with a row lock on the user, not a conditional insert
+
+`PLAN.md`'s first Fix item. `SubscriptionServiceImpl.subscribe` is now `@Transactional` and opens with
+`UserRepository.lockById` — `@Lock(PESSIMISTIC_WRITE)` over `SELECT u.id FROM User u WHERE u.id = :id`,
+i.e. a `SELECT ... FOR UPDATE` that serialises one user's concurrent subscribes for the rest of the
+transaction. Chosen over the `INSERT ... WHERE (SELECT count(*) …) < :cap` alternative: the cap stays
+expressed in Java where the exception types live, instead of becoming an affected-rows check against
+SQL. The id projection (not `findById`) keeps the phase's "an authenticated request never reads the
+database for its own identity" invariant — the row is locked, never hydrated. Contention is per-user, so
+nothing cross-user serialises.
+
+Two consequences worth recording:
+
+1. **`save` became `saveAndFlush`.** `CommonEntity` generates its UUID id in Java (`@UuidGenerator`), so
+   `persist` issues no immediate INSERT — under the new transaction the unique-constraint violation
+   would have surfaced at *commit*, outside the `catch (DataIntegrityViolationException)`, turning the
+   documented 409 into a 500. Flushing inside the transaction keeps the translation where it was.
+2. **The proof is an integration test, not a unit test.** `SubscriptionServiceImplConcurrencyIntegrationTest`
+   (`@SpringBootTest`, real Postgres) fires 8 concurrent subscribes to distinct topics at a cap of 3 and
+   asserts exactly 3 land. Mocks cannot produce the stale count that caused the bug. Verified by probe:
+   with the `lockById` call commented out the test fails (more than 3 accepted), with it present it
+   passes — unlike the same-topic scenario, which the unique constraint already covered either way.
+
+## Post-subscriptions — a non-UUID `sub` is rejected by the decoder, not by the controllers
+
+`PLAN.md`'s second Fix item. The `sub` validator in `SecurityConfiguration.requiredClaimsValidator` went
+from `Objects::nonNull` to `this::isUserId`, which also requires `UUID.fromString` to parse. Fixed at the
+decoder rather than by defensive parsing in `AuthController`/`SubscriptionController`: one place instead
+of every caller of `jwt.getSubject()`, and a malformed subject then fails as a clean 401 through the
+existing entry point instead of an `IllegalArgumentException` → 500. Covered by
+`TokenServiceImplTest.should_reject_a_token_whose_subject_is_not_a_uuid`; that class's `mintRawToken`
+helper lost its `includeSubject` boolean flag for an explicit `subject` string (`null` omits it), since
+the new case needs a *present but unparsable* subject.
+
+## Post-subscriptions — `GET /api/v1/subscriptions` built now that the SPA has landed
+
+`PLAN.md` gated this endpoint on the SPA existing; `../frontend/` now does (Vite + TS, calling
+`/api/v1/auth/*` so far), so the trigger is satisfied. Returns a plain `List<SubscriptionResponseDTO>`
+— the same shape `POST` already returns — ordered newest-first by `createdAt`, with no pagination and no
+envelope: the per-user cap (`app.subscriptions.max-per-user`, 100) bounds the list by construction, so
+paging would be machinery for a page that can never fill. An empty result is `200` with `[]`, never
+`404`. The caller comes from the JWT `sub` via the existing `callerId(jwt)`, so the endpoint cannot be
+pointed at another user. Four e2e scenarios in `SubscriptionControllerIntegrationTest.ListSubscriptions`,
+`TESTING.md` updated in the same change.
+
+Note for the next reader: `RestTestClient` (Boot 4's servlet client) has no `expectBodyList`, unlike
+`WebTestClient` — the test helper reads the body as `SubscriptionResponseDTO[]` instead.
+
+## Post-subscriptions — the raw body cap is a filter ahead of the security chain, with a counting stream behind it
+
+`PLAN.md`'s last Fix item. `RequestBodySizeLimitFilter` (`@Order(HIGHEST_PRECEDENCE)`, so ahead of
+Spring Security's `-100`) answers `413` when `Content-Length` exceeds `app.request.max-body-bytes`
+(default 8 KB — the largest legitimate body is register's 254-char email plus 72-char password). Placed
+before authentication deliberately: register and login are `permitAll`, so an oversized anonymous body
+must die before any parsing or bcrypt work.
+
+`Content-Length` alone is not enough — a chunked request declares none — so the filter also wraps the
+request in `BodySizeLimitingRequestWrapper`, whose stream counts bytes as they are read and throws
+`RequestBodyTooLargeException` past the cap. That path lands in MVC, so `GlobalExceptionHandler` maps the
+exception to the same `413` and the same `ErrorResponseDTO` body the filter writes directly. Two paths,
+one contract.
+
+Rejected: Tomcat's `maxPostSize` (governs form encoding only, not `application/json`) and
+`spring.servlet.multipart.max-request-size` (multipart only). Neither covers the JSON bodies this gateway
+actually takes.
+
+Also worth recording: **Spring 7 renamed `HttpStatus.PAYLOAD_TOO_LARGE` to `CONTENT_TOO_LARGE`.** The old
+constant still compiles but is a *different* enum entry, so an `isEqualTo(PAYLOAD_TOO_LARGE)` assertion
+fails against a response carrying `CONTENT_TOO_LARGE`. Same category as the Boot 4 relocations above.
+
 ## Step 1 — named volume mounts at `/var/lib/postgresql`, not `/var/lib/postgresql/data`
 
 The 18+ `postgres` image refuses to start against a volume mounted at the old `/var/lib/postgresql/data`

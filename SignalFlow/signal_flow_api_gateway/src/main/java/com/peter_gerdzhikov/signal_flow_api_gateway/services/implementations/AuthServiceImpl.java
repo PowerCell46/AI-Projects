@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.services.implementations;
 
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -38,9 +39,15 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.USER);
 
-        User savedUser = userRepository.save(user);
-        log.info("Registered new user '{}'.", savedUser.getId());
-        return savedUser;
+        try {
+            User savedUser = userRepository.save(user);
+            log.info("Registered new user '{}'.", savedUser.getId());
+            return savedUser;
+
+        } catch (DataIntegrityViolationException e) {
+            // The unique email constraint - a concurrent registration won the race.
+            throw new DuplicateEmailException();
+        }
     }
 
     @Override

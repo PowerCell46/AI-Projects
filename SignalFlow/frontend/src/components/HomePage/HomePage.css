@@ -1,0 +1,79 @@
+.home-page {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.home-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.home-wordmark {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+}
+
+.home-signout {
+    min-height: 2.75rem;
+    background-color: transparent;
+    border: 1px solid var(--line-btn);
+    border-radius: 0.1875rem;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.84375rem;
+    font-family: inherit;
+    color: var(--text-2);
+    cursor: pointer;
+    transition:
+        border-color 200ms ease,
+        color 200ms ease;
+}
+
+.home-signout:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.home-signout:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.home-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+}
+
+.home-eyebrow {
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    color: var(--text-3);
+    margin: 0 0 0.75rem;
+}
+
+.home-greeting {
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    margin: 0;
+}
+
+.home-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.9375rem;
+    color: var(--text-3);
+}

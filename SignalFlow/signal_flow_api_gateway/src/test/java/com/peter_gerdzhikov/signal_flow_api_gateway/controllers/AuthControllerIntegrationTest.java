@@ -56,6 +56,9 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
     @Value("${app.jwt.secret}")
     private String jwtSecret;
 
+    @Value("${app.request.max-body-bytes}")
+    private int maxRequestBodyBytes;
+
     @BeforeEach
     void clearUsers() {
         userRepository.deleteAll();
@@ -192,6 +195,21 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
                     .getResponseBody();
 
             assertThat(body.getMessages().getFirst()).doesNotContain("Exception", "com.peter_gerdzhikov");
+        }
+
+        @Test
+        void should_return_413_for_a_body_over_the_size_cap() {
+            String oversizedBody = "{\"email\":\"%s\",\"password\":\"%s\"}"
+                    .formatted(EMAIL, "P1".repeat(maxRequestBodyBytes));
+
+            restTestClient.post()
+                    .uri("/api/v1/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(oversizedBody)
+                    .exchange()
+                    .expectStatus().isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+
+            assertThat(userRepository.count()).isZero();
         }
     }
 

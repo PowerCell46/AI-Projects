@@ -1,0 +1,70 @@
+:root {
+    --bg: #0d1117;
+    --surface: #121a23;
+    --surface-focus: #141d26;
+    --line: #1e2731;
+    --line-hover: #2c3945;
+    --line-btn: #2a3440;
+    --accent: #dca82f;
+    --accent-wash: rgba(220, 168, 47, 0.1);
+    --text: #e4ebf2;
+    --text-2: #a7b3c0;
+    --text-3: #6e7c8c;
+    --placeholder: #4e5b69;
+    --focus: #4c8dff;
+    --danger: #f85149;
+
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text);
+    background-color: var(--bg);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

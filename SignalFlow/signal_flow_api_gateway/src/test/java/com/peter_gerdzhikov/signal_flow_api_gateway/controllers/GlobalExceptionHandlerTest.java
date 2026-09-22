@@ -2,13 +2,22 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.ServletWebRequest;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateEmailException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateSubscriptionException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionLimitExceededException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionNotFoundException;
 
 class GlobalExceptionHandlerTest {
 
@@ -21,6 +30,54 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleDataIntegrityViolation(e);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody().getMessages()).containsExactly(DuplicateEmailException.MESSAGE);
+        assertThat(response.getBody().getMessages()).containsExactly("The request conflicts with existing data.");
+    }
+
+    @Test
+    void should_return_409_for_a_duplicate_subscription() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleDuplicateSubscription(new DuplicateSubscriptionException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody().getMessages()).containsExactly(DuplicateSubscriptionException.MESSAGE);
+    }
+
+    @Test
+    void should_return_409_when_the_subscription_limit_is_exceeded() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleSubscriptionLimitExceeded(new SubscriptionLimitExceededException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody().getMessages()).containsExactly(SubscriptionLimitExceededException.MESSAGE);
+    }
+
+    @Test
+    void should_return_404_for_a_missing_subscription() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleSubscriptionNotFound(new SubscriptionNotFoundException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getMessages()).containsExactly(SubscriptionNotFoundException.MESSAGE);
+    }
+
+    @Test
+    void should_return_413_for_a_body_that_outgrew_the_cap_while_being_read() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleRequestBodyTooLarge(new RequestBodyTooLargeException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+        assertThat(response.getBody().getMessages()).containsExactly(RequestBodyTooLargeException.MESSAGE);
+    }
+
+    @Test
+    void should_return_400_without_leaking_type_names_for_a_type_mismatch() {
+        TypeMismatchException e = new TypeMismatchException("not-a-uuid", UUID.class);
+
+        ResponseEntity<Object> response = exceptionHandler.handleTypeMismatch(
+                e, new HttpHeaders(), HttpStatus.BAD_REQUEST, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(((ErrorResponseDTO) response.getBody()).getMessages())
+                .containsExactly("Malformed request parameter.");
     }
 }

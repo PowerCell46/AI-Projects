@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -113,11 +114,29 @@ public class SecurityConfiguration {
     private OAuth2TokenValidator<Jwt> requiredClaimsValidator() {
         return new DelegatingOAuth2TokenValidator<>(List.of(
                 JwtValidators.createDefault(),
-                new JwtClaimValidator<String>("sub", Objects::nonNull),
+                new JwtClaimValidator<String>("sub", this::isUserId),
                 new JwtClaimValidator<String>("email", Objects::nonNull),
                 new JwtClaimValidator<String>("role", Objects::nonNull),
                 new JwtClaimValidator<>("exp", Objects::nonNull))
         );
+    }
+
+    /**
+     * Rejected here rather than at the controllers that parse the subject, so an unparsable id fails
+     * as a clean 401 instead of an {@code IllegalArgumentException} past the decoder.
+     */
+    private boolean isUserId(String subject) {
+        if (subject == null) {
+            return false;
+        }
+
+        try {
+            UUID.fromString(subject);
+            return true;
+
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {

@@ -1,13 +1,13 @@
 # E2E test catalog
 
 Scope: HTTP-layer tests only — full stack through `DispatcherServlet` via `RestTestClient` against
-Testcontainers Postgres. `UserRepositoryIntegrationTest` exercises real Postgres too but skips the HTTP
-layer, so it's not listed here.
+Testcontainers Postgres. `UserRepositoryIntegrationTest` and `SubscriptionRepositoryIntegrationTest`
+exercise real Postgres too but skip the HTTP layer, so they're not listed here.
 
 Hand-maintained — see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
-All four endpoints — Register (step 5), Login (step 6), Logout (step 7) and `/me` (step 8) — are enabled.
-No `@Disabled` remains anywhere in the suite.
+All seven endpoints are enabled — the four auth ones (Register, Login, Logout, `/me`) and the three
+subscription ones. No `@Disabled` remains anywhere in the suite.
 
 ## `POST /api/v1/auth/register`
 
@@ -31,6 +31,9 @@ No `@Disabled` remains anywhere in the suite.
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - A `role` in the request body is ignored — user is still `USER` (`should_ignore_a_role_sent_in_the_request_body`)
 - Error body leaks no exception or package name (`should_not_leak_exception_or_package_names_in_the_error_body`)
+- A body over `app.request.max-body-bytes` returns 413 and creates no user (`should_return_413_for_a_body_over_the_size_cap`) —
+  the cap is gateway-wide (`RequestBodySizeLimitFilter`), exercised here because register is the largest
+  anonymous body
 
 ## `POST /api/v1/auth/login`
 
@@ -69,6 +72,41 @@ No `@Disabled` remains anywhere in the suite.
 - A token signed with a different secret returns 401 (`should_return_401_with_a_token_signed_by_a_different_secret`)
 - An expired token returns 401 (`should_return_401_with_an_expired_token`)
 - The response body never carries the password (`should_never_return_the_password`)
+
+## `GET /api/v1/subscriptions`
+
+`SubscriptionControllerIntegrationTest.ListSubscriptions`
+
+- Returns the caller's subscriptions, newest first (`should_return_the_callers_subscriptions_newest_first`)
+- No subscriptions returns an empty list, not 404 (`should_return_an_empty_list_when_the_caller_has_no_subscriptions`)
+- Another user's subscriptions are never returned (`should_not_return_another_users_subscriptions`)
+- No cookie returns 401 (`should_return_401_with_no_cookie`)
+
+## `POST /api/v1/subscriptions`
+
+`SubscriptionControllerIntegrationTest.Subscribe`
+
+- Creates a subscription and returns it (`should_create_a_subscription_and_return_it`)
+- Attaches it to the authenticated caller, never to a body- or path-supplied user (`should_attach_the_subscription_to_the_authenticated_caller`)
+- Two users may subscribe to the same topic (`should_allow_two_users_to_subscribe_to_the_same_topic`)
+- Subscribing twice returns 409 (`should_return_409_when_already_subscribed`)
+- Exceeding the per-user cap returns 409 (`should_return_409_when_the_subscription_limit_is_reached`) —
+  the cap is `app.subscriptions.max-per-user`, lowered in the test profile so the scenario fills it in a
+  handful of requests
+- A missing topic id returns 400 (`should_return_400_for_a_missing_interest_topic_id`)
+- Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
+- No cookie returns 401 (`should_return_401_with_no_cookie`)
+- Error body leaks no exception or package name (`should_not_leak_exception_or_package_names_in_the_error_body`)
+
+## `DELETE /api/v1/subscriptions/{interestTopicId}`
+
+`SubscriptionControllerIntegrationTest.Unsubscribe`
+
+- Returns 204 and removes the row (`should_return_204_and_remove_the_subscription`)
+- Unsubscribing from a topic you never subscribed to returns 404 (`should_return_404_when_not_subscribed`)
+- Another user's subscription returns 404 and is not deleted (`should_return_404_when_the_subscription_belongs_to_another_user`)
+- A malformed topic id returns 400 without naming the target type (`should_return_400_for_a_malformed_interest_topic_id`)
+- No cookie returns 401 (`should_return_401_with_no_cookie`)
 
 ## Known gaps
 
