@@ -33,7 +33,9 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthController {
 
     private final AuthService authService;
+
     private final TokenService tokenService;
+
     private final CookieFactory cookieFactory;
 
     @PostMapping("/register")

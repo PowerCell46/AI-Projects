@@ -17,12 +17,13 @@ import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.TokenSer
 @Service
 public class TokenServiceImpl implements TokenService {
 
-    private final JwtEncoder jwtEncoder;
     private final Duration ttl;
 
-    public TokenServiceImpl(JwtEncoder jwtEncoder, @Value("${app.jwt.ttl}") Duration ttl) {
-        this.jwtEncoder = jwtEncoder;
+    private final JwtEncoder jwtEncoder;
+
+    public TokenServiceImpl(@Value("${app.jwt.ttl}") Duration ttl, JwtEncoder jwtEncoder) {
         this.ttl = ttl;
+        this.jwtEncoder = jwtEncoder;
     }
 
     @Override

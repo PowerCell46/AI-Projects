@@ -84,6 +84,25 @@ description: Java/Spring code style and conventions for this codebase — naming
     private DocumentType firstPassDocumentType;
     ```
 
+16. **Space out and length-sort `private final` fields.** When a class declares more than one `private
+    final` field, put exactly one blank line between each pair, and order them by rendered line length,
+    ascending — same staircase idea as rule 15's annotation stacking. Same-length lines keep their
+    existing relative order.
+
+    ```java
+    // flag
+    private final AuthService authService;
+    private final String adminEmail;
+    private final String adminPassword;
+
+    // prefer
+    private final String adminEmail;
+
+    private final String adminPassword;
+
+    private final AuthService authService;
+    ```
+
 ---
 
 ## Lombok

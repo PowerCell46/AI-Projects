@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Reads the bearer token from the {@code access_token} cookie instead of the Authorization header -
- * the token never leaves the browser via JS since the cookie is HttpOnly (PLAN.md step 4).
+ * the token never leaves the browser via JS since the cookie is HttpOnly.
  */
 public class CookieBearerTokenResolver implements BearerTokenResolver {
 

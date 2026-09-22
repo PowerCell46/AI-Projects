@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * Explicit bean because Spring's default access-denied handler bypasses {@code @RestControllerAdvice}
- * entirely, returning an empty 403 body instead of the app's {@code ErrorResponseDTO} (PLAN.md step 4).
+ * entirely, returning an empty 403 body instead of the app's {@code ErrorResponseDTO}.
  */
 @Component
 @RequiredArgsConstructor
@@ -26,8 +26,11 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
     private final ObjectMapper objectMapper;
 
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
-            throws IOException {
+    public void handle(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AccessDeniedException accessDeniedException
+    ) throws IOException {
         ErrorResponseWriter.write(response, objectMapper, HttpStatus.FORBIDDEN, "Access is denied.");
     }
 }

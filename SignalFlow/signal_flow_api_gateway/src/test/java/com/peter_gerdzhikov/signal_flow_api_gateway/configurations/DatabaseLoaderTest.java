@@ -22,7 +22,7 @@ class DatabaseLoaderTest {
 
     @Test
     void should_seed_the_admin_when_both_credentials_are_configured() throws Exception {
-        DatabaseLoader databaseLoader = new DatabaseLoader(authService, EMAIL, PASSWORD);
+        DatabaseLoader databaseLoader = new DatabaseLoader(EMAIL, PASSWORD, authService);
 
         databaseLoader.run();
 
@@ -31,7 +31,7 @@ class DatabaseLoaderTest {
 
     @Test
     void should_skip_seeding_when_the_email_is_blank() throws Exception {
-        DatabaseLoader databaseLoader = new DatabaseLoader(authService, "", PASSWORD);
+        DatabaseLoader databaseLoader = new DatabaseLoader("", PASSWORD, authService);
 
         databaseLoader.run();
 
@@ -40,7 +40,7 @@ class DatabaseLoaderTest {
 
     @Test
     void should_skip_seeding_when_the_password_is_blank() throws Exception {
-        DatabaseLoader databaseLoader = new DatabaseLoader(authService, EMAIL, "");
+        DatabaseLoader databaseLoader = new DatabaseLoader(EMAIL, "", authService);
 
         databaseLoader.run();
 

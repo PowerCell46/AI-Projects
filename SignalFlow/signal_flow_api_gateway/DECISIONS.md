@@ -252,6 +252,31 @@ Asked one by one; all three chosen to patch now over staying as Known gaps
    `AuthServiceImpl.register` itself is unchanged; the race and its window still exist, only the response
    code for the losing request changed from `500` to `409`.
 
+## Post-step-9 — `@Pattern` regex added to `RegisterRequestDTO`/`LoginRequestDTO`, reversing PLAN.md's #18
+
+`PLAN.md`'s interview decision #18 explicitly chose no composition rules and no email regex beyond
+`@Email`, for reasons laid out only in conversation (not previously written down): composition rules
+push users toward predictable patterns without raising real entropy (NIST SP 800-63B), and a custom
+email regex on top of `@Email` risks false-rejecting valid addresses. Asked directly whether to reverse
+that call; user chose to add both anyway. Landed as:
+
+- **Password** — `@Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$")` alongside the existing
+  `@Size(min = 8, max = 72)`, requiring at least one lowercase letter, one uppercase letter, and one
+  digit. No symbol requirement (asked; user chose this over adding one).
+- **Email** — `@Pattern(regexp = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$")` alongside `@Email` (register) or
+  alone (login, which never carried `@Email` — see the exploit-hunter size-cap fix above). Catches what
+  `@Email` alone doesn't: Hibernate Validator's `@Email` accepts a domain with no top-level domain at
+  all (`user@localhost` passes `@Email`, fails this `@Pattern`).
+
+Applied identically to both DTOs, matching the existing "`LoginRequestDTO` mirrors `RegisterRequestDTO`'s
+constraints" pattern from the size-cap fix. Covered by four new scenarios per endpoint in
+`AuthControllerIntegrationTest` (missing uppercase/lowercase/digit, no-TLD email); `TESTING.md` updated
+in the same change. `AuthControllerIntegrationTest.PASSWORD` changed from `password123` to `Password123`
+so the happy-path tests still satisfy the new composition rule; the `wrong-password` literal in
+`should_return_a_generic_401_for_wrong_password` became `WrongPassword123` for the same reason - it only
+needs to differ from `PASSWORD`, not violate the new format rule and return 400 instead of the intended
+401.
+
 ## Step 1 — named volume mounts at `/var/lib/postgresql`, not `/var/lib/postgresql/data`
 
 The 18+ `postgres` image refuses to start against a volume mounted at the old `/var/lib/postgresql/data`

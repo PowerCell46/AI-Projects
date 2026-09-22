@@ -45,7 +45,7 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String COOKIE_NAME = "access_token";
     private static final String EMAIL = "user@example.com";
-    private static final String PASSWORD = "password123";
+    private static final String PASSWORD = "Password123";
 
     @Autowired
     private RestTestClient restTestClient;
@@ -137,6 +137,26 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         @Test
+        void should_return_400_for_a_password_without_an_uppercase_letter() {
+            register(EMAIL, "password123").expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_a_password_without_a_lowercase_letter() {
+            register(EMAIL, "PASSWORD123").expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_a_password_without_a_digit() {
+            register(EMAIL, "Passwordonly").expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_an_email_without_a_top_level_domain() {
+            register("user@localhost", PASSWORD).expectStatus().isBadRequest();
+        }
+
+        @Test
         void should_return_400_for_blank_fields() {
             register("", "").expectStatus().isBadRequest();
         }
@@ -191,7 +211,7 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
         void should_return_a_generic_401_for_wrong_password() {
             registerUser(EMAIL, PASSWORD);
 
-            login(EMAIL, "wrong-password").expectStatus().isUnauthorized();
+            login(EMAIL, "WrongPassword123").expectStatus().isUnauthorized();
         }
 
         @Test
@@ -234,6 +254,26 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
         @Test
         void should_return_400_for_a_password_over_72_characters() {
             login(EMAIL, "a".repeat(73)).expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_a_password_without_an_uppercase_letter() {
+            login(EMAIL, "password123").expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_a_password_without_a_lowercase_letter() {
+            login(EMAIL, "PASSWORD123").expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_a_password_without_a_digit() {
+            login(EMAIL, "Passwordonly").expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_return_400_for_an_email_without_a_top_level_domain() {
+            login("user@localhost", PASSWORD).expectStatus().isBadRequest();
         }
     }
 

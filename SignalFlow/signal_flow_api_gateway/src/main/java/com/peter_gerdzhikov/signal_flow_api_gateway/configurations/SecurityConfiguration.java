@@ -44,8 +44,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private final AuthenticationEntryPoint authenticationEntryPoint;
     private final AccessDeniedHandler accessDeniedHandler;
+
+    private final AuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -55,7 +56,7 @@ public class SecurityConfiguration {
     ) throws Exception {
         http
                 // Same-origin SPA + SameSite=Strict already stops the browser attaching the cookie to a
-                // cross-site request, which is exactly what CSRF protection defends against (PLAN.md step 4).
+                // cross-site request, which is exactly what CSRF protection defends against.
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth

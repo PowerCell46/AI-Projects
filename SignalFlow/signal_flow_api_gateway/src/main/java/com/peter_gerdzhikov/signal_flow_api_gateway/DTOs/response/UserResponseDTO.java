@@ -18,7 +18,7 @@ public class UserResponseDTO {
 
     private String email;
 
-    private Role role;
+    private Role role; // ? Why do we send the role?
 
     private Instant createdAt;
 }

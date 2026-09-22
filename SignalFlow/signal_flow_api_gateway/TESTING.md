@@ -22,6 +22,11 @@ No `@Disabled` remains anywhere in the suite.
 - Invalid email returns 400 naming the field (`should_return_400_naming_the_field_for_an_invalid_email`)
 - Password under 8 characters returns 400 (`should_return_400_for_a_password_under_8_characters`)
 - Password over 72 characters returns 400 (`should_return_400_for_a_password_over_72_characters`)
+- Password without an uppercase letter returns 400 (`should_return_400_for_a_password_without_an_uppercase_letter`)
+- Password without a lowercase letter returns 400 (`should_return_400_for_a_password_without_a_lowercase_letter`)
+- Password without a digit returns 400 (`should_return_400_for_a_password_without_a_digit`)
+- Email without a top-level domain returns 400 (`should_return_400_for_an_email_without_a_top_level_domain`) —
+  `@Email` alone accepts `user@localhost`; the stricter `@Pattern` on top catches it
 - Blank fields return 400 (`should_return_400_for_blank_fields`)
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - A `role` in the request body is ignored — user is still `USER` (`should_ignore_a_role_sent_in_the_request_body`)
@@ -39,6 +44,10 @@ No `@Disabled` remains anywhere in the suite.
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - Password under 8 characters returns 400 (`should_return_400_for_a_password_under_8_characters`)
 - Password over 72 characters returns 400 (`should_return_400_for_a_password_over_72_characters`)
+- Password without an uppercase letter returns 400 (`should_return_400_for_a_password_without_an_uppercase_letter`)
+- Password without a lowercase letter returns 400 (`should_return_400_for_a_password_without_a_lowercase_letter`)
+- Password without a digit returns 400 (`should_return_400_for_a_password_without_a_digit`)
+- Email without a top-level domain returns 400 (`should_return_400_for_an_email_without_a_top_level_domain`)
 
 ## `POST /api/v1/auth/logout`
 

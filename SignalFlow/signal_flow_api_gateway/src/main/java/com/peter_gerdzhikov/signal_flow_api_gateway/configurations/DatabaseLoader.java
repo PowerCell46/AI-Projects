@@ -17,17 +17,20 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class DatabaseLoader implements CommandLineRunner {
 
-    private final AuthService authService;
     private final String adminEmail;
+
     private final String adminPassword;
 
+    private final AuthService authService;
+
     public DatabaseLoader(
-            AuthService authService,
             @Value("${app.admin.email}") String adminEmail,
-            @Value("${app.admin.password}") String adminPassword) {
-        this.authService = authService;
+            @Value("${app.admin.password}") String adminPassword,
+            AuthService authService
+    ) {
         this.adminEmail = adminEmail;
         this.adminPassword = adminPassword;
+        this.authService = authService;
     }
 
     @Override

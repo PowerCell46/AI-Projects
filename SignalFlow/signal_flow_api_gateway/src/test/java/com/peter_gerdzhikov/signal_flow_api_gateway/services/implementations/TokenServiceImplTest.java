@@ -45,7 +45,7 @@ class TokenServiceImplTest {
         SecretKey secretKey = securityConfiguration.jwtSecretKey(SECRET);
         JwtEncoder jwtEncoder = securityConfiguration.jwtEncoder(secretKey);
         jwtDecoder = securityConfiguration.jwtDecoder(secretKey);
-        tokenService = new TokenServiceImpl(jwtEncoder, TTL);
+        tokenService = new TokenServiceImpl(TTL, jwtEncoder);
     }
 
     @Test

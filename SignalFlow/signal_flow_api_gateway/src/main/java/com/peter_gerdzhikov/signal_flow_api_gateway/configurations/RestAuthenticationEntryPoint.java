@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * Explicit bean because Spring's default entry point bypasses {@code @RestControllerAdvice} entirely,
- * returning an empty 401 body instead of the app's {@code ErrorResponseDTO} (PLAN.md step 4).
+ * returning an empty 401 body instead of the app's {@code ErrorResponseDTO}.
  */
 @Component
 @RequiredArgsConstructor
@@ -26,8 +26,11 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
     private final ObjectMapper objectMapper;
 
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
-            throws IOException {
+    public void commence(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AuthenticationException authException
+    ) throws IOException {
         ErrorResponseWriter.write(response, objectMapper, HttpStatus.UNAUTHORIZED, "Authentication is required.");
     }
 }
