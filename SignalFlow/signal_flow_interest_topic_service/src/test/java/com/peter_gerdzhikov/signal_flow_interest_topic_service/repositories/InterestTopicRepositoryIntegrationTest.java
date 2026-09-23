@@ -3,6 +3,9 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -69,6 +72,16 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
         Category category = categoryRepository.save(newCategory("programming"));
 
         assertThat(interestTopicRepository.existsByCategory_Id(category.getId())).isFalse();
+    }
+
+    @Test
+    void should_return_only_the_ids_that_exist() {
+        Category category = categoryRepository.save(newCategory("programming"));
+        InterestTopic saved = interestTopicRepository.save(newTopic(NAME, category));
+
+        List<UUID> existing = interestTopicRepository.findExistingIds(List.of(saved.getId(), UUID.randomUUID()));
+
+        assertThat(existing).containsExactly(saved.getId());
     }
 
     private Category newCategory(String name) {

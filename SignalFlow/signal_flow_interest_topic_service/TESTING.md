@@ -20,7 +20,7 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 - Duplicate name differing only in case returns 409 (`should_return_409_for_a_duplicate_name_differing_only_in_case`)
 - Blank name returns 400 (`should_return_400_for_a_blank_name`)
 - Name over 100 characters returns 400 (`should_return_400_for_a_name_over_100_characters`)
-- Body over the size cap returns 413 (`should_return_413_for_a_body_over_the_size_cap`)
+- Body over the topic-route size cap (32 KB) returns 413 (`should_return_413_for_a_body_over_the_size_cap`)
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - Error body leaks no exception or package name (`should_not_leak_exception_or_package_names_in_the_error_body`)
 
@@ -66,6 +66,7 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 - Name over 100 characters returns 400 (`should_return_400_for_a_name_over_100_characters`)
 - Description over 1000 characters returns 400 (`should_return_400_for_a_description_over_1000_characters`)
 - Prompt over 4000 characters returns 400 (`should_return_400_for_a_prompt_over_4000_characters`)
+- A 4000-character prompt and 1000-character description in a 3-byte UTF-8 script fit the 32 KB topic-route body cap (`should_accept_a_4000_character_prompt_in_a_multi_byte_script`)
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - Error body leaks no exception or package name (`should_not_leak_exception_or_package_names_in_the_error_body`)
 
@@ -97,6 +98,18 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 - Returns 204 and cascades to the topic's `TopicNews` (`should_return_204_and_cascade_delete_its_news`)
 - Unknown id returns 404 (`should_return_404_when_the_topic_does_not_exist`)
 - Malformed id returns 400 (`should_return_400_for_a_malformed_id`)
+
+## `POST /internal/v1/interest-topics/existing`
+
+`InternalInterestTopicControllerIntegrationTest.FindExistingInterestTopics` — the gateway's subscription
+reconciliation lookup; outside `/api/v1`, so no gateway route forwards a client to it.
+
+- Returns only the ids that exist (`should_return_only_the_ids_that_exist`)
+- None existing returns an empty list, not 404 (`should_return_an_empty_list_when_none_exist`)
+- Missing `ids` returns 400 (`should_return_400_when_ids_is_missing`)
+- A null id returns 400 (`should_return_400_when_an_id_is_null`)
+- A malformed id returns 400 (`should_return_400_when_an_id_is_malformed`)
+- Body over the default size cap (8 KB) returns 413 (`should_return_413_for_a_body_over_the_size_cap`)
 
 ## Known gaps
 

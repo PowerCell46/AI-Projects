@@ -418,3 +418,122 @@ Probe logging for scanner traffic was considered and **not** added here: `anyReq
 means an unauthenticated probe is answered `401` by `RestAuthenticationEntryPoint` and never reaches
 `NoResourceFoundException`, so logging in the advice would cover almost nothing. The entry point is where
 that belongs.
+
+## Topic routing step 1 — Boot 4.2.0-M1 → 4.1.1 for Spring Cloud 2025.1.3
+
+`spring-cloud-gateway-server-webmvc` has no train for 4.2.0-M1: 2025.1.3 covers `>=4.0.0 and <4.2.0-M1`,
+and 2026.0 is only a SNAPSHOT. Chosen over staying on the milestone and proxying by hand (a `RestClient`
+controller) because gateway-webmvc was already the planned mechanism. Nothing in the code changed: the 4.0
+relocations that `DataJpaTest` & co. depend on are identical at 4.1.1, and the full suite (112 tests) stayed
+green with no source edit. The topic service stays on 4.2.0-M1. **Revert** to 4.2 GA once 2026.0 ships.
+
+## Topic routing step 1 — upstream timeouts are Boot's `spring.http.clients.*`, not a gateway namespace
+
+`PLAN.md` assumed `spring.cloud.gateway.server.webmvc.http-client.*`. That namespace doesn't exist in 5.0.3:
+its metadata has no timeout keys, and `GatewayServerMvcAutoConfiguration` builds its proxy from Boot's
+auto-configured `RestClient.Builder`. So the timeouts are `spring.http.clients.connect-timeout` and
+`spring.http.clients.read-timeout` from `spring-boot-http-client`. They apply to every Boot-built HTTP client,
+not just the gateway. That matches the planned "global" scope, since the gateway has no other outbound client.
+Step 4's 504 scenario proves they actually bite.
+
+## Topic routing step 2 — WireMock client is `wiremock-standalone`, module on an alpha built for Testcontainers 1.x
+
+`wiremock-testcontainers-module` has only alpha releases (latest `1.0-alpha-15`), compiled against
+Testcontainers 1.20.6, while Boot 4.1.1 manages 2.0.5. It works against 2.0.5 (the scaffold boots and talks
+to the container). If a Testcontainers bump breaks it, fall back to a plain `GenericContainer` on the same
+image. The Java client for stubbing and verification is `wiremock-standalone`, not `org.wiremock:wiremock`.
+The latter pulls unshaded Jetty 11, which Boot's Jetty 12 version management would override. Both are pinned
+in the pom, since Boot's BOM manages neither. The container image is pinned to `wiremock/wiremock:3.13.2` to
+match the client.
+
+## Topic routing step 2 — `app.interest-topic-service.url` added ahead of the routes
+
+The route target property (`${INTEREST_TOPIC_SERVICE_URL:http://localhost:8081}`) went into
+`application.properties` in step 2, not step 3. That way the scaffold's boot check proves the
+`@DynamicPropertySource` override actually replaces the default. Nothing reads it until the routes land.
+
+## Topic routing step 3 — the upstream JDK client is pinned to HTTP/1.1
+
+Every forward first failed with a 500 (`RST_STREAM` / `EOF reached while reading`). The JDK `HttpClient`
+that gateway-webmvc uses defaults to HTTP/2 and attempts an h2c upgrade over plain `http://`. WireMock's
+Jetty accepts the upgrade and then resets the stream. The fix is a
+`ClientHttpRequestFactoryBuilderCustomizer<JdkClientHttpRequestFactoryBuilder>` that sets
+`HttpClient.Version.HTTP_1_1`, chosen over switching to Apache HttpClient, which would be a new dependency
+just to get HTTP/1.1. The real downstream (Tomcat) would probably ignore the upgrade header, but pinning makes
+the hop deterministic, and HTTP/2 buys nothing on a private network. Like the timeouts, this applies to every
+Boot-built imperative HTTP client, and today the gateway is the only one.
+
+## Topic routing step 3 — routes suite grouped by concern, not `@Nested` per endpoint
+
+`PLAN.md` said "`@Nested` per endpoint", but the agreed scenarios are cross-cutting: the authorization matrix
+is parameterized over the endpoints, and fidelity checks are properties of forwarding, not of one endpoint.
+So the suite is `Authorization` / `ForwardingFidelity` (plus `UpstreamFailures` in step 4), with an
+`Endpoint` enum and `@EnumSource` subsets selecting the endpoints. Cookies are minted with `TokenService`
+from an in-memory `User` rather than via register/login, because authorization reads only JWT claims and
+promoting a user to ADMIN has no HTTP path.
+
+## Topic routing step 3 — both path matchers use `/**` only
+
+`/api/v1/categories/**` already matches `/api/v1/categories` under `PathPattern`, in both the route predicate
+and Spring Security's matcher. So each prefix is declared once, as a shared constant in
+`InterestTopicRoutesConfiguration`, and `SecurityConfiguration` reuses it. That way the route and the access
+rule can't drift apart. The two list endpoints in the suite prove the bare path is covered.
+
+## Topic routing step 4 — every `ResourceAccessException` is 502 except a read timeout (504)
+
+The design named "connection refused or unknown host → 502". The handler is broader: any transport failure
+from the proxy (refused, unknown host, reset, connect timeout) is 502 `"Upstream service unavailable."`, and
+only an `HttpTimeoutException` that isn't an `HttpConnectTimeoutException` is 504. A connect timeout means the
+upstream is unreachable, not slow, so it belongs with the refused connection. The catch on
+`ResourceAccessException` is safe because the gateway proxy is the app's only outbound client. The real cause,
+host included, goes to the log at `warn`, never to the body.
+
+## Topic routing step 4 — the 502 scenario gets its own context through a nested `@DynamicPropertySource`
+
+The route URL is fixed when the context starts, so "connection refused" needs a context whose route points at
+a closed port. `UnreachableUpstream` declares its own `@DynamicPropertySource`, which overrides the base
+class's WireMock URL and gives that one nested class a separate cached context. That keeps it in the single
+suite `PLAN.md` asked for, rather than a second test class. The port comes from a `ServerSocket(0)` that is
+immediately closed. The test profile's read timeout is `1s`, so the 504 scenario doesn't wait out the 10s
+default.
+
+## Post-topic-routing — a chunked body over the cap answers 413 from the upstream-failure handler
+
+Fixes exploit report 2026-09-23 #1. On a forwarded route, the body is only read while the proxy streams it
+upstream, so `BodySizeLimitingRequestWrapper`'s `RequestBodyTooLargeException` arrives wrapped in a
+`ResourceAccessException`. `handleUpstreamFailure` now checks `e.contains(RequestBodyTooLargeException.class)`
+first and answers the same 413 as the controller routes, without the upstream-blaming `warn`. It's covered by a
+unit test on the observed chain (`ResourceAccessException` → `IOException` → `RequestBodyTooLargeException`),
+not by a routes-suite scenario. MockMvc always knows the content length, so a chunked request never reaches
+the wrapper there, and a real-port test class just for this was judged not worth a second context. It was
+verified once against a real Tomcat port with a throwaway probe: 40 KB chunked → 413, nothing forwarded.
+
+## Post-topic-routing — the topic routes get their own body cap, 32 KB
+
+Fixes exploit report 2026-09-23 #3. `RequestBodySizeLimitFilter` now picks its limit per request.
+`app.request.max-topic-body-bytes` (default 32768) applies to paths matching `CATEGORIES_PATH` /
+`INTEREST_TOPICS_PATH` (the same constants the routes and security rules use), and `app.request.max-body-bytes`
+(8 KB) applies everywhere else. It's sized for the worst case of the topic service's character limits:
+4000 + 1000 + 100 characters, each JSON-escaped as `\uXXXX` at 6 bytes, is ~30.6 KB. This was chosen over
+raising the global cap, which would also have widened the anonymous register/login bodies. The filter runs
+before the firewall, so a crafted path like `/api/v1/interest-topics/../auth/register` gets the 32 KB cap, but
+the firewall then rejects it, so the most it gains is a 32 KB read.
+
+## 2026-09-23 — Subscription reconciliation (steps 2–4)
+
+- **Keyset query is native SQL, and paging follows the database's order, never Java's.** Postgres orders
+  `uuid` bytewise, `UUID.compareTo` by signed longs, so the two disagree. The service only ever passes the
+  last id a page returned as the next `after`, starting from the nil UUID, which sorts first in Postgres.
+- **The delete is a `@Modifying` JPQL bulk delete**, not a derived `deleteBy...`, which would load every
+  row first. It carries its own `@Transactional`, which gives the plan's one transaction per batch.
+- **A short batch ends the run** without one more, necessarily empty, page query.
+- **The client is `InterestTopicLookupService`, built on a `RestClient` bean** from Boot's
+  `RestClient.Builder` (`InterestTopicServiceClientConfiguration`), so it picks up `spring.http.clients.*`
+  and the HTTP/1.1 customizer the proxy uses. Every `RestClientException` (non-2xx, timeout, refused
+  connection, unreadable body) and a body without `existingIds` becomes `InterestTopicLookupFailedException`,
+  which the reconciliation reads as "stop", never as "none exist".
+- **The client DTOs keep the `RequestDTO`/`ResponseDTO` naming from the call's point of view**:
+  `ExistingInterestTopicsRequestDTO` is what the gateway sends, `ExistingInterestTopicsResponseDTO` what it
+  gets back. That reverses the direction of every other DTO here, and each class's JavaDoc says so.
+- **The test profile disables the cron** (`app.subscriptions.reconciliation.cron=-`); the tests call the
+  service directly.

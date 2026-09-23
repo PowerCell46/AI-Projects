@@ -2,6 +2,8 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.net.http.HttpConnectTimeoutException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -38,6 +41,26 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody().getMessages()).containsExactly("The request conflicts with existing data.");
+    }
+
+    @Test
+    void should_return_502_not_504_when_the_upstream_connect_times_out() {
+        ResourceAccessException e = new ResourceAccessException("I/O error", new HttpConnectTimeoutException("connect timed out"));
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamFailure(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().getMessages()).containsExactly("Upstream service unavailable.");
+    }
+
+    @Test
+    void should_return_413_not_502_when_a_chunked_body_overruns_the_cap_while_being_forwarded() {
+        ResourceAccessException e = new ResourceAccessException("I/O error", new IOException(new RequestBodyTooLargeException()));
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamFailure(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+        assertThat(response.getBody().getMessages()).containsExactly(RequestBodyTooLargeException.MESSAGE);
     }
 
     @Test

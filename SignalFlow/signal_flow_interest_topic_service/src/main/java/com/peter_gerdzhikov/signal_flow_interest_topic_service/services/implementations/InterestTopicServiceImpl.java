@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.implementations;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -98,6 +100,15 @@ public class InterestTopicServiceImpl implements InterestTopicService {
 
         interestTopicRepository.deleteById(topicId);
         log.info("Deleted interest topic '{}'.", topicId);
+    }
+
+    @Override
+    public List<UUID> findExistingIds(Collection<UUID> topicIds) {
+        if (topicIds.isEmpty()) {
+            return List.of();
+        }
+
+        return interestTopicRepository.findExistingIds(topicIds);
     }
 
     private Category findCategoryOrThrow(UUID categoryId) {

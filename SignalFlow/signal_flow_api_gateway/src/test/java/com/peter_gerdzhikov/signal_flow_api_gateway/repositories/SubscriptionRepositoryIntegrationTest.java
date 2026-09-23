@@ -3,8 +3,11 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.repositories;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +27,10 @@ class SubscriptionRepositoryIntegrationTest extends AbstractPostgresIntegrationT
     private static final String PASSWORD = "hashed-password";
 
     private static final UUID INTEREST_TOPIC_ID = UUID.randomUUID();
+
+    private static final UUID NIL_UUID = new UUID(0L, 0L);
+
+    private static final int PAGE_SIZE = 2;
 
     @Autowired
     private UserRepository userRepository;
@@ -97,6 +104,78 @@ class SubscriptionRepositoryIntegrationTest extends AbstractPostgresIntegrationT
 
         assertThat(subscriptionRepository.existsByUser_IdAndInterestTopicId(alice.getId(), INTEREST_TOPIC_ID))
                 .isFalse();
+    }
+
+    @Test
+    void should_page_each_distinct_topic_id_exactly_once() {
+        List<UUID> topicIds = randomTopicIds(5);
+        subscribeBothUsersTo(topicIds);
+
+        List<UUID> paged = pageAllTopicIdsAfter(NIL_UUID);
+
+        assertThat(paged).containsExactlyInAnyOrderElementsOf(topicIds);
+    }
+
+    @Test
+    void should_still_page_every_remaining_topic_id_when_rows_are_deleted_between_pages() {
+        List<UUID> topicIds = randomTopicIds(5);
+        subscribeBothUsersTo(topicIds);
+        List<UUID> firstPage = subscriptionRepository.findDistinctInterestTopicIdsAfter(NIL_UUID, PAGE_SIZE);
+
+        subscriptionRepository.deleteAllByInterestTopicIdIn(firstPage);
+        List<UUID> rest = pageAllTopicIdsAfter(firstPage.getLast());
+
+        assertThat(firstPage).hasSize(PAGE_SIZE);
+        assertThat(rest)
+                .hasSize(topicIds.size() - PAGE_SIZE)
+                .doesNotContainAnyElementsOf(firstPage);
+    }
+
+    @Test
+    void should_return_no_topic_ids_when_there_are_no_subscriptions() {
+        assertThat(subscriptionRepository.findDistinctInterestTopicIdsAfter(NIL_UUID, PAGE_SIZE)).isEmpty();
+    }
+
+    @Test
+    void should_delete_exactly_the_given_topic_ids_subscriptions() {
+        UUID keptTopicId = UUID.randomUUID();
+        UUID deletedTopicId = UUID.randomUUID();
+        subscribeBothUsersTo(List.of(keptTopicId, deletedTopicId));
+
+        int deleted = subscriptionRepository.deleteAllByInterestTopicIdIn(List.of(deletedTopicId));
+
+        assertThat(deleted).isEqualTo(2);
+        assertThat(subscriptionRepository.findAll())
+                .extracting(Subscription::getInterestTopicId)
+                .containsOnly(keptTopicId);
+    }
+
+    private List<UUID> randomTopicIds(int count) {
+        return Stream
+                .generate(UUID::randomUUID)
+                .limit(count)
+                .toList();
+    }
+
+    private void subscribeBothUsersTo(List<UUID> topicIds) {
+        User bob = userRepository.save(newUser("bob@example.com"));
+        User alice = userRepository.save(newUser("alice@example.com"));
+        topicIds.forEach(topicId -> {
+            subscriptionRepository.save(newSubscription(bob, topicId));
+            subscriptionRepository.save(newSubscription(alice, topicId));
+        });
+        subscriptionRepository.flush();
+    }
+
+    private List<UUID> pageAllTopicIdsAfter(UUID after) {
+        List<UUID> collected = new ArrayList<>();
+        List<UUID> page = subscriptionRepository.findDistinctInterestTopicIdsAfter(after, PAGE_SIZE);
+        while (!page.isEmpty()) {
+            collected.addAll(page);
+            page = subscriptionRepository.findDistinctInterestTopicIdsAfter(page.getLast(), PAGE_SIZE);
+        }
+
+        return collected;
     }
 
     private User newUser(String email) {

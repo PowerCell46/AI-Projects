@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.controllers;
 
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.time.Instant;
 import java.util.List;
 
@@ -16,6 +18,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -73,6 +76,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleInvalidCredentials(InvalidCredentialsException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(errorBody(HttpStatus.UNAUTHORIZED, List.of(e.getMessage())));
+    }
+
+    /**
+     * Thrown only by the gateway's proxy, the one outbound client. A connect timeout is an unreachable
+     * upstream like a refused connection, so only a read timeout maps to 504. A chunked body that overruns
+     * the size cap is only counted while the proxy streams it, so its 413 arrives wrapped in here too.
+     */
+    @ExceptionHandler(ResourceAccessException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUpstreamFailure(ResourceAccessException e) {
+        if (e.contains(RequestBodyTooLargeException.class)) {
+            return errorResponse(HttpStatus.CONTENT_TOO_LARGE, RequestBodyTooLargeException.MESSAGE);
+        }
+
+        log.warn("Forwarding to the upstream service failed: {}.", e.getMessage());
+        if (isReadTimeout(e)) {
+            return errorResponse(HttpStatus.GATEWAY_TIMEOUT, "Upstream service timed out.");
+        }
+
+        return errorResponse(HttpStatus.BAD_GATEWAY, "Upstream service unavailable.");
     }
 
     @ExceptionHandler(Exception.class)
@@ -149,6 +171,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(status)
                 .headers(headers)
                 .body(errorBody(status, List.of(UNPROCESSABLE_REQUEST_MESSAGE)));
+    }
+
+    private boolean isReadTimeout(ResourceAccessException e) {
+        Throwable cause = e.getCause();
+        return cause instanceof HttpTimeoutException && !(cause instanceof HttpConnectTimeoutException);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> errorResponse(HttpStatus status, String message) {
+        return ResponseEntity.status(status)
+                .body(errorBody(status, List.of(message)));
     }
 
     private String describe(FieldError fieldError) {

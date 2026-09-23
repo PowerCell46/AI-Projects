@@ -39,7 +39,7 @@ Hard rules — these hold whether or not the skill is loaded:
 - Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation.
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
-- Endpoints live under `/api/v1`.
+- Endpoints live under `/api/v1`. The one exception is `/internal/v1/**`: service-to-service calls from the gateway, which its routes never forward a client to.
 - No Spring Security here — the gateway owns every access rule. Never add authentication/authorization to this service without an explicit instruction; see `PLAN.md`'s Known gaps.
 - Adding, removing, or changing a scenario in any HTTP-layer e2e suite (`*ControllerIntegrationTest`) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
 

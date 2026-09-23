@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -193,6 +194,29 @@ class InterestTopicServiceImplTest {
                     .isInstanceOf(InterestTopicNotFoundException.class);
 
             verify(interestTopicRepository, never()).deleteById(any());
+        }
+    }
+
+    @Nested
+    class FindExistingIds {
+
+        @Test
+        void should_return_the_ids_the_repository_reports_as_existing() {
+            UUID missingId = UUID.randomUUID();
+            List<UUID> requested = List.of(TOPIC_ID, missingId);
+            when(interestTopicRepository.findExistingIds(requested)).thenReturn(List.of(TOPIC_ID));
+
+            List<UUID> existing = interestTopicService.findExistingIds(requested);
+
+            assertThat(existing).containsExactly(TOPIC_ID);
+        }
+
+        @Test
+        void should_return_an_empty_list_without_querying_when_no_ids_are_given() {
+            List<UUID> existing = interestTopicService.findExistingIds(List.of());
+
+            assertThat(existing).isEmpty();
+            verifyNoInteractions(interestTopicRepository);
         }
     }
 

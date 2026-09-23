@@ -1,5 +1,8 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
 
+import static com.peter_gerdzhikov.signal_flow_api_gateway.configurations.InterestTopicRoutesConfiguration.CATEGORIES_PATH;
+import static com.peter_gerdzhikov.signal_flow_api_gateway.configurations.InterestTopicRoutesConfiguration.INTEREST_TOPICS_PATH;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
@@ -37,6 +40,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.utilities.CookieBearerTokenResolver;
 
 import lombok.RequiredArgsConstructor;
@@ -63,6 +67,11 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/logout")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, CATEGORIES_PATH, INTEREST_TOPICS_PATH)
+                        .authenticated()
+                        // Every other method, not just the known writes, so a verb added downstream later is closed by default.
+                        .requestMatchers(CATEGORIES_PATH, INTEREST_TOPICS_PATH)
+                        .hasRole(Role.ADMIN.name())
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(exceptions -> exceptions

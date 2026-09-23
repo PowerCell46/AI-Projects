@@ -242,3 +242,16 @@ e.g. a `saveAndFlush` failing because the row was concurrently deleted) escape `
 aborting the rest of that batch. `publishDue()` now calls each row through a `publishOneSafely` wrapper
 that catches and logs anything unexpected, so one bad row can't block its neighbours in the same poll —
 same "one failing, the run continues" shape `TopicNewsGenerationJob` already uses per topic.
+
+## 2026-09-23 — Existence endpoint and per-route body cap (gateway reconciliation phase, step 1)
+
+- **`POST /internal/v1/interest-topics/existing` gets its own controller** (`InternalInterestTopicController`)
+  rather than a second mapping on `InterestTopicController`, whose class-level `/api/v1/interest-topics`
+  would otherwise have to be split per method. The service short-circuits an empty `ids` list instead of
+  running `IN ()`. Duplicate ids come back once, since the query selects existing rows. No `@Size` on
+  `ids`: the 8 KB body cap already bounds a request to about 200 UUIDs.
+- **Two body caps, mirroring the gateway.** `/api/v1/categories/**` and `/api/v1/interest-topics/**` get
+  `app.request.max-topic-body-bytes` (32 KB, same as the gateway), everything else keeps
+  `app.request.max-body-bytes` (8 KB). Matched with Spring's `PathPattern` on the request URI, since this
+  service has no Spring Security for the gateway's `PathPatternRequestMatcher`. Closes the half of gateway
+  exploit report 2026-09-23 #3 that the gateway alone couldn't fix.

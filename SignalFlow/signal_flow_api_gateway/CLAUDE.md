@@ -2,10 +2,14 @@
 
 The single front door for SignalFlow — it owns users and **all** access rules; downstream services
 know nothing about authorization and are reachable only through this gateway. Shipped so far: **auth**
-(`register` / `login` / `logout` / `me` over a JWT cookie) and **subscriptions** (`POST
-/api/v1/subscriptions`, `DELETE /api/v1/subscriptions/{interestTopicId}`). Request forwarding lands
-later as `spring-cloud-gateway-server-webmvc` (blocking, not reactive — reactive would rule out JPA
-for no throughput this project needs).
+(`register` / `login` / `logout` / `me` over a JWT cookie), **subscriptions** (`POST
+/api/v1/subscriptions`, `DELETE /api/v1/subscriptions/{interestTopicId}`) and **interest-topic routing**
+(`/api/v1/categories/**` and `/api/v1/interest-topics/**` forwarded to `signal_flow_interest_topic_service`;
+reads need a login, everything else ADMIN) and **subscription reconciliation** (a daily 05:00 Europe/Sofia job
+that hard-deletes subscriptions whose topic the topic service reports missing, via its internal
+`POST /internal/v1/interest-topics/existing`). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
+reactive — reactive would rule out JPA for no throughput this project needs), with routes declared in Java
+(`InterestTopicRoutesConfiguration`) and access rules in `SecurityConfiguration`.
 
 `PLAN.md` is the backlog — what's still to build, fix or improve, plus the gaps accepted on purpose and
 what should trigger revisiting each. Read it before starting a task. The design and step gates of the
@@ -24,7 +28,7 @@ Tests use **Testcontainers**, never embedded fakes — a running Docker daemon i
 
 ## Spring Boot 4
 
-The pom is on **4.2.0-M1**, a milestone. Boot 4 renamed the starters — `spring-boot-starter-webmvc`
+The pom is on **4.1.1** (down from 4.2.0-M1 because Spring Cloud 2025.1.3 doesn't support the milestone; see `DECISIONS.md`). Boot 4 renamed the starters — `spring-boot-starter-webmvc`
 (not `-web`) — and ships a separate `*-test` starter per module. Copy the artifactId pattern already in
 `pom.xml` rather than reaching for the 3.x name, and verify any 3.x-era API before relying on it.
 
@@ -46,7 +50,7 @@ Hard rules — these hold whether or not the skill is loaded:
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
 - Endpoints live under `/api/v1`.
 - No DB read on an authenticated request — authorization comes from the JWT claims alone.
-- Adding, removing, or changing a scenario in any HTTP-layer e2e suite (`*ControllerIntegrationTest`) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
+- Adding, removing, or changing a scenario in any HTTP-layer e2e suite (`*ControllerIntegrationTest`, `*RoutesIntegrationTest`) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
 
 Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
 - `/configurations` — Spring configuration
@@ -56,6 +60,7 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
     - `/response` — outbound payloads
 - `/entities`
 - `/exceptions`
+- `/jobs` — scheduled jobs (the daily subscription reconciliation)
 - `/repositories`
 - `/services`
     - `/interfaces` — service interfaces

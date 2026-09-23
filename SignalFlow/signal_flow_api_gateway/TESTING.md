@@ -1,13 +1,13 @@
 # E2E test catalog
 
 Scope: HTTP-layer tests only — full stack through `DispatcherServlet` via `RestTestClient` against
-Testcontainers Postgres. `UserRepositoryIntegrationTest` and `SubscriptionRepositoryIntegrationTest`
+Testcontainers Postgres (plus a WireMock container standing in for the topic service in the routes suite). `UserRepositoryIntegrationTest` and `SubscriptionRepositoryIntegrationTest`
 exercise real Postgres too but skip the HTTP layer, so they're not listed here.
 
 Hand-maintained — see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
 All seven endpoints are enabled — the four auth ones (Register, Login, Logout, `/me`) and the three
-subscription ones. No `@Disabled` remains anywhere in the suite.
+subscription ones — plus the eight forwarded topic-service endpoints. No `@Disabled` remains anywhere in the suite.
 
 ## `POST /api/v1/auth/register`
 
@@ -107,6 +107,39 @@ subscription ones. No `@Disabled` remains anywhere in the suite.
 - Another user's subscription returns 404 and is not deleted (`should_return_404_when_the_subscription_belongs_to_another_user`)
 - A malformed topic id returns 400 without naming the target type (`should_return_400_for_a_malformed_interest_topic_id`)
 - No cookie returns 401 (`should_return_401_with_no_cookie`)
+
+## Interest-topic routes (`/api/v1/categories/**`, `/api/v1/interest-topics/**`)
+
+The eight topic-service endpoints, forwarded verbatim to a WireMock stand-in. Parameterized scenarios run
+once per endpoint: all eight, the six writes (`POST`/`PATCH`/`DELETE`), the two reads (`GET`), or the four
+body-carrying writes.
+
+`InterestTopicRoutesIntegrationTest.Authorization`
+
+- No cookie returns 401 and forwards nothing, on all eight (`should_return_401_and_forward_nothing_when_there_is_no_cookie`)
+- A USER on each of the six writes gets 403 and nothing is forwarded (`should_return_403_and_forward_nothing_when_a_user_calls_a_write`)
+- A USER sending `PUT` to either prefix gets 403 and nothing is forwarded (`should_return_403_and_forward_nothing_when_a_user_sends_a_method_outside_the_known_writes`)
+- A USER on both reads is forwarded once (`should_forward_when_a_user_calls_a_read`)
+- An ADMIN on each of the six writes is forwarded once (`should_forward_when_an_admin_calls_a_write`)
+
+`InterestTopicRoutesIntegrationTest.ForwardingFidelity`
+
+- Downstream status, body and `Content-Type` are passed through verbatim (`should_pass_the_downstream_status_body_and_content_type_through_verbatim`)
+- A downstream 409 error body is passed through verbatim (`should_pass_a_downstream_error_response_through_verbatim`)
+- `page`/`size`/`categoryId` query string is forwarded as is (`should_forward_the_query_string_as_is`)
+- Request body and `Content-Type` of the four body-carrying writes are forwarded as is (`should_forward_the_request_body_and_content_type_as_is`)
+- `Cookie` and `Authorization` never reach the downstream (`should_not_forward_the_cookie_or_the_authorization_header`)
+
+`InterestTopicRoutesIntegrationTest.UpstreamFailures`
+
+- A downstream slower than the read timeout (1s in the test profile) returns 504 `"Upstream service timed out."` and nothing else (`should_return_504_without_leaking_internals_when_the_downstream_times_out`)
+- A body over the topic routes' size cap (`app.request.max-topic-body-bytes`) returns 413 and nothing is forwarded (`should_return_413_and_forward_nothing_for_a_body_over_the_size_cap`)
+- A valid topic with a 4000-character CJK prompt, whose UTF-8 body exceeds the default 8 KB cap, is forwarded (`should_forward_a_valid_topic_whose_utf8_body_exceeds_the_default_cap`)
+- A `..%2F` path traversal is rejected with 400 by the firewall and nothing is forwarded (`should_reject_and_forward_nothing_for_an_encoded_path_traversal`)
+
+`InterestTopicRoutesIntegrationTest.UnreachableUpstream` (its own context, with the routes pointed at a closed port)
+
+- A refused connection returns 502 `"Upstream service unavailable."` and nothing else (`should_return_502_without_leaking_internals_when_the_downstream_refuses_the_connection`)
 
 ## Known gaps
 

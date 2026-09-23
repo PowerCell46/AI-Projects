@@ -75,6 +75,13 @@ verbatim.
 
 Topic response embeds `categoryId` and `categoryName`. No single-topic GET.
 
+Added 2026-09-23 for the gateway's subscription reconciliation, outside `/api/v1` so no gateway route
+forwards a client to it:
+
+| Method | Path | Behaviour |
+|---|---|---|
+| POST | `/internal/v1/interest-topics/existing` | `{"ids": [...]}` → 200 `{"existingIds": [...]}`; 400 missing/malformed `ids`; 413 over 8 KB |
+
 ---
 
 ## News generation job
@@ -120,6 +127,7 @@ Topic response embeds `categoryId` and `categoryName`. No single-topic GET.
 | `server.port` | `${PORT:8081}` |
 | `spring.datasource.*` | `DATASOURCE_URL/USERNAME/PASSWORD`, URL default `jdbc:postgresql://localhost:5433/signal_flow_topics` |
 | `spring.kafka.bootstrap-servers` | `${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}` |
+| `app.request.max-body-bytes` / `app.request.max-topic-body-bytes` | `8192` / `32768` (topic and category routes) |
 | `app.news.cron` / `app.news.zone` | `0 0 6 * * *` / `UTC` |
 | `app.outbox.poll-interval` | `PT10S` |
 | `app.outbox.batch-size` | `50` |
@@ -185,15 +193,18 @@ step 8 entry.
 
 ## Known gaps (accepted, not oversights)
 
-- **No authentication or authorization.** Trusts every caller; reachable only on the internal Docker
-  network. **Trigger:** gateway request forwarding lands — the gateway enforces roles then.
+- ~~**No authentication or authorization.**~~ **Closed 2026-09-23:** the gateway now forwards all eight
+  endpoints and enforces the roles (reads need a login, writes need ADMIN), stripping the caller's cookie and
+  `Authorization` header before forwarding. This service still has no security of its own and trusts every
+  caller, so it must stay reachable only from the gateway (internal Docker network).
 - **Single instance assumed.** No scheduler locking; two instances would double-pay AI calls and could
   double-publish. **Trigger:** a second instance → ShedLock or `SKIP LOCKED`. *(DECISIONS.md)*
-- **Deleting a topic drops its news, including unsent `PENDING` rows**, and orphans the gateway's
-  subscriptions to it. **Trigger:** needing cleanup → publish an `interest-topic.deleted` event the gateway
-  consumes. *(DECISIONS.md)*
-- **Nothing lets the gateway confirm a topic exists** (no single-topic GET). **Trigger:** the gateway's
-  topic-existence validation.
+- **Deleting a topic drops its news, including unsent `PENDING` rows.** *(DECISIONS.md)* ~~It also orphans
+  the gateway's subscriptions to it.~~ **Closed 2026-09-23:** the gateway's daily reconciliation job deletes
+  subscriptions to topics this service no longer has, so an orphan lives until the next 05:00 run.
+- ~~**Nothing lets the gateway confirm a topic exists.**~~ **Closed 2026-09-23:**
+  `POST /internal/v1/interest-topics/existing` answers which of up to ~200 ids exist. It sits outside
+  `/api/v1`, so no gateway route forwards a client to it.
 - **`ddl-auto=update`, no versioned migrations.** **Trigger:** a second deployed environment or the first
   destructive schema change.
 - **News rows kept forever.** **Trigger:** table size becomes a concern.

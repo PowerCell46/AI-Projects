@@ -150,6 +150,13 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void should_accept_a_4000_character_prompt_in_a_multi_byte_script() {
+            UUID categoryId = persistedCategory("programming").getId();
+
+            createInterestTopic(TOPIC_NAME, "新".repeat(1000), "新".repeat(4000), categoryId).expectStatus().isCreated();
+        }
+
+        @Test
         void should_return_400_for_malformed_json() {
             restTestClient.post()
                     .uri("/api/v1/interest-topics")

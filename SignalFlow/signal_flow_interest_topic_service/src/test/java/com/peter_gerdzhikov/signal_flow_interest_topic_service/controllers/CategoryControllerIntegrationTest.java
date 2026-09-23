@@ -42,8 +42,8 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private InterestTopicRepository interestTopicRepository;
 
-    @Value("${app.request.max-body-bytes}")
-    private int maxRequestBodyBytes;
+    @Value("${app.request.max-topic-body-bytes}")
+    private int maxTopicRequestBodyBytes;
 
     @BeforeEach
     void clearTopicsAndCategories() {
@@ -102,7 +102,7 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
 
         @Test
         void should_return_413_for_a_body_over_the_size_cap() {
-            createCategory("a".repeat(maxRequestBodyBytes)).expectStatus().isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+            createCategory("a".repeat(maxTopicRequestBodyBytes)).expectStatus().isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
 
             assertThat(categoryRepository.count()).isZero();
         }
