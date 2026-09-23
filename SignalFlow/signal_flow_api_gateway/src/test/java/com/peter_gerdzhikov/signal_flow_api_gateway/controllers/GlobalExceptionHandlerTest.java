@@ -25,6 +25,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateSubscriptionException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicFeedUnavailableException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionNotFoundException;
@@ -61,6 +62,15 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
         assertThat(response.getBody().getMessages()).containsExactly(RequestBodyTooLargeException.MESSAGE);
+    }
+
+    @Test
+    void should_return_502_when_the_interest_topic_service_does_not_answer_the_feed_request() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleInterestTopicFeedUnavailable(new InterestTopicFeedUnavailableException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().getMessages()).containsExactly("Upstream service unavailable.");
     }
 
     @Test

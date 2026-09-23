@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,10 +23,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.InterestTopicNotFoundException;
@@ -217,6 +221,93 @@ class InterestTopicServiceImplTest {
 
             assertThat(existing).isEmpty();
             verifyNoInteractions(interestTopicRepository);
+        }
+    }
+
+    @Nested
+    class FindFeedSlice {
+
+        private static final Limit ONE_PAST_A_PAGE_OF_TWO = Limit.of(3);
+
+        @Test
+        void should_start_from_the_beginning_when_no_cursor_is_given() {
+            when(interestTopicRepository.findPageAfter("", ONE_PAST_A_PAGE_OF_TWO)).thenReturn(topicsNamed("go"));
+
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(List.of(), InterestTopicFeedMode.ALL, null, 2);
+
+            assertThat(slice.getContent()).extracting(InterestTopic::getName).containsExactly("go");
+        }
+
+        @Test
+        void should_report_a_next_page_and_trim_the_extra_row_when_more_topics_follow() {
+            when(interestTopicRepository.findPageAfter("a", ONE_PAST_A_PAGE_OF_TWO))
+                    .thenReturn(topicsNamed("go", "java", "kotlin"));
+
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(List.of(), InterestTopicFeedMode.ALL, "a", 2);
+
+            assertThat(slice.hasNext()).isTrue();
+            assertThat(slice.getContent()).extracting(InterestTopic::getName).containsExactly("go", "java");
+        }
+
+        @Test
+        void should_report_no_next_page_when_the_last_topics_fit() {
+            when(interestTopicRepository.findPageAfter("a", ONE_PAST_A_PAGE_OF_TWO)).thenReturn(topicsNamed("go", "java"));
+
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(List.of(), InterestTopicFeedMode.ALL, "a", 2);
+
+            assertThat(slice.hasNext()).isFalse();
+            assertThat(slice.getContent()).hasSize(2);
+        }
+
+        @Test
+        void should_query_only_the_given_ids_when_including() {
+            List<UUID> ids = List.of(TOPIC_ID);
+            when(interestTopicRepository.findPageAfterIdIn("", ids, ONE_PAST_A_PAGE_OF_TWO)).thenReturn(topicsNamed("go"));
+
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(ids, InterestTopicFeedMode.INCLUDE, null, 2);
+
+            assertThat(slice.getContent()).extracting(InterestTopic::getName).containsExactly("go");
+        }
+
+        @Test
+        void should_return_nothing_without_querying_when_including_no_ids() {
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(List.of(), InterestTopicFeedMode.INCLUDE, null, 2);
+
+            assertThat(slice.getContent()).isEmpty();
+            assertThat(slice.hasNext()).isFalse();
+            verifyNoInteractions(interestTopicRepository);
+        }
+
+        @Test
+        void should_query_around_the_given_ids_when_excluding() {
+            List<UUID> ids = List.of(TOPIC_ID);
+            when(interestTopicRepository.findPageAfterIdNotIn("", ids, ONE_PAST_A_PAGE_OF_TWO)).thenReturn(topicsNamed("go"));
+
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(ids, InterestTopicFeedMode.EXCLUDE, null, 2);
+
+            assertThat(slice.getContent()).extracting(InterestTopic::getName).containsExactly("go");
+        }
+
+        @Test
+        void should_return_every_topic_when_excluding_no_ids() {
+            when(interestTopicRepository.findPageAfter("", ONE_PAST_A_PAGE_OF_TWO)).thenReturn(topicsNamed("go"));
+
+            Slice<InterestTopic> slice = interestTopicService.findFeedSlice(List.of(), InterestTopicFeedMode.EXCLUDE, null, 2);
+
+            assertThat(slice.getContent()).extracting(InterestTopic::getName).containsExactly("go");
+            verify(interestTopicRepository, never()).findPageAfterIdNotIn(any(), any(), any());
+        }
+
+        private List<InterestTopic> topicsNamed(String... names) {
+            return Arrays.stream(names)
+                    .map(this::topicNamed)
+                    .toList();
+        }
+
+        private InterestTopic topicNamed(String name) {
+            InterestTopic topic = new InterestTopic();
+            topic.setName(name);
+            return topic;
         }
     }
 

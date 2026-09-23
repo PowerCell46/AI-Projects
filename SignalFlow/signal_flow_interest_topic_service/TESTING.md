@@ -56,6 +56,7 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 `InterestTopicControllerIntegrationTest.CreateInterestTopic`
 
 - Creates an interest topic and returns it with `categoryId`/`categoryName` embedded (`should_create_an_interest_topic_and_return_it`)
+- The response never carries `prompt` (`should_not_expose_the_prompt_in_the_response`)
 - Name is stored lowercased (`should_store_the_name_lowercased`)
 - Unknown `categoryId` returns 404 (`should_return_404_for_an_unknown_category_id`)
 - Duplicate name returns 409 (`should_return_409_for_a_duplicate_name`)
@@ -79,13 +80,14 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 - `?page=`/`?size=` are respected (`should_respect_page_and_size_params`)
 - Size is capped at 100 even when a larger value is requested (`should_cap_the_page_size_at_100`)
 - `?categoryId=` filters to that category's topics (`should_filter_by_category_id_when_provided`)
+- No listed topic carries `prompt` (`should_not_expose_the_prompt_of_any_listed_topic`)
 - No topics returns an empty page, not 404 (`should_return_an_empty_page_when_no_topics_exist`)
 
 ## `PATCH /api/v1/interest-topics/{id}`
 
 `InterestTopicControllerIntegrationTest.UpdateInterestTopic`
 
-- Updates only the fields provided; omitted (null) fields are unchanged (`should_update_only_the_provided_fields`)
+- Updates only the fields provided; omitted (null) fields are unchanged, checked for `prompt` in the database since responses no longer carry it (`should_update_only_the_provided_fields`)
 - Unknown topic id returns 404 (`should_return_404_when_the_topic_does_not_exist`)
 - Unknown `categoryId` returns 404 (`should_return_404_for_an_unknown_category_id`)
 - Renaming to a name already in use returns 409 (`should_return_409_when_renaming_to_a_name_already_in_use`)
@@ -110,6 +112,22 @@ reconciliation lookup; outside `/api/v1`, so no gateway route forwards a client 
 - A null id returns 400 (`should_return_400_when_an_id_is_null`)
 - A malformed id returns 400 (`should_return_400_when_an_id_is_malformed`)
 - Body over the default size cap (8 KB) returns 413 (`should_return_413_for_a_body_over_the_size_cap`)
+
+## `POST /internal/v1/interest-topics/feed`
+
+`InternalInterestTopicControllerIntegrationTest.FindInterestTopicFeed`. Backs the gateway's `GET /api/v1/feed`.
+It's outside `/api/v1`, so no gateway route forwards a client to it.
+
+- First page comes in name order with `nextCursor` set to the last name (`should_return_the_first_page_in_name_order_with_a_cursor_to_the_next`)
+- Continues after the cursor; the last page's `nextCursor` is null (`should_continue_after_the_cursor_and_return_no_cursor_on_the_last_page`)
+- INCLUDE returns only the given ids (`should_return_only_the_given_ids_when_including`)
+- EXCLUDE leaves the given ids out (`should_leave_out_the_given_ids_when_excluding`)
+- `total` counts every topic; `matching` counts only the given ids that still exist (`should_count_every_topic_and_only_the_given_ids_that_still_exist`)
+- Items embed the category and carry no `prompt` (`should_embed_the_category_and_not_expose_the_prompt`)
+- Missing `mode` returns 400 (`should_return_400_when_the_mode_is_missing`)
+- Missing `ids` returns 400 (`should_return_400_when_ids_is_missing`)
+- `size` outside 1–100 returns 400 (`should_return_400_when_the_size_is_out_of_range`)
+- Unknown `mode` returns 400 (`should_return_400_for_an_unknown_mode`)
 
 ## Known gaps
 

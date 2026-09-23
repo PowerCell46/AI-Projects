@@ -7,7 +7,9 @@ know nothing about authorization and are reachable only through this gateway. Sh
 (`/api/v1/categories/**` and `/api/v1/interest-topics/**` forwarded to `signal_flow_interest_topic_service`;
 reads need a login, everything else ADMIN) and **subscription reconciliation** (a daily 05:00 Europe/Sofia job
 that hard-deletes subscriptions whose topic the topic service reports missing, via its internal
-`POST /internal/v1/interest-topics/existing`). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
+`POST /internal/v1/interest-topics/existing`) and the **dashboard feed** (`GET /api/v1/feed`, a
+real endpoint composing the caller's subscriptions with the topic service's internal
+`POST /internal/v1/interest-topics/feed`). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
 reactive — reactive would rule out JPA for no throughput this project needs), with routes declared in Java
 (`InterestTopicRoutesConfiguration`) and access rules in `SecurityConfiguration`.
 

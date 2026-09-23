@@ -31,6 +31,11 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.InterestTopicFeedRequestDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicFeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicFeedUnavailableException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicLookupFailedException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.InterestTopicLookupService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.support.AbstractInterestTopicServiceIntegrationTest;
@@ -41,11 +46,20 @@ class InterestTopicLookupServiceImplIntegrationTest extends AbstractInterestTopi
 
     private static final String EXISTING_PATH = "/internal/v1/interest-topics/existing";
 
+    private static final String FEED_PATH = "/internal/v1/interest-topics/feed";
+
     private static final UUID EXISTING_ID = UUID.fromString("7d2e9f10-3c4b-4a5d-8e6f-1a2b3c4d5e6f");
 
     private static final UUID MISSING_ID = UUID.fromString("0b5c3a4e-6f0e-4b8e-9d3a-2c1f7e8a9b01");
 
+    private static final InterestTopicFeedRequestDTO FEED_REQUEST =
+            new InterestTopicFeedRequestDTO(List.of(EXISTING_ID), InterestTopicFeedMode.INCLUDE, "go", 20);
+
     private static final int DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS = 3000;
+
+    private static final String FEED_BODY = """
+            {"items": [{"id": "%s", "name": "rust"}], "nextCursor": "rust", "total": 5, "matching": 1}
+            """.formatted(UUID.randomUUID());
 
     @Autowired
     private InterestTopicLookupService interestTopicLookupService;
@@ -107,6 +121,60 @@ class InterestTopicLookupServiceImplIntegrationTest extends AbstractInterestTopi
     }
 
     @Nested
+    class FindFeedPage {
+
+        @Test
+        void should_post_the_request_as_json_to_the_feed_endpoint() {
+            stubFeed(jsonResponse(FEED_BODY));
+
+            interestTopicLookupService.findFeedPage(FEED_REQUEST);
+
+            INTEREST_TOPIC_SERVICE_STUB.verifyThat(postRequestedFor(urlEqualTo(FEED_PATH))
+                    .withHeader(HttpHeaders.CONTENT_TYPE, equalTo(MediaType.APPLICATION_JSON_VALUE))
+                    .withRequestBody(equalToJson(
+                            "{\"ids\": [\"%s\"], \"mode\": \"INCLUDE\", \"after\": \"go\", \"size\": 20}"
+                                    .formatted(EXISTING_ID))));
+        }
+
+        @Test
+        void should_return_the_page_from_the_response() {
+            stubFeed(jsonResponse(FEED_BODY));
+
+            InterestTopicFeedResponseDTO page = interestTopicLookupService.findFeedPage(FEED_REQUEST);
+
+            assertThat(page.getItems()).extracting(InterestTopicResponseDTO::getName).containsExactly("rust");
+            assertThat(page.getNextCursor()).isEqualTo("rust");
+            assertThat(page.getTotal()).isEqualTo(5);
+            assertThat(page.getMatching()).isEqualTo(1);
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {400, 404, 500, 503})
+        void should_fail_when_the_response_is_not_2xx(int status) {
+            stubFeed(aResponse().withStatus(status));
+
+            assertThatThrownBy(() -> interestTopicLookupService.findFeedPage(FEED_REQUEST))
+                    .isInstanceOf(InterestTopicFeedUnavailableException.class);
+        }
+
+        @Test
+        void should_fail_when_the_response_has_no_items() {
+            stubFeed(jsonResponse("{}"));
+
+            assertThatThrownBy(() -> interestTopicLookupService.findFeedPage(FEED_REQUEST))
+                    .isInstanceOf(InterestTopicFeedUnavailableException.class);
+        }
+
+        @Test
+        void should_fail_when_the_response_times_out() {
+            stubFeed(jsonResponse(FEED_BODY).withFixedDelay(DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS));
+
+            assertThatThrownBy(() -> interestTopicLookupService.findFeedPage(FEED_REQUEST))
+                    .isInstanceOf(InterestTopicFeedUnavailableException.class);
+        }
+    }
+
+    @Nested
     class UnreachableInterestTopicService {
 
         @DynamicPropertySource
@@ -118,6 +186,12 @@ class InterestTopicLookupServiceImplIntegrationTest extends AbstractInterestTopi
         void should_fail_rather_than_report_none_existing_when_the_connection_is_refused() {
             assertThatThrownBy(() -> interestTopicLookupService.findExistingIds(List.of(EXISTING_ID)))
                     .isInstanceOf(InterestTopicLookupFailedException.class);
+        }
+
+        @Test
+        void should_fail_the_feed_page_when_the_connection_is_refused() {
+            assertThatThrownBy(() -> interestTopicLookupService.findFeedPage(FEED_REQUEST))
+                    .isInstanceOf(InterestTopicFeedUnavailableException.class);
         }
     }
 
@@ -132,6 +206,10 @@ class InterestTopicLookupServiceImplIntegrationTest extends AbstractInterestTopi
 
     private void stubExistenceLookup(ResponseDefinitionBuilder response) {
         INTEREST_TOPIC_SERVICE_STUB.register(post(urlEqualTo(EXISTING_PATH)).willReturn(response));
+    }
+
+    private void stubFeed(ResponseDefinitionBuilder response) {
+        INTEREST_TOPIC_SERVICE_STUB.register(post(urlEqualTo(FEED_PATH)).willReturn(response));
     }
 
     private ResponseDefinitionBuilder existingIdsResponse(UUID existingId) {

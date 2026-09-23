@@ -537,3 +537,23 @@ the firewall then rejects it, so the most it gains is a 32 KB read.
   gets back. That reverses the direction of every other DTO here, and each class's JavaDoc says so.
 - **The test profile disables the cron** (`app.subscriptions.reconciliation.cron=-`); the tests call the
   service directly.
+
+## 2026-09-23 — `GET /api/v1/feed` (dashboard feed)
+
+- **A real endpoint, not a route.** Only the gateway knows a user's subscriptions, so it loads their topic
+  ids and sends them to the topic service's `POST /internal/v1/interest-topics/feed` with a mode
+  (`SUBSCRIBED`→`INCLUDE`, `NOT_SUBSCRIBED`→`EXCLUDE`). It lives at `/api/v1/feed`, outside
+  `/api/v1/interest-topics/**`, so it can't collide with the forwarding route or its ADMIN rule.
+- **Keyset cursor (`after` = last topic name), not page numbers**, so toggling a card mid-list never skips
+  or repeats one on "Next". Filter values are the enum's uppercase names; lowercase is a 400.
+- **Counts come from the topic service** (`total`, and `matching` = subscribed ids that still exist), not
+  from `countByUser_Id`. That keeps `all = subscribed + notSubscribed` true while a deleted topic's
+  subscription awaits the 05:00 reconciliation.
+- **Own item DTO (`FeedTopicResponseDTO`) with `subscribed`**, so the SPA needs no second call. It carries
+  no `prompt` or `createdAt`. The topic service's shapes are mirrored as `InterestTopicResponseDTO` /
+  `InterestTopicFeedResponseDTO` and named from the call's point of view, like the existence lookup's.
+- **Failure is `InterestTopicFeedUnavailableException` → 502**, kept separate from
+  `InterestTopicLookupFailedException`, whose message and "stop the run" meaning belong to reconciliation.
+  A timeout is 502 here too, not the proxy's 504: one outbound call, one status.
+- **Invalid `size`/`after` fall to `handleExceptionInternal`'s fixed 400 message** (Spring's built-in method
+  validation), with no dedicated override.

@@ -1,13 +1,13 @@
 # E2E test catalog
 
 Scope: HTTP-layer tests only — full stack through `DispatcherServlet` via `RestTestClient` against
-Testcontainers Postgres (plus a WireMock container standing in for the topic service in the routes suite). `UserRepositoryIntegrationTest` and `SubscriptionRepositoryIntegrationTest`
+Testcontainers Postgres (plus a WireMock container standing in for the topic service in the routes and feed suites). `UserRepositoryIntegrationTest` and `SubscriptionRepositoryIntegrationTest`
 exercise real Postgres too but skip the HTTP layer, so they're not listed here.
 
 Hand-maintained — see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
-All seven endpoints are enabled — the four auth ones (Register, Login, Logout, `/me`) and the three
-subscription ones — plus the eight forwarded topic-service endpoints. No `@Disabled` remains anywhere in the suite.
+All eight endpoints are enabled — the four auth ones (Register, Login, Logout, `/me`), the three
+subscription ones and the feed — plus the eight forwarded topic-service endpoints. No `@Disabled` remains anywhere in the suite.
 
 ## `POST /api/v1/auth/register`
 
@@ -107,6 +107,21 @@ subscription ones — plus the eight forwarded topic-service endpoints. No `@Dis
 - Another user's subscription returns 404 and is not deleted (`should_return_404_when_the_subscription_belongs_to_another_user`)
 - A malformed topic id returns 400 without naming the target type (`should_return_400_for_a_malformed_interest_topic_id`)
 - No cookie returns 401 (`should_return_401_with_no_cookie`)
+
+## `GET /api/v1/feed`
+
+`FeedControllerIntegrationTest.FindFeed`. The topic service's `POST /internal/v1/interest-topics/feed` is a
+WireMock stand-in.
+
+- No cookie returns 401 and calls nothing (`should_return_401_and_call_nothing_when_there_is_no_cookie`)
+- Returns items flagged `subscribed` per the caller's subscriptions, plus `nextCursor` and `counts` (`should_return_the_topics_flagged_by_subscription_with_counts_and_a_cursor`)
+- Items carry neither `prompt` nor `createdAt` (`should_not_expose_the_prompt_or_the_creation_time`)
+- Defaults to `filter=ALL`, no cursor, size 20 (`should_default_to_every_topic_from_the_start_in_pages_of_20`)
+- Sends the caller's subscribed ids with mode ALL / INCLUDE / EXCLUDE for each filter, plus `after` and `size` (`should_send_the_callers_subscribed_ids_with_the_mode_for_the_filter`)
+- Never sends another user's subscriptions (`should_not_send_another_users_subscriptions`)
+- `size` of 0, 101 or non-numeric, an unknown filter, or a lowercase filter returns 400 and calls nothing (`should_return_400_and_call_nothing_for_an_invalid_parameter`)
+- A cursor over 100 characters returns 400 and calls nothing (`should_return_400_and_call_nothing_for_a_cursor_over_100_characters`)
+- A failing topic service returns 502 `"Upstream service unavailable."` (`should_return_502_when_the_topic_service_fails`)
 
 ## Interest-topic routes (`/api/v1/categories/**`, `/api/v1/interest-topics/**`)
 

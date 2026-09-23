@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.CreateInterestTopicRequestDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.UpdateInterestTopicRequestDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.InterestTopicResponseDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.InterestTopicService;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.utilities.InterestTopicResponseMapper;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +50,7 @@ public class InterestTopicController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(toResponse(interestTopic));
+                .body(InterestTopicResponseMapper.toResponse(interestTopic));
     }
 
     @GetMapping
@@ -61,7 +61,7 @@ public class InterestTopicController {
         log.info("Received list interest topics request.");
         Page<InterestTopicResponseDTO> page = interestTopicService
                 .findPage(categoryId, pageable)
-                .map(this::toResponse);
+                .map(InterestTopicResponseMapper::toResponse);
 
         return ResponseEntity.ok(page);
     }
@@ -80,7 +80,7 @@ public class InterestTopicController {
                 request.getCategoryId()
         );
 
-        return ResponseEntity.ok(toResponse(interestTopic));
+        return ResponseEntity.ok(InterestTopicResponseMapper.toResponse(interestTopic));
     }
 
     @DeleteMapping("/{id}")
@@ -91,17 +91,5 @@ public class InterestTopicController {
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .build();
-    }
-
-    private InterestTopicResponseDTO toResponse(InterestTopic interestTopic) {
-        Category category = interestTopic.getCategory();
-        return new InterestTopicResponseDTO(
-                interestTopic.getId(),
-                interestTopic.getName(),
-                interestTopic.getDescription(),
-                interestTopic.getPrompt(),
-                category.getId(),
-                category.getName(),
-                interestTopic.getCreatedAt());
     }
 }

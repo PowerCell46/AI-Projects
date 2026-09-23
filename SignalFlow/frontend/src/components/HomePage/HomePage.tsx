@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { logout } from '../../api/auth'
 import type { AuthUser } from '../../api/auth'
+import Feed from './Feed/Feed'
 import './HomePage.css'
 
 interface HomePageProps {
@@ -8,7 +9,7 @@ interface HomePageProps {
     onSignedOut: () => void
 }
 
-function HomePage({ user, onSignedOut }: HomePageProps) {
+function HomePage({ onSignedOut }: HomePageProps) {
     const [signingOut, setSigningOut] = useState(false)
 
     async function handleSignOut() {
@@ -35,9 +36,7 @@ function HomePage({ user, onSignedOut }: HomePageProps) {
             </header>
 
             <main className="home-main">
-                <p className="home-eyebrow">Welcome back</p>
-                <h1 className="home-greeting">{user.email}</h1>
-                <p className="home-note">Your feed will show up here.</p>
+                <Feed />
             </main>
         </div>
     )

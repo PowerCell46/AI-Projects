@@ -73,7 +73,7 @@ verbatim.
 | PATCH | `/categories/{id}` | rename; 404 missing; 409 duplicate |
 | DELETE | `/categories/{id}` | 204; 404 missing; **409 if referenced by any topic** |
 
-Topic response embeds `categoryId` and `categoryName`. No single-topic GET.
+Topic response embeds `categoryId` and `categoryName`, and never carries `prompt` (internal, sent only to the AI). No single-topic GET.
 
 Added 2026-09-23 for the gateway's subscription reconciliation, outside `/api/v1` so no gateway route
 forwards a client to it:
@@ -81,6 +81,7 @@ forwards a client to it:
 | Method | Path | Behaviour |
 |---|---|---|
 | POST | `/internal/v1/interest-topics/existing` | `{"ids": [...]}` → 200 `{"existingIds": [...]}`; 400 missing/malformed `ids`; 413 over 8 KB |
+| POST | `/internal/v1/interest-topics/feed` | `{"ids", "mode": ALL\|INCLUDE\|EXCLUDE, "after", "size": 1–100}` → 200 `{"items", "nextCursor", "total", "matching"}`; 400 invalid body (added for the gateway's dashboard feed) |
 
 ---
 

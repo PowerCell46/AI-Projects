@@ -2,16 +2,21 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.impleme
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.InterestTopicNotFoundException;
@@ -27,6 +32,12 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class InterestTopicServiceImpl implements InterestTopicService {
+
+    /**
+     * Sorts before every stored name (names are never blank), so it doubles as "no cursor" without
+     * binding a null parameter into the query.
+     */
+    private static final String FROM_THE_START = "";
 
     private final CategoryRepository categoryRepository;
 
@@ -109,6 +120,48 @@ public class InterestTopicServiceImpl implements InterestTopicService {
         }
 
         return interestTopicRepository.findExistingIds(topicIds);
+    }
+
+    @Override
+    public Slice<InterestTopic> findFeedSlice(
+            Collection<UUID> topicIds,
+            InterestTopicFeedMode mode,
+            String after,
+            int size
+    ) {
+        String cursor = Objects.requireNonNullElse(after, FROM_THE_START);
+        // One row past the page tells whether another page follows, without a count query.
+        List<InterestTopic> topics = findFeedTopics(topicIds, mode, cursor, Limit.of(size + 1));
+
+        boolean hasNext = topics.size() > size;
+        List<InterestTopic> page = hasNext ? topics.subList(0, size) : topics;
+        return new SliceImpl<>(page, Pageable.ofSize(size), hasNext);
+    }
+
+    @Override
+    public long countAll() {
+        return interestTopicRepository.count();
+    }
+
+    /**
+     * An empty id set never reaches the query - {@code IN ()} is invalid SQL, so INCLUDE short-circuits
+     * to nothing and EXCLUDE falls back to every topic.
+     */
+    private List<InterestTopic> findFeedTopics(
+            Collection<UUID> topicIds,
+            InterestTopicFeedMode mode,
+            String cursor,
+            Limit limit
+    ) {
+        return switch (mode) {
+            case ALL -> interestTopicRepository.findPageAfter(cursor, limit);
+            case INCLUDE -> topicIds.isEmpty()
+                    ? List.of()
+                    : interestTopicRepository.findPageAfterIdIn(cursor, topicIds, limit);
+            case EXCLUDE -> topicIds.isEmpty()
+                    ? interestTopicRepository.findPageAfter(cursor, limit)
+                    : interestTopicRepository.findPageAfterIdNotIn(cursor, topicIds, limit);
+        };
     }
 
     private Category findCategoryOrThrow(UUID categoryId) {

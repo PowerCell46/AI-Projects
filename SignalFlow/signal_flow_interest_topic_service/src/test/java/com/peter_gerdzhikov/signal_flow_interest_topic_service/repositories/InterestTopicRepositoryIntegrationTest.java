@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
@@ -82,6 +83,48 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
         List<UUID> existing = interestTopicRepository.findExistingIds(List.of(saved.getId(), UUID.randomUUID()));
 
         assertThat(existing).containsExactly(saved.getId());
+    }
+
+    @Test
+    void should_return_topics_named_after_the_cursor_in_name_order_up_to_the_limit() {
+        Category category = categoryRepository.save(newCategory("programming"));
+        List.of("rust", "go", "kotlin", "java").forEach(name -> interestTopicRepository.save(newTopic(name, category)));
+
+        List<InterestTopic> page = interestTopicRepository.findPageAfter("go", Limit.of(2));
+
+        assertThat(page)
+                .extracting(InterestTopic::getName)
+                .containsExactly("java", "kotlin");
+    }
+
+    @Test
+    void should_return_only_the_given_ids_named_after_the_cursor() {
+        Category category = categoryRepository.save(newCategory("programming"));
+        InterestTopic go = interestTopicRepository.save(newTopic("go", category));
+        InterestTopic kotlin = interestTopicRepository.save(newTopic("kotlin", category));
+        interestTopicRepository.save(newTopic("java", category));
+
+        List<InterestTopic> page = interestTopicRepository
+                .findPageAfterIdIn("", List.of(go.getId(), kotlin.getId()), Limit.of(10));
+
+        assertThat(page)
+                .extracting(InterestTopic::getName)
+                .containsExactly("go", "kotlin");
+    }
+
+    @Test
+    void should_leave_out_the_given_ids_named_after_the_cursor() {
+        Category category = categoryRepository.save(newCategory("programming"));
+        InterestTopic go = interestTopicRepository.save(newTopic("go", category));
+        interestTopicRepository.save(newTopic("java", category));
+        interestTopicRepository.save(newTopic("kotlin", category));
+
+        List<InterestTopic> page = interestTopicRepository
+                .findPageAfterIdNotIn("java", List.of(go.getId()), Limit.of(10));
+
+        assertThat(page)
+                .extracting(InterestTopic::getName)
+                .containsExactly("kotlin");
     }
 
     private Category newCategory(String name) {

@@ -1,0 +1,72 @@
+.pager {
+    margin-top: 2.75rem;
+}
+
+.pager-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pager-readout {
+    font-family: var(--font-mono);
+    font-size: 0.71875rem;
+    letter-spacing: 0.02em;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.pager-track {
+    position: relative;
+    flex: 1;
+    height: 1px;
+    background-color: var(--track);
+}
+
+.pager-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background-color: var(--accent);
+    transition: width 200ms ease;
+}
+
+.pager-button {
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--line-btn);
+    border-radius: 0.1875rem;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--text-2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        border-color 220ms ease,
+        color 220ms ease;
+}
+
+.pager-button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.pager-button:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.pager-error {
+    margin: 0.625rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pager-fill,
+    .pager-button {
+        transition: none;
+    }
+}

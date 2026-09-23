@@ -1,0 +1,50 @@
+.feed-filter {
+    display: flex;
+    margin-top: 1.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    width: fit-content;
+}
+
+.feed-filter-cell {
+    padding: 0.5rem 1.0625rem;
+    background-color: transparent;
+    border: none;
+    border-right: 1px solid var(--line);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--text-3);
+    cursor: pointer;
+    min-height: 2.75rem;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease;
+}
+
+.feed-filter-cell:last-child {
+    border-right: none;
+}
+
+.feed-filter-cell:hover:not([aria-selected='true']) {
+    background-color: var(--surface-filter-hover);
+    color: var(--text-2);
+}
+
+.feed-filter-cell[aria-selected='true'] {
+    background-color: var(--surface-raise);
+    color: var(--accent);
+}
+
+.feed-filter-count {
+    margin-left: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feed-filter-cell {
+        transition: none;
+    }
+}

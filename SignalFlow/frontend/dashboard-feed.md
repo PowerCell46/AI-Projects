@@ -8,7 +8,7 @@ Implement the signed-in topic feed: a centered single-column list of interest to
 
 The feed's only interaction is a binary toggle repeated 20+ times per page. Everything in this design exists to make **subscription state readable at a glance while scrolling**, without turning the page into a wall of coloured chips.
 
-- **Card-level state, not button-level state.** A subscribed topic is identified by an amber rule down the card's left edge plus an amber ticker. The eye can scan the left margin of the column and resolve state without reading a single button. Relying on the button label alone forces a read per card.
+- **Card-level state, not button-level state.** A subscribed topic is identified by an amber rule down the card's left edge. The eye can scan the left margin of the column and resolve state without reading a single button. Relying on the button label alone forces a read per card.
 - **One accent, one job.** Amber `#DCA82F` appears only for subscribed state and the active filter. No other colour is used anywhere in the UI, so colour always means the same thing.
 - **The state change is animated, not snapped.** The left rule wipes in from 0 to 3px over 260ms with a decelerating curve. The toggle is optimistic and instantaneous in data terms; the motion exists to show *what changed* on a page where 20 near-identical cards make an instant swap easy to miss.
 - **Narrow column, tall cards.** Content is capped at 660px — a comfortable measure for 1–2 sentence descriptions — and cards are given generous internal padding so roughly 4–5 land per viewport. Density is deliberately traded away: the user is evaluating topics, not triaging a queue.
@@ -40,7 +40,7 @@ Define these as CSS custom properties on `:root` in a stylesheet file. **All siz
 | `--accent-line` | `rgba(220,168,47,.45)` | Subscribed button border |
 | `--text` | `#E4EBF2` | Headings, card titles |
 | `--text-2` | `#A7B3C0` | Descriptions, button labels |
-| `--text-3` | `#6E7C8C` | Tickers, categories, counts, sub-headline |
+| `--text-3` | `#6E7C8C` | Categories, counts, sub-headline |
 | `--focus` | `#4C8DFF` | Focus ring |
 | `--track` | `#1B2430` | Pager progress track |
 
@@ -49,7 +49,7 @@ Define these as CSS custom properties on `:root` in a stylesheet file. **All siz
 Two families, loaded from Google Fonts:
 
 - **Inter** (400 / 500 / 600) — all UI and prose.
-- **JetBrains Mono** (400 / 500) — tickers, counts, pager readout only. Monospace is reserved for values, never for labels or prose.
+- **JetBrains Mono** (400 / 500) — counts, pager readout only. Monospace is reserved for values, never for labels or prose.
 
 | Role | Size | Weight | Notes |
 |---|---|---|---|
@@ -58,7 +58,6 @@ Two families, loaded from Google Fonts:
 | Filter label | 13px | 400 | |
 | Filter count | 11px | 400 | mono, opacity 0.6, 8px left margin |
 | Card title | 17px | 600 | letter-spacing `-0.012em` |
-| Card ticker | 11px | 400 | mono |
 | Card category | 12.5px | 400 | `--text-3` |
 | Card description | 14px | 400 | line-height 1.7, max-width 62ch |
 | Button label | 13px | 400 | |
@@ -90,7 +89,6 @@ No shadows. No gradients except the fade behind the fixed back-to-top area if on
 |---|---|---|
 | Subscribed rule wipe (width 0 → 3px) | 260ms | `cubic-bezier(.22,1,.36,1)` |
 | Card background / border | 200ms | ease |
-| Ticker colour | 240ms | ease |
 | Button border / background / colour | 220ms | ease |
 | Filter cell | 160ms | ease |
 | Back-to-top | 180ms | ease |
@@ -113,7 +111,7 @@ Single centered column. Header, feed, and pager all share the same column width 
               │  └────┴──────────┴────────────────┘   │
               │                                        │
               │ ▌┌────────────────────────────────┐   │   ← 3px amber rule
-              │  │ Bitcoin   BTC        Crypto    │   │     (subscribed only)
+              │  │ Bitcoin              Crypto    │   │     (subscribed only)
               │  │ Spot action, ETF flows and …   │   │
               │  │ ┌──────────────┐               │   │
               │  │ │  Subscribed  │               │   │
@@ -121,7 +119,7 @@ Single centered column. Header, feed, and pager all share the same column width 
               │  └────────────────────────────────┘   │
               │                26px                    │
               │  ┌────────────────────────────────┐   │
-              │  │ Meta Platforms  META  Equities │   │
+              │  │ Meta Platforms       Equities  │   │
               │  …                                     │
               │                                        │
               │  82 of 248 ────────────── [ Next 20 ] │   pager
@@ -160,11 +158,11 @@ Implement as a tablist: `role="tablist"` on the group, `role="tab"` and `aria-se
 
 ### Topic card
 
-Structure: title row (name, ticker, category pushed right), description, action button.
+Structure: title row (name, category pushed right), description, action button.
 
 - Resting: `--surface` background, 1px `--line` border, 4px radius, `overflow: hidden`.
 - Hover: background `--surface-hover`, border `--line-hover`. The whole card responds; it is not clickable, so use no cursor change and no transform.
-- Subscribed: background `--surface-sub`, border `--line-sub`, ticker in `--accent`, and the left rule at 3px.
+- Subscribed: background `--surface-sub`, border `--line-sub`, and the left rule at 3px.
 
 The left rule is a pseudo-element pinned to the card's left edge, full height, `width: 0` at rest and `width: 3px` when subscribed, with the card clipping overflow so it sits flush inside the border radius. Animating `width` (not `transform` or `opacity`) is what produces the wipe.
 

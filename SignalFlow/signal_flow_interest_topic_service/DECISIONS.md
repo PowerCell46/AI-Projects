@@ -255,3 +255,20 @@ same "one failing, the run continues" shape `TopicNewsGenerationJob` already use
   `app.request.max-body-bytes` (8 KB). Matched with Spring's `PathPattern` on the request URI, since this
   service has no Spring Security for the gateway's `PathPatternRequestMatcher`. Closes the half of gateway
   exploit report 2026-09-23 #3 that the gateway alone couldn't fix.
+
+## 2026-09-23 — Feed endpoint for the gateway's dashboard, and `prompt` leaves every response
+
+- **`POST /internal/v1/interest-topics/feed` pages with a keyset cursor on `name`, not an offset.** `name`
+  is unique, so `name > :after ORDER BY name` is exact. An offset would skip a card whenever the gateway's
+  user unsubscribes mid-list in a filtered view. The query fetches `size + 1` rows to know whether more
+  follow, so there's no count query per page. A null `after` becomes `""`, which sorts before every stored
+  name, so no null parameter is bound.
+- **The service sees only ids and a mode (`ALL`/`INCLUDE`/`EXCLUDE`)**, never "subscriptions". An empty id
+  set short-circuits in Java instead of sending `IN ()`/`NOT IN ()`. `total` is `count()` and `matching`
+  reuses `findExistingIds`, so the gateway's counts ignore subscriptions to deleted topics that are still
+  awaiting reconciliation.
+- **The result travels as a Spring Data `Slice`**, not a custom holder. The controller turns `hasNext()`
+  into `nextCursor` (the last item's name).
+- **`prompt` is gone from `InterestTopicResponseDTO`**, so no endpoint returns it, admin writes included.
+  It's internal, input to the AI only. Admins still set it via POST/PATCH. Mapping moved to
+  `utilities/InterestTopicResponseMapper`, shared by both controllers.

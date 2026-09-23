@@ -26,6 +26,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateEmailException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateSubscriptionException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicFeedUnavailableException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InvalidCredentialsException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionLimitExceededException;
@@ -36,6 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private static final String UPSTREAM_UNAVAILABLE_MESSAGE = "Upstream service unavailable.";
 
     private static final String UNPROCESSABLE_REQUEST_MESSAGE = "The request could not be processed.";
 
@@ -94,7 +97,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return errorResponse(HttpStatus.GATEWAY_TIMEOUT, "Upstream service timed out.");
         }
 
-        return errorResponse(HttpStatus.BAD_GATEWAY, "Upstream service unavailable.");
+        return errorResponse(HttpStatus.BAD_GATEWAY, UPSTREAM_UNAVAILABLE_MESSAGE);
+    }
+
+    @ExceptionHandler(InterestTopicFeedUnavailableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInterestTopicFeedUnavailable(InterestTopicFeedUnavailableException e) {
+        log.warn("The interest topic service did not answer the feed request: {}.", e.getMessage());
+        return errorResponse(HttpStatus.BAD_GATEWAY, UPSTREAM_UNAVAILABLE_MESSAGE);
     }
 
     @ExceptionHandler(Exception.class)

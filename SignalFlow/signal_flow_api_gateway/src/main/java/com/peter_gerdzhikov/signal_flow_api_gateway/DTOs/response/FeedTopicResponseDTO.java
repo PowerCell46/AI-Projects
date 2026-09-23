@@ -1,6 +1,5 @@
-package com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response;
+package com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response;
 
-import java.time.Instant;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -10,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class InterestTopicResponseDTO {
+public class FeedTopicResponseDTO {
 
     private UUID id;
 
@@ -22,5 +21,5 @@ public class InterestTopicResponseDTO {
 
     private String categoryName;
 
-    private Instant createdAt;
+    private boolean subscribed;
 }

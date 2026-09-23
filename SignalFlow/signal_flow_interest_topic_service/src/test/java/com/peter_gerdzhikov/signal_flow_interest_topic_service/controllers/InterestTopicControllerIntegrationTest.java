@@ -78,6 +78,16 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void should_not_expose_the_prompt_in_the_response() {
+            UUID categoryId = persistedCategory("programming").getId();
+
+            createInterestTopic(TOPIC_NAME, "A systems language", TOPIC_PROMPT, categoryId)
+                    .expectStatus().isCreated()
+                    .expectBody()
+                    .jsonPath("$.prompt").doesNotExist();
+        }
+
+        @Test
         void should_store_the_name_lowercased() {
             UUID categoryId = persistedCategory("programming").getId();
 
@@ -239,6 +249,19 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void should_not_expose_the_prompt_of_any_listed_topic() {
+            persistedInterestTopic(TOPIC_NAME, persistedCategory("programming"));
+
+            restTestClient.get()
+                    .uri("/api/v1/interest-topics")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.content[0].name").isEqualTo(TOPIC_NAME)
+                    .jsonPath("$.content[0].prompt").doesNotExist();
+        }
+
+        @Test
         void should_return_an_empty_page_when_no_topics_exist() {
             restTestClient.get()
                     .uri("/api/v1/interest-topics")
@@ -263,8 +286,9 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
                     .returnResult()
                     .getResponseBody();
 
+            InterestTopic stored = interestTopicRepository.findById(interestTopic.getId()).orElseThrow();
             assertThat(body.getName()).isEqualTo("kotlin");
-            assertThat(body.getPrompt()).isEqualTo(TOPIC_PROMPT);
+            assertThat(stored.getPrompt()).isEqualTo(TOPIC_PROMPT);
         }
 
         @Test
