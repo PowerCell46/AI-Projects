@@ -48,6 +48,7 @@ public class InterestTopicRoutesConfiguration {
      */
     @Bean
     public ClientHttpRequestFactoryBuilderCustomizer<JdkClientHttpRequestFactoryBuilder> http1OnlyUpstreamClient() {
-        return builder -> builder.withHttpClientCustomizer(client -> client.version(HttpClient.Version.HTTP_1_1));
+        return builder -> builder
+                .withHttpClientCustomizer(client -> client.version(HttpClient.Version.HTTP_1_1));
     }
 }

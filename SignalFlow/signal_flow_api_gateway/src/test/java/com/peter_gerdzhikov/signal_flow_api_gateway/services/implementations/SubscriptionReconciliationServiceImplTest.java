@@ -23,7 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicLookupFailedException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.interesttopics.InterestTopicLookupFailedException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.InterestTopicLookupService;
 

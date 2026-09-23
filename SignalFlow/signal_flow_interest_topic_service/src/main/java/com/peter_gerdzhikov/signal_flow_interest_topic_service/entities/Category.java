@@ -22,8 +22,8 @@ public class Category extends CommonEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
-    @PrePersist
     @PreUpdate
+    @PrePersist
     private void lowercaseName() {
         if (name != null) {
             name = name.toLowerCase();

@@ -10,6 +10,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,7 +19,9 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "interest_topics")
 public class InterestTopic extends CommonEntity {
 
@@ -37,8 +41,8 @@ public class InterestTopic extends CommonEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Category category;
 
-    @PrePersist
     @PreUpdate
+    @PrePersist
     private void lowercaseName() {
         if (name != null) {
             name = name.toLowerCase();

@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicLookupFailedException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.interesttopics.InterestTopicLookupFailedException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.InterestTopicLookupService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionReconciliationService;

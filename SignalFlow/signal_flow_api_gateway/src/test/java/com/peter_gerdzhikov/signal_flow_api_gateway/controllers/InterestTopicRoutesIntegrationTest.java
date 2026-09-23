@@ -39,8 +39,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.TokenService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.support.AbstractInterestTopicServiceIntegrationTest;
 import com.peter_gerdzhikov.signal_flow_api_gateway.utilities.CookieFactory;

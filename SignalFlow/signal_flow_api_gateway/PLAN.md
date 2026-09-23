@@ -1,11 +1,11 @@
 # SignalFlow API Gateway — what's left
 
-The **auth** (2026-09-21), **subscriptions** (2026-09-22) and **interest-topic routing** (2026-09-23)
-phases have shipped and are green. Their design, step-by-step gates and `/grill-me` interview records are
-no longer carried here. Read them from git history (`git log -p -- PLAN.md`). Calls made during
-implementation live in `DECISIONS.md`, the e2e catalog in `TESTING.md`, and the audits in
-`exploit-report-2026-09-22-subscriptions.md`, `exploit-report-2026-09-23-topic-routing.md` and
-`exploit-report-2026-09-23-reconciliation.md`. Each report's
+The **auth** (2026-09-21), **subscriptions** (2026-09-22), **interest-topic routing** (2026-09-23) and
+**subscription reconciliation** (2026-09-23) phases have shipped and are green. Their design, step-by-step
+gates and `/grill-me` interview records are no longer carried here. Read them from git history
+(`git log -p -- PLAN.md`). Calls made during implementation live in `DECISIONS.md`, the e2e catalog in
+`TESTING.md`, and the audits in `exploit-report-2026-09-22-subscriptions.md`,
+`exploit-report-2026-09-23-topic-routing.md` and `exploit-report-2026-09-23-reconciliation.md`. Each report's
 status note records which findings were fixed. The rest are open by decision and appear under *Accepted
 gaps* below with their triggers.
 
@@ -14,94 +14,113 @@ from it: **no step starts on a red or missing test, and each step ends green.**
 
 ---
 
-## Phase: subscription reconciliation (shipped, 2026-09-23)
+## Next phase — topic-news notification fan-out
 
-Nothing confirms that a subscription's `interestTopicId` names a real topic, and deleting a topic leaves
-its subscriptions behind. Instead of checking on every subscribe, a daily job re-checks every subscribed
-topic id against the topic service and hard-deletes subscriptions whose topic doesn't exist. That closes
-both gaps with one mechanism, and subscribe keeps no runtime dependency on the topic service.
+Consume `topic-news.generated` (produced by `signal_flow_interest_topic_service`'s
+`TopicNewsOutboxPublisher`) and, for every **enabled** subscriber of the event's `interestTopicId`, publish
+one message to `topic-news.notification-requested` for a future email service to act on. Replaces the
+by-topic fan-out read path under *Build* below: it stays inside the gateway, so no service-to-service HTTP
+auth is needed.
 
 ### Design
 
-- **Subscribe is unchanged.** A made-up topic id still gets 201 and disappears at the next run. That's
-  acceptable because the SPA only offers real topics, so only hand-crafted requests hit it, and a bogus id
-  never matches any news, so it can't trigger a notification. The notification side needs no changes.
-- **Schedule: daily at 05:00 Europe/Sofia.** It's set by two properties:
-  `app.subscriptions.reconciliation.cron` (default `0 0 5 * * *`) and `app.subscriptions.reconciliation.zone`
-  (default `Europe/Sofia`). The zone is explicit rather than the server default, so moving the container
-  doesn't move the run.
-- **Re-check everything each run, with no status column.** A per-row CHECKED flag would never re-check a row
-  whose topic is deleted later. Re-checking all distinct subscribed topic ids closes the orphan gap too, and
-  needs no schema change. Real ids are bounded by the topic count, and junk ids by the per-user cap times the
-  number of users.
-- **Batching.** Distinct topic ids are read with keyset pagination
-  (`WHERE interest_topic_id > :after ORDER BY interest_topic_id LIMIT :size`), which stays correct while the
-  same run deletes rows; offset paging would skip ids. The batch size is
-  `app.subscriptions.reconciliation.batch-size`, default 200, which keeps each request under the topic
-  service's 8 KB body cap.
-- **Topic service endpoint: `POST /internal/v1/interest-topics/existing`.** The body is `{"ids": [...]}`
-  and the response is `200 {"existingIds": [...]}`. It's a POST because 200 UUIDs in a GET query string
-  would blow Tomcat's 8 KB header limit. It sits outside `/api/v1/**`, so the gateway's routes never expose
-  it; the topic service is still unauthenticated and reachable only from the gateway.
-- **Gateway client.** A service pair for the lookup, built on Boot's `RestClient.Builder` against
-  `app.interest-topic-service.url`. It inherits the global 2s/10s timeouts and the HTTP/1.1 pin.
-- **Deletion.** For each batch, `ids - existingIds` are hard-deleted (`DELETE ... WHERE interest_topic_id IN
-  (...)`), one transaction per batch. Only subscriptions to topics confirmed missing are touched, and a
-  topic id can't be re-created, so the delete never races a valid subscription.
-- **Failure: stop the run and delete nothing further.** A non-2xx response, a timeout or a refused
-  connection ends the run. Batches already confirmed keep their deletes. "No answer" is never read as "doesn't
-  exist". The run logs a `warn`, and a success logs one INFO summary (ids checked, subscriptions deleted).
-- **Multiple instances** would each run the job. That's harmless because the deletes give the same result
-  either way, only wasted work. It's logged under *Accepted gaps* next to the topic service's scheduler gap.
+**Delivery — at-least-once.** The offset is committed only after all N sends for a record are acked. A
+failure mid-fan-out retries the whole record, so earlier subscribers get a duplicate: a duplicate is
+acceptable, a skipped subscriber is not. The email consumer dedupes on `(newsId, userId)`, which it needs
+anyway since upstream is at-least-once too. No Kafka transactions, no gateway outbox.
 
-### Scenarios
+**Inbound** — `DTOs/event/TopicNewsEventDTO`, a copy of the topic service's contract (no shared lib):
+`newsId` (UUID), `interestTopicId` (UUID), `topicName`, `categoryName`, `newsDate` (LocalDate), `data`,
+`generatedAt` (Instant). Key `interestTopicId`, JSON via Jackson 3, no type headers.
 
-- **Topic service, endpoint:** returns only the ids that exist, returns an empty list when none exist, 400
-  for a missing or malformed `ids`, and 413 over the body cap.
-- **Gateway, repository:** keyset paging returns each distinct topic id once, across pages, even while rows
-  are deleted between pages. The delete removes exactly the given topic ids' subscriptions.
-- **Gateway, client (WireMock):** sends the expected request shape and parses `existingIds`. Non-2xx, a
-  timeout and a refused connection each surface as a failure, never as "none exist".
-- **Gateway, reconciliation service:**
-  - Subscriptions to missing topics are deleted and existing ones kept.
-  - An empty table makes no call.
-  - Batches split at the configured size.
-  - A failure on batch *n* stops the run, with batches before *n* deleted and nothing after.
+**Outbound** — `DTOs/event/TopicNewsNotificationEventDTO`: all 7 inbound fields + `userId` (UUID, the
+stable dedupe key — email can change) + `emailAddress`.
+- Topic `topic-news.notification-requested`, created by the gateway's own `NewTopic` bean
+  (`KafkaTopicConfig`): 3 partitions, replication 1, both configurable.
+- Key **`userId`**: per-user ordering, and one large topic's fan-out spreads across all partitions.
+- Producer mirrors the topic service: `StringSerializer` key, `JacksonJsonSerializer` value, `acks=all`,
+  `enable.idempotence=true`, `spring.json.add.type.headers=false`.
+
+**Subscriber lookup.** Keyset batches of **500** (configurable), selecting only `user.id` + `user.email`
+via a JPQL projection over `Subscription` joined to `User`, filtered on `interestTopicId` and
+`user.enabled = true`. No entity loading, so `Subscription.user` stays `LAZY` (its `// TODO` is removed as
+resolved). Disabled users are skipped. Zero subscribers → no sends, record committed.
+
+**Consumer.**
+- Group `signal-flow-api-gateway`, `auto-offset-reset=earliest` (no news missed on first start),
+  concurrency **3** (one per inbound partition, configurable).
+- Value deserializer wrapped in `ErrorHandlingDeserializer`, so bad JSON doesn't loop.
+- `DefaultErrorHandler`: 3 retries with exponential backoff (~1s, 2s, 4s), then
+  `DeadLetterPublishingRecoverer` → **`topic-news.generated.DLT`**, logged at ERROR. Deserialization
+  failures skip retries and go straight to the DLT. No replay tooling.
+
+**Layout.**
+- `/listeners/TopicNewsListener`: thin `@KafkaListener`; delegates, holds no logic.
+- `TopicNewsNotificationService` (`/services/interfaces`) + `TopicNewsNotificationServiceImpl`
+  (`/services/implementations`): batch-load subscribers, send one message each, block on each send's ack
+  (`send(...).get(timeout)`) so a failure surfaces to the error handler.
+- `/DTOs/event/`: both event DTOs.
+- `CLAUDE.md`'s package list gains `/listeners` and `/DTOs/event`.
+
+**Local Kafka — `9094` everywhere.** Gateway default `${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}`. Root
+`docker-compose.yml`'s `kafka` listener, advertised listener, healthcheck and commented port mapping
+move from 9092 to 9094, matching the topic service's existing default. The topic service's `DECISIONS.md`
+9092 mention is corrected to match.
 
 ### Steps
 
-1. **Topic service: the existence endpoint, plus its body cap.** Build `POST /internal/v1/interest-topics/existing`
-   with controller, service and repository (`findExistingIds`). Also raise the topic service's body cap for
-   topic writes to match the gateway's 32 KB. Today a 4000-character CJK prompt passes the gateway and then
-   gets 413 downstream (exploit report 2026-09-23 #3 was only half fixed). **Gate:** its e2e scenarios are
-   green, and its `TESTING.md` is updated. ✅ **Done 2026-09-23.**
-2. **Gateway: repository queries.** Add keyset distinct-ids and delete-by-topic-ids. **Gate:** the repository
-   scenarios are green. ✅ **Done 2026-09-23.**
-3. **Gateway: topic-service client.** Add the service pair on `RestClient`. **Gate:** the WireMock client
-   scenarios are green. ✅ **Done 2026-09-23.**
-4. **Gateway: reconciliation service and scheduled job.** Add `@EnableScheduling` and a `jobs` package,
-   mirroring the topic service's, which means adding `/jobs` to CLAUDE.md's package list. **Gate:** the
-   reconciliation scenarios are green, and the full suite is green. ✅ **Done 2026-09-23.**
-5. **Docs.** Close the "any UUID is subscribable" gap here and the topic service's two gaps ("nothing lets
-   the gateway confirm a topic exists", "deleting a topic orphans the gateway's subscriptions"). Add the
-   multi-instance job gap. **Gate:** docs are consistent. ✅ **Done 2026-09-23.**
-6. **`exploit-hunter` over the internal endpoint and the job.** Report only. **Gate:** report written, and
-   each finding is either fixed or logged. ✅ **Done 2026-09-23.** `exploit-report-2026-09-23-reconciliation.md`
-   has 2 Low findings, both logged under *Fix* below.
+1. **Infra + docs.** Pom: `spring-boot-starter-kafka`, `spring-boot-starter-kafka-test`,
+   `testcontainers-kafka`. 9092 → 9094 (compose + topic service `DECISIONS.md`). Kafka properties
+   (producer, consumer, topic names, batch size, concurrency). `KafkaTopicConfig`. A test base with a
+   singleton `apache/kafka-native:4.3.1` `@ServiceConnection` container next to Postgres (4.3.1 per the
+   topic service's `DECISIONS.md`). `CLAUDE.md` package list.
+   **Gate:** a context-loads test on the Kafka base is green.
+2. **Repository.** Keyset batch query of enabled subscribers' `(userId, email)` for one `interestTopicId`.
+   **Gate:** `SubscriptionRepositoryIntegrationTest` covers: only id + email returned, disabled users
+   excluded, other topics excluded, paging correct across more than one batch.
+3. **DTOs + service.** Both event DTOs, `TopicNewsNotificationService` + `Impl`.
+   **Gate:** unit test with mocked `KafkaTemplate`: one send per enabled subscriber, key = `userId`, all 9
+   fields mapped; multiple batches walked; zero subscribers → no sends; a failed send propagates.
+4. **Listener + error handling.** `TopicNewsListener`, consumer config (group, `earliest`, concurrency 3),
+   `ErrorHandlingDeserializer`, `DefaultErrorHandler` + DLT recoverer. Remove the TODO on
+   `Subscription.user`.
+   **Gate:** e2e: a `topic-news.generated` record in real Kafka → one `topic-news.notification-requested`
+   record per enabled subscriber with the right key and payload; malformed JSON lands on
+   `topic-news.generated.DLT`.
+5. **Docs.** `PLAN.md`: close the by-topic fan-out item, add the accepted gaps below. `DECISIONS.md`: the
+   calls from this interview. `TESTING.md` untouched (it covers HTTP suites only).
+   **Gate:** full `mvn verify` green.
+6. **Audit.** `exploit-hunter` on the finished phase.
+   **Gate:** report written; each finding patched (dated `DECISIONS.md` entry) or logged under *Accepted gaps*.
 
-**Out of scope:** a live existence check at subscribe time, the by-topic fan-out read path, and ShedLock.
+### Accepted gaps this phase adds (move to *Accepted gaps* in step 5)
 
-### Interview record
+- **User emails travel through Kafka in plaintext.** Fine on a private network. **Trigger:** Kafka is shared
+  or exposed beyond the internal network → TLS/SASL, or send `userId` only and let the consumer resolve
+  the email.
+- **DLT'd records are only logged, no replay tool.** **Trigger:** the first record that needs replaying.
+- **Duplicates on a mid-fan-out retry.** By design (at-least-once); the email consumer must dedupe on
+  `(newsId, userId)`.
+
+### `/grill-me` record (2026-09-24)
 
 | # | Question | Answer |
 |---|---|---|
-| 1 | Live check at subscribe, or later? | A daily job; subscribe stays unchecked |
-| 2 | Per-row CHECKED/UNCHECKED status? | No, re-check all distinct topic ids each run (also covers topics deleted later) |
-| 3 | When does it run? | Every day at 05:00 |
-| 4 | Invalid subscriptions? | Hard delete, gone for good |
-| 5 | Notification side changes? | None needed, since bogus ids never match any news |
-| 6 | Timezone for 05:00? | Explicit `Europe/Sofia` |
-| 7 | Safety check against a mass delete? | Not built; logged under *Accepted gaps* as a potential case |
+| 1 | Delivery guarantee for the N-way fan-out? | At-least-once; duplicates beat skips; consumer dedupes |
+| 2 | Extra fields beyond the event + email? | `userId` (stable dedupe key) |
+| 3 | Notify disabled users? | No, skip them |
+| 4 | Outbound topic name? | `topic-news.notification-requested` |
+| 5 | Outbound message key? | `userId` |
+| 6 | Who creates the outbound topic? | The gateway, `NewTopic` bean, 3 partitions |
+| 7 | Load subscribers how? | Keyset batches of 500, id + email projection |
+| 8 | Persistent failure? | 3 retries with backoff, then `topic-news.generated.DLT` |
+| 9 | Code layout? | `/listeners`, service interface + impl, `/DTOs/event`; update `CLAUDE.md` |
+| 10 | First-start offset? | `earliest` |
+| 11 | Local bootstrap port? | `9094` everywhere, replacing all 9092 |
+| 12 | Tests? | Repository IT, service unit, e2e fan-out, DLT e2e |
+| 13 | Listener concurrency? | 3 |
+| 14 | `Subscription.user` TODO? | Stays `LAZY`, TODO removed |
+| 15 | Docs? | Close by-topic item; add plaintext-email + no-DLT-replay gaps; `DECISIONS.md` entries |
 
 ---
 
@@ -116,7 +135,7 @@ both gaps with one mechanism, and subscribe keeps no runtime dependency on the t
    over 200 at startup, and optionally log a 4xx-caused stop at ERROR.
 
 (Long non-Latin topic prompts getting 413 from the topic service, exploit report 2026-09-23 #3, was fixed
-2026-09-23 in step 1 of the reconciliation phase.)
+2026-09-23 alongside the reconciliation phase's existence endpoint.)
 
 ## Build — deferred by decision, not oversight
 
@@ -125,11 +144,9 @@ both gaps with one mechanism, and subscribe keeps no runtime dependency on the t
   human holding a `SameSite=Strict` cookie. A phase of its own; the index it needs already exists (the
   unique constraint leads with `interest_topic_id` for exactly this reason). Subscriber counts stay
   unexposed until then, so nothing leaks yet.
-- **The SPA's subscription screens.** `../frontend/` has shipped — single origin, nginx proxying `/api/`
-  and Vite's `server.proxy` in dev, no CORS config anywhere as planned — but it calls `/api/v1/auth/*`
-  only. Subscribe/unsubscribe/list are still to wire; all three endpoints exist.
-- **The SPA's topic/category screens.** A topic and category list for every user, plus admin
-  create/edit/delete. Unblocked, since all eight endpoints are routed through the gateway.
+- **The SPA's admin topic/category screens.** The user-facing read-only list shipped as the feed page
+  (`GET /api/v1/feed`, subscribe/unsubscribe wired from a topic card). Admin create/edit/delete is still
+  unbuilt. Unblocked, since all the endpoints are routed through the gateway.
 - **Email confirmation.** Register activates immediately today, so anyone can register with an address
   they do not own.
 

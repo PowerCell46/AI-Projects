@@ -8,8 +8,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 
 import jakarta.persistence.LockModeType;
 

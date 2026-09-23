@@ -25,8 +25,8 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.configurations.SecurityConfiguration;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 
 class TokenServiceImplTest {
 

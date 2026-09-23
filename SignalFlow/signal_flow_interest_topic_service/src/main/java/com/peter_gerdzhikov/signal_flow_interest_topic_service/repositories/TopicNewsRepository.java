@@ -10,8 +10,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 
 public interface TopicNewsRepository extends JpaRepository<TopicNews, UUID> {
 

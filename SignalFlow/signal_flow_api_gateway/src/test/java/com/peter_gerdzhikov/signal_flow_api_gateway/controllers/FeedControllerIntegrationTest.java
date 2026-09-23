@@ -30,7 +30,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.RegisterRequestDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.SubscribeRequestDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.UserResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.auth.UserResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.support.AbstractInterestTopicServiceIntegrationTest;

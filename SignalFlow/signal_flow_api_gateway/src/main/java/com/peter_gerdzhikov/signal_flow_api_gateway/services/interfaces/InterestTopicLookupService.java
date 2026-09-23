@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.InterestTopicFeedRequestDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicFeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.InterestTopicFeedResponseDTO;
 
 public interface InterestTopicLookupService {
 

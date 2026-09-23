@@ -8,14 +8,14 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.InterestTopicFeedRequestDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.FeedCountsResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.FeedResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.FeedTopicResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicFeedResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.FeedFilter;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedCountsResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedTopicResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.InterestTopicFeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.interesttopics.InterestTopicResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.FeedFilter;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.FeedService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.InterestTopicLookupService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionService;
@@ -33,9 +33,8 @@ public class FeedServiceImpl implements FeedService {
     @Override
     public FeedResponseDTO findFeed(UUID userId, FeedFilter filter, String after, int size) {
         Set<UUID> subscribedIds = findSubscribedTopicIds(userId);
-        InterestTopicFeedResponseDTO page = interestTopicLookupService.findFeedPage(
-                new InterestTopicFeedRequestDTO(List.copyOf(subscribedIds), toMode(filter), after, size)
-        );
+        InterestTopicFeedResponseDTO page = interestTopicLookupService
+                .findFeedPage(new InterestTopicFeedRequestDTO(List.copyOf(subscribedIds), toMode(filter), after, size));
 
         return new FeedResponseDTO(toItems(page, subscribedIds), page.getNextCursor(), toCounts(page));
     }
@@ -76,6 +75,10 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedCountsResponseDTO toCounts(InterestTopicFeedResponseDTO page) {
-        return new FeedCountsResponseDTO(page.getTotal(), page.getMatching(), page.getTotal() - page.getMatching());
+        return new FeedCountsResponseDTO(
+                page.getTotal(),
+                page.getMatching(),
+                page.getTotal() - page.getMatching()
+        );
     }
 }

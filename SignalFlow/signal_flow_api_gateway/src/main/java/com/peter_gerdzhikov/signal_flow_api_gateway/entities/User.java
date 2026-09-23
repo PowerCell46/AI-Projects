@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
+
 @Getter
 @Setter
 @Entity

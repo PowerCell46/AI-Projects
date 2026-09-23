@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.InterestTopicNotFoundException;
@@ -48,11 +48,12 @@ public class InterestTopicServiceImpl implements InterestTopicService {
     public InterestTopic create(String name, String description, String prompt, UUID categoryId) {
         Category category = findCategoryOrThrow(categoryId);
 
-        InterestTopic interestTopic = new InterestTopic();
-        interestTopic.setName(name);
-        interestTopic.setDescription(description);
-        interestTopic.setPrompt(prompt);
-        interestTopic.setCategory(category);
+        InterestTopic interestTopic = InterestTopic.builder()
+                .name(name)
+                .description(description)
+                .prompt(prompt)
+                .category(category)
+                .build();
 
         try {
             InterestTopic saved = interestTopicRepository.saveAndFlush(interestTopic);

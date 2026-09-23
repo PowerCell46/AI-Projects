@@ -2,8 +2,8 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces;
 
 import java.util.UUID;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.FeedResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.FeedFilter;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.FeedFilter;
 
 public interface FeedService {
 

@@ -29,7 +29,7 @@ import org.springframework.data.domain.Slice;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.InterestTopicNotFoundException;

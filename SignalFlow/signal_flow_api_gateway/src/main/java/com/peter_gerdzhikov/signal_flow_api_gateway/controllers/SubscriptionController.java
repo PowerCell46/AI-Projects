@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.SubscribeRequestDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.SubscriptionResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.subscriptions.SubscriptionResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionService;
 
@@ -34,7 +34,7 @@ public class SubscriptionController {
 
     @GetMapping
     public ResponseEntity<List<SubscriptionResponseDTO>> listSubscriptions(@AuthenticationPrincipal Jwt jwt) {
-        log.info("Received list subscriptions request.");
+        // log.info("Received list subscriptions request.");
         List<SubscriptionResponseDTO> subscriptions = subscriptionService
                 .findAllForUser(callerId(jwt))
                 .stream()

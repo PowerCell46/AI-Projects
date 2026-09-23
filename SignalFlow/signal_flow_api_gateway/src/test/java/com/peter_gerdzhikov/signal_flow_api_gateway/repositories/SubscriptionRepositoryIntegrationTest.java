@@ -15,9 +15,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.support.AbstractPostgresIntegrationTest;
 
 @DataJpaTest

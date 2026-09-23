@@ -87,11 +87,11 @@ public class TopicNewsGenerationJob {
     }
 
     private TopicNews newPendingNews(InterestTopic topic, LocalDate newsDate, String data) {
-        TopicNews topicNews = new TopicNews();
-        topicNews.setInterestTopic(topic);
-        topicNews.setNewsDate(newsDate);
-        topicNews.setData(data);
-        topicNews.setNextAttemptAt(Instant.now());
-        return topicNews;
+        return TopicNews.builder()
+                .interestTopic(topic)
+                .newsDate(newsDate)
+                .data(data)
+                .nextAttemptAt(Instant.now())
+                .build();
     }
 }

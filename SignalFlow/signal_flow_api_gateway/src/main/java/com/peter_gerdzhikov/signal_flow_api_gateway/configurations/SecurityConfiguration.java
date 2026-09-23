@@ -40,7 +40,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.utilities.CookieBearerTokenResolver;
 
 import lombok.RequiredArgsConstructor;
@@ -65,9 +65,16 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/logout")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/logout"
+                        )
                         .permitAll()
-                        .requestMatchers(HttpMethod.GET, CATEGORIES_PATH, INTEREST_TOPICS_PATH)
+                        .requestMatchers(HttpMethod.GET,
+                                CATEGORIES_PATH,
+                                INTEREST_TOPICS_PATH
+                        )
                         .authenticated()
                         // Every other method, not just the known writes, so a verb added downstream later is closed by default.
                         .requestMatchers(CATEGORIES_PATH, INTEREST_TOPICS_PATH)

@@ -17,8 +17,8 @@ import org.springframework.data.domain.PageRequest;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;

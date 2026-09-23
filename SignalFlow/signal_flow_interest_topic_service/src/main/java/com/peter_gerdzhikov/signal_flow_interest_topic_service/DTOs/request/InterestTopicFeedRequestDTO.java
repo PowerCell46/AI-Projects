@@ -3,7 +3,7 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request;
 import java.util.List;
 import java.util.UUID;
 
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

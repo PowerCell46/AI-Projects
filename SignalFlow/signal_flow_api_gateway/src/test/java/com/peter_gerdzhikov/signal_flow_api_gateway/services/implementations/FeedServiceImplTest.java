@@ -21,14 +21,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.InterestTopicFeedRequestDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.FeedResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.FeedTopicResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicFeedResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.InterestTopicResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.FeedFilter;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedTopicResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.InterestTopicFeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.interesttopics.InterestTopicResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicFeedUnavailableException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.FeedFilter;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.interesttopics.InterestTopicFeedUnavailableException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.InterestTopicLookupService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionService;
 

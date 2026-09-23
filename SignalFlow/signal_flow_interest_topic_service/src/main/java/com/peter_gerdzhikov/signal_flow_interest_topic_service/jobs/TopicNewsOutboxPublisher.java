@@ -15,8 +15,8 @@ import org.springframework.stereotype.Component;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.event.TopicNewsEventDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
 
 import lombok.extern.slf4j.Slf4j;

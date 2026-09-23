@@ -43,7 +43,7 @@ public class CategoryController {
 
     @GetMapping
     public ResponseEntity<List<CategoryResponseDTO>> listCategories() {
-        log.info("Received list categories request.");
+        // log.info("Received list categories request.");
         List<CategoryResponseDTO> categories = categoryService
                 .findAllSortedByName()
                 .stream()

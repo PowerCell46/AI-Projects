@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.LoginRequestDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.RegisterRequestDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateEmailException;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InvalidCredentialsException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.DuplicateEmailException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.AuthService;
 

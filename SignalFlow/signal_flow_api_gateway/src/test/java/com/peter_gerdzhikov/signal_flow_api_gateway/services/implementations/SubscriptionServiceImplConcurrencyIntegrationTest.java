@@ -19,10 +19,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateSubscriptionException;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionLimitExceededException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.DuplicateSubscriptionException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionService;

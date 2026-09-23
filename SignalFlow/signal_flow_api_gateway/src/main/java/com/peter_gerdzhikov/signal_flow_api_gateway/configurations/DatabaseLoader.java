@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Seeds the first admin on startup if none exists yet. {@code app.admin.email}/{@code app.admin.password}
  * are optional - left unset (the default), seeding is skipped, so this stays a no-op until an operator
- * configures it (see DECISIONS.md's "Post-step-9" entry #4).
+ * configures it.
  */
 @Slf4j
 @Component

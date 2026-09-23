@@ -17,9 +17,9 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionReconciliationService;

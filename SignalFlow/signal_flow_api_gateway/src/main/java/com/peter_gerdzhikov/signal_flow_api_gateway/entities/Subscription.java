@@ -27,7 +27,7 @@ import lombok.Setter;
 public class Subscription extends CommonEntity {
 
     @JoinColumn(name = "user_id", nullable = false)
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) // TODO: I think it should be eager, because we will need the user
     private User user;
 
     @Column(name = "interest_topic_id", nullable = false)

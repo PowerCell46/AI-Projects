@@ -58,7 +58,7 @@ public class InterestTopicController {
             @RequestParam(required = false) UUID categoryId,
             @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        log.info("Received list interest topics request.");
+        // log.info("Received list interest topics request.");
         Page<InterestTopicResponseDTO> page = interestTopicService
                 .findPage(categoryId, pageable)
                 .map(InterestTopicResponseMapper::toResponse);

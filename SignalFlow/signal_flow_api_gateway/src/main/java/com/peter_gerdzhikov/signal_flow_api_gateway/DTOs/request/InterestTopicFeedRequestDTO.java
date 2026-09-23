@@ -3,7 +3,7 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request;
 import java.util.List;
 import java.util.UUID;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.entities.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.InterestTopicFeedMode;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

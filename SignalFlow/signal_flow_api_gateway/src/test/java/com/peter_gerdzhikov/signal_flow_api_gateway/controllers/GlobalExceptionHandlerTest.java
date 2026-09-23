@@ -24,11 +24,11 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.DuplicateSubscriptionException;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.InterestTopicFeedUnavailableException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.RequestBodyTooLargeException;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionLimitExceededException;
-import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.SubscriptionNotFoundException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.interesttopics.InterestTopicFeedUnavailableException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.DuplicateSubscriptionException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionLimitExceededException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionNotFoundException;
 
 class GlobalExceptionHandlerTest {
 
