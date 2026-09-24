@@ -1,0 +1,29 @@
+package com.peter_gerdzhikov.signal_flow_mail_service.configurations;
+
+import org.apache.kafka.clients.admin.NewTopic;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.TopicBuilder;
+
+/**
+ * Declares only the dead-letter topic - the main {@code topic-news.notification-requested} topic is the
+ * gateway's own and isn't redeclared here.
+ */
+@Configuration
+public class KafkaTopicConfig {
+
+    private static final int REPLICATION_FACTOR = 1;
+
+    @Bean
+    public NewTopic notificationRequestedDeadLetterTopic(
+            @Value("${app.kafka.notification-requested.dlt-name}") String dltName,
+            @Value("${app.kafka.notification-requested.dlt-partitions}") int partitions
+    ) {
+        return TopicBuilder.name(dltName)
+                .partitions(partitions)
+                .replicas(REPLICATION_FACTOR)
+                .build();
+    }
+}

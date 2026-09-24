@@ -74,8 +74,9 @@ one piece left undone by decision, and `exploit-report-2026-09-23-topic-routing.
 - **A `NotificationOutboxPublisherJob` crash between a successful Kafka publish and deleting that row
   duplicates that one row on the next poll.** Narrowed 2026-09-24 from the wider fan-out-phase duplication
   gap: the inbox now makes a crash before the transaction commits, or any event redelivery, a clean no-op —
-  this is what's left. Same at-least-once contract; the future email consumer's `(newsId, userId)` dedupe
-  requirement stays.
+  this is what's left. Same at-least-once contract; `signal_flow_mail_service` shipped the
+  `(newsId, userId)` dedupe this gap was waiting on (2026-09-24, its own Redis inbox), so this duplicate
+  outbox row now produces at most a duplicate email, not a duplicate notification pipeline run.
 - **The outbox poller runs on every instance, no row-claiming.** Two instances polling concurrently could
   both pick and publish the same `PENDING` row before either deletes it — a duplicate publish, not just
   wasted work like the reconciliation job's multi-instance overlap. **Trigger:** a second instance →
