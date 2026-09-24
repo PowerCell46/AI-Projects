@@ -557,3 +557,81 @@ the firewall then rejects it, so the most it gains is a 32 KB read.
   A timeout is 502 here too, not the proxy's 504: one outbound call, one status.
 - **Invalid `size`/`after` fall to `handleExceptionInternal`'s fixed 400 message** (Spring's built-in method
   validation), with no dedicated override.
+
+## 2026-09-24 — Topic-news notification fan-out (step 1)
+
+- **Property names for the new topic mirror the topic service's own pattern**: `app.kafka.notification-requested.name` /
+  `.partitions`, alongside the existing `app.kafka.topic-news.name` naming the inbound topic. The subscriber
+  keyset batch size is `app.subscriptions.notification-fanout.batch-size` (default 500), grouped under the
+  existing `app.subscriptions.*` prefix since it reads the `Subscription`/`User` tables, not a Kafka concept.
+  Listener concurrency uses Boot's own `spring.kafka.listener.concurrency`, not a custom key, since no
+  `@KafkaListener` needs a concurrency different from the container factory default yet.
+- **The step 1 gate reuses `SignalFlowApiGatewayApplicationTests`** (now extending the new
+  `AbstractKafkaIntegrationTest` instead of `AbstractPostgresIntegrationTest`) rather than adding a second,
+  near-duplicate context-loads test — one smoke test already proves the whole context, `KafkaTopicConfig`'s
+  `NewTopic` bean included, comes up against a real broker.
+- **`AbstractKafkaIntegrationTest` extends `AbstractPostgresIntegrationTest`**, adding Kafka the same way
+  `AbstractInterestTopicServiceIntegrationTest` adds WireMock: one inherited Postgres, tests opt into Kafka
+  only when they need it.
+- **The topic service's `DECISIONS.md` had two stale `localhost:9092` mentions**, not the one `PLAN.md`
+  named — its own `application.properties` default was already `9094` before this phase, so a second Step 7
+  entry (the `AbstractIntegrationTest.KAFKA` bootstrap-address note) was quoting a value that hadn't matched
+  the code for a while. Both are now corrected to `9094`.
+
+## 2026-09-24 — Topic-news notification fan-out (step 2)
+
+- **The subscriber keyset query is a Spring Data interface projection (`EnabledSubscriberProjection`,
+  in `/repositories`), not a DTO or native SQL.** `PLAN.md`'s design calls for "a JPQL projection", and an
+  interface projection is JPA's idiomatic way to select a handful of columns without loading the entity -
+  `/DTOs/response` didn't fit since this is never an HTTP payload. `s.user.id > :after` and
+  `ORDER BY s.user.id ASC` still compile to a plain SQL `>`/`ORDER BY` on the `uuid` column, so Postgres's
+  byte-order keyset guarantee holds exactly as it does for `findDistinctInterestTopicIdsAfter`'s native query.
+
+## 2026-09-24 — Topic-news notification fan-out (step 3)
+
+- **A failed send is wrapped in a plain `IllegalStateException`, not a new domain exception type.** Nothing
+  catches it by name - it only needs to leave `notifySubscribers` unchecked so the future `@KafkaListener`'s
+  `DefaultErrorHandler` sees the record as failed and retries the whole thing, so a dedicated exception class
+  would add a type nothing discriminates on.
+- **`TopicNewsNotificationServiceImpl` logs one INFO summary per event (count sent), not one line per
+  subscriber.** A single topic-news record can fan out to hundreds of subscribers; a per-send log line at
+  that volume would drown everything else. Per-send failure detail isn't logged here either, since the send
+  exception already carries the subscriber id and propagates to whatever logs it next.
+- **Short-batch-ends-the-run mirrors `SubscriptionReconciliationServiceImpl`**: a page smaller than the
+  configured batch size skips the otherwise-guaranteed-empty next query, same optimization, same shape.
+
+## 2026-09-24 — Topic-news notification fan-out (step 4)
+
+- **The dead-letter topic is `topic-news.generated-dlt`, not `topic-news.generated.DLT`.** The original
+  design (this file's step 1 design note, `PLAN.md`'s design section) assumed `.DLT`, but
+  `DeadLetterPublishingRecoverer`'s actual default destination resolver appends `-dlt` (lower-case, hyphen) -
+  confirmed by reading its source and by a test that failed against the assumed name. Kept Spring's default
+  rather than overriding it with a custom destination resolver, per an explicit call: less code, and nothing
+  outside this phase depends on the exact name yet.
+- **`KafkaConsumerConfiguration` needs its own `ConsumerFactory<String, TopicNewsEventDTO>` and
+  `ConcurrentKafkaListenerContainerFactory`, not the properties-only `spring.kafka.consumer.*` path.** An
+  `ErrorHandlingDeserializer` wrapping a `JacksonJsonDeserializer` bound to `TopicNewsEventDTO` needs a real
+  object (type headers are off, so there's no header to infer the target type from); passing that in through
+  `spring.kafka.consumer.properties.spring.deserializer.value.delegate.class` etc. silently never reaches
+  the consumer's built config (confirmed by its absence from the consumer's own logged `ConsumerConfig`
+  dump, even though the analogous producer-side property does show up) - not chased further since building
+  the factory directly sidesteps it entirely. Declared with concrete generics
+  (`<String, TopicNewsEventDTO>`), not Boot's own `<Object, Object>` convention, since going through
+  `ConcurrentKafkaListenerContainerFactoryConfigurer.configure(...)` (which requires exactly
+  `<Object, Object>`) would have forced unchecked casts back the other way for no benefit here.
+- **Both hand-built factories (`KafkaConsumerConfiguration`'s consumer factory and
+  `KafkaErrorHandlingConfiguration`'s dead-letter producer factory) must read `bootstrap.servers` from the
+  `KafkaConnectionDetails` bean, not from `kafkaProperties.build*Properties()` alone.** That method only
+  ever returns the static `spring.kafka.bootstrap-servers` property text; `@ServiceConnection` overrides the
+  address for Boot's own auto-configured factories through `KafkaConnectionDetails`, which a hand-built
+  factory bypasses unless it consults that bean itself. Caught because the static default (`localhost:9094`)
+  happened to reach an unrelated, real Kafka broker already running on the test machine, so the app
+  connected successfully but to the wrong cluster - the listener never saw any record the test produced to
+  the real Testcontainers broker, with no error anywhere to point at the mismatch. Same fix applies
+  everywhere else a `ConsumerFactory`/`ProducerFactory` is hand-built from `KafkaProperties` instead of
+  obtained from Boot's own auto-configuration.
+- **`KafkaConsumerConfiguration`'s test gate pre-creates `topic-news.generated`** (1 partition, via a raw
+  `AdminClient` in a static `@BeforeAll`, before the Spring context exists) instead of relying on Kafka's
+  auto-create. In production the topic service owns this topic's creation via its own `NewTopic` bean; a
+  gateway-only e2e test has nothing to create it for real, and leaving it to auto-create makes the fan-out
+  assertions depend on whatever partition count the broker defaults to.

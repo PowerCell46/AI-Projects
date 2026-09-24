@@ -49,9 +49,11 @@ constraint forces an older line.
 JVM startup time doesn't matter the way it does for a test that starts and tears down a container per
 run. `4.3.1` is the current stable release (verified against Docker Hub's tag list; no `-rc` suffix, most
 recently published stable tag). Single-node KRaft, combined broker+controller roles, a fixed `CLUSTER_ID`
-so the formatted storage volume stays valid across restarts. Advertised listener is `localhost:9092`
+so the formatted storage volume stays valid across restarts. Advertised listener is `localhost:9094`
 matching `application.properties`' default `KAFKA_BOOTSTRAP_SERVERS` — same pattern as `postgres`/
-`postgres-topics`: `ports:` commented out by default, uncomment to reach it from the host.
+`postgres-topics`: `ports:` commented out by default, uncomment to reach it from the host. Moved from
+`9092` to `9094` (compose, this default and the healthcheck) as part of the gateway's topic-news
+notification fan-out phase.
 
 ## Step 1 — `AbstractIntegrationTest`'s Kafka container is `apache/kafka-native`, pinned to `4.3.1`, not `3.9.0`
 
@@ -208,7 +210,7 @@ still holding a stale copy after deleting the source, which `mvn clean` cleared.
 `@ServiceConnection` wires the running container into Boot's Kafka autoconfiguration through a
 `KafkaConnectionDetails` bean, not by setting the `spring.kafka.bootstrap-servers` property in the
 environment — so a test class reading `@Value("${spring.kafka.bootstrap-servers}")` for its own,
-manually-built `KafkaConsumer` gets back the static property default (`localhost:9092`), not the
+manually-built `KafkaConsumer` gets back the static property default (`localhost:9094`), not the
 container's real mapped port, and that consumer silently fails to connect. Added
 `AbstractIntegrationTest.kafkaBootstrapServers()` (reads `KAFKA.getBootstrapServers()` directly) for any
 test that needs a real Kafka client of its own, instead of `@Value`.

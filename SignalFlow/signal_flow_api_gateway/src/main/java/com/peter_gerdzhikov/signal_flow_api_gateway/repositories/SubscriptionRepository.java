@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -44,4 +45,24 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
     @Transactional
     @Query("DELETE FROM Subscription s WHERE s.interestTopicId IN :interestTopicIds")
     int deleteAllByInterestTopicIdIn(@Param("interestTopicIds") Collection<UUID> interestTopicIds);
+
+    /**
+     * Keyset page of one topic's enabled subscribers, id + email only - no entity loaded, so
+     * {@code Subscription.user} stays {@code LAZY}. Ordered by user id ascending, in Postgres's
+     * {@code uuid} order for the same reason as {@link #findDistinctInterestTopicIdsAfter}: the caller
+     * passes back the last id a page returned, never one re-sorted in Java.
+     */
+    @Query("""
+            SELECT s.user.id AS userId, s.user.email AS email
+            FROM Subscription s
+            WHERE s.interestTopicId = :interestTopicId
+              AND s.user.enabled = true
+              AND s.user.id > :after
+            ORDER BY s.user.id ASC
+            """)
+    List<EnabledSubscriberProjection> findEnabledSubscribersAfter(
+            @Param("interestTopicId") UUID interestTopicId,
+            @Param("after") UUID after,
+            Pageable pageable
+    );
 }

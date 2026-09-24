@@ -60,9 +60,11 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
 - `/DTOs`
     - `/request` — inbound request bodies
     - `/response` — outbound payloads
+    - `/event` — Kafka message payloads
 - `/entities`
 - `/exceptions`
 - `/jobs` — scheduled jobs (the daily subscription reconciliation)
+- `/listeners` — `@KafkaListener`s, thin, delegate to a service
 - `/repositories`
 - `/services`
     - `/interfaces` — service interfaces

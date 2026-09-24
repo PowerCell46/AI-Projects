@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
@@ -150,6 +151,53 @@ class SubscriptionRepositoryIntegrationTest extends AbstractPostgresIntegrationT
                 .containsOnly(keptTopicId);
     }
 
+    @Test
+    void should_return_only_the_enabled_subscribers_id_and_email() {
+        User bob = userRepository.save(newUser("bob@example.com"));
+        subscriptionRepository.save(newSubscription(bob, INTEREST_TOPIC_ID));
+
+        List<EnabledSubscriberProjection> subscribers =
+                subscriptionRepository.findEnabledSubscribersAfter(INTEREST_TOPIC_ID, NIL_UUID, PageRequest.of(0, PAGE_SIZE));
+
+        assertThat(subscribers).hasSize(1);
+        assertThat(subscribers.getFirst().getUserId()).isEqualTo(bob.getId());
+        assertThat(subscribers.getFirst().getEmail()).isEqualTo(bob.getEmail());
+    }
+
+    @Test
+    void should_exclude_a_disabled_subscriber() {
+        User bob = userRepository.save(newUser("bob@example.com"));
+        bob.setEnabled(false);
+        userRepository.save(bob);
+        subscriptionRepository.save(newSubscription(bob, INTEREST_TOPIC_ID));
+
+        List<EnabledSubscriberProjection> subscribers =
+                subscriptionRepository.findEnabledSubscribersAfter(INTEREST_TOPIC_ID, NIL_UUID, PageRequest.of(0, PAGE_SIZE));
+
+        assertThat(subscribers).isEmpty();
+    }
+
+    @Test
+    void should_exclude_subscribers_of_another_topic() {
+        User bob = userRepository.save(newUser("bob@example.com"));
+        subscriptionRepository.save(newSubscription(bob, UUID.randomUUID()));
+
+        List<EnabledSubscriberProjection> subscribers =
+                subscriptionRepository.findEnabledSubscribersAfter(INTEREST_TOPIC_ID, NIL_UUID, PageRequest.of(0, PAGE_SIZE));
+
+        assertThat(subscribers).isEmpty();
+    }
+
+    @Test
+    void should_page_every_enabled_subscriber_across_more_than_one_batch() {
+        List<User> subscribers = subscribeNewUsersTo(INTEREST_TOPIC_ID, 5);
+
+        List<UUID> pagedUserIds = pageAllSubscriberIdsAfter(NIL_UUID);
+
+        assertThat(pagedUserIds)
+                .containsExactlyInAnyOrderElementsOf(subscribers.stream().map(User::getId).toList());
+    }
+
     private List<UUID> randomTopicIds(int count) {
         return Stream
                 .generate(UUID::randomUUID)
@@ -173,6 +221,30 @@ class SubscriptionRepositoryIntegrationTest extends AbstractPostgresIntegrationT
         while (!page.isEmpty()) {
             collected.addAll(page);
             page = subscriptionRepository.findDistinctInterestTopicIdsAfter(page.getLast(), PAGE_SIZE);
+        }
+
+        return collected;
+    }
+
+    private List<User> subscribeNewUsersTo(UUID interestTopicId, int count) {
+        List<User> users = Stream
+                .generate(() -> userRepository.save(newUser(UUID.randomUUID() + "@example.com")))
+                .limit(count)
+                .toList();
+        users.forEach(user -> subscriptionRepository.save(newSubscription(user, interestTopicId)));
+        subscriptionRepository.flush();
+
+        return users;
+    }
+
+    private List<UUID> pageAllSubscriberIdsAfter(UUID after) {
+        List<UUID> collected = new ArrayList<>();
+        List<EnabledSubscriberProjection> page =
+                subscriptionRepository.findEnabledSubscribersAfter(INTEREST_TOPIC_ID, after, PageRequest.of(0, PAGE_SIZE));
+        while (!page.isEmpty()) {
+            page.forEach(subscriber -> collected.add(subscriber.getUserId()));
+            page = subscriptionRepository.findEnabledSubscribersAfter(
+                    INTEREST_TOPIC_ID, page.getLast().getUserId(), PageRequest.of(0, PAGE_SIZE));
         }
 
         return collected;
