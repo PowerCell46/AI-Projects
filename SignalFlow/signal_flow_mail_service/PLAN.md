@@ -14,10 +14,6 @@ from it: **no step starts on a red or missing test, and each step ends green.**
 
 ## Accepted gaps — revisit when the named trigger lands
 
-- **`data` is inserted into the email as raw HTML.** Whatever reaches it is live markup sent from our
-  Gmail account; once an LLM writes it, a prompt-injected topic prompt could ship phishing links under our
-  sender reputation. **Trigger:** the real LLM replaces the mock → allowlist sanitizer (e.g. OWASP Java
-  HTML Sanitizer) before insertion.
 - **Gmail sending quota** (~500 recipients/day personal, ~2,000 Workspace). A popular topic's fan-out hits
   it; the `550 5.4.5` form is classified permanent and dead-letters, the `4xx` form retries then
   dead-letters. No quota-aware pausing. **Trigger:** the quota is actually hit → a transactional provider,

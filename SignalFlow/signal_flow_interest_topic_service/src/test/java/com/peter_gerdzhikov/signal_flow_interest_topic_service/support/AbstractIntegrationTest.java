@@ -17,8 +17,18 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * while a different test is running, racing whichever test's rows happen to be due at that moment. A
  * test that means to exercise a scheduler re-enables just its own with a local
  * {@code @TestPropertySource} override, which takes precedence over this class's.
+ *
+ * <p>The OpenRouter defaults point at an unreachable address so a test not built on
+ * {@code AbstractOpenRouterIntegrationTest} can never reach the real OpenRouter and spend money; its
+ * read timeout is cut to 1s so such a test fails fast instead of waiting out the 60s prod default.
  */
-@TestPropertySource(properties = {"app.news.cron=-", "app.outbox.poll-interval=PT24H"})
+@TestPropertySource(properties = {
+        "app.news.cron=-",
+        "app.outbox.poll-interval=PT24H",
+        "app.openrouter.api-key=test-key",
+        "app.openrouter.base-url=http://localhost:1",
+        "spring.http.clients.read-timeout=1s"
+})
 public abstract class AbstractIntegrationTest {
 
     @ServiceConnection

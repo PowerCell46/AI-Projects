@@ -142,3 +142,15 @@ Gmail rewrites the `From` header to the authenticated account if it isn't that a
 alias, so a wrong default would silently ship broken sender identity rather than failing loudly. The app
 refuses to start without `MAIL_FROM` set; the test profile pins it to a fixed non-routable
 `signalflow-test@example.com`.
+
+## OpenRouter phase step 4 (2026-09-24) — `DATA`'s sanitization policy
+
+Closes the "raw HTML" accepted gap now that `signal_flow_interest_topic_service`'s
+`NewsGenerationServiceImpl` calls a real, web-grounded LLM instead of returning canned text.
+`TopicNewsEmailRenderer.DATA_SANITIZATION_POLICY` is an OWASP Java HTML Sanitizer `PolicyFactory`
+allowlisting only `<p> <ul> <li> <strong> <em> <a>`; `<a>` keeps only an `href` attribute, restricted to
+the `https` protocol, and every surviving link gets `rel="noopener noreferrer"` via
+`requireRelsOnLinks`. Everything else - `<script>`, `<style>`, `<img>`, `<iframe>`, `on*` attributes,
+`javascript:`/`http:` hrefs - is dropped because nothing allows it; the library also balances unclosed
+tags as part of its normal parsing, so no separate step was needed for that. Only `DATA` goes through it;
+the other tokens stay on `HtmlUtils.htmlEscape`, since they're plain strings, not AI-authored HTML.

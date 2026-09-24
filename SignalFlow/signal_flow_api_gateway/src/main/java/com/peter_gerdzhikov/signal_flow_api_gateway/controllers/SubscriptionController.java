@@ -34,7 +34,7 @@ public class SubscriptionController {
 
     @GetMapping
     public ResponseEntity<List<SubscriptionResponseDTO>> listSubscriptions(@AuthenticationPrincipal Jwt jwt) {
-        // log.info("Received list subscriptions request.");
+        log.debug("Received list subscriptions request.");
         List<SubscriptionResponseDTO> subscriptions = subscriptionService
                 .findAllForUser(callerId(jwt))
                 .stream()
@@ -49,7 +49,7 @@ public class SubscriptionController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody SubscribeRequestDTO request
     ) {
-        log.info("Received subscribe request.");
+        log.debug("Received subscribe request.");
         Subscription subscription = subscriptionService.subscribe(callerId(jwt), request.getInterestTopicId());
 
         return ResponseEntity
@@ -59,7 +59,7 @@ public class SubscriptionController {
 
     @DeleteMapping("/{interestTopicId}")
     public ResponseEntity<Void> unsubscribe(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID interestTopicId) {
-        log.info("Received unsubscribe request.");
+        log.debug("Received unsubscribe request.");
         subscriptionService.unsubscribe(callerId(jwt), interestTopicId);
 
         return ResponseEntity

@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions;
+package com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics;
 
 public class InterestTopicNotFoundException extends RuntimeException {
 

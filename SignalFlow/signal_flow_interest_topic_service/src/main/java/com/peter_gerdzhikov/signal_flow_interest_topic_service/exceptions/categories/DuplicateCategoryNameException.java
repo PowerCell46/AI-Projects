@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions;
+package com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories;
 
 public class DuplicateCategoryNameException extends RuntimeException {
 

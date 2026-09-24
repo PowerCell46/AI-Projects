@@ -24,7 +24,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.configurations.SecurityConfiguration;
+import com.peter_gerdzhikov.signal_flow_api_gateway.configurations.security.SecurityConfiguration;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
 

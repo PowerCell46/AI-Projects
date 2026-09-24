@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class SignalFlowMailServiceApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(SignalFlowMailServiceApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(SignalFlowMailServiceApplication.class, args);
+    }
 }

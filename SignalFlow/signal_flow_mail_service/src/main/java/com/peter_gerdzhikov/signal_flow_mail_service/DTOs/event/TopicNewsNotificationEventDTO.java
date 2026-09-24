@@ -46,7 +46,7 @@ public class TopicNewsNotificationEventDTO {
     @NotNull
     private UUID userId;
 
-    @NotBlank
     @Email
+    @NotBlank
     private String emailAddress;
 }

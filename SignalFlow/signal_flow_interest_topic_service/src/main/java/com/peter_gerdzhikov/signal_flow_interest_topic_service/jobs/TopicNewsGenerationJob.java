@@ -69,7 +69,7 @@ public class TopicNewsGenerationJob {
 
         String data;
         try {
-            data = newsGenerationService.generate(topic);
+            data = newsGenerationService.generate(topic, newsDate);
 
         } catch (Exception e) {
             log.error("News generation failed for interest topic '{}'; skipping it for '{}'.",

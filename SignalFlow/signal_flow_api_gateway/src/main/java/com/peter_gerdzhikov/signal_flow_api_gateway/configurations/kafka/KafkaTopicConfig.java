@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
+package com.peter_gerdzhikov.signal_flow_api_gateway.configurations.kafka;
 
 import org.apache.kafka.clients.admin.NewTopic;
 

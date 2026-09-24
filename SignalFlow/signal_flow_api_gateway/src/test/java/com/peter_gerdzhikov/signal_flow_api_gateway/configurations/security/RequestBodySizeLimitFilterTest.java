@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
+package com.peter_gerdzhikov.signal_flow_api_gateway.configurations.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

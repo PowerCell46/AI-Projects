@@ -1,7 +1,7 @@
-package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
+package com.peter_gerdzhikov.signal_flow_api_gateway.configurations.security;
 
-import static com.peter_gerdzhikov.signal_flow_api_gateway.configurations.InterestTopicRoutesConfiguration.CATEGORIES_PATH;
-import static com.peter_gerdzhikov.signal_flow_api_gateway.configurations.InterestTopicRoutesConfiguration.INTEREST_TOPICS_PATH;
+import static com.peter_gerdzhikov.signal_flow_api_gateway.configurations.routing.InterestTopicRoutesConfiguration.CATEGORIES_PATH;
+import static com.peter_gerdzhikov.signal_flow_api_gateway.configurations.routing.InterestTopicRoutesConfiguration.INTEREST_TOPICS_PATH;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;

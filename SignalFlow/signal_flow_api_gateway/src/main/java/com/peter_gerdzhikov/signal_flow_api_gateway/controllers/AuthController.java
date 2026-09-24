@@ -73,7 +73,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> me(@AuthenticationPrincipal Jwt jwt) {
-        // log.info("Received /me request.");
+        log.debug("Received /me request.");
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(toResponse(jwt));

@@ -82,6 +82,7 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
         String violationMessages = violations.stream()
                 .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
                 .collect(Collectors.joining(", "));
+
         throw new InvalidNotificationEventException("Invalid topic news notification event: " + violationMessages + ".");
     }
 }

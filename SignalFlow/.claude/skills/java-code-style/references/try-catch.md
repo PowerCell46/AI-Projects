@@ -6,16 +6,20 @@ the `catch`.
 ```java
 // flag
 try {
-    redisTemplate.opsForValue().set(code, originalUrl, ttl);
+    redisTemplate
+            .opsForValue()
+            .set(code, originalUrl, ttl);
 } catch (DataAccessException e) {
-    log.warn("Redis unavailable while caching code '{}'; continuing without cache", code, e);
+    log.warn("Redis unavailable while caching code '{}'; continuing without cache.", code, e);
 }
 
 // prefer
 try {
-    redisTemplate.opsForValue().set(code, originalUrl, ttl);
+    redisTemplate
+            .opsForValue()
+            .set(code, originalUrl, ttl);
 
 } catch (DataAccessException e) {
-    log.warn("Redis unavailable while caching code '{}'; continuing without cache", code, e);
+    log.warn("Redis unavailable while caching code '{}'; continuing without cache.", code, e);
 }
 ```

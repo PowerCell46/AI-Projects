@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
+package com.peter_gerdzhikov.signal_flow_api_gateway.configurations.routing;
 
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.removeRequestHeader;
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.uri;
@@ -16,6 +16,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.ServerResponse;
+
+import com.peter_gerdzhikov.signal_flow_api_gateway.configurations.security.SecurityConfiguration;
 
 /**
  * Forwards the topic service's two prefixes verbatim. Who may call them is decided in

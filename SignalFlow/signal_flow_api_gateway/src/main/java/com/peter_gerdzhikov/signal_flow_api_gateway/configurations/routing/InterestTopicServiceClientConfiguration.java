@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
+package com.peter_gerdzhikov.signal_flow_api_gateway.configurations.routing;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

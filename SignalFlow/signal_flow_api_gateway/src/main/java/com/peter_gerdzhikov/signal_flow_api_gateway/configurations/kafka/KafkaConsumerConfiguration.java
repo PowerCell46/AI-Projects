@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_api_gateway.configurations;
+package com.peter_gerdzhikov.signal_flow_api_gateway.configurations.kafka;
 
 import java.util.Map;
 
@@ -37,13 +37,17 @@ public class KafkaConsumerConfiguration {
      */
     @Bean
     public ConsumerFactory<String, TopicNewsEventDTO> topicNewsConsumerFactory(
-            KafkaProperties kafkaProperties, KafkaConnectionDetails connectionDetails) {
+            KafkaProperties kafkaProperties,
+            KafkaConnectionDetails connectionDetails
+    ) {
         Map<String, Object> consumerProperties = kafkaProperties.buildConsumerProperties();
         consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, connectionDetails.getConsumer().getBootstrapServers());
+
         return new DefaultKafkaConsumerFactory<>(
                 consumerProperties,
                 new StringDeserializer(),
-                new ErrorHandlingDeserializer<>(new JacksonJsonDeserializer<>(TopicNewsEventDTO.class).ignoreTypeHeaders()));
+                new ErrorHandlingDeserializer<>(new JacksonJsonDeserializer<>(TopicNewsEventDTO.class).ignoreTypeHeaders())
+        );
     }
 
     @Bean

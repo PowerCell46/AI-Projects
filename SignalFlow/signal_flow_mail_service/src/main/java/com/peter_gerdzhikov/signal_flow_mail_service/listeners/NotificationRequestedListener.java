@@ -16,7 +16,8 @@ public class NotificationRequestedListener {
 
     @KafkaListener(
             topics = "${app.kafka.notification-requested.name}",
-            containerFactory = "notificationRequestedListenerContainerFactory")
+            containerFactory = "notificationRequestedListenerContainerFactory"
+    )
     public void onMessage(TopicNewsNotificationEventDTO event) {
         topicNewsNotificationService.process(event);
     }

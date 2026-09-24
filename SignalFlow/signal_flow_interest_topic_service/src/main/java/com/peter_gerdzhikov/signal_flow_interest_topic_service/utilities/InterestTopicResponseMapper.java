@@ -11,6 +11,7 @@ public final class InterestTopicResponseMapper {
 
     public static InterestTopicResponseDTO toResponse(InterestTopic interestTopic) {
         Category category = interestTopic.getCategory();
+
         return new InterestTopicResponseDTO(
                 interestTopic.getId(),
                 interestTopic.getName(),

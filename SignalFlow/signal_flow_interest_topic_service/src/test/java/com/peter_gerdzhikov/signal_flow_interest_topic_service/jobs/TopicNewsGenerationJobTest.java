@@ -70,7 +70,7 @@ class TopicNewsGenerationJobTest {
 
             topicNewsGenerationJob.generateDailyNews();
 
-            verify(newsGenerationService, never()).generate(any());
+            verify(newsGenerationService, never()).generate(any(), any());
             verify(topicNewsRepository, never()).saveAndFlush(any());
         }
 
@@ -80,9 +80,13 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(topic)).thenReturn("today's rust news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class))).thenReturn("today's rust news");
 
             topicNewsGenerationJob.generateDailyNews();
+
+            ArgumentCaptor<LocalDate> newsDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            verify(newsGenerationService).generate(eq(topic), newsDateCaptor.capture());
+            assertThat(newsDateCaptor.getValue()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
 
             ArgumentCaptor<TopicNews> newsCaptor = ArgumentCaptor.forClass(TopicNews.class);
             verify(topicNewsRepository).saveAndFlush(newsCaptor.capture());
@@ -102,8 +106,10 @@ class TopicNewsGenerationJobTest {
                     .thenReturn(new PageImpl<>(List.of(failingTopic, healthyTopic)));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(failingTopic)).thenThrow(new RuntimeException("AI timeout"));
-            when(newsGenerationService.generate(healthyTopic)).thenReturn("healthy topic news");
+            when(newsGenerationService.generate(eq(failingTopic), any(LocalDate.class)))
+                    .thenThrow(new RuntimeException("AI timeout"));
+            when(newsGenerationService.generate(eq(healthyTopic), any(LocalDate.class)))
+                    .thenReturn("healthy topic news");
 
             assertThatCode(() -> topicNewsGenerationJob.generateDailyNews()).doesNotThrowAnyException();
 
@@ -116,7 +122,7 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(topic)).thenReturn("today's rust news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class))).thenReturn("today's rust news");
             when(topicNewsRepository.saveAndFlush(any()))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 

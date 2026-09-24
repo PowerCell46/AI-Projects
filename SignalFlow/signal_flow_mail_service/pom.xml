@@ -28,6 +28,7 @@
     </scm>
     <properties>
         <java.version>25</java.version>
+        <owasp-java-html-sanitizer.version>20260922.1</owasp-java-html-sanitizer.version>
     </properties>
     <dependencies>
         <dependency>
@@ -60,6 +61,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>${owasp-java-html-sanitizer.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

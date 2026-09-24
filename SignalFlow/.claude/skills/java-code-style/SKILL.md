@@ -1,171 +1,320 @@
 ---
 name: java-code-style
-description: Java/Spring code style and conventions for this codebase — naming, member ordering, interface-over-implementation, DRY, JavaDoc policy, transactions, utility classes, logging levels. Use before writing or editing any Java file, and when judging existing code for style.
+description: Java/Spring code style and conventions for this codebase — naming, class layout, field/annotation ordering, blank-line rules, interface-over-implementation, DRY, JavaDoc policy, DTO/package layout, Lombok, JPA, transactions, utility classes, exceptions, logging. Use before writing or editing any Java file, and when judging existing code for style.
 ---
 
-# Code style
+# Java code style
 
-1. Write clean, maintainable, well-ordered (horizontally and vertically), spaced-out, easy-to-read and easy-to-test code, following Uncle Bob's principles.
-2. Don't write long methods/functions — split them up.
-3. **Prefer naming over JavaDoc.** A well-named method needs no JavaDoc — the name alone should tell you what it does. Before writing one, first check whether renaming the method to be more cognitive removes the need entirely; that's the preferred fix. Only write a JavaDoc when the method is already well-named but still hides something a name can't express — a non-obvious constraint, a subtle invariant, a workaround for a specific bug, or a surprising side effect.
-4. When chaining, put each call on a new line so it's easier to read.
-5. Take effort when naming variables, classes, interfaces, etc. The name should be cognitive — **readability is the end goal.** Follow the already defined naming style/convention. Choose one based on the surrounding context.
-6. Within a class, member order is: static fields → instance fields → constructors → public methods → private methods. No interleaving.
-7. **Declare to the interface, not the implementation.** Fields, locals, parameters and return types should use the widest type the code actually needs. Flag it when they don't — unless the concrete type is genuinely required (e.g. `LinkedHashMap` for guaranteed insertion order, `ArrayDeque` for `Deque` semantics).
+**Precedence:** the project's `CLAUDE.md` hard rules → this skill → the surrounding code. Match the surrounding code
+wherever this skill is silent; where existing code breaks a rule here, follow the rule, not the code.
 
-   ```java
-   // flag
-   ArrayList<Integer> numbers = new ArrayList<>();
-   HashMap<String, Invoice> byNumber = new HashMap<>();
-   public ArrayList<StoredFileLocationDTO> buildStoredFileLocations() { ... }
-
-   // prefer
-   List<Integer> numbers = new ArrayList<>();
-   Map<String, Invoice> byNumber = new HashMap<>();
-   public List<StoredFileLocationDTO> buildStoredFileLocations() { ... }
-   ```
-
-8. **Don't hand-roll what a predefined method already does.** Whenever code spends effort — several lines, a temp variable, a null/empty dance, a loop — on something the JDK (or a library already on the classpath: Lombok, Spring's `StringUtils`/`CollectionUtils`) exposes as a single call, flag it and name the exact replacement.
-
-   ```java
-   // flag — manual intersection
-   List<String> available = new ArrayList<>();
-   for (String car : cars) {
-       if (inStock.contains(car)) {
-           available.add(car);
-       }
-   }
-
-   // prefer
-   cars.retainAll(inStock); // keeps only the intersection: element must be in cars AND in inStock
-   ```
-
-   Caveat: readability wins. The one-liner has to be *clearer*, not just shorter — don't collapse a readable loop into an unreadable stream chain.
-9. Empty lines between methods should be EXACTLY 1.
-10. Don't go overboard with the comments in terms of count and length.
-11. **Never reference a `.md` file from a JavaDoc or comment.** Docs like `PLAN.md`/`DECISIONS.md` change
-    independently of the code they once explained, so a pointer to them goes stale silently. State the
-    reasoning inline instead — if it's worth citing, it's worth restating in the comment itself.
-12. Flag magic numbers when you notice them, so they can be named or extracted to a constant — not a strict rule; skip the flag when the value's meaning is obvious from context (e.g. `0`/`1` in a loop bound).
-13. **DRY.** Don't duplicate logic — extract the shared behaviour into a common method, class, or abstraction instead of copy-pasting it.
-14. **DTOs live in `/DTOs/request` or `/DTOs/response` and say which they are in the name.** An inbound
-    request body ends in `RequestDTO` and goes in `/DTOs/request`; anything the API returns ends in
-    `ResponseDTO` and goes in `/DTOs/response`. A name that already ends in `ResponseDTO` is not
-    doubled (`ErrorResponseDTO`, not `ErrorResponseResponseDTO`). One DTO never serves both
-    directions — split it, even if the fields currently coincide, so a request field cannot leak into
-    the response contract by accident.
-
-    ```java
-    // flag
-    DTOs/FileClassificationDTO.java
-    DTOs/DocumentTypeUpdateDTO.java
-
-    // prefer
-    DTOs/response/FileClassificationResponseDTO.java
-    DTOs/request/DocumentTypeUpdateRequestDTO.java
-    ```
-
-    **Once any of `/DTOs/request`, `/DTOs/response` or `/exceptions` holds more than 5 entries, group its
-    contents into subpackages by domain/feature similarity** (e.g. `response/auth`, `response/feed`,
-    `exceptions/subscriptions`) rather than leaving them flat. A class used across every domain
-    (`ErrorResponseDTO`, `RequestBodyTooLargeException`) stays ungrouped at the directory root instead of
-    being forced into one feature's subpackage.
-
-15. **Match the codebase's existing style before writing new code.** Before writing a method, look at the surrounding class, package, or a similar existing service for its established conventions — method/variable naming, member and parameter ordering, spacing — and follow that pattern rather than introducing a new one. This applies whether the code is written by hand or generated by an AI agent.
-16. **Stack annotations shortest line first.** When a class, field, method or parameter carries more than
-    one annotation, order the stack by rendered line length, ascending, so it reads as a staircase.
-    Same-length lines keep the order they already have. Applies to every stack you touch — if you add an
-    annotation to an existing stack, re-sort the whole stack.
-
-    ```java
-    // flag
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false)
-    private DocumentType firstPassDocumentType;
-
-    // prefer
-    @NotNull
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    private DocumentType firstPassDocumentType;
-    ```
-
-17. **Space out and length-sort `private final` fields.** When a class declares more than one `private
-    final` field, put exactly one blank line between each pair, and order them by rendered line length,
-    ascending — same staircase idea as rule 16's annotation stacking. Same-length lines keep their
-    existing relative order.
-
-    ```java
-    // flag
-    private final AuthService authService;
-    private final String adminEmail;
-    private final String adminPassword;
-
-    // prefer
-    private final String adminEmail;
-
-    private final String adminPassword;
-
-    private final AuthService authService;
-    ```
-
-18. **Enums in `/entities` live in an `enums` subpackage.** `entities/enums/Role.java`, not
-    `entities/Role.java` — keeps the entity classes themselves easy to scan for actual persisted
-    aggregates.
+Examples use `// flag` for what to avoid and `// prefer` for what to write. When writing code, never produce the
+`flag` form. When reviewing, report every `flag` form you find.
 
 ---
 
-## Lombok
+## Principles
 
-Used freely: `@RequiredArgsConstructor`, `@Data`, `@Builder`, `@Slf4j`, `@Value`, `@Getter`/`@Setter`, etc.
+- **Readability is the end goal.** Write clean, easy-to-test code: small single-purpose methods, no hidden side effects,
+  one level of abstraction per method.
+- **Keep methods short.** When a method does more than one thing, or needs a comment to separate its steps, split it into
+  well-named private methods.
+- **DRY.** Don't duplicate logic. Extract shared behaviour into a common method, class or abstraction instead of
+  copy-pasting it.
+- **Match the existing style before writing new code.** Where this skill is silent, look at the surrounding class,
+  package or a similar existing service for its conventions (method/variable naming, parameter ordering, spacing) and
+  follow them. This applies to hand-written and AI-generated code alike.
 
-No records. Model data with plain classes + Lombok annotations instead, even where a record would
-otherwise fit — applies to DTOs and entities alike.
+## Naming
 
-## Transactions
+- **Names must be self-explanatory.** Take effort naming variables, methods, classes and interfaces. A reader should know
+  what something is or does from its name alone, without opening the body.
+- Follow the naming convention already used in the surrounding code.
+- Constants are `UPPER_SNAKE_CASE` (`MAX_RETRIES`, `INITIAL_INTERVAL_MILLIS`). Put the unit in the name when the type
+  doesn't carry it.
+- **Magic numbers:** name them or extract them to a constant. Skip this when the meaning is obvious from context (for
+  example `0`/`1` as a loop bound or counter step).
 
-Apply `@Transactional` on service methods where they're actually needed — multi-step writes, read-modify-write flows, anything requiring atomicity. Don't blanket-annotate every public service method.
+## Class layout
 
-Exception: `@Modifying` repository methods carry their own `@Transactional` — the bulk update requires an active transaction and their callers (e.g. `tryUpdateStatus`) aren't transactional. Don't move it to the service layer.
+Members appear in this order, with no interleaving:
 
-## Utility classes
+1. constants (`static final`)
+2. other static fields
+3. instance fields
+4. constructors
+5. static factory methods
+6. public methods (including `@Override`s)
+7. protected / package-private methods
+8. private methods
+9. nested types
 
-Stateless, no Spring dependencies, pure functions. Always add a private constructor to prevent instantiation. Logic that requires a Spring dependency belongs in a service, not a utility.
+Within each field group, apply **Field ordering and spacing** below.
 
-## JPA entities
+## Formatting & whitespace
 
-Always set `nullable = true` or `nullable = false` explicitly on `@Column`, even when it matches the
-default — nullability should be a visible, explicit decision, not implied by omission.
+### Blank lines
 
-## Try/catch formatting
+- **Exactly one** blank line after a class, interface or enum opening brace, before the first member.
+- **Exactly one** blank line between methods.
+- No blank line before a class's closing brace.
+- `try`/`catch`: see `references/try-catch.md`.
+- `if`/`else`: see `references/if-else.md`.
+- Enum constants: see `references/enums.md`.
 
-See `references/try-catch.md`.
+```java
+// flag
+public class DatabaseLoader implements CommandLineRunner {
+    private final String adminEmail;
 
-## If/else formatting
+// prefer
+public class DatabaseLoader implements CommandLineRunner {
 
-See `references/if-else.md`.
+    private final String adminEmail;
+```
 
-## Enum formatting
+### Field ordering and spacing
 
-See `references/enums.md`.
+Applies to **every field** (constants, injected dependencies, entity columns):
 
-## Builder over setter chains
+- Put exactly one blank line between fields.
+- Within a group (see **Class layout**), order fields by the length of the declaration line, shortest first, so they
+  read as a staircase. Only the declaration line counts: a field's annotations move with it and don't affect the sort.
+- Fields with the same length keep their existing relative order.
+
+```java
+// flag
+private final AuthService authService;
+private final String adminEmail;
+private final String adminPassword;
+
+// prefer
+private final String adminEmail;
+
+private final String adminPassword;
+
+private final AuthService authService;
+```
+
+```java
+// flag — entity columns in arbitrary order
+@Column(name = "topic_name", nullable = false)
+private String topicName;
+
+@Column(name = "news_id", nullable = false)
+private UUID newsId;
+
+@Column(nullable = false)
+@Enumerated(EnumType.STRING)
+private NotificationOutboxStatus status;
+
+// prefer — sorted by the declaration line; annotations travel with their field
+@Column(name = "news_id", nullable = false)
+private UUID newsId;
+
+@Column(name = "topic_name", nullable = false)
+private String topicName;
+
+@Column(nullable = false)
+@Enumerated(EnumType.STRING)
+private NotificationOutboxStatus status;
+```
+
+### Annotation stacking
+
+When a class, field, method or parameter has more than one annotation, order the stack by line length, shortest
+first. Annotations with the same length keep their existing order. A multi-line annotation (for example `@Table(...)`
+spread over several lines) goes last. Every stack you touch gets re-sorted: if you add an annotation to an existing
+stack, re-sort the whole stack.
+
+```java
+// flag
+@NotNull
+@Enumerated(EnumType.STRING)
+@Column(nullable = false)
+private NotificationOutboxStatus status;
+
+// prefer
+@NotNull
+@Column(nullable = false)
+@Enumerated(EnumType.STRING)
+private NotificationOutboxStatus status;
+```
+
+### Method chaining
+
+When an expression chains two or more calls, put each call on its own line, indented 8 spaces from the start of the
+statement. A single call stays on one line.
+
+```java
+// flag
+redisTemplate.opsForValue().set(code, originalUrl, ttl);
+
+// prefer
+redisTemplate
+        .opsForValue()
+        .set(code, originalUrl, ttl);
+```
+
+## Types & APIs
+
+### Declare to the interface, not the implementation
+
+Fields, locals, parameters and return types use the widest type the code actually needs. Use the concrete type only
+when it's genuinely required (for example `LinkedHashMap` for guaranteed insertion order, or `ArrayDeque` for `Deque`
+semantics).
+
+```java
+// flag
+ArrayList<UUID> interestTopicIds = new ArrayList<>();
+HashMap<UUID, Subscription> subscriptionsByTopicId = new HashMap<>();
+public ArrayList<FeedTopicResponseDTO> buildFeedTopics() { ... }
+
+// prefer
+List<UUID> interestTopicIds = new ArrayList<>();
+Map<UUID, Subscription> subscriptionsByTopicId = new HashMap<>();
+public List<FeedTopicResponseDTO> buildFeedTopics() { ... }
+```
+
+### Don't hand-roll what a predefined method already does
+
+If code spends several lines, a temp variable, a null/empty check or a loop on something the JDK (or a library already
+on the classpath, such as Lombok or Spring's `StringUtils`/`CollectionUtils`) does in a single call, use that call.
+When reviewing, name the exact replacement.
+
+```java
+// flag — manual get-or-zero-then-increment
+Integer count = countsByTopicId.get(topicId);
+if (count == null) {
+    count = 0;
+}
+countsByTopicId.put(topicId, count + 1);
+
+// prefer
+countsByTopicId.merge(topicId, 1, Integer::sum);
+```
+
+Readability wins: the one-liner has to be *clearer*, not just shorter. Don't collapse a readable loop into an
+unreadable stream chain.
+
+### Builder over setter chains
 
 See `references/builder.md`.
 
+## Comments & JavaDoc
+
+- **Prefer naming over JavaDoc.** This applies to methods and classes alike. Before writing a JavaDoc, check whether
+  renaming the method or class makes it unnecessary; that is the preferred fix. Write one only when a well-named
+  method or class still hides something its name can't express: why it exists, a non-obvious constraint, a subtle
+  invariant, a workaround for a specific bug, or a surprising side effect.
+- **Keep comments few and short.** A comment explains *why*, never *what*; the code already says what.
+- **Never reference a `.md` file from a JavaDoc or comment.** Files like `PLAN.md` and `DECISIONS.md` change
+  independently of the code they once explained, so a pointer to them goes stale without anyone noticing. State the
+  reasoning in the comment itself. If it's worth citing, it's worth restating.
+
+## Packages & DTOs
+
+### DTO direction and naming
+
+DTOs live in a package that states their direction, and their name ends with a matching suffix:
+
+| Package          | Suffix        | Holds                        |
+| ---------------- | ------------- | ---------------------------- |
+| `/DTOs/request`  | `RequestDTO`  | inbound request bodies       |
+| `/DTOs/response` | `ResponseDTO` | anything the API returns     |
+| `/DTOs/event`    | `EventDTO`    | Kafka message payloads       |
+
+Don't double a suffix that is already part of the name (`ErrorResponseDTO`, not `ErrorResponseResponseDTO`). One DTO
+never serves both directions. Split it even if the fields currently match, so a request field can't leak into the
+response contract by accident.
+
+```java
+// flag
+DTOs/InterestTopicDTO.java
+DTOs/SubscribeDTO.java
+
+// prefer
+DTOs/response/interesttopics/InterestTopicResponseDTO.java
+DTOs/request/SubscribeRequestDTO.java
+```
+
+### Grouping into subpackages
+
+- **Once a package holds more than 5 `.java` files** (subpackages don't count), group its contents into subpackages by
+  domain or feature, for example `response/auth`, `response/feed`, `exceptions/subscriptions`, `configurations/kafka`.
+  This applies to every package, including `services/interfaces` and `services/implementations`.
+- Subpackage names are lowercase, plural where the domain is a noun, with words run together
+  (`interesttopics`, `subscriptions`).
+- A class used across every domain (`ErrorResponseDTO`, `RequestBodyTooLargeException`) stays at the package root
+  instead of being forced into one feature's subpackage.
+
+### Enums
+
+Enums in `/entities` live in `entities/enums` (`entities/enums/Role.java`, not `entities/Role.java`). That keeps
+`/entities` easy to scan for the actual persisted aggregates.
+
+## Lombok
+
+Used freely: `@RequiredArgsConstructor`, `@Data`, `@Builder`, `@Slf4j`, `@Getter`/`@Setter`, Lombok's `@Value`
+(`lombok.Value`, the immutable-class annotation, not Spring's `@Value` property injection), etc.
+
+No records. Model data with plain classes and Lombok annotations, even where a record would otherwise fit. This applies
+to DTOs and entities alike.
+
+## JPA entities
+
+Always set `nullable = true` or `nullable = false` explicitly on `@Column`, even when it matches the default.
+Nullability should be a visible, explicit decision, not something implied by leaving it out.
+
+## Transactions
+
+Put `@Transactional` on the service methods that actually need it: multi-step writes, read-modify-write flows, anything
+that must be atomic. Don't annotate every public service method by default.
+
+Exception: `@Modifying` repository methods carry their own `@Transactional`, because a bulk update or delete needs an
+active transaction and its callers may not be transactional. Keep it on the repository method; don't move it to the
+service layer.
+
+## Utility classes
+
+Stateless, no Spring dependencies, pure functions. Always add a private constructor to prevent instantiation. Logic
+that needs a Spring dependency belongs in a service, not a utility.
+
+## Exceptions
+
+- Custom exceptions extend `RuntimeException` and are named `<Subject><Problem>Exception`
+  (`InterestTopicNotFoundException`, `DuplicateEmailException`, `SubscriptionLimitExceededException`).
+- Create one exception type per distinct failure the caller or the exception handler has to tell apart. Don't reuse a
+  generic one with different messages.
+- Map them to HTTP responses in the `@RestControllerAdvice`, not with try/catch in controllers.
+
 ## Logging
 
-Use `@Slf4j`. Log at the service layer — not in entities, constructors, or getters.
-- **INFO** — meaningful business events (request received, file processed, declaration generated)
-- **WARN** — recoverable unexpected situations (retrying a connection, skipping a malformed row)
-- **ERROR** — failures that affect the outcome; always include the exception: `log.error("...", e)`
-- **DEBUG** — never commit debug logs; use locally and remove before pushing
-- Write log messages and exception messages as full sentences: end each one with a period (or other terminal punctuation), same as any other sentence.
+Use `@Slf4j` in Spring-managed beans (services, controllers, jobs, listeners, filters, configurations). Never log from
+entities, DTOs or utilities.
+
+- **INFO**: meaningful business events (subscription created, news event consumed, notification email sent).
+- **WARN**: recoverable, unexpected situations (retrying a connection, skipping a malformed event).
+- **ERROR**: failures that affect the outcome. Always pass the exception: `log.error("...", e)`.
+- **DEBUG**: never commit debug logs. Use them locally and remove them before pushing.
+- Use `{}` placeholders, never string concatenation, in log calls.
+- Never log secrets: passwords, JWTs, API keys, cookie values.
+- Write log and exception messages as full sentences ending in terminal punctuation. A message that ends with a
+  concatenated value (`"Permanent mail delivery failure: " + reason`) is fine as it is.
 
 ---
 
-Hard rules — layering, the `FooService`/`FooServiceImpl` pairing, constructor-injection-only — live in
-each project's own `CLAUDE.md` and always apply, loaded or not.
+## Review checklist
+
+When judging existing code, check in this order:
+
+1. Class layout order, one blank line after the opening brace, one blank line between methods.
+2. Fields: one blank line between each, ordered shortest line first within each group.
+3. Annotation stacks ordered shortest first, with a multi-line annotation last.
+4. Chains of two or more calls split one call per line.
+5. `try`/`catch`, `if`/`else` and enum blank lines (see `references/`).
+6. Declared types are interfaces. No hand-rolled JDK/library one-liners. No unnamed magic numbers.
+7. Names are self-explanatory. JavaDoc only where the name can't say it. No `.md` references in comments.
+8. DTO package and suffix. Subpackages once a package has more than 5 files. Entity enums in `entities/enums`.
+9. `@Column` nullability is explicit. `@Transactional` only where it's needed. Builder instead of 2+ setter calls.
+10. Log levels, `{}` placeholders, no secrets, sentence punctuation.

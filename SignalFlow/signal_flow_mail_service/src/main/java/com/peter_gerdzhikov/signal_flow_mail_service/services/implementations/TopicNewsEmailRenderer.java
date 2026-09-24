@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.owasp.html.HtmlPolicyBuilder;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
@@ -21,11 +23,10 @@ import org.springframework.web.util.HtmlUtils;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 
 /**
- * Classpath HTML template + single-pass {@code {{TOKEN}}} substitution, no template engine - the
- * inter-cars pattern. The template is loaded and validated once at startup so a broken template fails
- * the deployment immediately rather than the first email it tries to send. Pure and stateless once
- * built - deliberately has no interface, since nothing ever needs a second implementation or a mock of
- * it.
+ * Classpath HTML template with single-pass {@code {{TOKEN}}} substitution; the template is loaded and
+ * validated at startup so a broken template fails the deployment, not the first email. {@code DATA} is
+ * the only token carrying untrusted AI-generated HTML, so only it runs through
+ * {@link #DATA_SANITIZATION_POLICY} - every other token is a plain string, HTML-escaped instead.
  */
 @Component
 public class TopicNewsEmailRenderer {
@@ -38,6 +39,13 @@ public class TopicNewsEmailRenderer {
     private static final DateTimeFormatter NEWS_DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
 
     private static final DateTimeFormatter GENERATED_AT_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm zzz", Locale.ENGLISH);
+
+    private static final PolicyFactory DATA_SANITIZATION_POLICY = new HtmlPolicyBuilder()
+            .allowElements("p", "ul", "li", "strong", "em", "a")
+            .allowAttributes("href").onElements("a")
+            .allowUrlProtocols("https")
+            .requireRelsOnLinks("noopener", "noreferrer")
+            .toFactory();
 
     private final ZoneId zone;
 
@@ -59,7 +67,8 @@ public class TopicNewsEmailRenderer {
                 "NEWS_DATE", event.getNewsDate().format(NEWS_DATE_FORMATTER),
                 "GENERATED_AT", event.getGeneratedAt().atZone(zone).format(GENERATED_AT_FORMATTER),
                 "RECIPIENT_EMAIL", HtmlUtils.htmlEscape(event.getEmailAddress()),
-                "DATA", event.getData());
+                "DATA", DATA_SANITIZATION_POLICY.sanitize(event.getData())
+        );
 
         Matcher matcher = TOKEN_PATTERN.matcher(template);
         StringBuilder rendered = new StringBuilder();

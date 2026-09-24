@@ -17,9 +17,14 @@ KRaft `kafka` broker for this service. For local dev: `docker compose up postgre
 SignalFlow root, then `mvn spring-boot:run` serves the app on **:8081** against them. Other goals:
 `mvn clean install`, `mvn test`, `mvn verify`.
 
+**`OPENROUTER_API_KEY` is required to run** — the daily news job calls OpenRouter for real, web-grounded
+news, and `app.openrouter.api-key` has no default, so the app fails to start without it.
+
 Tests use **Testcontainers**, never embedded fakes — a running Docker daemon is a hard prerequisite.
 `support/AbstractIntegrationTest` starts one singleton Postgres and one singleton Kafka container
-(`@ServiceConnection`) for the whole suite; extend it instead of declaring new containers.
+(`@ServiceConnection`) for the whole suite; extend it instead of declaring new containers. Tests that
+touch OpenRouter extend `support/AbstractOpenRouterIntegrationTest` instead, which adds one more
+singleton container — a `wiremock/wiremock` stand-in for OpenRouter — on top of the same base.
 
 ## Spring Boot 4
 

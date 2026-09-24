@@ -274,3 +274,57 @@ same "one failing, the run continues" shape `TopicNewsGenerationJob` already use
 - **`prompt` is gone from `InterestTopicResponseDTO`**, so no endpoint returns it, admin writes included.
   It's internal, input to the AI only. Admins still set it via POST/PATCH. Mapping moved to
   `utilities/InterestTopicResponseMapper`, shared by both controllers.
+
+## OpenRouter phase step 1 — `spring-boot-starter-restclient` had to be added explicitly
+
+Unlike the gateway, which gets `RestClient.Builder` autoconfigured transitively through
+`spring-cloud-starter-gateway-server-webmvc`, this service's `spring-boot-starter-webmvc` alone doesn't pull
+it in on 4.2.0-M1: `OpenRouterClientConfiguration` failed to compile with `JdkClientHttpRequestFactoryBuilder`
+and `ClientHttpRequestFactoryBuilderCustomizer` unresolved until `spring-boot-starter-restclient` (present in
+the 4.2.0-M1 BOM under that exact artifactId) was added as its own dependency.
+
+## OpenRouter phase step 6 (2026-09-24) — exploit-hunter finding, patched
+
+Full report: `exploit-report-2026-09-24-openrouter-phase.md`. One finding, patched:
+
+- **Log forging via unescaped CR/LF in OpenRouter's `error.message` (Low).** `NewsGenerationServiceImpl
+  .providerMessage` embedded the provider's error message verbatim into `NewsGenerationFailedException`,
+  which the job then logs with `log.error(..., e)` - the same category as the earlier user-supplied-name
+  finding, just reached through an external field instead of a request field. Patched by running the
+  extracted message through the existing `utilities/LogSanitizer.sanitize` before it reaches the
+  exception, mirroring the earlier fix rather than introducing a second sanitizer.
+
+## OpenRouter phase step 7 — four smaller calls worth recording together
+
+- **The HTTP/1.1 pin on the OpenRouter client** (`OpenRouterClientConfiguration.http1OnlyOpenRouterClient`)
+  is copied verbatim from the gateway's own pin on its upstream client, for the same reason: the JDK
+  `HttpClient` otherwise attempts an h2c upgrade over plain `http://`, and WireMock's Jetty answers that
+  with a reset stream. Real OpenRouter is `https://`, so the pin is inert against it in prod, but it's
+  needed for `AbstractOpenRouterIntegrationTest`'s WireMock container regardless.
+- **The dummy key and unreachable base URL in `AbstractIntegrationTest`'s defaults** exist so a test that
+  never extends `AbstractOpenRouterIntegrationTest` can't reach the real OpenRouter and spend money if it
+  accidentally exercises `NewsGenerationServiceImpl` - `http://localhost:1` fails a connection attempt
+  immediately rather than timing out, and the 1s test read timeout (also overridden there) keeps a test
+  that does reach a slow stub fast.
+- **`DTOs/openrouter/` is a third DTO folder next to `request/`/`response/`**, same precedent as the
+  existing `DTOs/event/`: OpenRouter's wire contract is neither this service's own inbound request shape
+  nor its own outbound response shape, so forcing it into either package would blur that distinction.
+- **The system prompt lives as a `private static final String` text block in `NewsGenerationServiceImpl`**,
+  not in a properties file or a template resource, since it's fixed application logic (the format and
+  item-count rules), not environment-specific configuration, and it's read alongside the code that uses
+  it.
+
+## OpenRouter phase step 5 (2026-09-24) — manual smoke check, passed
+
+Ran the full pipeline against a real OpenRouter key with a credit limit set: gateway + mail service +
+this service, all three `mvn spring-boot:run` against `docker compose`'s Postgres/Kafka/Redis/Mailpit.
+Machine already had unrelated containers bound to the default `5432` and `9094` host ports, so this run
+used `5434`/`9095` instead via env var overrides on each app (never edited the checked-in `.env` values,
+only exported overrides for the run, then reverted `docker-compose.yml`'s temporarily-uncommented ports
+back to their original commented state afterward) - the ports themselves aren't load-bearing, just
+whatever's free on the machine running the check. One real topic (`rust programming language`), one
+subscriber (the seeded admin): a genuine `topic_news` row landed with clean HTML and three working
+`https` source links (`blog.rust-lang.org`, `rustfoundation.org`, `releases.rs`), and Mailpit received one
+email whose rendered body matched - allowlisted tags only, both `rel="noopener noreferrer"` tokens present
+on every link. No code changes came out of this step; it exists to catch what the WireMock-based suite
+structurally can't (a real provider's actual response shape).

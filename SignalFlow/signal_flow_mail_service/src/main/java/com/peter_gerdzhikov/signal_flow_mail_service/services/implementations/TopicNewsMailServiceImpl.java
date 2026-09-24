@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
 
+import java.util.function.Function;
+
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.MimeMessage;
@@ -71,12 +73,9 @@ public class TopicNewsMailServiceImpl implements TopicNewsMailService {
     }
 
     /**
-     * Never passes {@code exception} itself to the logger or downstream into either delivery exception's
-     * cause - a real SMTP server's {@code 5xx}/{@code 4xx} reply text routinely echoes the rejected
-     * recipient address (Gmail's bounce format does), which would otherwise reach these logs, and
-     * anything further downstream that logs the exception this method returns, through the one field
-     * {@code newsId}/{@code userId}-only logging was meant to keep out. {@link #describe} distills the
-     * failure down to exception types and SMTP codes only.
+     * Never logs {@code exception} itself, or passes it downstream as either delivery exception's cause -
+     * an SMTP {@code 5xx}/{@code 4xx} reply routinely echoes the rejected recipient address. {@link
+     * #describe} reduces the failure to its exception type and SMTP code only.
      */
     private RuntimeException classify(Exception exception, TopicNewsNotificationEventDTO event) {
         String description = describe(exception);
@@ -90,42 +89,54 @@ public class TopicNewsMailServiceImpl implements TopicNewsMailService {
     }
 
     private boolean isPermanent(Throwable exception) {
-        for (Throwable current = exception; current != null; current = current.getCause()) {
-            if (current instanceof MailParseException || current instanceof MailPreparationException || current instanceof AddressException) {
-                return true;
-            }
-            if (current instanceof SMTPAddressFailedException failed) {
-                return failed.getReturnCode() >= PERMANENT_SMTP_REPLY_THRESHOLD;
-            }
-            if (current instanceof SMTPSendFailedException failed) {
-                return failed.getReturnCode() >= PERMANENT_SMTP_REPLY_THRESHOLD;
-            }
-            // JavaMailSenderImpl.doSend() builds this via the per-message Map constructor, which never
-            // sets a getCause() - the real per-message exception is only reachable through
-            // getMessageExceptions(), a separate chain from standard Throwable#getCause().
-            if (current instanceof MailSendException mailSendException) {
-                for (Exception messageException : mailSendException.getMessageExceptions()) {
-                    if (isPermanent(messageException)) {
-                        return true;
-                    }
-                }
-            }
+        return Boolean.TRUE.equals(walkForFirstMatch(exception, this::classifyPermanence));
+    }
+
+    private Boolean classifyPermanence(Throwable current) {
+        if (current instanceof MailParseException || current instanceof MailPreparationException || current instanceof AddressException) {
+            return true;
         }
 
-        return false;
+        Integer smtpReturnCode = smtpReturnCode(current);
+        return smtpReturnCode != null ? smtpReturnCode >= PERMANENT_SMTP_REPLY_THRESHOLD : null;
     }
 
     private String describe(Throwable exception) {
+        String smtpDescription = walkForFirstMatch(exception, this::describeSmtpFailure);
+        return smtpDescription != null ? smtpDescription : exception.getClass().getSimpleName();
+    }
+
+    private String describeSmtpFailure(Throwable current) {
+        Integer smtpReturnCode = smtpReturnCode(current);
+        return smtpReturnCode != null ? current.getClass().getSimpleName() + " (SMTP " + smtpReturnCode + ")" : null;
+    }
+
+    private Integer smtpReturnCode(Throwable exception) {
+        if (exception instanceof SMTPAddressFailedException failed) {
+            return failed.getReturnCode();
+        }
+        if (exception instanceof SMTPSendFailedException failed) {
+            return failed.getReturnCode();
+        }
+
+        return null;
+    }
+
+    /**
+     * Walks {@code exception}'s cause chain and, since a real {@link MailSendException} never sets one -
+     * its per-recipient exceptions are only reachable via {@code getMessageExceptions()} - recurses into
+     * those too, returning the first non-null result {@code matcher} produces.
+     */
+    private <T> T walkForFirstMatch(Throwable exception, Function<Throwable, T> matcher) {
         for (Throwable current = exception; current != null; current = current.getCause()) {
-            if (current instanceof SMTPAddressFailedException failed) {
-                return current.getClass().getSimpleName() + " (SMTP " + failed.getReturnCode() + ")";
+            T match = matcher.apply(current);
+            if (match != null) {
+                return match;
             }
-            if (current instanceof SMTPSendFailedException failed) {
-                return current.getClass().getSimpleName() + " (SMTP " + failed.getReturnCode() + ")";
-            }
+
             if (current instanceof MailSendException mailSendException) {
                 for (Exception messageException : mailSendException.getMessageExceptions()) {
-                    String nested = describe(messageException);
+                    T nested = walkForFirstMatch(messageException, matcher);
                     if (nested != null) {
                         return nested;
                     }
@@ -133,6 +144,6 @@ public class TopicNewsMailServiceImpl implements TopicNewsMailService {
             }
         }
 
-        return exception.getClass().getSimpleName();
+        return null;
     }
 }

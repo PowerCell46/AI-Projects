@@ -31,17 +31,11 @@ public class KafkaErrorHandlingConfiguration {
 
     /**
      * Blocking exponential backoff, then dead-letters. {@link InvalidNotificationEventException} and
-     * {@link PermanentMailDeliveryException} skip retries entirely - both are permanent failures that
-     * will never succeed on a later attempt. Deserialization failures skip retries on their own too -
-     * that's {@link DeadLetterPublishingRecoverer}'s own handling, not configured here.
-     *
-     * <p>Two templates, keyed by the failed record's actual value type: a {@code byte[]} one for a
-     * deserialization failure (where {@link DeadLetterPublishingRecoverer} recovers the original raw
-     * bytes from an {@code ErrorHandlingDeserializer} header) and one for a {@link
-     * TopicNewsNotificationEventDTO} value - every other not-retryable exception here (validation,
-     * exhausted-retry held claims, permanent mail failures) fails *after* deserialization already
-     * succeeded, so the recoverer holds the parsed DTO, not bytes; a single {@code byte[]}-only template
-     * throws a {@code ClassCastException} trying to serialize it.
+     * {@link PermanentMailDeliveryException} skip retries as permanent failures; deserialization
+     * failures skip retries on their own via {@link DeadLetterPublishingRecoverer}. Two dead-letter
+     * templates are keyed by value type because a deserialization failure recovers raw {@code byte[]},
+     * while every other failure here happens after deserialization already succeeded and recovers the
+     * parsed DTO instead.
      */
     @Bean
     public CommonErrorHandler notificationRequestedErrorHandler(
@@ -64,13 +58,8 @@ public class KafkaErrorHandlingConfiguration {
     }
 
     /**
-     * Built here rather than exposed as a bean - a second {@code KafkaTemplate} bean would make every
-     * {@code KafkaTemplate} injection elsewhere in the app ambiguous. The key serializer stays
-     * {@code String}, matching the consumer's key deserializer, since only the value ever fails to
-     * deserialize; only it needs a {@code byte[]} serializer able to carry the untouched original bytes
-     * through unchanged. Bootstrap servers come from {@link KafkaConnectionDetails}, not
-     * {@code kafkaProperties.buildProducerProperties()} alone, for the same reason as the consumer-side
-     * factory: a hand-built factory doesn't consult it on its own.
+     * Built here, not exposed as a bean - a second {@code KafkaTemplate} bean would make every
+     * {@code KafkaTemplate} injection elsewhere ambiguous.
      */
     private KafkaTemplate<String, byte[]> deadLetterByteArrayTemplate(KafkaProperties kafkaProperties, KafkaConnectionDetails connectionDetails) {
         Map<String, Object> producerProperties = kafkaProperties.buildProducerProperties();
