@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.services.implementations;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -56,6 +57,13 @@ class SubscriptionReconciliationServiceImplTest {
     void setUp() {
         subscriptionReconciliationService = new SubscriptionReconciliationServiceImpl(
                 BATCH_SIZE, subscriptionRepository, interestTopicLookupService);
+    }
+
+    @Test
+    void should_reject_a_batch_size_over_the_topic_services_request_cap() {
+        assertThatThrownBy(() -> new SubscriptionReconciliationServiceImpl(
+                201, subscriptionRepository, interestTopicLookupService))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Nested

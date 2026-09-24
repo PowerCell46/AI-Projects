@@ -111,6 +111,14 @@ class InterestTopicLookupServiceImplIntegrationTest extends AbstractInterestTopi
         }
 
         @Test
+        void should_fail_rather_than_report_none_existing_when_an_existing_id_is_null() {
+            stubExistenceLookup(jsonResponse("{\"existingIds\": [\"%s\", null]}".formatted(EXISTING_ID)));
+
+            assertThatThrownBy(() -> interestTopicLookupService.findExistingIds(List.of(EXISTING_ID, MISSING_ID)))
+                    .isInstanceOf(InterestTopicLookupFailedException.class);
+        }
+
+        @Test
         void should_fail_rather_than_report_none_existing_when_the_response_times_out() {
             stubExistenceLookup(existingIdsResponse(EXISTING_ID)
                     .withFixedDelay(DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS));

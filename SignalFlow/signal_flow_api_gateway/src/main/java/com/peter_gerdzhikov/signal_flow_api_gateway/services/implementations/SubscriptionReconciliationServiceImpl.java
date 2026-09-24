@@ -21,6 +21,12 @@ public class SubscriptionReconciliationServiceImpl implements SubscriptionReconc
     /** Sorts before every other {@code uuid} in Postgres, so the first keyset page starts at the very beginning. */
     private static final UUID BEFORE_EVERY_TOPIC_ID = new UUID(0L, 0L);
 
+    /**
+     * Above this, every existence lookup exceeds the topic service's 8 KB internal request cap and gets a
+     * 413, which the run reads as a failed lookup - silently disabling the job instead of reconciling anything.
+     */
+    private static final int MAX_BATCH_SIZE = 200;
+
     private final int batchSize;
 
     private final SubscriptionRepository subscriptionRepository;
@@ -32,6 +38,11 @@ public class SubscriptionReconciliationServiceImpl implements SubscriptionReconc
             SubscriptionRepository subscriptionRepository,
             InterestTopicLookupService interestTopicLookupService
     ) {
+        if (batchSize > MAX_BATCH_SIZE) {
+            throw new IllegalArgumentException(
+                    "app.subscriptions.reconciliation.batch-size (%d) must not exceed %d.".formatted(batchSize, MAX_BATCH_SIZE));
+        }
+
         this.batchSize = batchSize;
         this.subscriptionRepository = subscriptionRepository;
         this.interestTopicLookupService = interestTopicLookupService;

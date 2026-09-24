@@ -16,16 +16,16 @@ from it: **no step starts on a red or missing test, and each step ends green.**
 
 ## Fix — real defects, ranked
 
-1. **A `null` in the topic service's `existingIds` aborts the reconciliation with an uncaught NPE**
-   (`exploit-report-2026-09-23-reconciliation.md` #1, Low). It fails safe, since nothing is wrongly deleted,
-   but it skips the stop-and-warn path. Fix: the client throws `InterestTopicLookupFailedException` on a null
-   element. It must not filter the nulls out, because that would delete subscriptions.
-2. **`app.subscriptions.reconciliation.batch-size` above ~208 silently disables the job**, because every lookup
-   then gets 413 from the topic service's 8 KB internal cap (same report, #2, Low). Fix: reject a batch size
-   over 200 at startup, and optionally log a 4xx-caused stop at ERROR.
-
-(Long non-Latin topic prompts getting 413 from the topic service, exploit report 2026-09-23 #3, was fixed
-2026-09-23 alongside the reconciliation phase's existence endpoint.)
+Nothing open. The reconciliation report's two findings were fixed 2026-09-24:
+`InterestTopicLookupServiceImpl.findExistingIds` now throws `InterestTopicLookupFailedException` when
+`existingIds` contains a null element instead of letting `Set.copyOf` NPE (nulls are never filtered out,
+since that would delete subscriptions), and `SubscriptionReconciliationServiceImpl`'s constructor rejects a
+batch size over 200 with an `IllegalArgumentException` instead of silently disabling the job. The report's
+optional "log a 4xx-caused stop at ERROR" half of the second fix was left undone — the current handler can't
+already distinguish a 4xx from any other lookup failure without deeper changes to
+`InterestTopicLookupFailedException`'s cause chain, and that felt like its own decision rather than a
+drive-by addition. (Long non-Latin topic prompts getting 413 from the topic service, exploit report
+2026-09-23 #3, was fixed 2026-09-23 alongside the reconciliation phase's existence endpoint.)
 
 ## Build — deferred by decision, not oversight
 

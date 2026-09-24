@@ -33,7 +33,7 @@ public class InterestTopicLookupServiceImpl implements InterestTopicLookupServic
     @Override
     public Set<UUID> findExistingIds(Collection<UUID> interestTopicIds) {
         ExistingInterestTopicsResponseDTO response = requestExistingIds(interestTopicIds);
-        if (response == null || response.getExistingIds() == null) {
+        if (response == null || response.getExistingIds() == null || response.getExistingIds().contains(null)) {
             throw new InterestTopicLookupFailedException();
         }
 
