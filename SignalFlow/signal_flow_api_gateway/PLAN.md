@@ -1,13 +1,15 @@
 # SignalFlow API Gateway — what's left
 
 The **auth** (2026-09-21), **subscriptions** (2026-09-22), **interest-topic routing** (2026-09-23),
-**subscription reconciliation** (2026-09-23) and **topic-news notification fan-out** (2026-09-24) phases
-have shipped and are green. Their design, step-by-step gates and `/grill-me` interview records are no longer
-carried here. Read them from git history (`git log -p -- PLAN.md`). Calls made during implementation live in
-`DECISIONS.md`, the e2e catalog in `TESTING.md`, and the audits in `exploit-report-2026-09-22-subscriptions.md`,
-`exploit-report-2026-09-23-topic-routing.md`, `exploit-report-2026-09-23-reconciliation.md` and
-`exploit-report-2026-09-24-topic-news-fanout.md`. Each report's status note records which findings were
-fixed. The rest are open by decision and appear under *Accepted gaps* below with their triggers.
+**subscription reconciliation** (2026-09-23), **topic-news notification fan-out** (2026-09-24) and
+**topic-news notification inbox/outbox** (2026-09-24) phases have shipped and are green. Their design,
+step-by-step gates and `/grill-me` interview records are no longer carried here. Read them from git history
+(`git log -p -- PLAN.md`). Calls made during implementation live in `DECISIONS.md`, the e2e catalog in
+`TESTING.md`, and the audits in `exploit-report-2026-09-22-subscriptions.md`,
+`exploit-report-2026-09-23-topic-routing.md`, `exploit-report-2026-09-23-reconciliation.md`,
+`exploit-report-2026-09-24-topic-news-fanout.md` and `exploit-report-2026-09-24-notification-inbox-outbox.md`.
+Each report's status note records which findings were fixed. The rest are open by decision and appear under
+*Accepted gaps* below with their triggers.
 
 This file now holds only what is still to do, fix or improve. Same rule as before for anything picked up
 from it: **no step starts on a red or missing test, and each step ends green.**
@@ -16,22 +18,11 @@ from it: **no step starts on a red or missing test, and each step ends green.**
 
 ## Fix — real defects, ranked
 
-Nothing open. The reconciliation report's two findings were fixed 2026-09-24:
-`InterestTopicLookupServiceImpl.findExistingIds` now throws `InterestTopicLookupFailedException` when
-`existingIds` contains a null element instead of letting `Set.copyOf` NPE (nulls are never filtered out,
-since that would delete subscriptions), and `SubscriptionReconciliationServiceImpl`'s constructor rejects a
-batch size over 200 with an `IllegalArgumentException` instead of silently disabling the job. The report's
-optional "log a 4xx-caused stop at ERROR" half of the second fix was left undone — the current handler can't
-already distinguish a 4xx from any other lookup failure without deeper changes to
-`InterestTopicLookupFailedException`'s cause chain, and that felt like its own decision rather than a
-drive-by addition. (Long non-Latin topic prompts getting 413 from the topic service, exploit report
-2026-09-23 #3, was fixed 2026-09-23 alongside the reconciliation phase's existence endpoint.)
+Nothing open. See `exploit-report-2026-09-23-reconciliation.md` for the findings fixed 2026-09-24 and the
+one piece left undone by decision, and `exploit-report-2026-09-23-topic-routing.md` #3 for the 413 fix.
 
 ## Build — deferred by decision, not oversight
 
-- ~~**The by-topic fan-out read path.**~~ **Closed 2026-09-24** by the topic-news notification fan-out
-  phase: the fan-out stayed inside the gateway (a Kafka consumer, not an HTTP read path), so the
-  service-to-service auth problem this item was blocked on never had to be solved.
 - **The SPA's admin topic/category screens.** The user-facing read-only list shipped as the feed page
   (`GET /api/v1/feed`, subscribe/unsubscribe wired from a topic card). Admin create/edit/delete is still
   unbuilt. Unblocked, since all the endpoints are routed through the gateway.
@@ -52,9 +43,6 @@ drive-by addition. (Long non-Latin topic prompts getting 413 from the topic serv
   category create/edit/delete for the rest of the window. Direct consequence of "no DB read on an authenticated request."
   **Trigger:** needing to cut off an account immediately.
 - **No server-side logout revocation.** A stolen token lives until it expires (≤1h). Same trigger.
-- ~~**Any UUID is subscribable.**~~ **Closed 2026-09-23** by the subscription reconciliation phase: subscribe
-  still accepts any UUID (bounded by the per-user cap, held under concurrency by a `SELECT ... FOR UPDATE` on
-  the caller's user row), but a bogus id lives only until the next 05:00 run.
 - **The reconciliation job runs on every instance.** No scheduler lock, so N instances make N full passes at
   05:00. Harmless, since the deletes give the same result either way; only wasted lookups. Same shape as the
   topic service's single-instance scheduler gap. **Trigger:** a second instance → ShedLock or a
@@ -83,18 +71,40 @@ drive-by addition. (Long non-Latin topic prompts getting 413 from the topic serv
   send `userId` only and let the consumer resolve the email.
 - **`topic-news.generated-dlt` records are only logged, no replay tool.** **Trigger:** the first record that
   needs replaying.
-- **Duplicate topic-news notifications on a mid-fan-out retry.** By design (at-least-once); the future email
-  consumer must dedupe on `(newsId, userId)`.
-- **A popular topic's fan-out can outrun `max.poll.interval.ms` (default 5 min), triggering a rebalance
-  mid-run and a full duplicate re-send of everyone already notified** (`exploit-report-2026-09-24-topic-news-fanout.md`
-  #1, Medium). `notifySubscribers` walks every enabled subscriber synchronously on the listener thread with
-  no overall time budget; the offset commits only when it returns. Same at-least-once contract as the gap
-  above covers the resulting duplicates, but repeated rebalances could compound them badly for a large
-  enough topic. **Trigger:** a topic's subscriber count or send latency makes one run credibly approach 5
-  minutes → bound the walk's total time, raise `max.poll.interval.ms` deliberately, or send asynchronously.
-- **No cap on a `topic-news.generated` record's size before it fans out to every enabled subscriber**
-  (`exploit-report-2026-09-24-topic-news-fanout.md` #2, Low). `TopicNewsEventDTO` has no field-length
-  validation, and Kafka's own per-record cap (~1 MB default) is the only limit, so one inbound record can
-  become gigabytes of outbound traffic across a popular topic's subscribers. Bounded by the same trust
+- **A `NotificationOutboxPublisherJob` crash between a successful Kafka publish and deleting that row
+  duplicates that one row on the next poll.** Narrowed 2026-09-24 from the wider fan-out-phase duplication
+  gap: the inbox now makes a crash before the transaction commits, or any event redelivery, a clean no-op —
+  this is what's left. Same at-least-once contract; the future email consumer's `(newsId, userId)` dedupe
+  requirement stays.
+- **The outbox poller runs on every instance, no row-claiming.** Two instances polling concurrently could
+  both pick and publish the same `PENDING` row before either deletes it — a duplicate publish, not just
+  wasted work like the reconciliation job's multi-instance overlap. **Trigger:** a second instance →
+  `SELECT ... FOR UPDATE SKIP LOCKED` when claiming a page.
+- **Escalated to Medium 2026-09-24** by the notification inbox/outbox phase — **no cap on a
+  `topic-news.generated` record's size before it fans out to every enabled subscriber**
+  (`exploit-report-2026-09-24-topic-news-fanout.md` #2, originally Low;
+  `exploit-report-2026-09-24-notification-inbox-outbox.md` #3). `TopicNewsEventDTO` still has no
+  field-length validation, and Kafka's own per-record cap (~1 MB default) is still the only limit — but
+  where each fanned-out copy used to be transient Kafka traffic, every copy is now a durable
+  `notification_outbox` row (`data` is an uncapped `TEXT` column) that persists until published or, on
+  `FAILED`, indefinitely. A ~1 MB record fanned out to 10,000 enabled subscribers is now ~10 GB of durable
+  Postgres storage from one event, not gigabytes of ephemeral throughput. Bounded by the same trust
   assumption as the "downstream trust model" item above (only the topic service can reach this topic
-  today). **Trigger:** that item gets built, or the first oversized record actually shows up.
+  today). **Trigger:** that item gets built, a length cap is added to `data` before the outbox insert, or
+  the first oversized record actually shows up.
+- **One `topic-news.generated` event holds a single Postgres transaction open for its whole fan-out**
+  (`exploit-report-2026-09-24-notification-inbox-outbox.md` #1, Medium).
+  `TopicNewsNotificationServiceImpl.notifySubscribers` wraps every keyset page's batch insert plus the
+  final inbox marker in one `@Transactional` method; a topic with enough enabled subscribers (organic, or
+  inflated by the "no rate limiting" gap above) turns this into a long-running transaction that holds row
+  locks and pins the vacuum horizon for its whole duration. **Trigger:** a topic's subscriber count makes
+  one run's transaction duration operationally noticeable → commit per keyset page instead of the whole
+  event, accepting a narrower partial-fan-out-on-crash window, or cap subscribers processed per invocation.
+- **No length validation on `topicName`/`categoryName` before the outbox insert**
+  (`exploit-report-2026-09-24-notification-inbox-outbox.md` #2, Medium). Both default to Hibernate's
+  `varchar(255)` on `NotificationOutbox`, and `TopicNewsEventDTO`'s hand-synced-with-the-topic-service
+  contract has no validation enforced at any point on the Kafka consume path. A value over 255 characters
+  fails the insert, rolls back the whole transaction, exhausts the listener's 3 retries, and lands the
+  record in `topic-news.generated-dlt` having notified zero subscribers, with no operator-visible signal
+  beyond a buried constraint-violation log. **Trigger:** a version drift between the two services' DTOs, or
+  the first oversized value actually shows up → validate or truncate defensively before the insert.

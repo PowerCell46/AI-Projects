@@ -6,7 +6,7 @@ import static org.awaitility.Awaitility.await;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,15 +36,16 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.NotificationOutbox;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.NotificationOutboxStatus;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
+import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.NotificationOutboxRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
+import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.TopicNewsInboxRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.support.AbstractKafkaIntegrationTest;
-
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -58,23 +59,22 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
      */
     private static final String TOPIC_NEWS_TOPIC_NAME = "topic-news.generated";
 
-    private static final JsonMapper JSON_MAPPER = new JsonMapper();
-
     @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private SubscriptionRepository subscriptionRepository;
 
+    @Autowired
+    private TopicNewsInboxRepository topicNewsInboxRepository;
+
+    @Autowired
+    private NotificationOutboxRepository notificationOutboxRepository;
+
     @Value("${app.kafka.topic-news.name}")
     private String topicNewsTopicName;
 
-    @Value("${app.kafka.notification-requested.name}")
-    private String notificationRequestedTopicName;
-
     private Producer<String, String> producer;
-
-    private Consumer<String, String> notificationConsumer;
 
     private Consumer<String, String> deadLetterConsumer;
 
@@ -102,6 +102,8 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        notificationOutboxRepository.deleteAll();
+        topicNewsInboxRepository.deleteAll();
         subscriptionRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -109,19 +111,22 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
                 KafkaTestUtils.producerProps(kafkaBootstrapServers()), new StringSerializer(), new StringSerializer())
                 .createProducer();
 
-        notificationConsumer = newRawConsumer("topic-news-listener-test-notifications", notificationRequestedTopicName);
         deadLetterConsumer = newRawConsumer("topic-news-listener-test-dlt", topicNewsTopicName + "-dlt");
     }
 
     @AfterEach
     void tearDown() {
         producer.close();
-        notificationConsumer.close();
         deadLetterConsumer.close();
+
+        notificationOutboxRepository.deleteAll();
+        topicNewsInboxRepository.deleteAll();
+        subscriptionRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
-    void should_publish_one_notification_per_enabled_subscriber_of_the_events_topic() throws Exception {
+    void should_queue_one_outbox_row_per_enabled_subscriber_and_mark_the_news_processed() throws Exception {
         UUID interestTopicId = UUID.randomUUID();
         User bob = userRepository.save(newUser("bob@example.com", true));
         User alice = userRepository.save(newUser("alice@example.com", true));
@@ -132,34 +137,32 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
 
         UUID newsId = UUID.randomUUID();
         LocalDate newsDate = LocalDate.now();
-        Instant generatedAt = Instant.now();
+        Instant generatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         producer
                 .send(new ProducerRecord<>(topicNewsTopicName, interestTopicId.toString(),
                         topicNewsEventJson(newsId, interestTopicId, newsDate, generatedAt)))
                 .get(10, TimeUnit.SECONDS);
 
-        List<ConsumerRecord<String, String>> received = new ArrayList<>();
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
-            KafkaTestUtils.getRecords(notificationConsumer, Duration.ofSeconds(1)).forEach(received::add);
-            assertThat(received).hasSize(2);
-        });
+        await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> assertThat(topicNewsInboxRepository.existsById(newsId)).isTrue());
 
-        assertThat(received)
-                .extracting(ConsumerRecord::key)
-                .containsExactlyInAnyOrder(bob.getId().toString(), alice.getId().toString());
+        List<NotificationOutbox> queued = notificationOutboxRepository.findAll();
+        assertThat(queued)
+                .extracting(NotificationOutbox::getUserId)
+                .containsExactlyInAnyOrder(bob.getId(), alice.getId());
 
-        for (ConsumerRecord<String, String> record : received) {
-            JsonNode payload = JSON_MAPPER.readTree(record.value());
-            assertThat(payload.get("newsId").asString()).isEqualTo(newsId.toString());
-            assertThat(payload.get("interestTopicId").asString()).isEqualTo(interestTopicId.toString());
-            assertThat(payload.get("topicName").asString()).isEqualTo("rust");
-            assertThat(payload.get("categoryName").asString()).isEqualTo("programming");
-            assertThat(payload.get("newsDate").asString()).isEqualTo(newsDate.toString());
-            assertThat(payload.get("data").asString()).isEqualTo("today's rust news");
-            assertThat(payload.get("userId").asString()).isEqualTo(record.key());
+        for (NotificationOutbox row : queued) {
+            assertThat(row.getNewsId()).isEqualTo(newsId);
+            assertThat(row.getInterestTopicId()).isEqualTo(interestTopicId);
+            assertThat(row.getTopicName()).isEqualTo("rust");
+            assertThat(row.getCategoryName()).isEqualTo("programming");
+            assertThat(row.getNewsDate()).isEqualTo(newsDate);
+            assertThat(row.getData()).isEqualTo("today's rust news");
+            assertThat(row.getGeneratedAt()).isEqualTo(generatedAt);
+            assertThat(row.getStatus()).isEqualTo(NotificationOutboxStatus.PENDING);
 
-            User expectedSubscriber = record.key().equals(bob.getId().toString()) ? bob : alice;
-            assertThat(payload.get("emailAddress").asString()).isEqualTo(expectedSubscriber.getEmail());
+            User expectedSubscriber = row.getUserId().equals(bob.getId()) ? bob : alice;
+            assertThat(row.getEmailAddress()).isEqualTo(expectedSubscriber.getEmail());
         }
     }
 

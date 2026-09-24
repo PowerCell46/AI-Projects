@@ -635,3 +635,90 @@ the firewall then rejects it, so the most it gains is a 32 KB read.
   auto-create. In production the topic service owns this topic's creation via its own `NewTopic` bean; a
   gateway-only e2e test has nothing to create it for real, and leaving it to auto-create makes the fan-out
   assertions depend on whatever partition count the broker defaults to.
+
+## 2026-09-24 — Topic-news notification inbox/outbox (step 1)
+
+- **`NotificationOutbox` extends `CommonEntity`** (surrogate `@UuidGenerator` id, `createdAt`/`updatedAt`),
+  matching the plan's `created_at` column and every other entity's id strategy. `TopicNewsInbox` does not:
+  its primary key is `newsId` itself (the event's own id), so it declares a plain `@Id UUID newsId` with no
+  generator - that's the whole point of using the event id as the collision key for a redelivered event.
+- **`NotificationOutbox` carries a unique constraint on `(news_id, user_id)`** and an index on
+  `(status, created_at)`, the exact shape the poller queries by. Not load-bearing for correctness (the
+  inbox row is what actually prevents a duplicate fan-out), but it documents the table's grain the same way
+  `Subscription`'s `(interest_topic_id, user_id)` constraint does, and the poller's hot query needs the index.
+- **An assigned-id entity's `JpaRepository.save()` is `merge()`, not `persist()`, and that matters here.**
+  `TopicNewsInbox.newsId` is set before `save()` is ever called, so Spring Data's default `isNew()` check
+  (id present -> not new) always routes through `entityManager.merge()`. Merge does a `SELECT` by id first,
+  and if a row already exists it's a silent `UPDATE`, not a duplicate-key failure - so relying on the unique
+  constraint to reject a second insert doesn't hold, and a `save()`-based insert always costs an extra
+  round trip. Step 2's transactional insert of the inbox marker uses a raw `JdbcTemplate.update()` instead,
+  same as the outbox batch insert, sidestepping this entirely; the repository's `save()`/`findById()` are
+  only exercised by tests and by nothing else in production code.
+
+## 2026-09-24 — Topic-news notification inbox/outbox (step 2)
+
+- **Both writes go through the same `JdbcTemplate`, not the outbox through JDBC and the inbox through the
+  repository.** Consistency over the mixed approach: one write mechanism for the whole transaction, and it
+  sidesteps step 1's `save()`-is-`merge()` surprise for the assigned-id `TopicNewsInbox` entirely.
+- **Timestamps are bound as `OffsetDateTime` (UTC), not `java.sql.Timestamp`.** All four timestamp-shaped
+  columns (`created_at`, `updated_at`, `generated_at` on the outbox row) are `timestamptz`; JDBC 4.2 formally
+  maps `OffsetDateTime` to `TIMESTAMP WITH TIME ZONE`, avoiding any JVM-default-timezone ambiguity a
+  `java.sql.Timestamp` binding would carry. `news_date` (`date`) binds `LocalDate` directly, same reasoning.
+- **`TopicNewsNotificationServiceImplTest` became a `@DataJpaTest` (real Postgres, `@Transactional` rollback
+  per test), not a Mockito unit test mocking `JdbcTemplate`.** The batch insert's exact column/parameter
+  wiring is the thing most likely to break, and a Mockito mock of `JdbcTemplate.batchUpdate(...)` would only
+  prove the call happened, not that the SQL is correct - the plan's "assert DB state" wording is read
+  literally. `@Transactional` on the service method itself has no effect in this test, since the service is
+  constructed with `new`, not resolved through the Spring context - the surrounding `@DataJpaTest` transaction
+  is what makes both the JPA repository calls and the raw JDBC calls (same `DataSource` bean) participate in
+  one rollback-per-test unit.
+- **`TopicNewsListenerIntegrationTest` gained an `@AfterEach` cleanup** (all four tables), not just the
+  existing `@BeforeEach` one. It's a `@SpringBootTest`, so nothing rolls its writes back; its last test's
+  rows previously stayed committed in the shared Testcontainers Postgres for the rest of the `mvn test` run
+  (one JVM, one container, reused across every test class) - found when a later `@DataJpaTest` in the same
+  run collided on `bob@example.com`, already inserted (and left behind) by this test.
+
+## 2026-09-24 — Topic-news notification inbox/outbox (step 3)
+
+- **`NotificationOutboxPublisherJob` gets its own `NotificationOutboxPublisherService`/`Impl` pair**, not
+  logic inlined in the job, matching `SubscriptionReconciliationJob`/`Service`'s split - the job stays a
+  one-line `@Scheduled` delegation, the service is unit-testable without a scheduler.
+- **`fixedDelayString`, not `fixedDelay` with an `@Value` int.** `@Scheduled`'s `fixedDelay` attribute
+  only accepts a compile-time long constant; a property-driven interval needs the SpEL-resolved
+  `fixedDelayString = "${...}"` form instead. First `fixedDelay`-family job in the codebase - every prior
+  `@Scheduled` use is `cron`.
+- **A publish failure is caught and logged (WARN), not rethrown.** Unlike the old synchronous listener-side
+  `send()`, which deliberately threw so Kafka's `DefaultErrorHandler` would retry the whole listener
+  invocation, one bad row here must not abort the rest of the batch - the design is per-row retry via
+  `attempt_count`, not per-poll retry via a rethrown exception.
+- **No `@Transactional` on `publishPendingNotifications()`.** Each row's Kafka send and repository call
+  (`delete` or `save`) is independent; wrapping the whole batch in one transaction would hold a DB
+  connection open across N synchronous Kafka round trips for no atomicity benefit, since at-least-once
+  duplication is already an accepted property of this pipeline.
+- **Test profile neutralizes the new poller with an oversized `fixed-delay-ms` (86400000)**, not a way to
+  turn it off entirely - `fixedDelayString` has no "never" sentinel the way `cron=-` does. Needed because
+  `TopicNewsListenerIntegrationTest` runs in a full `@SpringBootTest` context where a live poller could
+  publish and delete the very outbox rows the test asserts on.
+
+## 2026-09-24 — Topic-news notification inbox/outbox (step 4)
+
+- **`InboxCleanupJob` also gets its own `InboxCleanupService`/`Impl` pair**, same reasoning as step 3's
+  publisher job/service split - keeps the `@Scheduled` class a one-line delegation.
+- **The cutoff is computed in the service (`Instant.now().minus(retentionDays, DAYS)`), not passed in from
+  the job.** The job has no other reason to know what "retention" means as a concept; keeping the
+  calculation next to the repository call it feeds keeps the job genuinely trivial.
+
+## 2026-09-24 — Topic-news notification inbox/outbox (step 5, docs)
+
+- **`TESTING.md` is untouched by this phase.** Its own scope line already excludes non-HTTP DB/listener
+  tests (`UserRepositoryIntegrationTest`/`SubscriptionRepositoryIntegrationTest` are named as the existing
+  precedent), and none of `TopicNewsInboxRepositoryIntegrationTest`, `NotificationOutboxRepositoryIntegrationTest`,
+  `TopicNewsNotificationServiceImplTest`, `TopicNewsListenerIntegrationTest`,
+  `NotificationOutboxPublisherServiceImplTest`, `NotificationOutboxPublisherJobTest`,
+  `InboxCleanupServiceImplTest` or `InboxCleanupJobTest` is a `*ControllerIntegrationTest`/`*RoutesIntegrationTest`
+  - `CLAUDE.md`'s "update `TESTING.md` in the same change" rule doesn't apply to any of them.
+- **The two accepted gaps this phase set out to narrow (`PLAN.md`'s design section) came out one narrowed,
+  one closed, not both narrowed.** The rebalance-risk gap turned out to close outright: moving the Kafka
+  publish off the listener thread entirely (not just batching it) removes the mechanism, not just shrinks
+  its window. Recorded as **Closed** rather than **Narrowed** to match the "Any UUID is subscribable"/"the
+  by-topic fan-out read path" precedent for gaps a later phase fully resolves.
