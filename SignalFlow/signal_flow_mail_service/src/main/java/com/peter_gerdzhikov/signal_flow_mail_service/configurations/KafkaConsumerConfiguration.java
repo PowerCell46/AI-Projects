@@ -31,7 +31,7 @@ public class KafkaConsumerConfiguration {
      * {@code @ServiceConnection} container overrides it via {@link KafkaConnectionDetails} instead.
      */
     @Bean
-    public ConsumerFactory<String, TopicNewsNotificationEventDTO> notificationRequestedConsumerFactory(
+    public ConsumerFactory<String, TopicNewsNotificationEventDTO> topicNewsNotificationRequestedConsumerFactory(
             KafkaProperties kafkaProperties,
             KafkaConnectionDetails connectionDetails
     ) {
@@ -46,14 +46,14 @@ public class KafkaConsumerConfiguration {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, TopicNewsNotificationEventDTO> notificationRequestedListenerContainerFactory(
+    public ConcurrentKafkaListenerContainerFactory<String, TopicNewsNotificationEventDTO> topicNewsNotificationRequestedListenerContainerFactory(
             @Value("${spring.kafka.listener.concurrency}") int concurrency,
-            ConsumerFactory<String, TopicNewsNotificationEventDTO> notificationRequestedConsumerFactory,
-            CommonErrorHandler notificationRequestedErrorHandler
+            ConsumerFactory<String, TopicNewsNotificationEventDTO> topicNewsNotificationRequestedConsumerFactory,
+            CommonErrorHandler topicNewsNotificationRequestedErrorHandler
     ) {
         ConcurrentKafkaListenerContainerFactory<String, TopicNewsNotificationEventDTO> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(notificationRequestedConsumerFactory);
-        factory.setCommonErrorHandler(notificationRequestedErrorHandler);
+        factory.setConsumerFactory(topicNewsNotificationRequestedConsumerFactory);
+        factory.setCommonErrorHandler(topicNewsNotificationRequestedErrorHandler);
         factory.setConcurrency(concurrency);
         return factory;
     }

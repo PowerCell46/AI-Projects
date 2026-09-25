@@ -64,7 +64,7 @@ public class NotificationOutboxPublisherServiceImpl implements NotificationOutbo
             }
         }
 
-        log.info("Notification outbox poll: published {} of {} pending rows.", published, pending.size());
+        log.debug("Notification outbox poll: published {} of {} pending rows.", published, pending.size());
     }
 
     private boolean publish(NotificationOutbox row) {

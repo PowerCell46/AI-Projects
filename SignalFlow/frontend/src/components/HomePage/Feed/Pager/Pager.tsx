@@ -11,25 +11,32 @@ interface PagerProps {
 }
 
 function Pager({ loaded, total, hasMore, loading, pageSize, error, onLoadMore }: PagerProps) {
-    const progress = total > 0 ? Math.min(100, (loaded / total) * 100) : 0
+    const nextCount = Math.min(pageSize, Math.max(0, total - loaded))
 
     return (
         <div className="pager">
-            <div className="pager-row">
-                <span className="pager-readout">
-                    {loaded} of {total}
-                </span>
+            {hasMore ? (
+                <button type="button" className="pager-control" onClick={onLoadMore} disabled={loading}>
+                    <span className="pager-marker" aria-hidden="true">
+                        <span className="pager-stem" />
+                        <span className="pager-head" />
+                    </span>
 
-                <div className="pager-track">
-                    <div className="pager-fill" style={{ width: `${progress}%` }} />
-                </div>
+                    <span className="pager-text">
+                        <span className="pager-action">
+                            {loading ? 'Loading' : `Load the next ${nextCount}`}
+                        </span>
 
-                {hasMore && (
-                    <button type="button" className="pager-button" onClick={onLoadMore} disabled={loading}>
-                        {loading ? 'Loading' : `Next ${pageSize}`}
-                    </button>
-                )}
-            </div>
+                        <span className="pager-count">
+                            {loaded} of {total} loaded
+                        </span>
+                    </span>
+                </button>
+            ) : (
+                <p className="pager-count">
+                    {loaded} of {total} loaded
+                </p>
+            )}
 
             {error && <p className="pager-error">{error}</p>}
         </div>

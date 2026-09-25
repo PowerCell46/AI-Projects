@@ -38,7 +38,7 @@ public class KafkaErrorHandlingConfiguration {
      * parsed DTO instead.
      */
     @Bean
-    public CommonErrorHandler notificationRequestedErrorHandler(
+    public CommonErrorHandler topicNewsNotificationRequestedErrorHandler(
             KafkaProperties kafkaProperties,
             KafkaConnectionDetails connectionDetails,
             @Value("${app.kafka.retry.initial-interval-ms}") long initialIntervalMs,
@@ -47,7 +47,8 @@ public class KafkaErrorHandlingConfiguration {
     ) {
         Map<Class<?>, KafkaOperations<?, ?>> deadLetterTemplatesByValueType = Map.of(
                 byte[].class, deadLetterByteArrayTemplate(kafkaProperties, connectionDetails),
-                TopicNewsNotificationEventDTO.class, deadLetterEventTemplate(kafkaProperties, connectionDetails));
+                TopicNewsNotificationEventDTO.class, deadLetterEventTemplate(kafkaProperties, connectionDetails)
+        );
 
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(deadLetterTemplatesByValueType);
 
@@ -66,7 +67,8 @@ public class KafkaErrorHandlingConfiguration {
         producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, connectionDetails.getProducer().getBootstrapServers());
 
         DefaultKafkaProducerFactory<String, byte[]> producerFactory = new DefaultKafkaProducerFactory<>(
-                producerProperties, new StringSerializer(), new ByteArraySerializer());
+                producerProperties, new StringSerializer(), new ByteArraySerializer()
+        );
 
         return new KafkaTemplate<>(producerFactory);
     }
@@ -76,7 +78,8 @@ public class KafkaErrorHandlingConfiguration {
         producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, connectionDetails.getProducer().getBootstrapServers());
 
         DefaultKafkaProducerFactory<String, TopicNewsNotificationEventDTO> producerFactory = new DefaultKafkaProducerFactory<>(
-                producerProperties, new StringSerializer(), new JacksonJsonSerializer<>());
+                producerProperties, new StringSerializer(), new JacksonJsonSerializer<>()
+        );
 
         return new KafkaTemplate<>(producerFactory);
     }

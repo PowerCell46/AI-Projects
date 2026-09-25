@@ -33,8 +33,7 @@ public class TopicNewsEmailRenderer {
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{\\{([A-Z_]+)}}");
 
-    private static final Set<String> KNOWN_TOKENS = Set.of(
-            "TOPIC_NAME", "CATEGORY_NAME", "NEWS_DATE", "GENERATED_AT", "RECIPIENT_EMAIL", "DATA");
+    private static final Set<String> KNOWN_TOKENS = Set.of("TOPIC_NAME", "CATEGORY_NAME", "NEWS_DATE", "GENERATED_AT", "RECIPIENT_EMAIL", "DATA");
 
     private static final DateTimeFormatter NEWS_DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
 

@@ -21,12 +21,18 @@ class TopicNewsEmailRendererTest {
 
     private static final String DEFAULT_TEMPLATE_PATH = "classpath:templates/topicNewsEmailTemplate.html";
 
+    private static final String TOKENS_ONLY_TEMPLATE_PATH = "classpath:templates/templateWithOnlyTokens.html";
+
     private static final String ZONE = "Europe/Sofia";
 
     @Nested
     class Render {
 
         private final TopicNewsEmailRenderer renderer = new TopicNewsEmailRenderer(ZONE, DEFAULT_TEMPLATE_PATH);
+
+        // The default template carries its own <style> block, so strip assertions render through a template
+        // with no markup of its own - anything they find came from the sanitized data.
+        private final TopicNewsEmailRenderer tokensOnlyRenderer = new TopicNewsEmailRenderer(ZONE, TOKENS_ONLY_TEMPLATE_PATH);
 
         @Test
         void should_replace_every_token_when_rendering() {
@@ -80,7 +86,7 @@ class TopicNewsEmailRendererTest {
                             + "<p onclick=\"alert(1)\">Safe text</p>",
                     "recipient@example.com");
 
-            String html = renderer.render(event);
+            String html = tokensOnlyRenderer.render(event);
 
             assertFalse(html.contains("<script"));
             assertFalse(html.contains("alert(1)"));

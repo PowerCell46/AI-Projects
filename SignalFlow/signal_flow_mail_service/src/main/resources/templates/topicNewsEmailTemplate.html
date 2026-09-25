@@ -2,31 +2,117 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>{{TOPIC_NAME}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+    body, table, td {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .sf-content p {
+        margin: 0 0 16px;
+        color: #a7b3c0;
+        font-size: 15px;
+        line-height: 1.7;
+    }
+
+    .sf-content ul {
+        margin: 0 0 16px;
+        padding-left: 1.25rem;
+        color: #a7b3c0;
+    }
+
+    .sf-content li {
+        margin-bottom: 10px;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #a7b3c0;
+    }
+
+    .sf-content p:last-child,
+    .sf-content ul:last-child,
+    .sf-content li:last-child {
+        margin-bottom: 0;
+    }
+
+    .sf-content strong {
+        color: #e4ebf2;
+        font-weight: 600;
+    }
+
+    .sf-content em {
+        color: #a7b3c0;
+        font-style: italic;
+    }
+
+    .sf-content a {
+        color: #dca82f;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    @media screen and (max-width: 600px) {
+        .sf-container {
+            width: 100% !important;
+        }
+
+        .sf-pad {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+</style>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial, Helvetica, sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:24px 0;">
+<body style="margin:0;padding:0;background-color:#0d1117;font-family:'Inter',system-ui,sans-serif;">
+<span style="display:none;overflow:hidden;line-height:0;max-height:0;max-width:0;opacity:0;mso-hide:all;">{{CATEGORY_NAME}} &middot; {{TOPIC_NAME}} &mdash; news for {{NEWS_DATE}}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0d1117;">
     <tr>
-        <td align="center">
-            <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
+        <td align="center" style="padding:40px 16px;">
+            <table role="presentation" class="sf-container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background-color:#121a23;border:1px solid #1e2731;border-radius:6px;">
                 <tr>
-                    <td style="background-color:#1a1a2e;padding:24px 32px;">
-                        <span style="color:#ffffff;font-size:20px;font-weight:bold;">SignalFlow</span>
+                    <td class="sf-pad" style="padding:24px 32px;border-bottom:1px solid #1e2731;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td align="left" style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14px;font-weight:600;letter-spacing:0.04em;color:#dca82f;">
+                                    signalflow
+                                </td>
+                                <td align="right" style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#6e7c8c;">
+                                    Topic digest
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding:32px;">
-                        <p style="margin:0 0 8px 0;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;">{{CATEGORY_NAME}}</p>
-                        <h1 style="margin:0 0 16px 0;color:#111827;font-size:22px;">{{TOPIC_NAME}}</h1>
-                        <p style="margin:0 0 24px 0;color:#6b7280;font-size:13px;">News for {{NEWS_DATE}} &middot; generated {{GENERATED_AT}}</p>
-                        <div style="color:#1f2937;font-size:15px;line-height:1.6;">
+                    <td class="sf-pad" style="padding:36px 32px 8px;">
+                        <p style="margin:0 0 10px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#dca82f;">{{CATEGORY_NAME}}</p>
+                        <h1 style="margin:0 0 12px;font-size:26px;font-weight:600;letter-spacing:-0.01em;line-height:1.3;color:#e4ebf2;">{{TOPIC_NAME}}</h1>
+                        <p style="margin:0 0 28px;font-size:13px;color:#6e7c8c;">News for {{NEWS_DATE}} &middot; generated {{GENERATED_AT}}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="sf-pad" style="padding:0 32px 36px;border-bottom:1px solid #1e2731;">
+                        <div class="sf-content">
                             {{DATA}}
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding:24px 32px;background-color:#f9fafb;color:#9ca3af;font-size:12px;">
-                        Sent to {{RECIPIENT_EMAIL}} because you're subscribed to this topic on SignalFlow.
+                    <td class="sf-pad" style="padding:20px 32px;background-color:#121921;">
+                        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#6e7c8c;">
+                            Sent to <span style="color:#a7b3c0;">{{RECIPIENT_EMAIL}}</span> because you're subscribed to this topic on <span style="font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:0.02em;color:#dca82f;">signalflow</span>.
+                        </p>
                     </td>
                 </tr>
             </table>

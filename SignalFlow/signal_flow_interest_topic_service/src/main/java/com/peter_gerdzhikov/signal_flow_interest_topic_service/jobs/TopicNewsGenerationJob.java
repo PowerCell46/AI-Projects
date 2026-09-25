@@ -36,7 +36,7 @@ public class TopicNewsGenerationJob {
     private final InterestTopicRepository interestTopicRepository;
 
     public TopicNewsGenerationJob(
-            @Value("${app.news.zone:UTC}") String newsZone,
+            @Value("${app.news.zone}") String newsZone,
             TopicNewsRepository topicNewsRepository,
             NewsGenerationService newsGenerationService,
             InterestTopicRepository interestTopicRepository
@@ -47,7 +47,7 @@ public class TopicNewsGenerationJob {
         this.interestTopicRepository = interestTopicRepository;
     }
 
-    @Scheduled(cron = "${app.news.cron:0 0 6 * * *}", zone = "${app.news.zone:UTC}")
+    @Scheduled(cron = "${app.news.cron}", zone = "${app.news.zone}")
     public void generateDailyNews() {
         LocalDate newsDate = LocalDate.now(newsZone);
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, Sort.by("id"));

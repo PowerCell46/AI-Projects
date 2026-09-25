@@ -10,13 +10,13 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-public class NotificationRequestedListener {
+public class TopicNewsNotificationRequestedListener {
 
     private final TopicNewsNotificationService topicNewsNotificationService;
 
     @KafkaListener(
             topics = "${app.kafka.notification-requested.name}",
-            containerFactory = "notificationRequestedListenerContainerFactory"
+            containerFactory = "topicNewsNotificationRequestedListenerContainerFactory"
     )
     public void onMessage(TopicNewsNotificationEventDTO event) {
         topicNewsNotificationService.process(event);

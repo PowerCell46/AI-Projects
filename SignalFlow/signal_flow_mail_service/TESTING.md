@@ -1,15 +1,15 @@
 # E2E test catalog
 
-Scope: the Kafka-to-SMTP pipeline only - `NotificationRequestedListenerIntegrationTest` (real Kafka, Redis
-and Mailpit containers, a spied `JavaMailSender`) and `SmtpUnreachableIntegrationTest` (its own context,
-SMTP pointed at a closed port). `NotificationInboxServiceIntegrationTest` exercises real Redis too but
+Scope: the Kafka-to-SMTP pipeline only - `TopicNewsNotificationRequestedListenerIntegrationTest` (real
+Kafka, Redis and Mailpit containers, a spied `JavaMailSender`) and `SmtpUnreachableIntegrationTest` (its
+own context, SMTP pointed at a closed port). `NotificationInboxServiceIntegrationTest` exercises real Redis too but
 skips Kafka and the listener, so it's not listed here.
 
 Hand-maintained - see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
 ## `topic-news.notification-requested` consumption
 
-`NotificationRequestedListenerIntegrationTest`
+`TopicNewsNotificationRequestedListenerIntegrationTest`
 
 - Happy path sends one email with the escaped topic/category, raw `data` markup, formatted dates, correct
   from address, and marks the Redis key `SENT` (`should_send_one_email_on_happy_path`)

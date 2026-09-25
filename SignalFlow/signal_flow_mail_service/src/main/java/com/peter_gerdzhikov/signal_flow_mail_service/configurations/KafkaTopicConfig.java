@@ -17,7 +17,7 @@ public class KafkaTopicConfig {
     private static final int REPLICATION_FACTOR = 1;
 
     @Bean
-    public NewTopic notificationRequestedDeadLetterTopic(
+    public NewTopic topicNewsNotificationRequestedDeadLetterTopic(
             @Value("${app.kafka.notification-requested.dlt-name}") String dltName,
             @Value("${app.kafka.notification-requested.dlt-partitions}") int partitions
     ) {

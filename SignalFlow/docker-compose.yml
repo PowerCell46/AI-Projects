@@ -77,8 +77,8 @@ services:
     image: redis:8.10.2
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
-    # ports:
-    #   - "6379:6379"
+    ports:
+      - "6379:6379"
     deploy:
       resources:
         limits:
@@ -96,9 +96,9 @@ services:
   mailpit:
     image: axllent/mailpit:v1.31.2
     restart: unless-stopped
-    # ports:
-    #   - "1025:1025"
-    #   - "8025:8025"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
     deploy:
       resources:
         limits:

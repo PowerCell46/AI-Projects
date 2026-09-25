@@ -314,6 +314,17 @@ Full report: `exploit-report-2026-09-24-openrouter-phase.md`. One finding, patch
   item-count rules), not environment-specific configuration, and it's read alongside the code that uses
   it.
 
+## 2026-09-24 — `DatabaseLoader` seeds 10 categories / 30 interest topics, gated on `categoryRepository.count()`
+
+Mirrors the gateway's `DatabaseLoader` shape (`@Component implements CommandLineRunner` in
+`configurations`, delegating the actual check-and-insert to a service). Chosen over a per-row
+`existsByName` check per category/topic: a single coarse "any category already exists" gate, checked
+once before inserting anything, is enough since this only ever runs against an empty catalog - there's
+no partial-seed recovery scenario to handle. Not gated behind a `@Value`-injected flag (unlike the
+gateway's admin-credential seeding) since there's no secret involved and no reason an operator would want
+to skip it. **Trigger to revisit:** the catalog needs to grow or change after first boot → this loader
+stops being the mechanism, since it never runs again once a single category exists.
+
 ## OpenRouter phase step 5 (2026-09-24) — manual smoke check, passed
 
 Ran the full pipeline against a real OpenRouter key with a credit limit set: gateway + mail service +

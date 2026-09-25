@@ -47,15 +47,15 @@ Hard rules — these hold whether or not the skill is loaded:
   constructor when `@Value` parameters are also needed. No `@Autowired` on fields, no setter injection.
   Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
-- `NotificationRequestedListener` stays thin — validate/claim/send/mark all live in
+- `TopicNewsNotificationRequestedListener` stays thin — validate/claim/send/mark all live in
   `TopicNewsNotificationService`, the listener only delegates.
 - No HTTP surface beyond actuator `health` — no `/api/v1`, no security starter. Nothing else consumes
   this service over HTTP.
 - **No `Thread.sleep` in tests.** Async assertions use Awaitility with an explicit `atMost` and a short
   poll interval.
-- Adding, removing, or changing an e2e scenario in `NotificationRequestedListenerIntegrationTest` updates
-  `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests
-  carry an edit to the catalog.
+- Adding, removing, or changing an e2e scenario in `TopicNewsNotificationRequestedListenerIntegrationTest`
+  updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to
+  the tests carry an edit to the catalog.
 
 Root-level packages, under `com.peter_gerdzhikov.signal_flow_mail_service`:
 - `/configurations` — Kafka consumer, error handler, DLT topic, Redis script bean

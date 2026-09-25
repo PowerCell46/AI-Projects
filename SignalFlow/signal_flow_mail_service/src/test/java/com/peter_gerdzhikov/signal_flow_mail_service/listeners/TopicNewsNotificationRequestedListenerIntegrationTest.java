@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
  * e2e over real Kafka, Redis and Mailpit containers. See {@code TESTING.md} for the scenario catalog -
  * update it in the same change as any edit here.
  */
-class NotificationRequestedListenerIntegrationTest extends AbstractNotificationE2ETest {
+class TopicNewsNotificationRequestedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
     @Test
     void should_send_one_email_on_happy_path() {
