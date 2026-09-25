@@ -64,6 +64,7 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         long limit = limitFor(request);
+
         if (request.getContentLengthLong() > limit) {
             log.warn("Rejected a request to '{}' declaring an oversized body.", request.getRequestURI());
             ErrorResponseWriter.write(response, objectMapper, HttpStatus.CONTENT_TOO_LARGE, RequestBodyTooLargeException.MESSAGE);

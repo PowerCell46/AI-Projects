@@ -13,6 +13,8 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +41,8 @@ class TopicNewsGenerationJobTest {
 
     private static final String NEWS_ZONE = "UTC";
 
+    private static final int MAX_CONCURRENCY = 5;
+
     private static final String TOPIC_PROMPT = "What's new with Rust?";
 
     @Mock
@@ -55,7 +59,7 @@ class TopicNewsGenerationJobTest {
     @BeforeEach
     void setUp() {
         topicNewsGenerationJob = new TopicNewsGenerationJob(
-                NEWS_ZONE, topicNewsRepository, newsGenerationService, interestTopicRepository);
+                NEWS_ZONE, MAX_CONCURRENCY, topicNewsRepository, newsGenerationService, interestTopicRepository);
     }
 
     @Nested
@@ -144,6 +148,31 @@ class TopicNewsGenerationJobTest {
             verify(interestTopicRepository, times(2)).findAll(any(Pageable.class));
             verify(topicNewsRepository).existsByInterestTopic_IdAndNewsDate(eq(firstTopic.getId()), any());
             verify(topicNewsRepository).existsByInterestTopic_IdAndNewsDate(eq(secondTopic.getId()), any());
+        }
+
+        @Test
+        void should_never_run_more_topics_concurrently_than_the_configured_limit() {
+            List<InterestTopic> topics = IntStream.range(0, 12)
+                    .mapToObj(i -> newTopic())
+                    .toList();
+            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(topics));
+            when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
+                    .thenReturn(false);
+
+            AtomicInteger inFlight = new AtomicInteger();
+            AtomicInteger maxInFlight = new AtomicInteger();
+            when(newsGenerationService.generate(any(), any(LocalDate.class))).thenAnswer(invocation -> {
+                int concurrentCalls = inFlight.incrementAndGet();
+                maxInFlight.updateAndGet(observed -> Math.max(observed, concurrentCalls));
+                Thread.sleep(20);
+                inFlight.decrementAndGet();
+                return "news";
+            });
+
+            topicNewsGenerationJob.generateDailyNews();
+
+            assertThat(maxInFlight.get()).isLessThanOrEqualTo(MAX_CONCURRENCY);
+            verify(topicNewsRepository, times(topics.size())).saveAndFlush(any());
         }
     }
 

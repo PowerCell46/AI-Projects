@@ -1,8 +1,10 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.controllers;
 
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,15 +44,15 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryResponseDTO>> listCategories() {
+    public ResponseEntity<Page<CategoryResponseDTO>> listCategories(
+            @PageableDefault(size = 20, sort = "name") Pageable pageable
+    ) {
         log.debug("Received list categories request.");
-        List<CategoryResponseDTO> categories = categoryService
-                .findAllSortedByName()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        Page<CategoryResponseDTO> page = categoryService
+                .findPage(pageable)
+                .map(this::toResponse);
 
-        return ResponseEntity.ok(categories);
+        return ResponseEntity.ok(page);
     }
 
     @PatchMapping("/{id}")

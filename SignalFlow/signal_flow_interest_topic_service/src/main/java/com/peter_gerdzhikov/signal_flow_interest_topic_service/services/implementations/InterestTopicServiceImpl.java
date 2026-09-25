@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
@@ -19,18 +20,17 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Interest
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.InterestTopicService;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.utilities.LogSanitizer;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class InterestTopicServiceImpl implements InterestTopicService {
 
     /**
@@ -39,16 +39,33 @@ public class InterestTopicServiceImpl implements InterestTopicService {
      */
     private static final String FROM_THE_START = "";
 
+    private final long maxInterestTopicCount;
+
     private final CategoryRepository categoryRepository;
 
     private final InterestTopicRepository interestTopicRepository;
 
+    public InterestTopicServiceImpl(
+            @Value("${app.interest-topic.max-count}") long maxInterestTopicCount,
+            CategoryRepository categoryRepository,
+            InterestTopicRepository interestTopicRepository
+    ) {
+        this.maxInterestTopicCount = maxInterestTopicCount;
+        this.categoryRepository = categoryRepository;
+        this.interestTopicRepository = interestTopicRepository;
+    }
+
     @Override
     @Transactional
     public InterestTopic create(String name, String description, String prompt, UUID categoryId) {
+        if (interestTopicRepository.count() >= maxInterestTopicCount) {
+            throw new InterestTopicLimitExceededException();
+        }
+
         Category category = findCategoryOrThrow(categoryId);
 
-        InterestTopic interestTopic = InterestTopic.builder()
+        InterestTopic interestTopic = InterestTopic
+                .builder()
                 .name(name)
                 .description(description)
                 .prompt(prompt)

@@ -1,15 +1,17 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.implementations;
 
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryInUseException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
@@ -17,21 +19,35 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.Inte
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.CategoryService;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.utilities.LogSanitizer;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
+
+    private final long maxCategoryCount;
 
     private final CategoryRepository categoryRepository;
 
     private final InterestTopicRepository interestTopicRepository;
 
+    public CategoryServiceImpl(
+            @Value("${app.category.max-count}") long maxCategoryCount,
+            CategoryRepository categoryRepository,
+            InterestTopicRepository interestTopicRepository
+    ) {
+        this.maxCategoryCount = maxCategoryCount;
+        this.categoryRepository = categoryRepository;
+        this.interestTopicRepository = interestTopicRepository;
+    }
+
     @Override
     @Transactional
     public Category create(String name) {
+        if (categoryRepository.count() >= maxCategoryCount) {
+            throw new CategoryLimitExceededException();
+        }
+
         try {
             Category saved = categoryRepository.saveAndFlush(newCategory(name));
             log.info("Created category '{}'.", LogSanitizer.sanitize(saved.getName()));
@@ -43,8 +59,8 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<Category> findAllSortedByName() {
-        return categoryRepository.findAll(Sort.by("name"));
+    public Page<Category> findPage(Pageable pageable) {
+        return categoryRepository.findAll(pageable);
     }
 
     @Override

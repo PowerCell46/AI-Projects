@@ -283,6 +283,47 @@ it in on 4.2.0-M1: `OpenRouterClientConfiguration` failed to compile with `JdkCl
 and `ClientHttpRequestFactoryBuilderCustomizer` unresolved until `spring-boot-starter-restclient` (present in
 the 4.2.0-M1 BOM under that exact artifactId) was added as its own dependency.
 
+## 2026-09-25 — Row-count caps, paginated category list, bounded concurrent news generation
+
+Closed three `PLAN.md` Known gaps in one pass, following `exploit-report-2026-09-25.md` finding #1
+("no spend cap", "serial generation", and the row-count/pagination finding itself):
+
+- **The row-count cap folds "no spend cap" into itself** rather than tracking actual OpenRouter dollar
+  cost. The lever this service actually has without parsing OpenRouter's `usage` field is topic *count* -
+  nightly spend scales with it, so bounding count bounds spend. `app.category.max-count` (default 100) /
+  `app.interest-topic.max-count` (default 1000), checked with a plain `repository.count()` at create time
+  in `CategoryServiceImpl`/`InterestTopicServiceImpl`, throwing `CategoryLimitExceededException`/
+  `InterestTopicLimitExceededException` (409, same bucket as the existing Duplicate/InUse conflicts). A
+  soft cap, not locked: a concurrent burst of creates can overshoot it by a small amount, the same
+  tolerance already accepted for `CategoryServiceImpl.delete()`'s exists-then-delete TOCTOU
+  (`exploit-report-2026-09-22.md`). **Trigger to revisit:** real per-call cost tracking becomes necessary
+  → parse OpenRouter's `usage`/cost fields and enforce an actual budget instead of a row count.
+- **`GET /api/v1/categories` is now paginated** (`Page<CategoryResponseDTO>`, `@PageableDefault(size=20,
+  sort="name")`), matching `InterestTopicController`'s existing shape - closes the unbounded-response-body
+  half of the same finding. `CategoryService.findAllSortedByName()` became `findPage(Pageable)`; nothing
+  else called the old method. Not a breaking change for the gateway: it forwards `/api/v1/categories/**`
+  verbatim without parsing the body (`InterestTopicRoutesConfiguration`), so only a consumer outside this
+  repo would see the shape change.
+- **Bounded concurrent generation.** `TopicNewsGenerationJob` submits each topic's OpenRouter call to a
+  virtual thread (`Executors.newVirtualThreadPerTaskExecutor()`), gated by a
+  `Semaphore(app.news.max-concurrency)` (default 5) so the job doesn't fire hundreds of concurrent
+  requests at OpenRouter in one burst. Chosen over a fixed platform-thread pool since each call is purely
+  I/O-bound; the semaphore, not the executor, is what actually bounds concurrency, since virtual threads
+  are cheap to spawn. Per-topic error isolation (`generateNewsForTopic`'s own try/catch) is unchanged;
+  `generateDailyNews()` still blocks until every topic on a page has been attempted before paging to the
+  next, so its external behaviour (skip-and-continue on one topic's failure, dedupe-by-date) is unchanged.
+
+Also found and fixed, same day: `CategoryRepositoryIntegrationTest` and `InterestTopicRepositoryIntegrationTest`
+(`@DataJpaTest`) intermittently failed when `DatabaseSeedServiceImpl`'s seed catalog, or another test
+class's own HTTP-created rows, had already been committed to the shared Testcontainers Postgres by an
+earlier `@SpringBootTest` context in the same suite run - unrelated to the row-count/pagination/concurrency
+work above, but surfaced by it while running the full suite. `@DataJpaTest`'s per-test rollback only undoes
+what that test itself writes, not rows already committed by a different, non-transactional context before
+it started. Fixed by giving both classes their own `@BeforeEach` that deletes all interest topics then
+categories, the same pattern `CategoryControllerIntegrationTest`/`InterestTopicControllerIntegrationTest`
+already used. **Not applied to `TopicNewsRepositoryIntegrationTest`**, which has the identical structural
+gap (no such `@BeforeEach`) but hadn't shown a failure - left alone rather than changed on suspicion alone.
+
 ## OpenRouter phase step 6 (2026-09-24) — exploit-hunter finding, patched
 
 Full report: `exploit-report-2026-09-24-openrouter-phase.md`. One finding, patched:

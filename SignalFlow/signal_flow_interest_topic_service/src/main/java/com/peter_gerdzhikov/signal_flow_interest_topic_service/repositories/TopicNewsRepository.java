@@ -25,5 +25,8 @@ public interface TopicNewsRepository extends JpaRepository<TopicNews, UUID> {
             ORDER BY tn.nextAttemptAt ASC
             """)
     List<TopicNews> findByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
-            @Param("status") NewsStatus status, @Param("now") Instant now, Pageable pageable);
+            @Param("status") NewsStatus status,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
 }

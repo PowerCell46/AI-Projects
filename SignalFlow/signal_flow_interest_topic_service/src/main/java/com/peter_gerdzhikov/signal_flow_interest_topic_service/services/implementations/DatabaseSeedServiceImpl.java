@@ -35,7 +35,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Cybersecurity",
                             "Data breaches, vulnerabilities, and security industry news.",
                             "Cover newly disclosed data breaches, critical vulnerabilities, ransomware "
-                                    + "incidents, and major cybersecurity industry announcements."))),
+                                    + "incidents, and major cybersecurity industry announcements."))
+            ),
             new CategorySeed("Business & Finance", List.of(
                     new TopicSeed(
                             "Stock Markets",
@@ -51,7 +52,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Cryptocurrency",
                             "Price movements, regulation, and major crypto industry events.",
                             "Cover significant price movements in major cryptocurrencies, regulatory "
-                                    + "developments, and notable events at crypto exchanges or projects."))),
+                                    + "developments, and notable events at crypto exchanges or projects."))
+            ),
             new CategorySeed("Politics", List.of(
                     new TopicSeed(
                             "U.S. Politics",
@@ -67,7 +69,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Elections Worldwide",
                             "National elections, results, and campaign developments globally.",
                             "Cover notable national elections worldwide, including campaign developments, "
-                                    + "results, and disputes."))),
+                                    + "results, and disputes."))
+            ),
             new CategorySeed("Science", List.of(
                     new TopicSeed(
                             "Space Exploration",
@@ -83,7 +86,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Climate Science",
                             "Climate research findings and scientific reports on global warming.",
                             "Cover new climate research findings, major scientific reports, and notable "
-                                    + "studies on global warming impacts."))),
+                                    + "studies on global warming impacts."))
+            ),
             new CategorySeed("Health & Wellness", List.of(
                     new TopicSeed(
                             "Public Health",
@@ -99,7 +103,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Mental Health",
                             "Mental health research, awareness campaigns, and policy news.",
                             "Cover notable mental health research, awareness campaigns, and policy "
-                                    + "developments affecting mental healthcare."))),
+                                    + "developments affecting mental healthcare."))
+            ),
             new CategorySeed("Sports", List.of(
                     new TopicSeed(
                             "Football (Soccer)",
@@ -115,7 +120,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Olympic Sports",
                             "News across Olympic sports disciplines and athlete achievements.",
                             "Cover notable news across Olympic sports disciplines, including athlete "
-                                    + "achievements and event results."))),
+                                    + "achievements and event results."))
+            ),
             new CategorySeed("Entertainment", List.of(
                     new TopicSeed(
                             "Film & Television",
@@ -131,7 +137,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Video Games",
                             "Game releases, studio news, and gaming industry trends.",
                             "Cover notable video game releases, studio announcements, and gaming industry "
-                                    + "trends."))),
+                                    + "trends."))
+            ),
             new CategorySeed("Environment & Climate", List.of(
                     new TopicSeed(
                             "Renewable Energy",
@@ -147,7 +154,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Wildlife Conservation",
                             "Conservation efforts and biodiversity news.",
                             "Cover notable wildlife conservation efforts, endangered species news, and "
-                                    + "biodiversity research findings."))),
+                                    + "biodiversity research findings."))
+            ),
             new CategorySeed("World Affairs", List.of(
                     new TopicSeed(
                             "Middle East",
@@ -163,7 +171,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "International Trade",
                             "Trade agreements, tariffs, and global supply chain news.",
                             "Cover notable trade agreements, tariff changes, and global supply chain "
-                                    + "developments."))),
+                                    + "developments."))
+            ),
             new CategorySeed("Automotive & Transportation", List.of(
                     new TopicSeed(
                             "Electric Vehicles",
@@ -179,7 +188,8 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Aviation & Aerospace",
                             "Airline industry, aircraft manufacturing, and aerospace news.",
                             "Cover notable airline industry news, aircraft manufacturing developments, and "
-                                    + "commercial aerospace announcements."))));
+                                    + "commercial aerospace announcements.")))
+    );
 
     private final CategoryService categoryService;
 
@@ -200,8 +210,9 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
 
     private void seedCategory(CategorySeed categorySeed) {
         Category category = categoryService.create(categorySeed.getName());
-        categorySeed.getTopics().forEach(topicSeed -> interestTopicService.create(
-                topicSeed.getName(), topicSeed.getDescription(), topicSeed.getPrompt(), category.getId()));
+        categorySeed.getTopics()
+                .forEach(topicSeed -> interestTopicService
+                        .create(topicSeed.getName(), topicSeed.getDescription(), topicSeed.getPrompt(), category.getId()));
     }
 
     @Value

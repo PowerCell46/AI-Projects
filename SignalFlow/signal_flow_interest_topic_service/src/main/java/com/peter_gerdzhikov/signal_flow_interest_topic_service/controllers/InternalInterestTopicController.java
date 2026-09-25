@@ -35,21 +35,27 @@ public class InternalInterestTopicController {
 
     private final InterestTopicService interestTopicService;
 
+    /**
+     * POST, not GET: the id list can be arbitrarily long and GET-with-body isn't reliably supported by clients or proxies.
+     */
     @PostMapping("/existing")
     public ResponseEntity<ExistingInterestTopicsResponseDTO> findExistingInterestTopics(
             @Valid @RequestBody ExistingInterestTopicsRequestDTO request
     ) {
-        log.info("Received existing interest topics request for {} ids.", request.getIds().size());
+        log.debug("Received existing interest topics request for {} ids.", request.getIds().size());
         List<UUID> existingIds = interestTopicService.findExistingIds(request.getIds());
 
         return ResponseEntity.ok(new ExistingInterestTopicsResponseDTO(existingIds));
     }
 
+    /**
+     * POST, not GET: same reason as {@link #findExistingInterestTopics} plus feed mode/cursor/size params in the body.
+     */
     @PostMapping("/feed")
     public ResponseEntity<InterestTopicFeedResponseDTO> findInterestTopicFeed(
             @Valid @RequestBody InterestTopicFeedRequestDTO request
     ) {
-        log.info("Received interest topic feed request in {} mode for {} ids.", request.getMode(), request.getIds().size());
+        log.debug("Received interest topic feed request in {} mode for {} ids.", request.getMode(), request.getIds().size());
         Slice<InterestTopic> slice = interestTopicService.findFeedSlice(
                 request.getIds(),
                 request.getMode(),

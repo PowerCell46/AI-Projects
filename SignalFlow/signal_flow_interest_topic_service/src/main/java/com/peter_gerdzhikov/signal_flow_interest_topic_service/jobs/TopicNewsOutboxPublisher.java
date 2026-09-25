@@ -64,6 +64,7 @@ public class TopicNewsOutboxPublisher {
                         Instant.now(),
                         pageable
                 );
+
         due
             .forEach(this::publishOneSafely);
     }
@@ -79,6 +80,7 @@ public class TopicNewsOutboxPublisher {
 
     private void publishOne(TopicNews news) {
         TopicNewsEventDTO event = toEvent(news);
+
         try {
             kafkaTemplate
                     .send(topicName, event.getInterestTopicId().toString(), event)

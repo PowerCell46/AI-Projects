@@ -23,9 +23,11 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryInUseException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +41,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler({
             DuplicateCategoryNameException.class,
             DuplicateInterestTopicNameException.class,
-            CategoryInUseException.class
+            CategoryInUseException.class,
+            CategoryLimitExceededException.class,
+            InterestTopicLimitExceededException.class
     })
     public ResponseEntity<ErrorResponseDTO> handleConflict(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

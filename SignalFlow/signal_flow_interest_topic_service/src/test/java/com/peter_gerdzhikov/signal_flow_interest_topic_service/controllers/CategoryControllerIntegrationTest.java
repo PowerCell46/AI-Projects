@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -44,6 +45,9 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Value("${app.request.max-topic-body-bytes}")
     private int maxTopicRequestBodyBytes;
+
+    @Value("${app.category.max-count}")
+    private int maxCategoryCount;
 
     @BeforeEach
     void clearTopicsAndCategories() {
@@ -127,25 +131,41 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
 
             assertThat(body.getMessages().getFirst()).doesNotContain("Exception", "com.peter_gerdzhikov");
         }
+
+        @Test
+        void should_return_409_when_the_category_count_is_at_the_limit() {
+            categoryRepository.saveAll(namedCategories(maxCategoryCount));
+
+            createCategory(CATEGORY_NAME).expectStatus().isEqualTo(HttpStatus.CONFLICT);
+        }
     }
 
     @Nested
     class ListCategories {
 
         @Test
-        void should_return_all_categories_sorted_by_name() {
+        void should_return_the_first_page_sorted_by_name_by_default() {
             createCategory("science").expectStatus().isCreated();
             createCategory("art").expectStatus().isCreated();
 
-            List<CategoryResponseDTO> body = listCategories();
-
-            assertThat(body).extracting(CategoryResponseDTO::getName)
-                    .containsExactly("art", "science");
+            restTestClient.get()
+                    .uri("/api/v1/categories")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.content[0].name").isEqualTo("art")
+                    .jsonPath("$.content[1].name").isEqualTo("science")
+                    .jsonPath("$.page.size").isEqualTo(20);
         }
 
         @Test
-        void should_return_an_empty_list_when_no_categories_exist() {
-            assertThat(listCategories()).isEmpty();
+        void should_return_an_empty_page_when_no_categories_exist() {
+            restTestClient.get()
+                    .uri("/api/v1/categories")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.content.length()").isEqualTo(0);
         }
     }
 
@@ -249,18 +269,6 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
                 .exchange();
     }
 
-    private List<CategoryResponseDTO> listCategories() {
-        CategoryResponseDTO[] body = restTestClient.get()
-                .uri("/api/v1/categories")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(CategoryResponseDTO[].class)
-                .returnResult()
-                .getResponseBody();
-
-        return List.of(body);
-    }
-
     private RestTestClient.ResponseSpec renameCategory(UUID categoryId, String name) {
         return restTestClient.patch()
                 .uri("/api/v1/categories/" + categoryId)
@@ -285,6 +293,16 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
         Category category = new Category();
         category.setName(name);
         return categoryRepository.save(category);
+    }
+
+    private List<Category> namedCategories(int count) {
+        return IntStream.range(0, count)
+                .mapToObj(i -> {
+                    Category category = new Category();
+                    category.setName("category-" + i);
+                    return category;
+                })
+                .toList();
     }
 
     private InterestTopic persistedInterestTopic(Category category) {

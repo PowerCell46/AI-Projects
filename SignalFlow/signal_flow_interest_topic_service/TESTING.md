@@ -23,13 +23,15 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 - Body over the topic-route size cap (32 KB) returns 413 (`should_return_413_for_a_body_over_the_size_cap`)
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - Error body leaks no exception or package name (`should_not_leak_exception_or_package_names_in_the_error_body`)
+- Category count at the limit (`app.category.max-count`) returns 409 (`should_return_409_when_the_category_count_is_at_the_limit`)
 
 ## `GET /api/v1/categories`
 
 `CategoryControllerIntegrationTest.ListCategories`
 
-- Returns all categories sorted by name, unpaged (`should_return_all_categories_sorted_by_name`)
-- No categories returns an empty list, not 404 (`should_return_an_empty_list_when_no_categories_exist`)
+- Returns the first page sorted by name, default size 20 (`should_return_the_first_page_sorted_by_name_by_default`) —
+  asserts on the Spring Data `Page` JSON envelope (`content`, `page.size`)
+- No categories returns an empty page, not 404 (`should_return_an_empty_page_when_no_categories_exist`)
 
 ## `PATCH /api/v1/categories/{id}`
 
@@ -70,6 +72,7 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 - A 4000-character prompt and 1000-character description in a 3-byte UTF-8 script fit the 32 KB topic-route body cap (`should_accept_a_4000_character_prompt_in_a_multi_byte_script`)
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - Error body leaks no exception or package name (`should_not_leak_exception_or_package_names_in_the_error_body`)
+- Topic count at the limit (`app.interest-topic.max-count`) returns 409 (`should_return_409_when_the_topic_count_is_at_the_limit`)
 
 ## `GET /api/v1/interest-topics`
 

@@ -32,12 +32,15 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Interest
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 
 @ExtendWith(MockitoExtension.class)
 class InterestTopicServiceImplTest {
+
+    private static final long MAX_INTEREST_TOPIC_COUNT = 1000;
 
     private static final UUID CATEGORY_ID = UUID.randomUUID();
 
@@ -57,7 +60,8 @@ class InterestTopicServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        interestTopicService = new InterestTopicServiceImpl(categoryRepository, interestTopicRepository);
+        interestTopicService = new InterestTopicServiceImpl(
+                MAX_INTEREST_TOPIC_COUNT, categoryRepository, interestTopicRepository);
     }
 
     @Nested
@@ -66,6 +70,7 @@ class InterestTopicServiceImplTest {
         @Test
         void should_save_and_return_the_interest_topic() {
             Category category = categoryWithId(CATEGORY_ID);
+            when(interestTopicRepository.count()).thenReturn(0L);
             when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(category));
             when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
@@ -79,6 +84,7 @@ class InterestTopicServiceImplTest {
 
         @Test
         void should_throw_when_the_category_does_not_exist() {
+            when(interestTopicRepository.count()).thenReturn(0L);
             when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, CATEGORY_ID))
@@ -89,12 +95,24 @@ class InterestTopicServiceImplTest {
 
         @Test
         void should_throw_when_the_name_is_already_in_use() {
+            when(interestTopicRepository.count()).thenReturn(0L);
             when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(categoryWithId(CATEGORY_ID)));
             when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
             assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, CATEGORY_ID))
                     .isInstanceOf(DuplicateInterestTopicNameException.class);
+        }
+
+        @Test
+        void should_throw_when_the_topic_count_is_at_the_limit() {
+            when(interestTopicRepository.count()).thenReturn(MAX_INTEREST_TOPIC_COUNT);
+
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, CATEGORY_ID))
+                    .isInstanceOf(InterestTopicLimitExceededException.class);
+
+            verifyNoInteractions(categoryRepository);
+            verify(interestTopicRepository, never()).saveAndFlush(any());
         }
     }
 

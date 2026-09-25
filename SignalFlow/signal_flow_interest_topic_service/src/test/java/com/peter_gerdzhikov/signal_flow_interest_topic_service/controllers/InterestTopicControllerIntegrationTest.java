@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -50,6 +53,9 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private TopicNewsRepository topicNewsRepository;
+
+    @Value("${app.interest-topic.max-count}")
+    private int maxInterestTopicCount;
 
     @BeforeEach
     void clearTopicsAndCategories() {
@@ -185,6 +191,14 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
                     .getResponseBody();
 
             assertThat(body.getMessages().getFirst()).doesNotContain("Exception", "com.peter_gerdzhikov");
+        }
+
+        @Test
+        void should_return_409_when_the_topic_count_is_at_the_limit() {
+            Category category = persistedCategory("programming");
+            interestTopicRepository.saveAll(namedInterestTopics(maxInterestTopicCount, category));
+
+            createInterestTopic(TOPIC_NAME, null, TOPIC_PROMPT, category.getId()).expectStatus().isEqualTo(HttpStatus.CONFLICT);
         }
     }
 
@@ -402,6 +416,18 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         interestTopic.setPrompt(TOPIC_PROMPT);
         interestTopic.setCategory(category);
         return interestTopicRepository.save(interestTopic);
+    }
+
+    private List<InterestTopic> namedInterestTopics(int count, Category category) {
+        return IntStream.range(0, count)
+                .mapToObj(i -> {
+                    InterestTopic interestTopic = new InterestTopic();
+                    interestTopic.setName("topic-" + i);
+                    interestTopic.setPrompt(TOPIC_PROMPT);
+                    interestTopic.setCategory(category);
+                    return interestTopic;
+                })
+                .toList();
     }
 
     private TopicNews persistedTopicNews(InterestTopic interestTopic) {
