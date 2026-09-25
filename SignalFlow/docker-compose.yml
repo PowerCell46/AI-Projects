@@ -76,9 +76,11 @@ services:
   redis:
     image: redis:8.10.2
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set - redis-server treats an empty --requirepass as no password at all}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     deploy:
       resources:
         limits:
@@ -97,8 +99,8 @@ services:
     image: axllent/mailpit:v1.31.2
     restart: unless-stopped
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
     deploy:
       resources:
         limits:

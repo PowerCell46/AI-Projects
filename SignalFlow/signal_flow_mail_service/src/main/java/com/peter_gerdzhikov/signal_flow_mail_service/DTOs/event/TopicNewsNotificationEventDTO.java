@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,6 +23,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TopicNewsNotificationEventDTO {
 
+    public static final int MAX_NAME_LENGTH = 100;
+    public static final int MAX_DATA_LENGTH = 65_536;
+
     @NotNull
     private UUID newsId;
 
@@ -29,15 +33,18 @@ public class TopicNewsNotificationEventDTO {
     private UUID interestTopicId;
 
     @NotBlank
+    @Size(max = MAX_NAME_LENGTH)
     private String topicName;
 
     @NotBlank
+    @Size(max = MAX_NAME_LENGTH)
     private String categoryName;
 
     @NotNull
     private LocalDate newsDate;
 
     @NotBlank
+    @Size(max = MAX_DATA_LENGTH)
     private String data;
 
     @NotNull

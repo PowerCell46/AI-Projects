@@ -60,7 +60,7 @@ class TopicNewsMailServiceImplTest {
     void setUp() {
         message = new MimeMessage(Session.getInstance(new Properties()));
         mailService = new TopicNewsMailServiceImpl(FROM_ADDRESS, mailSender, new TopicNewsEmailRenderer(
-                "Europe/Sofia", "classpath:templates/topicNewsEmailTemplate.html"));
+                "Europe/Sofia", "classpath:templates/topicNewsEmailTemplate.html", "classpath:templates/topicNewsEmailTemplate.txt"));
     }
 
     @Nested
@@ -78,6 +78,7 @@ class TopicNewsMailServiceImplTest {
             assertTrue(message.getFrom()[0].toString().contains(FROM_ADDRESS));
             assertTrue(message.getSubject().equals("[SignalFlow] TopicName — 2026-09-24"));
             assertTrue(findHtmlPart(message).isMimeType("text/html"));
+            assertTrue(findTextPart(message).isMimeType("text/plain"));
         }
 
         @Test
@@ -128,9 +129,9 @@ class TopicNewsMailServiceImplTest {
 
         @Test
         void should_not_carry_the_provider_exception_or_its_message_into_the_thrown_exception() throws Exception {
-            // exploit-report-2026-09-24: a real SMTP server's reply text often echoes the rejected
-            // recipient address back (Gmail's bounce format does) - nothing downstream, including this
-            // exception's own cause chain, may carry that text where a future logger could print it.
+            // A real SMTP server's reply text often echoes the rejected recipient address back (Gmail's
+            // bounce format does) - nothing downstream, including this exception's own cause chain, may
+            // carry that text where a future logger could print it.
             when(mailSender.createMimeMessage()).thenReturn(message);
             String secretRecipient = "victim.real.address@example.com";
             SMTPAddressFailedException smtpException = new SMTPAddressFailedException(
@@ -184,15 +185,23 @@ class TopicNewsMailServiceImplTest {
      * read off the top-level message.
      */
     private static Part findHtmlPart(Part part) throws Exception {
-        if (part.isMimeType("text/html")) {
+        return findPart(part, "text/html");
+    }
+
+    private static Part findTextPart(Part part) throws Exception {
+        return findPart(part, "text/plain");
+    }
+
+    private static Part findPart(Part part, String mimeType) throws Exception {
+        if (part.isMimeType(mimeType)) {
             return part;
         }
         if (part.isMimeType("multipart/*")) {
             Multipart multipart = (Multipart) part.getContent();
             for (int i = 0; i < multipart.getCount(); i++) {
-                Part htmlPart = findHtmlPart(multipart.getBodyPart(i));
-                if (htmlPart != null) {
-                    return htmlPart;
+                Part matchingPart = findPart(multipart.getBodyPart(i), mimeType);
+                if (matchingPart != null) {
+                    return matchingPart;
                 }
             }
         }

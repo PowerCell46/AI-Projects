@@ -58,7 +58,8 @@ public class TopicNewsMailServiceImpl implements TopicNewsMailService {
             helper.setFrom(fromAddress);
             helper.setTo(event.getEmailAddress());
             helper.setSubject(subject(event));
-            helper.setText(emailRenderer.render(event), true);
+            RenderedEmail renderedEmail = emailRenderer.render(event);
+            helper.setText(renderedEmail.getText(), renderedEmail.getHtml());
 
             mailSender.send(message);
 

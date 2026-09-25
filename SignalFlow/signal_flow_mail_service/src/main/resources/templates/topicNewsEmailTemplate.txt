@@ -1,0 +1,10 @@
+signalflow — topic digest
+
+{{CATEGORY_NAME}}
+{{TOPIC_NAME}}
+News for {{NEWS_DATE}} · generated {{GENERATED_AT}}
+
+{{DATA}}
+
+---
+Sent to {{RECIPIENT_EMAIL}} because you're subscribed to this topic on signalflow.

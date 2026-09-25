@@ -21,12 +21,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
+import com.peter_gerdzhikov.signal_flow_mail_service.utilities.HtmlToPlainTextConverter;
 
 /**
- * Classpath HTML template with single-pass {@code {{TOKEN}}} substitution; the template is loaded and
- * validated at startup so a broken template fails the deployment, not the first email. {@code DATA} is
- * the only token carrying untrusted AI-generated HTML, so only it runs through
- * {@link #DATA_SANITIZATION_POLICY} - every other token is a plain string, HTML-escaped instead.
+ * Classpath HTML and text templates with single-pass {@code {{TOKEN}}} substitution; both templates are
+ * loaded and validated at startup so a broken template fails the deployment, not the first email.
+ * {@code DATA} is the only token carrying untrusted AI-generated HTML, so only it runs through
+ * {@link #DATA_SANITIZATION_POLICY} - every other HTML token is a plain string, HTML-escaped instead. The
+ * text template takes the same sanitized {@code DATA}, converted to plain text, and every other token
+ * raw, since a text body has no markup to inject into.
  */
 @Component
 public class TopicNewsEmailRenderer {
@@ -48,27 +51,53 @@ public class TopicNewsEmailRenderer {
 
     private final ZoneId zone;
 
-    private final String template;
+    private final String htmlTemplate;
+
+    private final String textTemplate;
 
     public TopicNewsEmailRenderer(
             @Value("${app.mail.zone}") String zone,
-            @Value("${app.mail.template.path:classpath:templates/topicNewsEmailTemplate.html}") String templatePath
+            @Value("${app.mail.template.path:classpath:templates/topicNewsEmailTemplate.html}") String htmlTemplatePath,
+            @Value("${app.mail.template.text-path:classpath:templates/topicNewsEmailTemplate.txt}") String textTemplatePath
     ) {
         this.zone = ZoneId.of(zone);
-        this.template = loadTemplate(templatePath);
-        validateTokens(this.template);
+        this.htmlTemplate = loadTemplate(htmlTemplatePath);
+        this.textTemplate = loadTemplate(textTemplatePath);
+        validateTokens(this.htmlTemplate);
+        validateTokens(this.textTemplate);
     }
 
-    public String render(TopicNewsNotificationEventDTO event) {
-        Map<String, String> valuesByToken = Map.of(
+    public RenderedEmail render(TopicNewsNotificationEventDTO event) {
+        String sanitizedData = DATA_SANITIZATION_POLICY.sanitize(event.getData());
+        String formattedNewsDate = event.getNewsDate().format(NEWS_DATE_FORMATTER);
+        String formattedGeneratedAt = event.getGeneratedAt().atZone(zone).format(GENERATED_AT_FORMATTER);
+
+        Map<String, String> htmlValuesByToken = Map.of(
                 "TOPIC_NAME", HtmlUtils.htmlEscape(event.getTopicName()),
                 "CATEGORY_NAME", HtmlUtils.htmlEscape(event.getCategoryName()),
-                "NEWS_DATE", event.getNewsDate().format(NEWS_DATE_FORMATTER),
-                "GENERATED_AT", event.getGeneratedAt().atZone(zone).format(GENERATED_AT_FORMATTER),
+                "NEWS_DATE", formattedNewsDate,
+                "GENERATED_AT", formattedGeneratedAt,
                 "RECIPIENT_EMAIL", HtmlUtils.htmlEscape(event.getEmailAddress()),
-                "DATA", DATA_SANITIZATION_POLICY.sanitize(event.getData())
+                "DATA", sanitizedData
         );
 
+        Map<String, String> textValuesByToken = Map.of(
+                "TOPIC_NAME", stripLineBreaks(event.getTopicName()),
+                "CATEGORY_NAME", stripLineBreaks(event.getCategoryName()),
+                "NEWS_DATE", formattedNewsDate,
+                "GENERATED_AT", formattedGeneratedAt,
+                "RECIPIENT_EMAIL", event.getEmailAddress(),
+                "DATA", HtmlToPlainTextConverter.convert(sanitizedData)
+        );
+
+        return new RenderedEmail(substitute(htmlTemplate, htmlValuesByToken), substitute(textTemplate, textValuesByToken));
+    }
+
+    private String stripLineBreaks(String value) {
+        return value.replaceAll("[\r\n]", "");
+    }
+
+    private String substitute(String template, Map<String, String> valuesByToken) {
         Matcher matcher = TOKEN_PATTERN.matcher(template);
         StringBuilder rendered = new StringBuilder();
         while (matcher.find()) {

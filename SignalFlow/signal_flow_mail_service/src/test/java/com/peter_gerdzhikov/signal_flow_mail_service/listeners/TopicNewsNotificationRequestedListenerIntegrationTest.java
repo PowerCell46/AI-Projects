@@ -169,6 +169,39 @@ class TopicNewsNotificationRequestedListenerIntegrationTest extends AbstractNoti
     }
 
     @Test
+    void should_send_a_text_part_with_the_data_converted_to_plain_text_including_the_link_url() {
+        String recipient = uniqueRecipient();
+        TopicNewsNotificationEventDTO event = aValidEvent(recipient);
+        event.setData("<p>Rust 1.90 shipped.</p><ul><li>See <a href=\"https://example.com/notes\">release notes</a>.</li></ul>");
+
+        publish(NOTIFICATION_REQUESTED_TOPIC, event.getUserId().toString(), toJson(event));
+
+        JsonNode summary = awaitEmail(recipient);
+        JsonNode message = MAILPIT_CLIENT.fetchMessage(summary.get("ID").asString());
+
+        assertTrue(message.get("HTML").asString().contains("<p>Rust 1.90 shipped.</p>"));
+        String text = message.get("Text").asString();
+        assertTrue(text.contains("Rust 1.90 shipped."));
+        assertTrue(text.contains("- See release notes (https://example.com/notes)."));
+        assertFalse(text.contains("<p>"));
+        assertFalse(text.contains("<a"));
+    }
+
+    @Test
+    void should_dead_letter_an_oversized_data_field_without_sending() {
+        TopicNewsNotificationEventDTO event = aValidEvent(uniqueRecipient());
+        event.setData("a".repeat(TopicNewsNotificationEventDTO.MAX_DATA_LENGTH + 1));
+        String key = event.getUserId().toString();
+
+        publishThenAwaitSentinelProcessed(key, toJson(event));
+
+        awaitDltRecordForKey(key);
+        assertNoEmail(event.getEmailAddress());
+        assertNull(redisTemplate.opsForValue().get(redisKey(event.getNewsId(), event.getUserId())));
+        verify(javaMailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
     void should_dead_letter_after_exactly_one_permanent_smtp_rejection() {
         String disallowedRecipient = UUID.randomUUID() + "@not-example.org";
         TopicNewsNotificationEventDTO event = aValidEvent(disallowedRecipient);

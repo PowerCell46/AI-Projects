@@ -126,7 +126,7 @@ production code path; `TopicNewsMailServiceImplTest` now also covers the Map-con
 
 ## Step 8 (2026-09-24) — fixed: recipient email address leaking into logs via SMTP provider error text
 
-`exploit-report-2026-09-24-topic-news-notification-emails.md` #1. `TopicNewsMailServiceImpl.classify`
+Closes finding #1 from that phase's `exploit-hunter` audit (git history: `ad7b302`). `TopicNewsMailServiceImpl.classify`
 logged the raw delivery exception, and both a real SMTP server's `5xx`/`4xx` reply text (Gmail's bounce
 format echoes the rejected address) and `PermanentMailDeliveryException`/`TransientMailDeliveryException`
 carrying that exception as their `cause` meant the one field `newsId`/`userId`-only logging was meant to
@@ -143,6 +143,37 @@ alias, so a wrong default would silently ship broken sender identity rather than
 refuses to start without `MAIL_FROM` set; the test profile pins it to a fixed non-routable
 `signalflow-test@example.com`.
 
+## Backlog cleanup step 3 (2026-09-25) — `RenderedEmail` is a Lombok `@Value` class, not a record
+
+`PLAN.md`'s design text specified `RenderedEmail(html, text)` as a record, written before the
+`java-code-style` skill's blanket "no records" rule was checked against it. Flagged and resolved with the
+user in favor of the codebase-wide rule: `RenderedEmail` is a plain `@Value` class in
+`services/implementations`, same immutability and generated `equals`/`hashCode`/`toString` a record would
+give, no exception carved out.
+
+## Backlog cleanup step 3 (2026-09-25) — `jsoup:1.21.1` pinned, verified pullable from Maven Central at write time
+
+`HtmlToPlainTextConverter` needs a real HTML parser (not string manipulation) to walk the sanitized
+`<p> <ul> <li> <strong> <em> <a>` tree and decode entities correctly. `1.21.1` was Maven Central's latest
+release when this dependency was added (`search.maven.org` query for `org.jsoup:jsoup`).
+
+## Backlog cleanup step 3 (2026-09-25) — `MimeMessageHelper.setText(text, html)` nests `multipart/alternative` two levels inside `multipart/mixed`
+
+Confirmed by dumping a real `MimeMessage`'s part tree after `helper.setText("plain text", "<p>html</p>")`
++ `message.saveChanges()`: `multipart/mixed` > `multipart/related` > `multipart/alternative` >
+(`text/plain`, `text/html`) - matching the "nested multipart" prediction already on record for the
+`MimeMessageHelper(message, true, "UTF-8")` constructor (step 4 above). `TopicNewsMailServiceImplTest`'s
+`findPart` walks the tree by MIME type rather than assuming a fixed depth, so this nesting doesn't need
+its own assertion.
+
+## Backlog cleanup step 3 (2026-09-25) — Mailpit's message JSON carries the plain-text body under `Text`
+
+Verified against a live `axllent/mailpit:v1.31.2` container: sending a `multipart/alternative` message
+(one `text/plain`, one `text/html` part) and fetching it via `GET /api/v1/message/{ID}` returns both
+`"Text"` and `"HTML"` as top-level string fields on the message object - not nested under a `Parts` or
+`Attachments` array. `TopicNewsNotificationRequestedListenerIntegrationTest` reads
+`message.get("Text").asString()` directly.
+
 ## OpenRouter phase step 4 (2026-09-24) — `DATA`'s sanitization policy
 
 Closes the "raw HTML" accepted gap now that `signal_flow_interest_topic_service`'s
@@ -154,3 +185,74 @@ the `https` protocol, and every surviving link gets `rel="noopener noreferrer"` 
 `javascript:`/`http:` hrefs - is dropped because nothing allows it; the library also balances unclosed
 tags as part of its normal parsing, so no separate step was needed for that. Only `DATA` goes through it;
 the other tokens stay on `HtmlUtils.htmlEscape`, since they're plain strings, not AI-authored HTML.
+
+## Backlog cleanup step 4 (2026-09-25) — `@ServiceConnection(name = "redis")` never carries a password, moved to `@DynamicPropertySource`
+
+Checked `RedisContainerConnectionDetailsFactory`'s source in `spring-boot-data-redis:4.1.1` (the module
+Boot 4 split Redis's autoconfigure and testcontainers support into): its `RedisContainerConnectionDetails`
+only overrides `getStandalone()`, returning `Standalone.of(host, port)` - no username or password is ever
+read from the container, so a `--requirepass` container would connect unauthenticated and fail. Moved
+`AbstractRedisIntegrationTest` to `@DynamicPropertySource` for host, port and password, same pattern as
+`AbstractMailpitIntegrationTest`. Confirmed by running the full suite against a `--requirepass`-protected
+container: unchanged and green.
+
+## Backlog cleanup step 4 (2026-09-25) — the wrong-password test gets its own container and context, not a `@DynamicPropertySource` override
+
+`DynamicPropertiesContextCustomizerFactory` collects `@DynamicPropertySource` methods from the whole class
+hierarchy into one `Set<Method>`; if a subclass declared its own method to override
+`spring.data.redis.password`, which one wins is an artifact of `MethodIntrospector`'s traversal order, not
+a documented contract. `RedisAuthenticationIntegrationTest` avoids the question entirely: its own Redis
+container with a real password, its own context wired to the wrong one via a single
+`@DynamicPropertySource` method, extending `AbstractKafkaIntegrationTest` directly for the shared Kafka
+container only - same reasoning `SmtpUnreachableIntegrationTest` already uses for its own broken-SMTP
+context. Verified live: a wrong password surfaces as a `DataAccessException` on the first Redis command
+(`StringRedisTemplate.opsForValue().get(...)`), not a silent unauthenticated connection.
+
+## Backlog cleanup step 5 (2026-09-25) — `kafka_dlt-exception-cause-fqcn` carries the classification-relevant exception class, not `kafka_dlt-exception-fqcn`
+
+Read `DeadLetterRecordManager`/`ErrorHandlingUtils.findRootCause` in `spring-kafka:4.1.1`'s source, then
+confirmed live against a real DLT record: `kafka_dlt-exception-fqcn` is always
+`org.springframework.kafka.listener.ListenerExecutionFailedException` for a listener-thrown exception -
+useless for classification. `findRootCause` unwraps only `ListenerExecutionFailedException` and
+`TimestampedException` wrapper layers (not the full `getCause()` chain), so
+`kafka_dlt-exception-cause-fqcn` lands on our own exception class - confirmed
+`InvalidNotificationEventException` for a validation failure and, notably,
+`PermanentMailDeliveryException` itself for an SMTP `550` (not the underlying
+`SMTPAddressFailedException` further down that exception's own cause chain). A value deserialization
+failure never goes through `ListenerExecutionFailedException` at all, so both headers carry
+`org.springframework.kafka.support.serializer.DeserializationException` there. `DltReplayServiceImpl`
+classifies permanent failures from the cause header alone.
+
+## Backlog cleanup step 5 (2026-09-25) — `DltReplayServiceImpl.replay()` splits into a package-private `replay(consumer, producer)`
+
+The public `replay()` builds a real `Consumer`/`Producer` from `KafkaProperties`/`KafkaConnectionDetails`
+and delegates to a package-private overload taking them as parameters, so the offset-bounding and
+header-classification logic is unit-testable against mocked Kafka clients
+(`DltReplayServiceImplTest`) without a broker - the project's Testcontainers-only rule is about not
+faking Kafka *as infrastructure*, not about refusing to mock the client interfaces our own logic is
+written against, the same reasoning `TopicNewsMailServiceImplTest` already applies to `JavaMailSender`.
+
+## Backlog cleanup step 6 (2026-09-25) — `${REDIS_PASSWORD:?...}` in `../docker-compose.yml`, not a bare `${REDIS_PASSWORD}`
+
+`exploit-hunter` found that `redis-server --requirepass ""` disables auth entirely - Redis treats an empty
+password as no password, confirmed live (`redis-cli ping` succeeds unauthenticated, `config get
+requirepass` returns empty). A blank root `.env` value would silently ship an unauthenticated Redis even
+though this phase's step 4 added `spring.data.redis.password` with no default on the *app* side - the two
+`.env` files are separate, so the app failing closed doesn't protect the container. Fixed with Compose's
+`${VAR:?message}` required-variable syntax on both the `--requirepass` arg and `REDISCLI_AUTH`: `docker
+compose up`/`config` now refuses to resolve the service at all if `REDIS_PASSWORD` is unset or blank,
+verified live. This phase's `exploit-hunter` report is not kept as a standalone file - its one finding is
+fixed, and this entry is the full record of it.
+
+## Backlog cleanup step 5 (2026-09-25) — `DltReplayIntegrationTest` gets its own topic names and consumer groups
+
+It shares `AbstractNotificationE2ETest`'s cached context (real Kafka/Redis/Mailpit) with
+`TopicNewsNotificationRequestedListenerIntegrationTest`, which also dead-letters records onto the default
+DLT topic. Since `DltReplayServiceImpl.replay()` sweeps the *entire* DLT topic rather than a specific key,
+sharing that topic would let this test's replay runs pick up unrelated leftover records from other test
+methods (e.g. `should_dead_letter_and_leave_a_long_held_claim_untouched`'s `NotificationClaimHeldException`
+record, which classifies as non-permanent and would get silently replayed). Fixed with
+`@TestPropertySource` overriding `app.kafka.notification-requested.name`/`.dlt-name` and both consumer
+group IDs to values unique to this test class - same isolation `SmtpUnreachableIntegrationTest` already
+uses for its own topic names, for the same reason (an unscoped consumer would otherwise cross into
+another test's traffic).

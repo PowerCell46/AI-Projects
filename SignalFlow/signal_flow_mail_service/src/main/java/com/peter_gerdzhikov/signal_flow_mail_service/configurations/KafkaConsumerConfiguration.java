@@ -45,9 +45,15 @@ public class KafkaConsumerConfiguration {
         );
     }
 
+    /**
+     * {@code autoStartup} is off under the {@code dlt-replay} profile
+     * ({@code application-dlt-replay.properties}), so the main listener never competes with
+     * {@code DltReplayServiceImpl}'s own consumer for the DLT topic's records.
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, TopicNewsNotificationEventDTO> topicNewsNotificationRequestedListenerContainerFactory(
             @Value("${spring.kafka.listener.concurrency}") int concurrency,
+            @Value("${spring.kafka.listener.auto-startup}") boolean autoStartup,
             ConsumerFactory<String, TopicNewsNotificationEventDTO> topicNewsNotificationRequestedConsumerFactory,
             CommonErrorHandler topicNewsNotificationRequestedErrorHandler
     ) {
@@ -55,6 +61,7 @@ public class KafkaConsumerConfiguration {
         factory.setConsumerFactory(topicNewsNotificationRequestedConsumerFactory);
         factory.setCommonErrorHandler(topicNewsNotificationRequestedErrorHandler);
         factory.setConcurrency(concurrency);
+        factory.setAutoStartup(autoStartup);
         return factory;
     }
 }

@@ -21,25 +21,30 @@ class TopicNewsEmailRendererTest {
 
     private static final String DEFAULT_TEMPLATE_PATH = "classpath:templates/topicNewsEmailTemplate.html";
 
+    private static final String DEFAULT_TEXT_TEMPLATE_PATH = "classpath:templates/topicNewsEmailTemplate.txt";
+
     private static final String TOKENS_ONLY_TEMPLATE_PATH = "classpath:templates/templateWithOnlyTokens.html";
+
+    private static final String TOKENS_ONLY_TEXT_TEMPLATE_PATH = "classpath:templates/templateWithOnlyTokens.txt";
 
     private static final String ZONE = "Europe/Sofia";
 
     @Nested
     class Render {
 
-        private final TopicNewsEmailRenderer renderer = new TopicNewsEmailRenderer(ZONE, DEFAULT_TEMPLATE_PATH);
+        private final TopicNewsEmailRenderer renderer = new TopicNewsEmailRenderer(ZONE, DEFAULT_TEMPLATE_PATH, DEFAULT_TEXT_TEMPLATE_PATH);
 
         // The default template carries its own <style> block, so strip assertions render through a template
         // with no markup of its own - anything they find came from the sanitized data.
-        private final TopicNewsEmailRenderer tokensOnlyRenderer = new TopicNewsEmailRenderer(ZONE, TOKENS_ONLY_TEMPLATE_PATH);
+        private final TopicNewsEmailRenderer tokensOnlyRenderer =
+                new TopicNewsEmailRenderer(ZONE, TOKENS_ONLY_TEMPLATE_PATH, TOKENS_ONLY_TEXT_TEMPLATE_PATH);
 
         @Test
         void should_replace_every_token_when_rendering() {
             TopicNewsNotificationEventDTO event = anEvent(
                     "AI regulation", "Technology", "<p>Body</p>", "recipient@example.com");
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertFalse(html.contains("{{"));
             assertTrue(html.contains("AI regulation"));
@@ -53,7 +58,7 @@ class TopicNewsEmailRendererTest {
             TopicNewsNotificationEventDTO event = anEvent(
                     "<script>alert(1)</script>", "Tech & Science", "<p>Body</p>", "\"quoted\"@example.com");
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertFalse(html.contains("<script>alert(1)</script>"));
             assertTrue(html.contains("&lt;script&gt;"));
@@ -68,7 +73,7 @@ class TopicNewsEmailRendererTest {
                             + "<ul><li>See <a href=\"https://example.com/notes\">release notes</a>.</li></ul>",
                     "recipient@example.com");
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertTrue(html.contains("<p>Rust 1.90 <strong>shipped</strong> with <em>faster</em> builds.</p>"));
             assertTrue(html.contains("<ul><li>See <a"));
@@ -86,7 +91,7 @@ class TopicNewsEmailRendererTest {
                             + "<p onclick=\"alert(1)\">Safe text</p>",
                     "recipient@example.com");
 
-            String html = tokensOnlyRenderer.render(event);
+            String html = tokensOnlyRenderer.render(event).getHtml();
 
             assertFalse(html.contains("<script"));
             assertFalse(html.contains("alert(1)"));
@@ -106,7 +111,7 @@ class TopicNewsEmailRendererTest {
                             + "<a href=\"https://example.com\">good</a>",
                     "recipient@example.com");
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertFalse(html.contains("javascript:"));
             assertFalse(html.contains("href=\"http://example.com\""));
@@ -121,7 +126,7 @@ class TopicNewsEmailRendererTest {
             TopicNewsNotificationEventDTO event = anEvent("Topic", "Category",
                     "<p>Unclosed paragraph<ul><li>Unclosed item", "recipient@example.com");
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertTrue(html.contains("<p>Unclosed paragraph"));
             assertTrue(html.contains("<li>Unclosed item</li>"));
@@ -134,7 +139,7 @@ class TopicNewsEmailRendererTest {
             TopicNewsNotificationEventDTO event = anEvent(
                     "{{DATA}}", "before {{TOPIC_NAME}} after", "<p>Body</p>", "recipient@example.com");
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertTrue(html.contains("before {{TOPIC_NAME}} after"));
             assertTrue(html.contains("{{DATA}}"));
@@ -146,7 +151,7 @@ class TopicNewsEmailRendererTest {
             TopicNewsNotificationEventDTO event = anEvent("Topic", "Category", "Body", "recipient@example.com");
             event.setGeneratedAt(generatedAt);
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertTrue(html.contains(expectedFormattedTime));
         }
@@ -156,9 +161,46 @@ class TopicNewsEmailRendererTest {
             TopicNewsNotificationEventDTO event = anEvent("Topic", "Category", "Body", "recipient@example.com");
             event.setNewsDate(LocalDate.of(2026, 1, 5));
 
-            String html = renderer.render(event);
+            String html = renderer.render(event).getHtml();
 
             assertTrue(html.contains("5 January 2026"));
+        }
+
+        @Test
+        void should_leave_the_text_tokens_raw_and_not_html_escaped() {
+            TopicNewsNotificationEventDTO event = anEvent(
+                    "Tech & Science", "R&D", "<p>Body</p>", "\"quoted\"@example.com");
+
+            String text = renderer.render(event).getText();
+
+            assertTrue(text.contains("Tech & Science"));
+            assertTrue(text.contains("R&D"));
+            assertTrue(text.contains("\"quoted\"@example.com"));
+        }
+
+        @Test
+        void should_strip_line_breaks_from_topic_name_and_category_name_in_the_text_body() {
+            TopicNewsNotificationEventDTO event = anEvent(
+                    "Topic\r\nName", "Category\nName", "<p>Body</p>", "recipient@example.com");
+
+            String text = renderer.render(event).getText();
+
+            assertTrue(text.contains("TopicName"));
+            assertTrue(text.contains("CategoryName"));
+        }
+
+        @Test
+        void should_convert_sanitized_data_to_plain_text_including_the_link_url_in_the_text_body() {
+            TopicNewsNotificationEventDTO event = anEvent("Topic", "Category",
+                    "<p>Rust 1.90 shipped.</p><ul><li>See <a href=\"https://example.com/notes\">release notes</a>.</li></ul>",
+                    "recipient@example.com");
+
+            String text = renderer.render(event).getText();
+
+            assertTrue(text.contains("Rust 1.90 shipped."));
+            assertTrue(text.contains("- See release notes (https://example.com/notes)."));
+            assertFalse(text.contains("<p>"));
+            assertFalse(text.contains("<a"));
         }
     }
 
@@ -166,21 +208,39 @@ class TopicNewsEmailRendererTest {
     class Constructor {
 
         @Test
-        void should_throw_when_the_template_is_missing() {
+        void should_throw_when_the_html_template_is_missing() {
             assertThrows(IllegalStateException.class,
-                    () -> new TopicNewsEmailRenderer(ZONE, "classpath:templates/does-not-exist.html"));
+                    () -> new TopicNewsEmailRenderer(ZONE, "classpath:templates/does-not-exist.html", DEFAULT_TEXT_TEMPLATE_PATH));
         }
 
         @Test
-        void should_throw_when_the_template_contains_an_unknown_token() {
+        void should_throw_when_the_text_template_is_missing() {
             assertThrows(IllegalStateException.class,
-                    () -> new TopicNewsEmailRenderer(ZONE, "classpath:templates/templateWithUnknownToken.html"));
+                    () -> new TopicNewsEmailRenderer(ZONE, DEFAULT_TEMPLATE_PATH, "classpath:templates/does-not-exist.txt"));
         }
 
         @Test
-        void should_throw_when_the_template_is_missing_a_known_token() {
+        void should_throw_when_the_html_template_contains_an_unknown_token() {
             assertThrows(IllegalStateException.class,
-                    () -> new TopicNewsEmailRenderer(ZONE, "classpath:templates/templateMissingDataToken.html"));
+                    () -> new TopicNewsEmailRenderer(ZONE, "classpath:templates/templateWithUnknownToken.html", DEFAULT_TEXT_TEMPLATE_PATH));
+        }
+
+        @Test
+        void should_throw_when_the_text_template_contains_an_unknown_token() {
+            assertThrows(IllegalStateException.class,
+                    () -> new TopicNewsEmailRenderer(ZONE, DEFAULT_TEMPLATE_PATH, "classpath:templates/templateWithUnknownToken.txt"));
+        }
+
+        @Test
+        void should_throw_when_the_html_template_is_missing_a_known_token() {
+            assertThrows(IllegalStateException.class,
+                    () -> new TopicNewsEmailRenderer(ZONE, "classpath:templates/templateMissingDataToken.html", DEFAULT_TEXT_TEMPLATE_PATH));
+        }
+
+        @Test
+        void should_throw_when_the_text_template_is_missing_a_known_token() {
+            assertThrows(IllegalStateException.class,
+                    () -> new TopicNewsEmailRenderer(ZONE, DEFAULT_TEMPLATE_PATH, "classpath:templates/templateMissingDataToken.txt"));
         }
     }
 

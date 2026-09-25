@@ -20,16 +20,23 @@ spring-boot:run` serves the app on **:8082** against them, pointed at Mailpit
 (`MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`) so nothing real gets
 sent. Other goals: `mvn clean install`, `mvn test`, `mvn verify`.
 
+**DLT replay:** `mvn spring-boot:run -Dspring-boot.run.profiles=dlt-replay` republishes
+`topic-news.notification-requested-dlt` back to `topic-news.notification-requested`, bounded by an offset
+snapshot taken at startup, then exits. Skips permanent failures by default; add
+`-Dspring-boot.run.arguments=--app.dlt-replay.include-permanent=true` to replay them too, once the
+underlying bug is fixed.
+
 Tests use **Testcontainers only** — no embedded fakes for Kafka, Redis or SMTP. A running Docker daemon
 is a hard prerequisite.
 
 ## Spring Boot 4
 
-The pom is on **4.2.0-M1**, same as `signal_flow_interest_topic_service` — this service has no Spring
-Cloud dependency, so it doesn't hit the gateway's Spring Cloud 2025.1.3 milestone incompatibility (see the
-gateway's own `DECISIONS.md`). Boot 4 renamed the starters — `spring-boot-starter-webmvc` (not `-web`) —
-and ships a separate `*-test` starter per module. Copy the artifactId pattern already in `pom.xml` rather
-than reaching for the 3.x name, and verify any 3.x-era API before relying on it.
+The pom is on **4.1.1 GA**, same as `signal_flow_api_gateway`. `signal_flow_interest_topic_service` is
+still on the `4.2.0-M1` milestone. This service has no Spring Cloud dependency, so it doesn't hit the
+gateway's Spring Cloud 2025.1.3 milestone incompatibility (see the gateway's own `DECISIONS.md`). Boot 4
+renamed the starters — `spring-boot-starter-webmvc` (not `-web`) — and ships a separate `*-test` starter
+per module. Copy the artifactId pattern already in `pom.xml` rather than reaching for the 3.x name, and
+verify any 3.x-era API before relying on it.
 
 ## Writing code
 
@@ -62,6 +69,7 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_mail_service`:
 - `/DTOs/event` — Kafka message payloads
 - `/exceptions`
 - `/listeners` — `@KafkaListener`s, thin, delegate to a service
+- `/runners` — `CommandLineRunner`s for one-shot run modes (e.g. `dlt-replay`), gated by `@Profile`
 - `/services`
     - `/interfaces` — service interfaces
     - `/implementations` — service implementations

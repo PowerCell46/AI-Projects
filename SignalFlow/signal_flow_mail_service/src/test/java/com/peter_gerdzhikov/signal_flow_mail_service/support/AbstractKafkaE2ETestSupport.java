@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.signal_flow_mail_service.support;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -17,6 +18,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -24,6 +27,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import tools.jackson.databind.json.JsonMapper;
 
 import org.awaitility.Awaitility;
+
+import org.springframework.kafka.support.KafkaHeaders;
 
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 
@@ -71,6 +76,31 @@ public abstract class AbstractKafkaE2ETestSupport extends AbstractRedisIntegrati
     protected static void publish(String topic, String key, String value) {
         try {
             RAW_PRODUCER.send(new ProducerRecord<>(topic, key, value)).get(10, TimeUnit.SECONDS);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+
+        } catch (ExecutionException | TimeoutException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Publishes directly to the DLT topic with a {@code kafka_dlt-exception-cause-fqcn} header, simulating
+     * a record that already dead-lettered under that failure class - lets {@code DltReplayIntegrationTest}
+     * exercise the replay classification without re-triggering a real failure through the whole pipeline.
+     */
+    protected static void publishToDlt(String key, String value, String exceptionCauseFqcn) {
+        publishToDlt(NOTIFICATION_REQUESTED_DLT_TOPIC, key, value, exceptionCauseFqcn);
+    }
+
+    protected static void publishToDlt(String dltTopic, String key, String value, String exceptionCauseFqcn) {
+        List<Header> headers = List.of(
+                new RecordHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN, exceptionCauseFqcn.getBytes(StandardCharsets.UTF_8)));
+
+        try {
+            RAW_PRODUCER.send(new ProducerRecord<>(dltTopic, null, key, value, headers)).get(10, TimeUnit.SECONDS);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

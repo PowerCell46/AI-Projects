@@ -68,6 +68,15 @@ class TopicNewsNotificationServiceImplTest {
 
             verifyNoInteractions(notificationInboxService, topicNewsMailService);
         }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsNotificationServiceImplTest#sizeCapBoundaryEvents")
+        void should_not_throw_when_a_size_capped_field_is_exactly_at_its_cap(String description, TopicNewsNotificationEventDTO event) {
+            when(notificationInboxService.claim(eq(event.getNewsId()), eq(event.getUserId()), anyString()))
+                    .thenReturn(ClaimResult.ALREADY_SENT);
+
+            assertDoesNotThrow(() -> service.process(event));
+        }
     }
 
     @Nested
@@ -159,7 +168,23 @@ class TopicNewsNotificationServiceImplTest {
                 Arguments.of("null generatedAt", mutate(e -> e.setGeneratedAt(null))),
                 Arguments.of("null userId", mutate(e -> e.setUserId(null))),
                 Arguments.of("blank emailAddress", mutate(e -> e.setEmailAddress(""))),
-                Arguments.of("malformed emailAddress", mutate(e -> e.setEmailAddress("not-an-email"))));
+                Arguments.of("malformed emailAddress", mutate(e -> e.setEmailAddress("not-an-email"))),
+                Arguments.of("topicName over max length",
+                        mutate(e -> e.setTopicName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH + 1)))),
+                Arguments.of("categoryName over max length",
+                        mutate(e -> e.setCategoryName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH + 1)))),
+                Arguments.of("data over max length",
+                        mutate(e -> e.setData("a".repeat(TopicNewsNotificationEventDTO.MAX_DATA_LENGTH + 1)))));
+    }
+
+    static Stream<Arguments> sizeCapBoundaryEvents() {
+        return Stream.of(
+                Arguments.of("topicName at max length",
+                        mutate(e -> e.setTopicName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH)))),
+                Arguments.of("categoryName at max length",
+                        mutate(e -> e.setCategoryName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH)))),
+                Arguments.of("data at max length",
+                        mutate(e -> e.setData("a".repeat(TopicNewsNotificationEventDTO.MAX_DATA_LENGTH)))));
     }
 
     private static TopicNewsNotificationEventDTO mutate(Consumer<TopicNewsNotificationEventDTO> mutator) {
