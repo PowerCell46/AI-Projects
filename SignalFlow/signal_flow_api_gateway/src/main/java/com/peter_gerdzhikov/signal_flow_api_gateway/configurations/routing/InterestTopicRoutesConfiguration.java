@@ -7,6 +7,8 @@ import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFuncti
 import static org.springframework.cloud.gateway.server.mvc.predicate.GatewayRequestPredicates.path;
 
 import java.net.http.HttpClient;
+import java.util.List;
+import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.JdkClientHttpRequestFactoryBuilder;
@@ -15,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.configurations.security.SecurityConfiguration;
@@ -28,6 +31,8 @@ public class InterestTopicRoutesConfiguration {
 
     public static final String CATEGORIES_PATH = "/api/v1/categories/**";
 
+    private static final String RESERVED_IDENTITY_HEADER_PREFIX = "X-User-";
+
     public static final String INTEREST_TOPICS_PATH = "/api/v1/interest-topics/**";
 
     @Bean
@@ -40,6 +45,9 @@ public class InterestTopicRoutesConfiguration {
                 // The downstream trusts the gateway and consumes no identity, so the caller's JWT never leaves here.
                 .before(removeRequestHeader(HttpHeaders.COOKIE))
                 .before(removeRequestHeader(HttpHeaders.AUTHORIZATION))
+                // Reserved for a future identity header the gateway itself will add; stripped now so a
+                // caller can never plant or spoof one ahead of that.
+                .before(removeHeadersWithPrefix(RESERVED_IDENTITY_HEADER_PREFIX))
                 .build();
     }
 
@@ -52,5 +60,17 @@ public class InterestTopicRoutesConfiguration {
     public ClientHttpRequestFactoryBuilderCustomizer<JdkClientHttpRequestFactoryBuilder> http1OnlyUpstreamClient() {
         return builder -> builder
                 .withHttpClientCustomizer(client -> client.version(HttpClient.Version.HTTP_1_1));
+    }
+
+    private static Function<ServerRequest, ServerRequest> removeHeadersWithPrefix(String prefix) {
+        return request -> ServerRequest.from(request)
+                .headers(httpHeaders -> namesStartingWith(httpHeaders, prefix).forEach(httpHeaders::remove))
+                .build();
+    }
+
+    private static List<String> namesStartingWith(HttpHeaders httpHeaders, String prefix) {
+        return httpHeaders.headerNames().stream()
+                .filter(name -> name.regionMatches(true, 0, prefix, 0, prefix.length()))
+                .toList();
     }
 }

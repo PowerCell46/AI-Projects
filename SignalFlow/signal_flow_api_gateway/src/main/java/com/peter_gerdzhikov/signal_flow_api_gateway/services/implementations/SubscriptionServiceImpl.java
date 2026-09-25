@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.services.implementations;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class SubscriptionServiceImpl implements SubscriptionService {
+
+    private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
     private final int maxSubscriptionsPerUser;
 
@@ -64,6 +67,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             return savedSubscription;
 
         } catch (DataIntegrityViolationException e) {
+            if (!isUniqueConstraintViolation(e)) {
+                // Not the (interest_topic_id, user_id) constraint - most likely the user_id FK, meaning
+                // the caller's own user row is gone. Rethrown rather than mislabeled, so the generic
+                // handler's neutral 409 answers instead of a wrong "already subscribed".
+                throw e;
+            }
+
             // The unique (interest_topic_id, user_id) constraint - a concurrent request won the race.
             throw new DuplicateSubscriptionException();
         }
@@ -97,5 +107,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         subscription.setUser(userRepository.getReferenceById(userId));
         subscription.setInterestTopicId(interestTopicId);
         return subscription;
+    }
+
+    private boolean isUniqueConstraintViolation(DataIntegrityViolationException e) {
+        return e.getMostSpecificCause() instanceof SQLException sqlException
+                && UNIQUE_VIOLATION_SQL_STATE.equals(sqlException.getSQLState());
     }
 }

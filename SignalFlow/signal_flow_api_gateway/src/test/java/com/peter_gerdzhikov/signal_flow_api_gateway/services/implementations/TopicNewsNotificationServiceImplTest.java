@@ -38,6 +38,8 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
 
     private static final int BATCH_SIZE = 2;
 
+    private static final int MAX_DATA_LENGTH = 20;
+
     private static final String PASSWORD = "hashed-password";
 
     @Autowired
@@ -60,7 +62,8 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
     @BeforeEach
     void setUp() {
         topicNewsNotificationService = new TopicNewsNotificationServiceImpl(
-                BATCH_SIZE, subscriptionRepository, topicNewsInboxRepository, new JdbcTemplate(dataSource));
+                BATCH_SIZE, MAX_DATA_LENGTH, subscriptionRepository, topicNewsInboxRepository,
+                new JdbcTemplate(dataSource));
     }
 
     @Nested
@@ -135,6 +138,47 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
 
             assertThat(notificationOutboxRepository.findAll()).isEmpty();
         }
+
+        @Test
+        void should_queue_nothing_but_still_mark_the_news_processed_when_data_exceeds_the_length_cap() {
+            UUID interestTopicId = UUID.randomUUID();
+            User bob = userRepository.save(newUser("bob@example.com", true));
+            subscriptionRepository.save(newSubscription(bob, interestTopicId));
+            TopicNewsEventDTO event = newEvent(interestTopicId, "x".repeat(MAX_DATA_LENGTH + 1));
+
+            topicNewsNotificationService.notifySubscribers(event);
+
+            assertThat(topicNewsInboxRepository.existsById(event.getNewsId())).isTrue();
+            assertThat(notificationOutboxRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        void should_queue_nothing_but_still_mark_the_news_processed_when_the_topic_name_exceeds_the_column_cap() {
+            UUID interestTopicId = UUID.randomUUID();
+            User bob = userRepository.save(newUser("bob@example.com", true));
+            subscriptionRepository.save(newSubscription(bob, interestTopicId));
+            TopicNewsEventDTO event = newEvent(interestTopicId);
+            event.setTopicName("x".repeat(256));
+
+            topicNewsNotificationService.notifySubscribers(event);
+
+            assertThat(topicNewsInboxRepository.existsById(event.getNewsId())).isTrue();
+            assertThat(notificationOutboxRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        void should_queue_nothing_but_still_mark_the_news_processed_when_the_category_name_exceeds_the_column_cap() {
+            UUID interestTopicId = UUID.randomUUID();
+            User bob = userRepository.save(newUser("bob@example.com", true));
+            subscriptionRepository.save(newSubscription(bob, interestTopicId));
+            TopicNewsEventDTO event = newEvent(interestTopicId);
+            event.setCategoryName("x".repeat(256));
+
+            topicNewsNotificationService.notifySubscribers(event);
+
+            assertThat(topicNewsInboxRepository.existsById(event.getNewsId())).isTrue();
+            assertThat(notificationOutboxRepository.findAll()).isEmpty();
+        }
     }
 
     private User newUser(String email, boolean enabled) {
@@ -160,13 +204,17 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
     }
 
     private TopicNewsEventDTO newEvent(UUID interestTopicId) {
+        return newEvent(interestTopicId, "today's rust news");
+    }
+
+    private TopicNewsEventDTO newEvent(UUID interestTopicId, String data) {
         return new TopicNewsEventDTO(
                 UUID.randomUUID(),
                 interestTopicId,
                 "rust",
                 "programming",
                 LocalDate.now(),
-                "today's rust news",
+                data,
                 Instant.now().truncatedTo(ChronoUnit.MICROS));
     }
 }

@@ -195,6 +195,21 @@ class InterestTopicRoutesIntegrationTest extends AbstractInterestTopicServiceInt
                     .withoutHeader(HttpHeaders.COOKIE)
                     .withoutHeader(HttpHeaders.AUTHORIZATION));
         }
+
+        @Test
+        void should_strip_client_supplied_identity_headers_before_forwarding() {
+            restTestClient.get()
+                    .uri(Endpoint.LIST_CATEGORIES.path)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(Role.USER))
+                    .header("X-User-Id", "someone-else")
+                    .header("X-User-Role", "ADMIN")
+                    .exchange()
+                    .expectStatus().isOk();
+
+            INTEREST_TOPIC_SERVICE_STUB.verifyThat(1, requestedFor("GET", urlEqualTo(Endpoint.LIST_CATEGORIES.path))
+                    .withoutHeader("X-User-Id")
+                    .withoutHeader("X-User-Role"));
+        }
     }
 
     @Nested

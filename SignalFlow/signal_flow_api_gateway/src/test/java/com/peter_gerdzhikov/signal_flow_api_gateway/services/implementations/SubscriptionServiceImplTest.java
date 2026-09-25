@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -159,16 +160,33 @@ class SubscriptionServiceImplTest {
         }
 
         @Test
-        void should_translate_a_constraint_violation_into_a_duplicate_subscription() {
+        void should_translate_a_unique_constraint_violation_into_a_duplicate_subscription() {
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
             when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn(0L);
             when(userRepository.getReferenceById(USER_ID)).thenReturn(new User());
             when(subscriptionRepository.saveAndFlush(any(Subscription.class)))
-                    .thenThrow(new DataIntegrityViolationException("duplicate key"));
+                    .thenThrow(dataIntegrityViolation("23505"));
 
             assertThatThrownBy(() -> subscriptionService.subscribe(USER_ID, INTEREST_TOPIC_ID))
                     .isInstanceOf(DuplicateSubscriptionException.class);
+        }
+
+        @Test
+        void should_rethrow_a_foreign_key_violation_without_relabelling_it() {
+            when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
+                    .thenReturn(false);
+            when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn(0L);
+            when(userRepository.getReferenceById(USER_ID)).thenReturn(new User());
+            DataIntegrityViolationException fkViolation = dataIntegrityViolation("23503");
+            when(subscriptionRepository.saveAndFlush(any(Subscription.class))).thenThrow(fkViolation);
+
+            assertThatThrownBy(() -> subscriptionService.subscribe(USER_ID, INTEREST_TOPIC_ID))
+                    .isSameAs(fkViolation);
+        }
+
+        private DataIntegrityViolationException dataIntegrityViolation(String sqlState) {
+            return new DataIntegrityViolationException("constraint violated", new SQLException("failure", sqlState));
         }
     }
 

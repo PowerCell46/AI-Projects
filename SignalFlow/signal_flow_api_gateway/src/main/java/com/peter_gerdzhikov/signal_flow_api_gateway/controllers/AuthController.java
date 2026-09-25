@@ -62,9 +62,14 @@ public class AuthController {
                 .body(toResponse(user));
     }
 
+    /**
+     * Auth is a stateless JWT with no server-side session or revocation list, so logout has nothing to
+     * invalidate; it only clears the cookie so the browser stops sending the token.
+     */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
         log.info("Received logout request.");
+
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .header(HttpHeaders.SET_COOKIE, cookieFactory.clear().toString())

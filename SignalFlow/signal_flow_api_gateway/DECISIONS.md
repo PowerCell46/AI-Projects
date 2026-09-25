@@ -722,3 +722,88 @@ the firewall then rejects it, so the most it gains is a 32 KB read.
   publish off the listener thread entirely (not just batching it) removes the mechanism, not just shrinks
   its window. Recorded as **Closed** rather than **Narrowed** to match the "Any UUID is subscribable"/"the
   by-topic fan-out read path" precedent for gaps a later phase fully resolves.
+
+## 2026-09-25 — Exploit report follow-up
+
+- **Left `exploit-report-2026-09-22-subscriptions.md` #1 as-is - not fixed, and not tracked as a
+  separate accepted gap.** `interestTopicId` is still never validated against a real topic on subscribe.
+  Considered a synchronous call to the topic service on every subscribe (new latency, plus a new failure
+  mode with no existing HTTP mapping for `InterestTopicLookupFailedException`) but decided it buys
+  nothing: the nightly `SubscriptionReconciliationJob` already hard-deletes any subscription pointing at a
+  nonexistent topic within ~24h, capped at `max-per-user` rows per account in the meantime, and the feed
+  endpoint already composes against whatever the topic service actually reports, so a bogus subscription
+  never surfaces as a broken feed item. Real-time validation would only shrink a 24h window that's already
+  invisible to users - not worth the added failure mode.
+- **Rate limiting will not be implemented**, on registration, login, or anywhere else. `PLAN.md`'s "No
+  rate limiting anywhere" accepted gap is no longer waiting on its stated trigger (a second instance, or
+  abuse in the wild) — it's a standing decision. Closes
+  `exploit-report-2026-09-22-subscriptions.md` #2 (unthrottled registration multiplies into unbounded
+  subscription rows) as won't-fix rather than deferred: that finding's amplification is entirely a
+  consequence of the missing rate limit, and there's no narrower fix worth doing ahead of it.
+- **A disabled account keeps writing until its token expires (≤1h) — accepted, not fixed.** Closes
+  `exploit-report-2026-09-22-subscriptions.md` #3. Distinct reasoning from the rate-limiting call above:
+  `isEnabled` exists to let an operator disable an account, not to bound throughput, so this isn't the
+  same trade-off — it's specifically the "no DB read on an authenticated request" rule (`CLAUDE.md`)
+  versus wanting instant cutoff, and instant cutoff needs either a DB read per request or a server-side
+  revocation store (shared state). Already tracked as `PLAN.md`'s "Claims are stale for up to an hour"
+  gap with its own trigger ("needing to cut off an account immediately"); no new decision needed there,
+  just closing out the exploit-report finding against it.
+- **Fixed `exploit-report-2026-09-22-subscriptions.md` #4** — `SubscriptionServiceImpl.subscribe()`'s
+  `catch (DataIntegrityViolationException)` now discriminates on SQLState (`e.getMostSpecificCause()`
+  against `23505`) instead of assuming every violation is the unique-constraint race. A non-unique
+  violation (in practice, only the `user_id` FK) is rethrown as-is rather than relabelled
+  `DuplicateSubscriptionException`, so it falls through to `GlobalExceptionHandler`'s existing generic
+  `DataIntegrityViolationException` handler (a neutral 409) instead of the misleading "already subscribed"
+  message. `AuthServiceImpl.register`'s identically-shaped catch was left alone: `users` has no foreign
+  key, only the unique email constraint, so there's no second violation type to mis-attribute there — the
+  report's "same shape" note is about the code pattern, not an equivalent bug.
+- **Fixed `exploit-report-2026-09-23-topic-routing.md` #2** — `InterestTopicRoutesConfiguration` now
+  strips every inbound header starting with `X-User-` before forwarding to the topic service, not just
+  `Cookie`/`Authorization`. Done ahead of the trust-model gap's own trigger ("the first downstream that
+  needs caller identity") rather than waiting for it, since it's cheap and guards a name space nothing
+  currently uses. `BeforeFilterFunctions.removeRequestHeader(String)` only removes one exact name, so this
+  needed a hand-written `Function<ServerRequest, ServerRequest>` (`removeHeadersWithPrefix`) matching its
+  same `ServerRequest.from(request).headers(...).build()` shape. Spring 7's `HttpHeaders` no longer
+  exposes `keySet()`/`MultiValueMap`-style mutation directly (`headerNames()` returns a `Set<String>`,
+  removal is by name via `remove(String)`), so the helper snapshots matching names first, then removes
+  each - a live-view `removeIf` isn't available. A new `InterestTopicRoutesIntegrationTest` scenario
+  (`should_strip_client_supplied_identity_headers_before_forwarding`) pins it; **not verified green in
+  this session** - every `@SpringBootTest` class here (including untouched, previously-green ones) is
+  currently failing to report results after Kafka connects and ~2 requests process, for reasons unrelated
+  to this change (isolated: reproduces on `SubscriptionControllerIntegrationTest` too). The user will
+  verify locally.
+- **Fixed `exploit-report-2026-09-24-topic-news-fanout.md` #2 /
+  `exploit-report-2026-09-24-notification-inbox-outbox.md` #3** - `TopicNewsNotificationServiceImpl.
+  notifySubscribers` now rejects a record whose `data` exceeds a new
+  `app.subscriptions.notification-fanout.max-data-length` cap (default 20 000 characters, `NOTIFICATION_
+  FANOUT_MAX_DATA_LENGTH`) before doing any fan-out. Chosen well above the topic service's own
+  `app.openrouter.max-tokens=2000` completion limit, so no legitimate record is ever rejected - this is a
+  resource-exhaustion guard against a forged/oversized record from something on the internal network, not
+  a business-rule cap. **Decided with the user:** an oversized record is logged at WARN and marked
+  processed in the inbox (same row as a normal successful run), not thrown - retrying changes nothing
+  since the payload is identical every attempt, so treating it as a transient failure (3 retries then DLT,
+  as the still-open finding #8's oversized-`topicName` case does today) would just be retry noise. The
+  durable fix remains the accepted "downstream trust model" gap (identity/authz on Kafka producers); this
+  only bounds the damage until then. Verified via log/DB inspection in
+  `TopicNewsNotificationServiceImplTest` (same broken surefire reporting as above - the new
+  `should_queue_nothing_but_still_mark_the_news_processed_when_data_exceeds_the_length_cap` scenario's log
+  line and DB state confirm it, but surefire's own summary doesn't count it).
+- **Left `exploit-report-2026-09-24-notification-inbox-outbox.md` #1 as-is - not fixed.** The whole
+  keyset walk staying in one `@Transactional` method is deliberate: it's what makes a crash mid-run either
+  commit everything or roll back everything, which is the entire point of the inbox/outbox pattern. Fixing
+  the long-transaction risk means giving that up (commit per page) or introducing an arbitrary per-run
+  subscriber cap, either way a real trade-off for a problem that only bites at a subscriber count this
+  project isn't near, and now harder to reach organically or artificially given rate limiting won't be
+  built (see the 2026-09-25 entry above). Already tracked in `PLAN.md`'s accepted gaps with its own
+  trigger ("a topic's subscriber count makes one run's transaction duration operationally noticeable");
+  no change needed there.
+- **Fixed `exploit-report-2026-09-24-notification-inbox-outbox.md` #2** -
+  `TopicNewsNotificationServiceImpl.notifySubscribers` now also rejects a record whose `topicName` or
+  `categoryName` exceeds 255 characters (`MAX_COLUMN_LENGTH`, matching `NotificationOutbox`'s default
+  `varchar(255)` - a fixed DB constraint, not a tunable policy value like `data`'s cap, so no new config
+  property). Same skip-and-mark-processed treatment as the `data` cap above, via a shared
+  `skipOversizedRecord` helper. Unlike #6/#7 this one isn't only an internal-network attack surface - the
+  report frames it as equally reachable by ordinary version drift, since `TopicNewsEventDTO`'s contract
+  with the topic service has no runtime enforcement. Verified via log inspection in
+  `TopicNewsNotificationServiceImplTest` (same broken surefire reporting as the `data`-cap fix; the two
+  new scenarios' WARN log lines and empty-outbox assertions confirm it).

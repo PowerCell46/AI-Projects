@@ -144,6 +144,7 @@ body-carrying writes.
 - `page`/`size`/`categoryId` query string is forwarded as is (`should_forward_the_query_string_as_is`)
 - Request body and `Content-Type` of the four body-carrying writes are forwarded as is (`should_forward_the_request_body_and_content_type_as_is`)
 - `Cookie` and `Authorization` never reach the downstream (`should_not_forward_the_cookie_or_the_authorization_header`)
+- Client-supplied `X-User-Id`/`X-User-Role` headers are stripped, never reach the downstream (`should_strip_client_supplied_identity_headers_before_forwarding`)
 
 `InterestTopicRoutesIntegrationTest.UpstreamFailures`
 
