@@ -8,6 +8,10 @@
     transition:
         background-color 200ms ease,
         border-color 200ms ease;
+    /* Scale-aware shadow sizes for glow animations */
+    --_glow-spread: calc(var(--home-scale) * 0.5rem);
+    --_glow-blur: calc(var(--home-scale) * 1.75rem);
+    --_glow-blur-sm: calc(var(--home-scale) * 0.25rem);
 }
 
 .topic-card::before {
@@ -34,6 +38,30 @@
 .topic-card[data-subscribed='true']::before {
     width: 3px;
 }
+
+/* ─── Subscribe burst: card glow flash ─────────────────────────────────── */
+
+@keyframes card-glow-flash {
+    0%   { box-shadow: 0 0 0 0 rgba(220, 168, 47, 0); }
+    30%  { box-shadow: 0 0 0 var(--_glow-spread) rgba(220, 168, 47, 0.22), 0 0 var(--_glow-blur) var(--_glow-blur-sm) rgba(220, 168, 47, 0.10); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 168, 47, 0); }
+}
+
+@keyframes card-fade-flash {
+    0%   { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
+    30%  { box-shadow: 0 0 0 var(--_glow-spread) rgba(248, 81, 73, 0.20), 0 0 var(--_glow-blur) var(--_glow-blur-sm) rgba(248, 81, 73, 0.10); }
+    100% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
+}
+
+.topic-card[data-burst='subscribe'] {
+    animation: card-glow-flash 950ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.topic-card[data-burst='unsubscribe'] {
+    animation: card-fade-flash 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ─── Layout ────────────────────────────────────────────────────────────── */
 
 .topic-card-row {
     display: flex;
@@ -64,6 +92,16 @@
     max-width: 62ch;
     color: var(--text-2);
 }
+
+/* ─── Button wrapper (needed so ripple can overflow the button) ─────────── */
+
+.topic-card-button-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ─── Button ────────────────────────────────────────────────────────────── */
 
 .topic-card-button {
     min-width: calc(var(--home-scale) * 7.875rem);
@@ -100,11 +138,79 @@
     border-color: var(--accent);
 }
 
+/* ─── Subscribe burst: button spring-bounce ─────────────────────────────── */
+
+@keyframes btn-subscribe-bounce {
+    0%   { transform: scale(1); }
+    20%  { transform: scale(1.16); }
+    50%  { transform: scale(0.95); }
+    72%  { transform: scale(1.06); }
+    88%  { transform: scale(0.99); }
+    100% { transform: scale(1); }
+}
+
+@keyframes btn-unsubscribe-deflate {
+    0%   { transform: scale(1); }
+    25%  { transform: scale(0.90); }
+    55%  { transform: scale(1.04); }
+    78%  { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+.topic-card[data-burst='subscribe'] .topic-card-button {
+    animation: btn-subscribe-bounce 800ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.topic-card[data-burst='unsubscribe'] .topic-card-button {
+    animation: btn-unsubscribe-deflate 750ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ─── Subscribe burst: ripple ring ──────────────────────────────────────── */
+
+@keyframes ripple-expand {
+    0% {
+        transform: translate(-50%, -50%) scale(0.4);
+        opacity: 0.75;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(3.0);
+        opacity: 0;
+    }
+}
+
+.topic-card-ripple {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    /* size the ring to roughly cover the button */
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    pointer-events: none;
+    transform-origin: center;
+    animation: ripple-expand 850ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Warm gold ring for subscribe */
+.topic-card-ripple[data-kind='subscribe'] {
+    border: calc(var(--home-scale) * 2px) solid var(--accent);
+}
+
+/* Red ring for unsubscribe */
+.topic-card-ripple[data-kind='unsubscribe'] {
+    border: calc(var(--home-scale) * 2px) solid var(--danger);
+    opacity: 0.75;
+}
+
+/* ─── Error ──────────────────────────────────────────────────────────────── */
+
 .topic-card-error {
     margin: calc(var(--home-scale) * 0.625rem) 0 0;
     font-size: calc(var(--home-scale) * 0.8125rem);
     color: var(--text-2);
 }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
 
 @media (max-width: 375px) {
     .topic-card {
@@ -112,10 +218,23 @@
     }
 }
 
+/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+
 @media (prefers-reduced-motion: reduce) {
     .topic-card,
     .topic-card::before,
     .topic-card-button {
         transition: none;
+    }
+
+    .topic-card[data-burst='subscribe'],
+    .topic-card[data-burst='unsubscribe'],
+    .topic-card[data-burst='subscribe'] .topic-card-button,
+    .topic-card[data-burst='unsubscribe'] .topic-card-button {
+        animation: none;
+    }
+
+    .topic-card-ripple {
+        display: none;
     }
 }

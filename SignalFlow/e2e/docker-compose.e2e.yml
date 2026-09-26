@@ -1,0 +1,215 @@
+services:
+  postgres-api-gateway:
+    image: postgres:18
+    ports:
+      - "5442:5432"
+    environment:
+      POSTGRES_USER: signal_flow_e2e
+      POSTGRES_PASSWORD: signal_flow_e2e
+      POSTGRES_DB: signal_flow_e2e
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signal_flow_e2e -d signal_flow_e2e"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres-topics:
+    image: postgres:18
+    ports:
+      - "5443:5432"
+    environment:
+      POSTGRES_USER: signal_flow_topics_e2e
+      POSTGRES_PASSWORD: signal_flow_topics_e2e
+      POSTGRES_DB: signal_flow_topics_e2e
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signal_flow_topics_e2e -d signal_flow_topics_e2e"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafka:
+    image: apache/kafka:4.3.1
+    environment:
+      CLUSTER_ID: oFL-WUJpDNGgQBFoinoXJQ
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:8.10.2
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "e2e-redis-password"]
+    environment:
+      REDISCLI_AUTH: e2e-redis-password
+    ports:
+      - "6381:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - "1125:1025"
+      - "8125:8025"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8025/api/v1/info || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  topics:
+    build: ../signal_flow_interest_topic_service
+    ports:
+      - "8092:8081"
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres-topics:5432/signal_flow_topics_e2e
+      DATASOURCE_USERNAME: signal_flow_topics_e2e
+      DATASOURCE_PASSWORD: signal_flow_topics_e2e
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OPENROUTER_API_KEY: e2e-dummy-key-never-called
+      APP_NEWS_CRON: 0 0 0 29 2 *
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-topics:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  mail:
+    build: ../signal_flow_mail_service
+    ports:
+      - "8093:8082"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: e2e-redis-password
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
+      MAIL_FROM: e2e@signalflow.local
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  app:
+    build: ../signal_flow_api_gateway
+    ports:
+      - "8091:8080"
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/signal_flow_e2e
+      DATASOURCE_USERNAME: signal_flow_e2e
+      DATASOURCE_PASSWORD: signal_flow_e2e
+      JWT_SECRET: e2e-test-only-jwt-secret-not-for-any-real-use-0123456789abcdef
+      COOKIE_SECURE: "false"
+      BCRYPT_STRENGTH: 4
+      INTEREST_TOPIC_SERVICE_URL: http://topics:8081
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ADMIN_EMAIL: admin@e2e.local
+      ADMIN_PASSWORD: Admin12345
+      SUBSCRIPTION_RECONCILIATION_CRON: 0 0 5 29 2 *
+      NOTIFICATION_INBOX_CLEANUP_CRON: 0 0 6 29 2 *
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-api-gateway:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      topics:
+        condition: service_healthy
+
+  frontend:
+    build: ../frontend
+    ports:
+      - "8090:80"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      app:
+        condition: service_healthy

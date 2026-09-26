@@ -807,3 +807,19 @@ the firewall then rejects it, so the most it gains is a 32 KB read.
   with the topic service has no runtime enforcement. Verified via log inspection in
   `TopicNewsNotificationServiceImplTest` (same broken surefire reporting as the `data`-cap fix; the two
   new scenarios' WARN log lines and empty-outbox assertions confirm it).
+
+## 2026-09-26 — `CookieBearerTokenResolver` ignores public matchers
+
+In Spring Security's resource-server filter chain, `BearerTokenAuthenticationFilter` executes ahead of
+request authorization (`.permitAll()`). If `BearerTokenResolver` resolves a token, the filter unconditionally
+attempts JWT validation before proceeding down the filter chain. If that token is expired or signed by an old
+secret (e.g. from an earlier dev session or after a backend restart), validation throws `AuthenticationException`
+and `RestAuthenticationEntryPoint` answers `401 Unauthorized` immediately — the request never reaches the controller.
+
+For public endpoints (`POST /api/v1/auth/login`, `POST /api/v1/auth/register`, `POST /api/v1/auth/logout`,
+`GET /actuator/health`), any client carrying a stale `access_token` cookie (via `credentials: 'include'`) was
+consequently locked out of logging in, registering, or logging out until the browser cookie jar was manually cleared.
+`SecurityConfiguration` now shares its `PUBLIC_MATCHERS` (`RequestMatcher[]`) with `CookieBearerTokenResolver`,
+which returns `null` for any matching request so `BearerTokenAuthenticationFilter` skips token resolution and allows
+the request to reach the public controller without interference from stale cookies.
+

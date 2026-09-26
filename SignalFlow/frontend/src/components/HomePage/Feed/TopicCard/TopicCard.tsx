@@ -12,6 +12,7 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
     const [subscribed, setSubscribed] = useState(topic.subscribed)
     const [pending, setPending] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [burst, setBurst] = useState<'subscribe' | 'unsubscribe' | null>(null)
 
     async function handleToggle() {
         if (pending) {
@@ -23,6 +24,10 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
         setPending(true)
         setError(null)
         setSubscribed(next)
+
+        // Trigger the one-shot animation
+        setBurst(next ? 'subscribe' : 'unsubscribe')
+        setTimeout(() => setBurst(null), 1000)
 
         try {
             if (next) {
@@ -41,7 +46,11 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
     }
 
     return (
-        <article className="topic-card" data-subscribed={subscribed}>
+        <article
+            className="topic-card"
+            data-subscribed={subscribed}
+            data-burst={burst ?? undefined}
+        >
             <div className="topic-card-row">
                 <h2 className="topic-card-title">{topic.name}</h2>
                 <span className="topic-card-category">{topic.categoryName}</span>
@@ -49,15 +58,21 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
 
             <p className="topic-card-description">{topic.description}</p>
 
-            <button
-                type="button"
-                className="topic-card-button"
-                aria-pressed={subscribed}
-                disabled={pending}
-                onClick={handleToggle}
-            >
-                {subscribed ? 'Subscribed' : 'Subscribe'}
-            </button>
+            <div className="topic-card-button-wrap">
+                <button
+                    type="button"
+                    className="topic-card-button"
+                    aria-pressed={subscribed}
+                    disabled={pending}
+                    onClick={handleToggle}
+                >
+                    {subscribed ? 'Subscribed' : 'Subscribe'}
+                </button>
+                {/* Ripple ring — rendered as a sibling so it can overflow the button */}
+                {burst && (
+                    <span className="topic-card-ripple" data-kind={burst} aria-hidden="true" />
+                )}
+            </div>
 
             {error && <p className="topic-card-error">{error}</p>}
         </article>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchFeed } from '../../../api/feed'
 import type { FeedCounts, FeedFilter as FeedFilterValue, FeedTopic } from '../../../api/feed'
 import FeedFilterTabs from './FeedFilter/FeedFilter'
@@ -8,6 +8,7 @@ import BackToTop from './BackToTop/BackToTop'
 import './Feed.css'
 
 const PAGE_SIZE = 20
+const LOADING_INDICATOR_DELAY = 300
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -32,18 +33,45 @@ function Feed() {
     const [loadingMore, setLoadingMore] = useState(false)
     const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
     const [reloadToken, setReloadToken] = useState(0)
+    const prevFilterRef = useRef(filter)
 
     useEffect(() => {
         let cancelled = false
+        let timer: number | null = null
 
-        setStatus('loading')
+        const filterChanged = prevFilterRef.current !== filter
+
+        prevFilterRef.current = filter
+
         setLoadMoreError(null)
+
+        function clearPendingTimer() {
+            if (timer !== null) {
+                window.clearTimeout(timer)
+            }
+        }
+
+        if (filterChanged) {
+            timer = window.setTimeout(
+                () => {
+                    if (!cancelled) {
+                        setStatus('loading')
+                    }
+                },
+                LOADING_INDICATOR_DELAY,
+            )
+        }
+        else {
+            setStatus('loading')
+        }
 
         fetchFeed(filter, null, PAGE_SIZE)
             .then((page) => {
                 if (cancelled) {
                     return
                 }
+
+                clearPendingTimer()
 
                 setItems(page.items)
                 setNextCursor(page.nextCursor)
@@ -55,11 +83,15 @@ function Feed() {
                     return
                 }
 
+                clearPendingTimer()
+
                 setStatus('error')
             })
 
         return () => {
             cancelled = true
+
+            clearPendingTimer()
         }
     }, [filter, reloadToken])
 

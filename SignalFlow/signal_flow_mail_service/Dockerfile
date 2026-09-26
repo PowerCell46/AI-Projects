@@ -35,7 +35,7 @@ RUN chown app:app app.jar
 
 USER app
 
-EXPOSE 8080
+EXPOSE 8082
 
 # MaxRAMPercentage: the JVM caps max heap at ~25% of container memory by default, leaving most of
 # the allocation unused. UseContainerSupport is not set -- it has been on by default since JDK 10.
@@ -44,6 +44,6 @@ ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
 
 # --- --- Run project --- ---
 
-# docker build -t signal-flow-api-gateway .
+# docker build -t signal-flow-mail-service .
 
-# docker run -d --name signal-flow-api-gateway -p 8080:8080 -e DATASOURCE_URL=___ -e DATASOURCE_USERNAME=___ -e DATASOURCE_PASSWORD=___ -e JWT_SECRET=___ signal-flow-api-gateway
+# docker run -d --name signal-flow-mail-service -p 8082:8082 -e REDIS_HOST=___ -e REDIS_PASSWORD=___ -e MAIL_FROM=___ signal-flow-mail-service

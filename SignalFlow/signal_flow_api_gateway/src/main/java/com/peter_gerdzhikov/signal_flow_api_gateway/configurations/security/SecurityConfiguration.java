@@ -37,6 +37,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
@@ -48,6 +50,13 @@ import lombok.RequiredArgsConstructor;
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfiguration {
+
+    private static final RequestMatcher[] PUBLIC_MATCHERS = {
+            PathPatternRequestMatcher.pathPattern(HttpMethod.GET, "/actuator/health"),
+            PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/register"),
+            PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/login"),
+            PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/logout")
+    };
 
     private final AccessDeniedHandler accessDeniedHandler;
 
@@ -65,11 +74,7 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/v1/auth/register",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/logout"
-                        )
+                        .requestMatchers(PUBLIC_MATCHERS)
                         .permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 CATEGORIES_PATH,
@@ -85,7 +90,7 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .bearerTokenResolver(new CookieBearerTokenResolver())
+                        .bearerTokenResolver(new CookieBearerTokenResolver(PUBLIC_MATCHERS))
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder)
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter)));

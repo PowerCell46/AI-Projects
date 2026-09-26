@@ -80,6 +80,22 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         @Test
+        void should_return_201_when_an_invalid_cookie_is_present() {
+            RegisterRequestDTO request = new RegisterRequestDTO();
+            request.setEmail(EMAIL);
+            request.setPassword(PASSWORD);
+
+            restTestClient.post()
+                    .uri("/api/v1/auth/register")
+                    .cookie(COOKIE_NAME, "an_expired_or_invalid_cookie")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .exchange()
+                    .expectStatus().isCreated()
+                    .expectCookie().exists(COOKIE_NAME);
+        }
+
+        @Test
         void should_set_the_cookie_as_http_only_same_site_strict_and_path_root() {
             register(EMAIL, PASSWORD)
                     .expectStatus().isCreated()
@@ -226,6 +242,24 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         @Test
+        void should_return_200_and_a_cookie_when_an_invalid_cookie_is_present() {
+            registerUser(EMAIL, PASSWORD);
+
+            LoginRequestDTO request = new LoginRequestDTO();
+            request.setEmail(EMAIL);
+            request.setPassword(PASSWORD);
+
+            restTestClient.post()
+                    .uri("/api/v1/auth/login")
+                    .cookie(COOKIE_NAME, "an_expired_or_invalid_cookie")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectCookie().exists(COOKIE_NAME);
+        }
+
+        @Test
         void should_return_a_generic_401_for_wrong_password() {
             registerUser(EMAIL, PASSWORD);
 
@@ -323,6 +357,16 @@ class AuthControllerIntegrationTest extends AbstractPostgresIntegrationTest {
                     .uri("/api/v1/auth/logout")
                     .exchange()
                     .expectStatus().isNoContent();
+        }
+
+        @Test
+        void should_return_204_when_an_invalid_cookie_is_present() {
+            restTestClient.post()
+                    .uri("/api/v1/auth/logout")
+                    .cookie(COOKIE_NAME, "an_expired_or_invalid_cookie")
+                    .exchange()
+                    .expectStatus().isNoContent()
+                    .expectCookie().maxAge(COOKIE_NAME, Duration.ZERO);
         }
 
         @Test

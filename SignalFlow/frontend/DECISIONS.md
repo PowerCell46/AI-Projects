@@ -133,6 +133,12 @@ look doesn't shift. Same band also tightens header/card/column padding, since ch
 ate ~22% of a 320px row. Band `body` sizes are `1rem` (track root) not compounded
 percents of an already-scaled root.
 
+## `--text-3` lightened to `#7c8998` for 4.5:1 contrast
+
+Lighthouse flagged `#6e7c8c` at 4.43:1 on `--bg` / 4.11:1 on `--surface`. New value is the
+old one mixed 10% toward white (same hue direction); worst case is 4.77:1 on
+`--surface-hover`/`--surface-sub`, so all five backgrounds it sits on pass.
+
 ## Portrait tablets stack auth instead of squeezing side-by-side
 
 At 1024px portrait the 820px fixed container gave 282px fields. Stacked condition is
@@ -140,3 +146,18 @@ now `(max-width: 900px), (max-width: 1100px) and (orientation: portrait)` in CSS
 the `isNarrow` hook together (they must match or the switch animation desyncs), with
 the 30rem cap extended over the same portrait range. Landscape 901–1100px keeps the
 tight side-by-side; rare and accepted.
+
+## Back to top is scroll-triggered, not always visible
+
+Reverses the always-visible call above: `BackToTop` renders only when the page
+actually scrolls (`scrollHeight > innerHeight`) and `scrollY` is past 400px
+(scroll/resize listeners, returns null when hidden so nothing focusable lingers).
+At the top the button is useless even on a scrollable page, and with no overflow
+there is no scroll to undo.
+
+## Filter switches delay the loading indicator 300ms
+
+`Feed` only enters `loading` if the fetch outlasts a 300ms timer on filter
+change, so fast swaps never flash "Loading…". First mount and error retry
+still show it immediately (tracked via `prevFilterRef` — only an actual
+filter change takes the delayed path).

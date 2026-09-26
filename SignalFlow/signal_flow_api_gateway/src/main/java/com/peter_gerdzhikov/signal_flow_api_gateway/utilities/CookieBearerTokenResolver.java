@@ -1,8 +1,10 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.utilities;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,8 +15,20 @@ import jakarta.servlet.http.HttpServletRequest;
  */
 public class CookieBearerTokenResolver implements BearerTokenResolver {
 
+    private final List<RequestMatcher> ignoredMatchers;
+
+    public CookieBearerTokenResolver(RequestMatcher... ignoredMatchers) {
+        this.ignoredMatchers = ignoredMatchers == null ? List.of() : List.of(ignoredMatchers);
+    }
+
     @Override
     public String resolve(HttpServletRequest request) {
+        for (RequestMatcher matcher : ignoredMatchers) {
+            if (matcher.matches(request)) {
+                return null;
+            }
+        }
+
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
             return null;
@@ -27,3 +41,4 @@ public class CookieBearerTokenResolver implements BearerTokenResolver {
                 .orElse(null);
     }
 }
+

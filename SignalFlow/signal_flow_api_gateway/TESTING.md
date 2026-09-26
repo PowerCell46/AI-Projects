@@ -34,12 +34,14 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 - A body over `app.request.max-body-bytes` returns 413 and creates no user (`should_return_413_for_a_body_over_the_size_cap`) —
   the cap is gateway-wide (`RequestBodySizeLimitFilter`), exercised here because register is the largest
   anonymous body
+- Valid registration returns 201 even when an invalid cookie is present (`should_return_201_when_an_invalid_cookie_is_present`)
 
 ## `POST /api/v1/auth/login`
 
 `AuthControllerIntegrationTest.Login`
 
 - Valid credentials return 200 and a cookie (`should_return_200_and_a_cookie_for_valid_credentials`)
+- Valid credentials return 200 even when an invalid cookie is present (`should_return_200_and_a_cookie_when_an_invalid_cookie_is_present`)
 - Wrong password returns a generic 401 (`should_return_a_generic_401_for_wrong_password`)
 - Unknown email returns an identical generic 401 (`should_return_an_identical_generic_401_for_an_unknown_email`)
 - Disabled user returns an identical generic 401 (`should_return_an_identical_generic_401_for_a_disabled_user`)
@@ -58,6 +60,7 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 
 - Returns 204 and expires the cookie (`should_return_204_and_expire_the_cookie`)
 - Returns 204 with no cookie present (`should_return_204_with_no_cookie_present`)
+- Returns 204 even when an invalid cookie is present (`should_return_204_when_an_invalid_cookie_is_present`)
 - A browser that dropped the cleared cookie can no longer authenticate `/me` (`should_prevent_a_browser_that_dropped_the_cleared_cookie_from_authenticating_me`) —
   exercises the browser-cookie-jar path only; the JWT itself is not server-side revoked (see `PLAN.md`'s
   Known gaps)

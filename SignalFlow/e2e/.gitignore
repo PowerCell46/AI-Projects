@@ -1,0 +1,9 @@
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.last-run.json
+.env
+.env.local
+.DS_Store
