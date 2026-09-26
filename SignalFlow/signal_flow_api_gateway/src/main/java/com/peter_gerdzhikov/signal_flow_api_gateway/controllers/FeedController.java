@@ -39,7 +39,7 @@ public class FeedController {
             @Size(max = 100) @RequestParam(required = false) String after,
             @Min(1) @Max(100) @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size
     ) {
-        log.info("Received feed request with filter {}.", filter);
+        log.debug("Received feed request with filter {}.", filter);
         FeedResponseDTO feed = feedService.findFeed(UUID.fromString(jwt.getSubject()), filter, after, size);
 
         return ResponseEntity.ok(feed);

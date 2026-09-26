@@ -1,9 +1,9 @@
 .back-to-top {
     position: fixed;
-    right: 1.75rem;
-    bottom: 1.75rem;
-    width: 2.625rem;
-    height: 2.625rem;
+    right: calc(var(--home-scale) * 1.75rem);
+    bottom: calc(var(--home-scale) * 1.75rem);
+    width: calc(var(--home-scale) * 2.625rem);
+    height: calc(var(--home-scale) * 2.625rem);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -16,6 +16,11 @@
         color 180ms ease,
         border-color 180ms ease,
         background-color 180ms ease;
+}
+
+.back-to-top svg {
+    width: calc(var(--home-scale) * 1.125rem);
+    height: calc(var(--home-scale) * 1.125rem);
 }
 
 .back-to-top:hover {

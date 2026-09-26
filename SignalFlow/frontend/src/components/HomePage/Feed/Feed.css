@@ -1,42 +1,42 @@
 .feed {
-    padding: 4.875rem 0 10rem;
+    padding: calc(var(--home-scale) * 4.875rem) 0 calc(var(--home-scale) * 10rem);
 }
 
 .feed-column {
     width: 42%;
-    min-width: 27.5rem;
-    max-width: 41.25rem;
+    min-width: calc(var(--home-scale) * 27.5rem);
+    max-width: calc(var(--home-scale) * 41.25rem);
     margin: 0 auto;
 }
 
 .feed-title {
     margin: 0;
-    font-size: 1.5625rem;
+    font-size: calc(var(--home-scale) * 1.5625rem);
     font-weight: 600;
     letter-spacing: -0.015em;
     color: var(--text);
 }
 
 .feed-sub {
-    margin: 0.75rem 0 0;
-    font-size: 0.875rem;
+    margin: calc(var(--home-scale) * 0.75rem) 0 0;
+    font-size: calc(var(--home-scale) * 0.875rem);
     line-height: 1.6;
     max-width: 56ch;
     color: var(--text-3);
 }
 
 .feed-list {
-    margin-top: 2.5rem;
+    margin-top: calc(var(--home-scale) * 2.5rem);
     display: flex;
     flex-direction: column;
-    gap: 1.625rem;
+    gap: calc(var(--home-scale) * 1.625rem);
 }
 
 .feed-state {
-    margin-top: 2.5rem;
-    padding: 2rem 0;
+    margin-top: calc(var(--home-scale) * 2.5rem);
+    padding: calc(var(--home-scale) * 2rem) 0;
     text-align: center;
-    font-size: 0.875rem;
+    font-size: calc(var(--home-scale) * 0.875rem);
     color: var(--text-3);
 }
 
@@ -44,14 +44,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.75rem;
-    margin-top: 1rem;
-    padding: 0.5rem 1.125rem;
+    min-height: calc(var(--home-scale) * 2.75rem);
+    margin-top: calc(var(--home-scale) * 1rem);
+    padding: calc(var(--home-scale) * 0.5rem) calc(var(--home-scale) * 1.125rem);
     border: 1px solid var(--line-btn);
     border-radius: 0.1875rem;
     background-color: transparent;
     font-family: inherit;
-    font-size: 0.8125rem;
+    font-size: calc(var(--home-scale) * 0.8125rem);
     color: var(--text-2);
     cursor: pointer;
     transition:
@@ -87,6 +87,12 @@
 @media (max-width: 480px) {
     .feed-column {
         padding: 0 1rem;
+    }
+}
+
+@media (max-width: 375px) {
+    .feed-column {
+        padding: 0 0.75rem;
     }
 }
 

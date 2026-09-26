@@ -1,29 +1,24 @@
 import { useState } from 'react'
-import { logout } from '../../api/auth'
 import type { AuthUser } from '../../api/auth'
 import Feed from './Feed/Feed'
 import './HomePage.css'
 
 interface HomePageProps {
     user: AuthUser
-    onSignedOut: () => void
+    onSignOutRequest: () => void
+    entering: boolean
 }
 
-function HomePage({ onSignedOut }: HomePageProps) {
+function HomePage({ onSignOutRequest, entering }: HomePageProps) {
     const [signingOut, setSigningOut] = useState(false)
 
-    async function handleSignOut() {
+    function handleSignOut() {
         if (signingOut) {
             return
         }
 
         setSigningOut(true)
-
-        try {
-            await logout()
-        } finally {
-            onSignedOut()
-        }
+        onSignOutRequest()
     }
 
     return (
@@ -35,7 +30,7 @@ function HomePage({ onSignedOut }: HomePageProps) {
                 </button>
             </header>
 
-            <main className="home-main">
+            <main className="home-main" data-entering={entering}>
                 <Feed />
             </main>
         </div>

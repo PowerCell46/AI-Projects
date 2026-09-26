@@ -14,8 +14,30 @@ a generic "Couldn't reach the server. Try again."
 ## Redirect target on success
 
 The design's "Out of scope" section excludes routing/session logic "beyond the redirect on
-success." There's no authenticated screen yet, so a successful login/register does
-`window.location.assign('/')` — the eventual feed's home. Revisit once that route exists.
+success." This used to be a `window.location.assign('/')` full reload; it is now an in-app
+handoff — `AuthForm` passes the `AuthUser` returned by `login`/`register` up to `App`, which
+sets auth state and `navigate('/')`s mid-transition so the feed mounts underneath the success
+curtain. No extra `me()` round trip; `prefers-reduced-motion` skips the curtain and navigates
+immediately.
+
+## Success transition is a full-viewport vertical curtain, not the auth panel
+
+The signin/register switch animates the panel horizontally inside the auth container, but the
+success transition has to reveal the feed (a different page layout, and mobile has no panel),
+so `SuccessCurtain` is a fixed full-viewport overlay owned by `App`: cover 340ms (same
+cubic-bezier as the panel) → 1400ms hold on the greeting (long enough to read without
+hurrying) → 340ms lift revealing the feed, which rises/fades in underneath via `HomePage`'s
+`entering` prop. Greeting is heading-only ("Welcome back" / "Account created") plus the
+user's email; it rides the curtain away rather than dismissing separately.
+
+## Logout mirrors the success transition in reverse
+
+Sign-out plays the same curtain top-to-bottom (`direction="down"`, accent edge on the bottom):
+cover → 1400ms "Signed out" + email hold → curtain continues down revealing `/login`, whose
+container settles from above via `AuthPage`'s `entering` prop. `App` owns the whole sequence
+(the `logout()` call fires in parallel with the cover so feedback is instant, and a failed
+request still signs out locally, as before); `HomePage` just reports the click through
+`onSignOutRequest`. Reduced-motion skips the curtain in both directions.
 
 ## Error text uses a red, against the spec's "Red is not in this system"
 
@@ -74,3 +96,47 @@ cards out from under a scrolling user seemed like the worse surprise.
 the spec's timing table) rather than `transitionend`, since the content swap has to happen while
 still covered regardless of whether the CSS transition fires (e.g. if a browser drops the
 transition). Guarded by `isAnimatingRef` per the spec's re-entrancy note.
+
+## Mobile scale-down via root font-size at ≤480px, no touch-target floors
+
+At `max-width: 480px` `index.css` drops the root to 87.5% (percent, not px, so browser
+font-size prefs still apply) plus `body` to `0.875rem`, shrinking all rem-based sizing
+~12% app-wide in one rule. Tried px floors holding controls at 44px first — looked
+unchanged, explicitly asked to drop them, so buttons/inputs now sit at ~38.5px on
+phones. Known exception to the 44px touch-target rule.
+
+## Dashboard large-screen scaling mirrors auth's stepped scale var
+
+Feed had no rules past 1280px, so at 2560+ it sat ~660px wide with small type.
+Added `--home-scale` on `.home-page` (1 / 1.2 / 1.5 / 1.65 / 2 at 1920/2560/3440/3840,
+same bands as `--auth-scale`) with rem sizes wrapped in `calc()` across the header and
+all five feed stylesheets. px hairlines, radii, and keyframes stay fixed, same as auth.
+
+## Tablet auth capped at 30rem instead of full-width stacked
+
+At 481–900px the stacked phone layout stretched inputs to ~710px (desktop content is
+~390px), so the container is capped at 30rem and stays centered. Side-by-side can't fit
+(it needs ~884px); phones ≤480px stay full-bleed.
+
+## Tablet type bumped 12.5% at 768–900px and portrait 901–1100px
+
+Root goes to 112.5% plus `body` to `1rem` in the tablet bands, mirroring the mobile
+87.5% step in magnitude. Portrait clause covers large-tablet stacked auth (and the
+dashboard there); landscape 901–1100px stays 100% with side-by-side auth. The 768–900
+band is width-only so large-phone landscape also catches it, accepted.
+
+## Extra-small phones get a 75% root at ≤375px
+
+320px-wide phones still felt oversized at 87.5%, so a second band drops the root to
+75% there. Scoped to ≤375px (covers 320–375, incl. iPhone SE) so the approved 390px
+look doesn't shift. Same band also tightens header/card/column padding, since chrome
+ate ~22% of a 320px row. Band `body` sizes are `1rem` (track root) not compounded
+percents of an already-scaled root.
+
+## Portrait tablets stack auth instead of squeezing side-by-side
+
+At 1024px portrait the 820px fixed container gave 282px fields. Stacked condition is
+now `(max-width: 900px), (max-width: 1100px) and (orientation: portrait)` in CSS and
+the `isNarrow` hook together (they must match or the switch animation desyncs), with
+the 30rem cap extended over the same portrait range. Landscape 901–1100px keeps the
+tight side-by-side; rare and accepted.

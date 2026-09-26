@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import AuthForm from './AuthForm/AuthForm'
 import Panel from './Panel/Panel'
 import type { Mode } from './Panel/Panel'
+import type { AuthUser } from '../../api/auth'
 import './AuthPage.css'
 
 const PATH_BY_MODE: Record<Mode, string> = {
@@ -38,9 +39,11 @@ function useMediaQuery(query: string): boolean {
 
 interface AuthPageProps {
     mode: Mode
+    onAuthSuccess: (user: AuthUser, mode: Mode) => void
+    entering: boolean
 }
 
-function AuthPage({ mode }: AuthPageProps) {
+function AuthPage({ mode, onAuthSuccess, entering }: AuthPageProps) {
     const navigate = useNavigate()
     const [covered, setCovered] = useState(false)
     const [mobileFading, setMobileFading] = useState(false)
@@ -50,7 +53,7 @@ function AuthPage({ mode }: AuthPageProps) {
     const signinEmailRef = useRef<HTMLInputElement>(null)
     const registerEmailRef = useRef<HTMLInputElement>(null)
 
-    const isNarrow = useMediaQuery('(max-width: 900px)')
+    const isNarrow = useMediaQuery('(max-width: 900px), (max-width: 1100px) and (orientation: portrait)')
     const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
     useEffect(() => {
@@ -121,13 +124,14 @@ function AuthPage({ mode }: AuthPageProps) {
 
     return (
         <div className="auth-page">
-            <div className="auth-container" data-mode={mode} data-mobile-fading={mobileFading}>
+            <div className="auth-container" data-mode={mode} data-mobile-fading={mobileFading} data-entering={entering}>
                 <div className="auth-half auth-half-left" data-active={mode === 'signin'}>
                     <AuthForm
                         mode="signin"
                         active={mode === 'signin'}
                         emailInputRef={signinEmailRef}
                         onRequestSwitch={() => switchTo('register')}
+                        onAuthSuccess={(user) => onAuthSuccess(user, 'signin')}
                     />
                 </div>
 
@@ -137,6 +141,7 @@ function AuthPage({ mode }: AuthPageProps) {
                         active={mode === 'register'}
                         emailInputRef={registerEmailRef}
                         onRequestSwitch={() => switchTo('signin')}
+                        onAuthSuccess={(user) => onAuthSuccess(user, 'register')}
                     />
                 </div>
 

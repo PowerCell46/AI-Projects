@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent, RefObject } from 'react'
 import { AuthApiError, login, register } from '../../../api/auth'
+import type { AuthUser } from '../../../api/auth'
 import './AuthForm.css'
 
 export type Mode = 'signin' | 'register'
@@ -14,6 +15,7 @@ interface AuthFormProps {
     active: boolean
     emailInputRef: RefObject<HTMLInputElement | null>
     onRequestSwitch: () => void
+    onAuthSuccess: (user: AuthUser) => void
 }
 
 const COPY: Record<Mode, { heading: string; sub: string; submit: string; submitting: string }> = {
@@ -70,7 +72,7 @@ function validatePassword(value: string): string | null {
     return null
 }
 
-function AuthForm({ mode, active, emailInputRef, onRequestSwitch }: AuthFormProps) {
+function AuthForm({ mode, active, emailInputRef, onRequestSwitch, onAuthSuccess }: AuthFormProps) {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [phase, setPhase] = useState<Phase>('idle')
@@ -128,12 +130,22 @@ function AuthForm({ mode, active, emailInputRef, onRequestSwitch }: AuthFormProp
         setInvalidFields(new Set())
 
         try {
+            let user: AuthUser
+
             if (isSignIn) {
-                await login({ email, password })
-            } else {
-                await register({ email, password })
+                user = await login({
+                    email,
+                    password,
+                })
             }
-            window.location.assign('/')
+            else {
+                user = await register({
+                    email,
+                    password,
+                })
+            }
+
+            onAuthSuccess(user)
         } catch (error) {
             if (isSignIn && error instanceof AuthApiError && error.status === 401) {
                 setErrorMessage("That email and password don't match an account.")

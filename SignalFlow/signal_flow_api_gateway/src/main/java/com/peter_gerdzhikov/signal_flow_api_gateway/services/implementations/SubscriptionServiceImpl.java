@@ -63,7 +63,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             // Flushed inside the transaction so a constraint violation surfaces here, not at commit.
             Subscription savedSubscription = subscriptionRepository
                     .saveAndFlush(newSubscription(userId, interestTopicId));
-            log.info("User '{}' subscribed to interest topic '{}'.", userId, interestTopicId);
+            log.debug("User '{}' subscribed to interest topic '{}'.", userId, interestTopicId);
             return savedSubscription;
 
         } catch (DataIntegrityViolationException e) {
@@ -86,7 +86,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .orElseThrow(SubscriptionNotFoundException::new);
 
         subscriptionRepository.delete(subscription);
-        log.info("User '{}' unsubscribed from interest topic '{}'.", userId, interestTopicId);
+        log.debug("User '{}' unsubscribed from interest topic '{}'.", userId, interestTopicId);
     }
 
     /**
