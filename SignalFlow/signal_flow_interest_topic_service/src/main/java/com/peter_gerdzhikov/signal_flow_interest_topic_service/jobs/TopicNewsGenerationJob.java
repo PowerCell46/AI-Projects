@@ -60,6 +60,7 @@ public class TopicNewsGenerationJob {
     @Scheduled(cron = "${app.news.cron}", zone = "${app.news.zone}")
     public void generateDailyNews() {
         LocalDate newsDate = LocalDate.now(newsZone);
+        log.info("Daily news generation job triggered for '{}'.", newsDate);
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, Sort.by("id"));
 
         // Each topic's OpenRouter call is I/O-bound, so a virtual thread per topic is cheap - the
