@@ -19,7 +19,7 @@ services:
       retries: 5
       start_period: 10s
 
-  postgres-topics:
+  postgres-interest-topic-service:
     image: postgres:18
     ports:
       - "5443:5432"
@@ -105,12 +105,12 @@ services:
     ports:
       - "8092:8081"
     environment:
-      DATASOURCE_URL: jdbc:postgresql://postgres-topics:5432/signal_flow_topics_e2e
+      DATASOURCE_URL: jdbc:postgresql://postgres-interest-topic-service:5432/signal_flow_topics_e2e
       DATASOURCE_USERNAME: signal_flow_topics_e2e
       DATASOURCE_PASSWORD: signal_flow_topics_e2e
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENROUTER_API_KEY: e2e-dummy-key-never-called
-      APP_NEWS_CRON: 0 0 0 29 2 *
+      NEWS_CRON: 0 0 0 29 2 *
     deploy:
       resources:
         limits:
@@ -123,7 +123,7 @@ services:
       retries: 5
       start_period: 30s
     depends_on:
-      postgres-topics:
+      postgres-interest-topic-service:
         condition: service_healthy
       kafka:
         condition: service_healthy

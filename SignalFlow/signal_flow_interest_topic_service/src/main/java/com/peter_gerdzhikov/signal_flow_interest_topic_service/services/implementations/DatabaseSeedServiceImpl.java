@@ -88,12 +88,12 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Cover new climate research findings, major scientific reports, and notable "
                                     + "studies on global warming impacts."))
             )*/
-            /*, new CategorySeed("Health & Wellness", List.of(
-                    new TopicSeed(
+            , new CategorySeed("Health & Wellness", List.of(
+                    /*new TopicSeed(
                             "Public Health",
                             "Disease outbreaks, health policy, and public health advisories.",
                             "Cover disease outbreaks, public health policy changes, and notable advisories "
-                                    + "from health authorities."),
+                                    + "from health authorities."),*/
                     new TopicSeed(
                             "Nutrition & Fitness",
                             "Dietary research, fitness trends, and wellness guidance.",
@@ -104,7 +104,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Mental health research, awareness campaigns, and policy news.",
                             "Cover notable mental health research, awareness campaigns, and policy "
                                     + "developments affecting mental healthcare."))
-            )*/
+            )
             /*, new CategorySeed("Sports", List.of(
                     new TopicSeed(
                             "Football (Soccer)",
@@ -122,7 +122,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Cover notable news across Olympic sports disciplines, including athlete "
                                     + "achievements and event results."))
             )*/
-            /*, new CategorySeed("Entertainment", List.of(
+            , new CategorySeed("Entertainment", List.of(
                     new TopicSeed(
                             "Film & Television",
                             "Movie and TV releases, box office, and industry news.",
@@ -138,7 +138,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Game releases, studio news, and gaming industry trends.",
                             "Cover notable video game releases, studio announcements, and gaming industry "
                                     + "trends."))
-            )*/
+            )
             /*, new CategorySeed("Environment & Climate", List.of(
                     new TopicSeed(
                             "Renewable Energy",

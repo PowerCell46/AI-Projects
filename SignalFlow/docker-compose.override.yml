@@ -1,0 +1,34 @@
+# Auto-loaded by `docker compose` alongside docker-compose.yml for local dev.
+# Swaps Caddy to plain HTTP on :80 (no ACME/nip.io, no SERVER_IP needed) since
+# a laptop behind NAT can't satisfy Let's Encrypt's public reachability check.
+#
+# Also binds dev/debugging ports locally for database inspection
+# without exposing them on a remote server.
+#
+# Do NOT ship this file to the remote server deployment — there, Caddy should
+# use the real Caddyfile with SERVER_IP set to the server's public IP.
+services:
+  caddy:
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+
+  api-gateway:
+    environment:
+      COOKIE_SECURE: "false"
+
+  postgres-api-gateway:
+    ports:
+      - "5432:5432"
+
+  postgres-interest-topic-service:
+    ports:
+      - "5433:5432"
+
+  kafka:
+    ports:
+      - "9094:9094"
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+

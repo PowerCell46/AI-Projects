@@ -2,44 +2,44 @@ services:
   postgres-api-gateway:
     image: postgres:18
     restart: unless-stopped
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     environment:
       POSTGRES_USER: ${API_GATEWAY_POSTGRES_USER}
       POSTGRES_PASSWORD: ${API_GATEWAY_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${API_GATEWAY_POSTGRES_DB:-signal_flow}
+      POSTGRES_DB: ${API_GATEWAY_POSTGRES_DB:-signal_flow_api_gateway_db}
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: 512M
     volumes:
-      - postgres_api_gateway_data:/var/lib/postgresql
+      - postgres_api_gateway_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${API_GATEWAY_POSTGRES_USER} -d ${API_GATEWAY_POSTGRES_DB:-signal_flow}"]
+      test: ["CMD-SHELL", "pg_isready -U ${API_GATEWAY_POSTGRES_USER} -d ${API_GATEWAY_POSTGRES_DB:-signal_flow_api_gateway_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
-  postgres-topics:
+  postgres-interest-topic-service:
     image: postgres:18
     restart: unless-stopped
-    ports:
-      - "5433:5432"
+    # ports:
+    #   - "5433:5432"
     environment:
       POSTGRES_USER: ${TOPICS_POSTGRES_USER}
       POSTGRES_PASSWORD: ${TOPICS_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${TOPICS_POSTGRES_DB:-signal_flow_topics}
+      POSTGRES_DB: ${TOPICS_POSTGRES_DB:-signal_flow_interest_topic_service}
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: 512M
     volumes:
-      - postgres_topics_data:/var/lib/postgresql
+      - postgres_topics_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${TOPICS_POSTGRES_USER} -d ${TOPICS_POSTGRES_DB:-signal_flow_topics}"]
+      test: ["CMD-SHELL", "pg_isready -U ${TOPICS_POSTGRES_USER} -d ${TOPICS_POSTGRES_DB:-signal_flow_interest_topic_service}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,15 +48,16 @@ services:
   kafka:
     image: apache/kafka:4.3.1
     restart: unless-stopped
-    ports:
-      - "9094:9094"
+    # ports:
+    #   - "9094:9094"
     environment:
       CLUSTER_ID: oFL-WUJpDNGgQBFoinoXJQ
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -67,7 +68,7 @@ services:
           cpus: "1.0"
           memory: 1024M
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9094"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -79,8 +80,8 @@ services:
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set - redis-server treats an empty --requirepass as no password at all}"]
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
-    ports:
-      - "127.0.0.1:6379:6379"
+    # ports:
+    #   - "127.0.0.1:6379:6379"
     deploy:
       resources:
         limits:
@@ -95,25 +96,176 @@ services:
       retries: 5
       start_period: 10s
 
-  mailpit:
-    image: axllent/mailpit:v1.31.2
+  interest-topic-service:
+    build: ./signal_flow_interest_topic_service
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:1025:1025"
-      - "127.0.0.1:8025:8025"
+    # ports:
+    #   - "${TOPICS_PORT:-8081}:8081"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    environment:
+      PORT: 8081
+      DATASOURCE_URL: jdbc:postgresql://postgres-interest-topic-service:5432/${TOPICS_POSTGRES_DB:-signal_flow_interest_topic_service}
+      DATASOURCE_USERNAME: ${TOPICS_POSTGRES_USER}
+      DATASOURCE_PASSWORD: ${TOPICS_POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4.1-flash:online}
+      OPENROUTER_MAX_TOKENS: ${OPENROUTER_MAX_TOKENS:-2000}
+      OPENROUTER_CONNECT_TIMEOUT: ${OPENROUTER_CONNECT_TIMEOUT:-5s}
+      OPENROUTER_READ_TIMEOUT: ${OPENROUTER_READ_TIMEOUT:-60s}
+      NEWS_CRON: ${NEWS_CRON:-0 27 0 * * *}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-interest-topic-service:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - interest-topic-service
+          - topics
+
+  mail-service:
+    build: ./signal_flow_mail_service
+    restart: unless-stopped
+    # ports:
+    #   - "${MAIL_PORT:-8082}:8082"
     deploy:
       resources:
         limits:
           cpus: "0.5"
+          memory: 768M
+    environment:
+      SERVER_PORT: 8082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MAIL_HOST: ${MAIL_HOST:?MAIL_HOST must be set}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-signalflow-test@example.com}
+      MAIL_ZONE: ${MAIL_ZONE:-Europe/Sofia}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - mail-service
+          - mail
+
+  api-gateway:
+    build: ./signal_flow_api_gateway
+    restart: unless-stopped
+    # ports:
+    #   - "${APP_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/${API_GATEWAY_POSTGRES_DB:-signal_flow_api_gateway_db}
+      DATASOURCE_USERNAME: ${API_GATEWAY_POSTGRES_USER}
+      DATASOURCE_PASSWORD: ${API_GATEWAY_POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL: ${JWT_TTL:-1h}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      BCRYPT_STRENGTH: ${BCRYPT_STRENGTH:-12}
+      INTEREST_TOPIC_SERVICE_URL: http://interest-topic-service:8081
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SUBSCRIPTION_RECONCILIATION_CRON: ${SUBSCRIPTION_RECONCILIATION_CRON:-0 0 5 * * *}
+      NOTIFICATION_INBOX_CLEANUP_CRON: ${NOTIFICATION_INBOX_CLEANUP_CRON:-0 0 6 * * *}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-api-gateway:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      interest-topic-service:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - api-gateway
+          - app
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    # ports:
+    #   - "${FRONTEND_PORT:-5173}:80"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
           memory: 128M
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8025/api/v1/info || exit 1"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    environment:
+      SERVER_IP: ${SERVER_IP}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
 
 volumes:
   postgres_api_gateway_data:
   postgres_topics_data:
   redis_data:
+  caddy_data:
+  caddy_config:
