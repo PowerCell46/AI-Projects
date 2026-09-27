@@ -14,7 +14,7 @@ services:
           cpus: "1.0"
           memory: 512M
     volumes:
-      - postgres_api_gateway_data:/var/lib/postgresql/data
+      - postgres_api_gateway_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${API_GATEWAY_POSTGRES_USER} -d ${API_GATEWAY_POSTGRES_DB:-signal_flow_api_gateway_db}"]
       interval: 10s
@@ -37,7 +37,7 @@ services:
           cpus: "1.0"
           memory: 512M
     volumes:
-      - postgres_topics_data:/var/lib/postgresql/data
+      - postgres_topics_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${TOPICS_POSTGRES_USER} -d ${TOPICS_POSTGRES_DB:-signal_flow_interest_topic_service}"]
       interval: 10s
