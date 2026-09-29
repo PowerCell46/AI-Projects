@@ -109,8 +109,11 @@ test('displays error state and recovers on retry when feed API fails', async ({
     const recoveredFeed = page.waitForResponse(isFeedGet)
     shouldFail = false
     await retryButton.click()
-    await recoveredFeed
+    const recoveredResponse = await recoveredFeed
+    expect(recoveredResponse.ok()).toBe(true)
 
+    // The All view is shared across parallel tests and paged (20 per page),
+    // so our topic can land beyond page one — page until it is on screen.
+    await revealTopicCard(page, topic.name)
     await expect(page.locator('.feed-retry')).toHaveCount(0)
-    await expect(page.locator('.topic-card-title', { hasText: topic.name })).toBeVisible()
 })
