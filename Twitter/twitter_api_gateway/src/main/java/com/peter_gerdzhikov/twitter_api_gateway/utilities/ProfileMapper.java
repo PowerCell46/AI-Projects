@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_api_gateway.utilities;
 
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
@@ -11,7 +12,7 @@ public final class ProfileMapper {
     private ProfileMapper() {
     }
 
-    public static ProfileResponseDTO toResponse(User user) {
+    public static ProfileResponseDTO toResponse(User user, boolean followedByMe) {
         return ProfileResponseDTO.builder()
                 .id(user.getId())
                 .bio(user.getBio())
@@ -19,7 +20,20 @@ public final class ProfileMapper {
                 .location(user.getLocation())
                 .createdAt(user.getCreatedAt())
                 .birthdate(user.getBirthdate())
+                .followedByMe(followedByMe)
+                .followersCount(user.getFollowersCount())
+                .followingCount(user.getFollowingCount())
                 .coverPictureUrl(urlOf(user.getProfileCoverPicture()))
+                .profilePictureUrl(urlOf(user.getProfilePicture()))
+                .build();
+    }
+
+    public static FollowListItemResponseDTO toListItem(User user, boolean followedByMe) {
+        return FollowListItemResponseDTO.builder()
+                .id(user.getId())
+                .bio(user.getBio())
+                .username(user.getUsername())
+                .followedByMe(followedByMe)
                 .profilePictureUrl(urlOf(user.getProfilePicture()))
                 .build();
     }

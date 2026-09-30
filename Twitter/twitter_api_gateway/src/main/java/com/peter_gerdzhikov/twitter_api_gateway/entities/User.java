@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.entities;
 import java.time.LocalDate;
 import java.util.Locale;
 
+import org.hibernate.annotations.Check;
 import org.hibernate.annotations.DynamicUpdate;
 
 import jakarta.persistence.Column;
@@ -25,7 +26,8 @@ import lombok.Setter;
 
 /**
  * {@code @DynamicUpdate} writes only the changed columns, so a profile edit and a picture upload racing each
- * other can't overwrite each other's columns.
+ * other can't overwrite each other's columns. The follow counters are {@code updatable = false}: only the
+ * atomic statements in {@code UserRepository} change them, so a flush can never write back a stale value.
  */
 @Getter
 @Setter
@@ -34,6 +36,10 @@ import lombok.Setter;
 @DynamicUpdate
 @NoArgsConstructor
 @AllArgsConstructor
+@Check(
+        name = User.FOLLOW_COUNTS_CONSTRAINT,
+        constraints = "followers_count >= 0 AND following_count >= 0"
+)
 @Table(
         name = "users",
         uniqueConstraints = {
@@ -46,6 +52,8 @@ public class User extends CommonEntity {
     public static final String EMAIL_CONSTRAINT = "uk_users_email";
 
     public static final String USERNAME_CONSTRAINT = "uk_users_username_normalized";
+
+    public static final String FOLLOW_COUNTS_CONSTRAINT = "ck_users_follow_counts_non_negative";
 
     @Column(nullable = true, length = 160)
     private String bio;
@@ -91,6 +99,24 @@ public class User extends CommonEntity {
             foreignKey = @ForeignKey(name = "fk_users_profile_cover_picture")
     )
     private DbFile profileCoverPicture;
+
+    @Builder.Default
+    @Column(
+            name = "followers_count",
+            nullable = false,
+            updatable = false,
+            columnDefinition = "bigint not null default 0"
+    )
+    private long followersCount = 0;
+
+    @Builder.Default
+    @Column(
+            name = "following_count",
+            nullable = false,
+            updatable = false,
+            columnDefinition = "bigint not null default 0"
+    )
+    private long followingCount = 0;
 
     @PrePersist
     @PreUpdate

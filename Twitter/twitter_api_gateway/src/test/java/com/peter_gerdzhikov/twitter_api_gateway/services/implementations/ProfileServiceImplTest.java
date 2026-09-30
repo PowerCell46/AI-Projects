@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.services.implementations;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
@@ -20,6 +21,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.UpdateProfileReques
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 
@@ -28,14 +30,19 @@ class ProfileServiceImplTest {
 
     private static final UUID USER_ID = UUID.randomUUID();
 
+    private static final UUID VIEWER_ID = UUID.randomUUID();
+
     private ProfileServiceImpl profileService;
 
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private FollowRepository followRepository;
+
     @BeforeEach
     void setUp() {
-        profileService = new ProfileServiceImpl(userRepository);
+        profileService = new ProfileServiceImpl(userRepository, followRepository);
     }
 
     @Nested
@@ -46,7 +53,7 @@ class ProfileServiceImplTest {
             User user = confirmedUser();
             when(userRepository.findByUsernameNormalized("peterg")).thenReturn(Optional.of(user));
 
-            ProfileResponseDTO profile = profileService.getProfile("PeterG");
+            ProfileResponseDTO profile = profileService.getProfile(VIEWER_ID, "PeterG");
 
             assertThat(profile.getUsername()).isEqualTo(user.getUsername());
             verify(userRepository).findByUsernameNormalized("peterg");
@@ -56,7 +63,7 @@ class ProfileServiceImplTest {
         void should_throw_when_the_user_is_unknown() {
             when(userRepository.findByUsernameNormalized("nobody")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> profileService.getProfile("nobody"))
+            assertThatThrownBy(() -> profileService.getProfile(VIEWER_ID, "nobody"))
                     .isInstanceOf(UserNotFoundException.class);
         }
 
@@ -65,8 +72,50 @@ class ProfileServiceImplTest {
             User user = TestEntities.newUser();
             when(userRepository.findByUsernameNormalized("pending")).thenReturn(Optional.of(user));
 
-            assertThatThrownBy(() -> profileService.getProfile("pending"))
+            assertThatThrownBy(() -> profileService.getProfile(VIEWER_ID, "pending"))
                     .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void should_copy_the_stored_counts_into_the_response() {
+            User user = confirmedUser();
+            user.setFollowersCount(7);
+            user.setFollowingCount(3);
+            when(userRepository.findByUsernameNormalized("peterg")).thenReturn(Optional.of(user));
+
+            ProfileResponseDTO profile = profileService.getProfile(VIEWER_ID, "PeterG");
+
+            assertThat(profile.getFollowersCount()).isEqualTo(7);
+            assertThat(profile.getFollowingCount()).isEqualTo(3);
+        }
+
+        @Test
+        void should_mark_followed_by_me_when_the_viewer_follows_the_profile() {
+            User user = confirmedUser();
+            when(userRepository.findByUsernameNormalized("peterg")).thenReturn(Optional.of(user));
+            when(followRepository.existsByFollowerIdAndFollowingId(VIEWER_ID, user.getId())).thenReturn(true);
+
+            assertThat(profileService.getProfile(VIEWER_ID, "PeterG").isFollowedByMe()).isTrue();
+        }
+
+        @Test
+        void should_not_mark_followed_by_me_when_the_viewer_does_not_follow_the_profile() {
+            User user = confirmedUser();
+            when(userRepository.findByUsernameNormalized("peterg")).thenReturn(Optional.of(user));
+            when(followRepository.existsByFollowerIdAndFollowingId(VIEWER_ID, user.getId())).thenReturn(false);
+
+            assertThat(profileService.getProfile(VIEWER_ID, "PeterG").isFollowedByMe()).isFalse();
+        }
+
+        @Test
+        void should_not_mark_followed_by_me_and_skip_the_query_when_the_viewer_opens_their_own_profile() {
+            User user = confirmedUser();
+            when(userRepository.findByUsernameNormalized("peterg")).thenReturn(Optional.of(user));
+
+            ProfileResponseDTO profile = profileService.getProfile(user.getId(), "PeterG");
+
+            assertThat(profile.isFollowedByMe()).isFalse();
+            verifyNoInteractions(followRepository);
         }
     }
 
@@ -150,6 +199,7 @@ class ProfileServiceImplTest {
 
     private User confirmedUser() {
         User user = TestEntities.newUser();
+        user.setId(UUID.randomUUID());
         user.setUsername("PeterG");
         user.setEnabled(true);
 

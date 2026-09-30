@@ -9,11 +9,13 @@ public interface ProfileService {
 
     /**
      * The lookup ignores the case of the username. An unconfirmed user doesn't exist to anyone.
+     * {@code followedByMe} says whether {@code viewerId} follows the profile, and is always false for the
+     * viewer's own profile.
      *
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException
      *         for an unknown or unconfirmed user
      */
-    ProfileResponseDTO getProfile(String username);
+    ProfileResponseDTO getProfile(UUID viewerId, String username);
 
     /**
      * A full replacement: every field is overwritten, and a {@code null} or blank string clears it. The

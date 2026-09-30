@@ -42,4 +42,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM User u WHERE u.enabled = false AND u.createdAt < :cutoff")
     int deleteUnconfirmedCreatedBefore(@Param("cutoff") Instant cutoff);
+
+    /**
+     * One atomic {@code UPDATE ... SET x = x + :delta}, so concurrent callers never overwrite each other.
+     * Callers that touch two users must update them in a fixed id order to avoid deadlocks. Returns the
+     * number of rows changed.
+     */
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.followersCount = u.followersCount + :delta WHERE u.id = :id")
+    int addToFollowersCount(@Param("id") UUID id, @Param("delta") long delta);
+
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.followingCount = u.followingCount + :delta WHERE u.id = :id")
+    int addToFollowingCount(@Param("id") UUID id, @Param("delta") long delta);
 }

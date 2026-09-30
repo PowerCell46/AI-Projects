@@ -33,6 +33,8 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.DuplicateUsernam
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.EmailNotConfirmedException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidConfirmationTokenException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidCredentialsException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 
 class GlobalExceptionHandlerTest {
 
@@ -89,6 +91,24 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().getMessages()).containsExactly(InvalidConfirmationTokenException.MESSAGE);
+    }
+
+    @Test
+    void should_return_400_for_an_invalid_cursor() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleInvalidPagination(new InvalidCursorException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly(InvalidCursorException.MESSAGE);
+    }
+
+    @Test
+    void should_return_400_for_an_invalid_page_size() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleInvalidPagination(new InvalidPageSizeException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly(InvalidPageSizeException.MESSAGE);
     }
 
     @Test

@@ -32,6 +32,9 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.EmptyUploadExce
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.FileNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.UnsupportedImageTypeException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.SelfFollowException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +62,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidConfirmationTokenException.class)
     public ResponseEntity<ErrorResponseDTO> handleInvalidConfirmationToken(InvalidConfirmationTokenException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler({InvalidCursorException.class, InvalidPageSizeException.class})
+    public ResponseEntity<ErrorResponseDTO> handleInvalidPagination(RuntimeException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(SelfFollowException.class)
+    public ResponseEntity<ErrorResponseDTO> handleSelfFollow(SelfFollowException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 

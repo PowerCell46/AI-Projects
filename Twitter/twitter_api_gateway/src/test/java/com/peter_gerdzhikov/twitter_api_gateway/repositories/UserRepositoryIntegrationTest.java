@@ -313,4 +313,173 @@ class UserRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
             return saved;
         }
     }
+
+    @Nested
+    class FollowCounts {
+
+        @Test
+        void should_default_both_counts_to_zero() {
+            User saved = userRepository.saveAndFlush(TestEntities.newUser());
+            entityManager.clear();
+
+            User found = userRepository.findById(saved.getId()).orElseThrow();
+
+            assertThat(found.getFollowersCount()).isZero();
+            assertThat(found.getFollowingCount()).isZero();
+        }
+
+        @Test
+        void should_not_write_a_count_set_on_the_entity_when_the_user_is_flushed() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            user.setFollowersCount(99);
+            user.setFollowingCount(99);
+            user.setBio("forces an update");
+            userRepository.flush();
+            entityManager.clear();
+
+            User found = userRepository.findById(user.getId()).orElseThrow();
+            assertThat(found.getFollowersCount()).isZero();
+            assertThat(found.getFollowingCount()).isZero();
+        }
+
+        @Test
+        void should_reject_a_negative_followers_count() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "UPDATE users SET followers_count = -1 WHERE id = ?",
+                    user.getId()
+            ))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining(User.FOLLOW_COUNTS_CONSTRAINT);
+        }
+
+        @Test
+        void should_reject_a_negative_following_count() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "UPDATE users SET following_count = -1 WHERE id = ?",
+                    user.getId()
+            ))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining(User.FOLLOW_COUNTS_CONSTRAINT);
+        }
+    }
+
+    @Nested
+    class AddToFollowersCount {
+
+        @Test
+        void should_increment_the_followers_count_and_return_one_row() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            int changed = userRepository.addToFollowersCount(user.getId(), 1);
+
+            assertThat(changed).isEqualTo(1);
+            assertThat(reload(user).getFollowersCount()).isEqualTo(1);
+        }
+
+        @Test
+        void should_decrement_the_followers_count() {
+            User user = userWithCounts(3, 0);
+
+            userRepository.addToFollowersCount(user.getId(), -1);
+
+            assertThat(reload(user).getFollowersCount()).isEqualTo(2);
+        }
+
+        @Test
+        void should_leave_the_following_count_and_other_users_untouched() {
+            User user = userWithCounts(0, 5);
+            User other = userWithCounts(7, 7);
+
+            userRepository.addToFollowersCount(user.getId(), 1);
+
+            assertThat(reload(user).getFollowingCount()).isEqualTo(5);
+            assertThat(reload(other).getFollowersCount()).isEqualTo(7);
+            assertThat(reload(other).getFollowingCount()).isEqualTo(7);
+        }
+
+        @Test
+        void should_reject_a_decrement_below_zero() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            assertThatThrownBy(() -> userRepository.addToFollowersCount(user.getId(), -1))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining(User.FOLLOW_COUNTS_CONSTRAINT);
+        }
+
+        @Test
+        void should_return_zero_rows_when_the_user_is_unknown() {
+            assertThat(userRepository.addToFollowersCount(UUID.randomUUID(), 1)).isZero();
+        }
+    }
+
+    @Nested
+    class AddToFollowingCount {
+
+        @Test
+        void should_increment_the_following_count_and_return_one_row() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            int changed = userRepository.addToFollowingCount(user.getId(), 1);
+
+            assertThat(changed).isEqualTo(1);
+            assertThat(reload(user).getFollowingCount()).isEqualTo(1);
+        }
+
+        @Test
+        void should_decrement_the_following_count() {
+            User user = userWithCounts(0, 3);
+
+            userRepository.addToFollowingCount(user.getId(), -1);
+
+            assertThat(reload(user).getFollowingCount()).isEqualTo(2);
+        }
+
+        @Test
+        void should_leave_the_followers_count_and_other_users_untouched() {
+            User user = userWithCounts(5, 0);
+            User other = userWithCounts(7, 7);
+
+            userRepository.addToFollowingCount(user.getId(), 1);
+
+            assertThat(reload(user).getFollowersCount()).isEqualTo(5);
+            assertThat(reload(other).getFollowersCount()).isEqualTo(7);
+            assertThat(reload(other).getFollowingCount()).isEqualTo(7);
+        }
+
+        @Test
+        void should_reject_a_decrement_below_zero() {
+            User user = userRepository.saveAndFlush(TestEntities.newUser());
+
+            assertThatThrownBy(() -> userRepository.addToFollowingCount(user.getId(), -1))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining(User.FOLLOW_COUNTS_CONSTRAINT);
+        }
+
+        @Test
+        void should_return_zero_rows_when_the_user_is_unknown() {
+            assertThat(userRepository.addToFollowingCount(UUID.randomUUID(), 1)).isZero();
+        }
+    }
+
+    private User userWithCounts(long followersCount, long followingCount) {
+        User user = userRepository.saveAndFlush(TestEntities.newUser());
+        jdbcTemplate.update(
+                "UPDATE users SET followers_count = ?, following_count = ? WHERE id = ?",
+                followersCount,
+                followingCount,
+                user.getId()
+        );
+        entityManager.clear();
+
+        return user;
+    }
+
+    private User reload(User user) {
+        return userRepository.findById(user.getId()).orElseThrow();
+    }
 }

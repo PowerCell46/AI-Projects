@@ -13,6 +13,8 @@ Phase 1 catalog: written `@Disabled` in step 2. All groups are enabled (steps 4�
 
 Phase 2 catalog (profile and files, at the bottom): written `@Disabled` in step 12 and approved. Bodies are empty until the step that enables the group; the profile read and edit groups are enabled (step 14), the upload and delete groups (step 16), the files group (step 17), and the concurrency test (step 18).
 
+Phase 3 catalog (follows, at the bottom): written `@Disabled` in step 19 and approved. Bodies are empty until the step that enables the group: Follow and Unfollow are enabled (step 21), Profile is enabled (step 22), Lists is enabled (step 23). No `@Disabled` is left.
+
 ## `POST /api/v1/auth/register`
 
 `AuthControllerIntegrationTest.Register` — enabled
@@ -126,7 +128,7 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 
 `ProfileControllerIntegrationTest.GetProfile` — enabled
 
-- Returns 200 with `{id, username, bio, location, birthdate, profilePictureUrl, coverPictureUrl, createdAt}` (`should_return_200_with_the_profile_shape_when_the_user_exists`)
+- Returns 200 with `{id, username, bio, location, birthdate, profilePictureUrl, coverPictureUrl, createdAt, followersCount, followingCount, followedByMe}` (`should_return_200_with_the_profile_shape_when_the_user_exists`)
 - Picture URLs are `null` when there are no pictures (`should_return_null_picture_urls_when_the_user_has_no_pictures`)
 - Lookup in another case returns 200 (`should_return_200_when_the_username_differs_only_in_case`)
 - Unknown user returns 404 (`should_return_404_when_the_user_is_unknown`)
@@ -194,3 +196,86 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 `ProfileConcurrencyIntegrationTest` — enabled
 
 - `PUT /users/me` in parallel with a picture `PUT` for the same user: both changes survive (`should_keep_both_changes_when_a_profile_edit_and_a_picture_upload_run_in_parallel`)
+- Parallel picture `PUT`s to one slot: all `200`, exactly one `DbFile` row remains, no orphans (`should_leave_no_orphan_rows_when_uploads_to_one_slot_run_in_parallel`)
+
+# Phase 3 — follows
+
+Every group below marked "disabled" is `@Disabled` with an empty body until its step. All live in `FollowControllerIntegrationTest`. "List" scenarios are parameterized over `followers` and `following`.
+
+## `PUT /api/v1/users/{username}/follow`
+
+`FollowControllerIntegrationTest.Follow` — enabled
+
+- 204; the row exists, target `followersCount` +1, follower `followingCount` +1 (`should_return_204_and_store_the_row_and_increment_both_counts_when_the_target_exists`)
+- Repeat returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_follow_is_repeated`)
+- Username in another case returns 204 (`should_return_204_when_the_username_differs_only_in_case`)
+- Following yourself returns 400 and stores nothing (`should_return_400_and_store_nothing_when_the_user_follows_themselves`)
+- Following yourself by a username in another case returns 400 (`should_return_400_when_the_user_follows_themselves_with_a_username_in_another_case`)
+- Unknown target returns 404 (`should_return_404_when_the_target_is_unknown`)
+- Unconfirmed target returns 404 (`should_return_404_when_the_target_is_unconfirmed`)
+- No cookie returns 401 (`should_return_401_when_there_is_no_cookie`)
+
+## `DELETE /api/v1/users/{username}/follow`
+
+`FollowControllerIntegrationTest.Unfollow` — enabled
+
+- 204; the row is gone, both counts -1 (`should_return_204_and_remove_the_row_and_decrement_both_counts_when_the_follow_exists`)
+- Repeat returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_unfollow_is_repeated`)
+- Never followed returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_user_never_followed_the_target`)
+- Username in another case returns 204 (`should_return_204_when_the_username_differs_only_in_case`)
+- Unfollowing yourself returns 400 (`should_return_400_when_the_user_unfollows_themselves`)
+- Unknown target returns 404 (`should_return_404_when_the_target_is_unknown`)
+- Unconfirmed target returns 404 (`should_return_404_when_the_target_is_unconfirmed`)
+- No cookie returns 401 (`should_return_401_when_there_is_no_cookie`)
+- Other follows of the same users are untouched (`should_keep_the_other_users_follows_when_one_follow_is_removed`)
+
+## `GET /api/v1/users/{username}` (follow fields)
+
+`FollowControllerIntegrationTest.Profile` — enabled. The existing `ProfileControllerIntegrationTest.GetProfile` shape test now asserts the three extra fields too (`followersCount`, `followingCount`, `followedByMe`).
+
+- New user: zero counts, `followedByMe = false` (`should_return_zero_counts_and_not_followed_when_the_user_has_no_follows`)
+- Counts are correct from both sides (`should_show_the_followers_count_on_the_target_and_the_following_count_on_the_follower_when_a_follow_exists`)
+- `followedByMe = true` when the viewer follows the target (`should_return_followed_by_me_true_when_the_viewer_follows_the_target`)
+- `followedByMe = false` when only the target follows the viewer (`should_return_followed_by_me_false_when_only_the_target_follows_the_viewer`)
+- Mutual follow: `true` on both sides (`should_return_followed_by_me_true_on_both_sides_when_two_users_follow_each_other`)
+- Own profile: `followedByMe = false` (`should_return_followed_by_me_false_when_the_viewer_opens_their_own_profile`)
+- Unfollow updates counts and flag (`should_update_the_counts_and_followed_by_me_when_the_follow_is_removed`)
+- Response carries `followersCount`, `followingCount`, `followedByMe` (`should_return_the_counts_and_followed_by_me_in_the_profile_shape_when_the_user_exists`)
+
+## `GET /api/v1/users/{username}/{followers|following}`
+
+`FollowControllerIntegrationTest.Lists` — enabled. Slot = `followers` / `following`.
+
+- Newest first (`should_return_the_items_newest_first_when_the_list_has_several_entries`, slot)
+- Item shape `{id, username, bio, profilePictureUrl, followedByMe}` (`should_return_items_with_id_username_bio_picture_url_and_followed_by_me_when_the_list_is_not_empty`, slot)
+- `followers` holds only users who follow the target (`should_list_only_the_users_who_follow_the_target_when_the_followers_are_requested`)
+- `following` holds only users the target follows (`should_list_only_the_users_the_target_follows_when_the_following_are_requested`)
+- Default size is 20, with a next cursor when more exist (`should_return_20_items_and_a_next_cursor_when_no_size_is_given_and_more_exist`, slot)
+- Following cursors to the end covers every entry once (`should_return_every_entry_exactly_once_when_the_pages_are_followed_to_the_end`, slot)
+- New follows inserted between page requests: still once each (`should_return_every_entry_exactly_once_when_new_follows_are_inserted_between_page_requests`, slot)
+- Equal `createdAt` on every follow: no gaps or duplicates (`should_return_every_entry_exactly_once_when_all_follows_share_the_same_timestamp`, slot)
+- Last page has `nextCursor = null` (`should_return_a_null_next_cursor_when_the_page_is_the_last_one`, slot)
+- Entries exactly filling the page: `nextCursor = null` (`should_return_a_null_next_cursor_when_the_entries_exactly_fill_the_page`, slot)
+- Empty list: `items: []`, `nextCursor = null` (`should_return_empty_items_and_a_null_next_cursor_when_the_list_is_empty`, slot)
+- `followedByMe` correct per item (`should_mark_followed_by_me_per_item_when_the_viewer_follows_only_some_of_them`, slot)
+- An unfollowed entry drops out (`should_drop_the_entry_when_the_follow_is_removed`, slot)
+- Size 1 and 100 return 200 (`should_return_200_when_the_size_is_1_or_100`, slot)
+- Size 0 returns 400 (`should_return_400_when_the_size_is_0`, slot)
+- Size 101 returns 400 (`should_return_400_when_the_size_is_101`, slot)
+- Non-numeric size returns 400 (`should_return_400_when_the_size_is_not_a_number`, slot)
+- Garbage cursor returns 400 "Invalid cursor." (`should_return_400_when_the_cursor_is_garbage`, slot)
+- Valid base64url with wrong content returns 400 (`should_return_400_when_the_cursor_is_valid_base64url_but_has_the_wrong_content`, slot)
+- Username in another case returns 200 (`should_return_200_when_the_username_differs_only_in_case`, slot)
+- Unknown user returns 404 (`should_return_404_when_the_user_is_unknown`, slot)
+- Unconfirmed user returns 404 (`should_return_404_when_the_user_is_unconfirmed`, slot)
+- No cookie returns 401 (`should_return_401_when_there_is_no_cookie`, slot)
+
+## Concurrency (phase 3)
+
+`FollowConcurrencyIntegrationTest` — enabled; calls released together through a latch, no sleeps
+
+- 50 distinct users follow one target in parallel: 50 rows, `followersCount = 50` (`should_store_exactly_50_rows_and_count_50_when_50_users_follow_one_target_in_parallel`)
+- 20 parallel follows of one pair: 1 row, counts 1 (`should_store_one_row_and_count_one_when_the_same_pair_follows_in_parallel`)
+- Follow and follow-back in parallel, 50 rounds on fresh pairs: no deadlock, counts correct (`should_count_both_sides_without_deadlock_when_two_users_follow_each_other_in_parallel_50_times`)
+- Seeded 200-operation follow/unfollow storm over 8 users: every `followers_count` and `following_count` equals its `COUNT(*)` (`should_keep_every_counter_equal_to_its_row_count_when_follows_and_unfollows_storm_in_parallel`)
+

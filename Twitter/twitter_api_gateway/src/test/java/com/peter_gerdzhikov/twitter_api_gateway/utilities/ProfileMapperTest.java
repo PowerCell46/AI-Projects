@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
@@ -23,18 +24,23 @@ class ProfileMapperTest {
         user.setBio("Hello");
         user.setLocation("Sofia");
         user.setBirthdate(LocalDate.of(1990, 5, 17));
+        user.setFollowersCount(7);
+        user.setFollowingCount(3);
         DbFile profilePicture = fileWithId();
         DbFile coverPicture = fileWithId();
         user.setProfilePicture(profilePicture);
         user.setProfileCoverPicture(coverPicture);
 
-        ProfileResponseDTO response = ProfileMapper.toResponse(user);
+        ProfileResponseDTO response = ProfileMapper.toResponse(user, true);
 
         assertThat(response.getId()).isEqualTo(user.getId());
         assertThat(response.getUsername()).isEqualTo(user.getUsername());
         assertThat(response.getBio()).isEqualTo("Hello");
         assertThat(response.getLocation()).isEqualTo("Sofia");
         assertThat(response.getBirthdate()).isEqualTo(LocalDate.of(1990, 5, 17));
+        assertThat(response.getFollowersCount()).isEqualTo(7);
+        assertThat(response.getFollowingCount()).isEqualTo(3);
+        assertThat(response.isFollowedByMe()).isTrue();
         assertThat(response.getCreatedAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
         assertThat(response.getProfilePictureUrl()).isEqualTo("/api/v1/files/" + profilePicture.getId());
         assertThat(response.getCoverPictureUrl()).isEqualTo("/api/v1/files/" + coverPicture.getId());
@@ -42,10 +48,32 @@ class ProfileMapperTest {
 
     @Test
     void toResponse_returnsNullUrlsWhenThereAreNoPictures() {
-        ProfileResponseDTO response = ProfileMapper.toResponse(TestEntities.newUser());
+        ProfileResponseDTO response = ProfileMapper.toResponse(TestEntities.newUser(), false);
 
         assertThat(response.getProfilePictureUrl()).isNull();
         assertThat(response.getCoverPictureUrl()).isNull();
+    }
+
+    @Test
+    void toListItem_copiesTheListFieldsAndBuildsThePictureUrl() {
+        User user = TestEntities.newUser();
+        user.setId(UUID.randomUUID());
+        user.setBio("Hello");
+        DbFile profilePicture = fileWithId();
+        user.setProfilePicture(profilePicture);
+
+        FollowListItemResponseDTO item = ProfileMapper.toListItem(user, true);
+
+        assertThat(item.getId()).isEqualTo(user.getId());
+        assertThat(item.getUsername()).isEqualTo(user.getUsername());
+        assertThat(item.getBio()).isEqualTo("Hello");
+        assertThat(item.isFollowedByMe()).isTrue();
+        assertThat(item.getProfilePictureUrl()).isEqualTo("/api/v1/files/" + profilePicture.getId());
+    }
+
+    @Test
+    void toListItem_returnsNullUrlWhenThereIsNoPicture() {
+        assertThat(ProfileMapper.toListItem(TestEntities.newUser(), false).getProfilePictureUrl()).isNull();
     }
 
     private DbFile fileWithId() {

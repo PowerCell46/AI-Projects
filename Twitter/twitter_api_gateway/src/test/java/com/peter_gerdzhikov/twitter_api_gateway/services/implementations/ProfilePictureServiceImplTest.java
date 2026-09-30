@@ -162,8 +162,20 @@ class ProfilePictureServiceImplTest {
         }
 
         @Test
+        void should_lock_the_user_before_loading_it() {
+            userWithoutPictures();
+            when(dbFileRepository.save(any(DbFile.class))).thenAnswer(call -> call.getArgument(0));
+
+            profilePictureService.upload(USER_ID, PictureSlot.PROFILE_PICTURE, png());
+
+            InOrder order = inOrder(userRepository);
+            order.verify(userRepository).lockById(USER_ID);
+            order.verify(userRepository).findById(USER_ID);
+        }
+
+        @Test
         void should_delete_the_new_object_when_the_user_no_longer_exists() {
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+            when(userRepository.lockById(USER_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> profilePictureService.upload(USER_ID, PictureSlot.PROFILE_PICTURE, png()))
                     .isInstanceOf(UserNotFoundException.class);
@@ -311,7 +323,7 @@ class ProfilePictureServiceImplTest {
 
         @Test
         void should_throw_when_the_user_no_longer_exists() {
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+            when(userRepository.lockById(USER_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> profilePictureService.delete(USER_ID, PictureSlot.PROFILE_PICTURE))
                     .isInstanceOf(UserNotFoundException.class);
@@ -320,6 +332,7 @@ class ProfilePictureServiceImplTest {
 
     private User userWithoutPictures() {
         User user = TestEntities.newUser();
+        when(userRepository.lockById(USER_ID)).thenReturn(Optional.of(USER_ID));
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 
         return user;

@@ -36,8 +36,8 @@ public class UserController {
     private final ProfilePictureService profilePictureService;
 
     @GetMapping("/{username}")
-    public ProfileResponseDTO getProfile(@PathVariable String username) {
-        return profileService.getProfile(username);
+    public ProfileResponseDTO getProfile(@AuthenticationPrincipal Jwt jwt, @PathVariable String username) {
+        return profileService.getProfile(UUID.fromString(jwt.getSubject()), username);
     }
 
     @PutMapping("/me")

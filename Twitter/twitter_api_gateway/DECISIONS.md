@@ -283,3 +283,60 @@ old picture and the last pointer write won. Tracked as finding 1 in `exploit-rep
 open for the length of a download would pin a connection. A row whose object is missing answers 502 (see step 15).
 Any logged-in user can read any file id: ids are random UUIDs and the pictures are public on the profile anyway.
 
+
+## Step 20 — `Follow` stands alone, without `CommonEntity`
+
+A follow is only ever inserted or deleted, so it has no `updatedAt`. The id and `createdAt` are supplied by the
+native insert (`FollowRepository.insertIfAbsent`), so the id has no generator. Truncating `createdAt` to
+microseconds is the caller's job (step 21), because the list cursor is built from it.
+
+## Step 20 — counter statements take a delta, and the counter columns carry a DB default
+
+`UserRepository.addToFollowersCount` / `addToFollowingCount` are single `SET x = x + :delta` statements, called
+with `+1` or `-1`, instead of four increment/decrement methods. HQL updates the `updatable = false` columns
+fine. The columns use `columnDefinition = "bigint not null default 0"` so `ddl-auto=update` can add them to a
+`users` table that already has rows. The same `update` mode does not add the new table-level `@Check` to an
+existing `users` table, so only a fresh schema gets `ck_users_follow_counts_non_negative` (see the
+`ddl-auto` accepted gap in `PLAN.md`).
+
+## Step 20 — the keyset queries wait for step 23
+
+Step 20 covers the counter statements. The "keyset has no gaps and no duplicates at equal `createdAt`"
+repository scenario is written with the list query in step 23.
+
+## Step 21 — the fixed lock order uses `UUID.compareTo`, which is signed
+
+`FollowServiceImpl.adjustCounts` updates the smaller id's counter row first. `UUID.compareTo` compares the two
+halves as signed longs, so an id starting `ffff…` sorts *before* `0000…`. That is fine, since any total order
+works as long as every transaction uses the same one, but the unit test's "larger" id must be `7fff…`, not
+`ffff…`.
+
+## Step 21 — the self-follow check runs after the target lookup
+
+The request carries only a username, so the target is resolved first (one read), then its id is compared with
+the caller's. Nothing is written before the check. A missing or unconfirmed target answers 404 before the
+self check, which can't matter because the caller always exists and is confirmed.
+
+## Step 22 — `followedByMe` is false on every response about your own profile
+
+`PUT /users/me` and the picture upload/delete answers are always about the caller, so they return
+`followedByMe = false` without a query, like `GET` on your own username. Their counts are read from the same
+`User` row the request already loaded.
+
+## Step 23 — list endpoint calls
+
+- **Two exceptions, both 400:** `InvalidCursorException` ("Invalid cursor.") and `InvalidPageSizeException`
+  ("Page size must be between 1 and 100."), one handler method. Size is checked in the service, not with
+  `@Min`/`@Max`, so the message is ours and the rule is unit-testable. A non-numeric size falls to the existing
+  "Malformed request parameter." handler.
+- **Cursor is strict:** `decode` re-encodes what it parsed and must match the input, so padding, signs, leading
+  zeros and upper-case ids are rejected. `?cursor=` (empty) is therefore `400`, not a first page.
+- **Validation order:** size, then cursor, then the user lookup, so a bad parameter is `400` even for an unknown
+  user.
+- **Four repository queries, not one with a null cursor:** first page and after-cursor, for followers and for
+  following. The keyset is written as `createdAt < :c OR (createdAt = :c AND id < :id)`; the id tie-break runs in
+  Postgres, whose UUID order is unsigned bytes and differs from `UUID.compareTo`.
+- **`followedByMe` on list items:** one `IN` query per page, skipped for an empty page. Your own entry in a list is
+  `false`, as on your own profile.
+- **Own service and endpoints on `FollowController`:** `FollowListService` keeps `FollowServiceImpl` free of read
+  paths.

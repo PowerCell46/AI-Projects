@@ -25,6 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
@@ -54,6 +55,9 @@ class ProfileConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private DbFileRepository dbFileRepository;
+
     @Test
     void should_keep_both_changes_when_a_profile_edit_and_a_picture_upload_run_in_parallel() throws Exception {
         List<User> users = new ArrayList<>();
@@ -75,6 +79,23 @@ class ProfileConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
             assertThat(stored.getLocation()).isEqualTo("Sofia");
             assertThat(stored.getProfilePicture()).isNotNull();
         }
+    }
+
+    @Test
+    void should_leave_no_orphan_rows_when_uploads_to_one_slot_run_in_parallel() throws Exception {
+        User user = confirmedUser();
+        String cookie = tokenService.mint(user);
+        long rowsBefore = dbFileRepository.count();
+        List<Callable<Integer>> calls = new ArrayList<>();
+        for (int i = 0; i < USERS; i++) {
+            calls.add(() -> uploadPicture(cookie));
+        }
+
+        List<Integer> statuses = runInParallel(calls);
+
+        assertThat(statuses).containsOnly(200);
+        assertThat(userRepository.findById(user.getId()).orElseThrow().getProfilePicture()).isNotNull();
+        assertThat(dbFileRepository.count() - rowsBefore).isEqualTo(1);
     }
 
     /**

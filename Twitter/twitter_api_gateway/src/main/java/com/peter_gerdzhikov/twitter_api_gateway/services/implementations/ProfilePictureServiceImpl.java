@@ -117,9 +117,7 @@ public class ProfilePictureServiceImpl implements ProfilePictureService {
     }
 
     private Replacement repoint(UUID userId, PictureSlot slot, String objectKey, String contentType, long sizeBytes) {
-        User user = userRepository
-                .findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = loadLockedUser(userId);
         DbFile replaced = slot.read(user);
         DbFile stored = dbFileRepository.save(DbFile.builder()
                 .sizeBytes(sizeBytes)
@@ -131,13 +129,11 @@ public class ProfilePictureServiceImpl implements ProfilePictureService {
             dbFileRepository.delete(replaced);
         }
 
-        return new Replacement(ProfileMapper.toResponse(user), replaced == null ? null : replaced.getObjectKey());
+        return new Replacement(ProfileMapper.toResponse(user, false), replaced == null ? null : replaced.getObjectKey());
     }
 
     private String clear(UUID userId, PictureSlot slot) {
-        User user = userRepository
-                .findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = loadLockedUser(userId);
         DbFile removed = slot.read(user);
         if (removed == null) {
             return null;
@@ -146,6 +142,20 @@ public class ProfilePictureServiceImpl implements ProfilePictureService {
         dbFileRepository.delete(removed);
 
         return removed.getObjectKey();
+    }
+
+    /**
+     * Same-user changes must serialise: without the lock, concurrent uploads all read the same old picture,
+     * and every one but the last pointer write leaves an unreferenced row and object behind.
+     */
+    private User loadLockedUser(UUID userId) {
+        userRepository
+                .lockById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        return userRepository
+                .findById(userId)
+                .orElseThrow(UserNotFoundException::new);
     }
 
     private void deleteObjectQuietly(String objectKey) {

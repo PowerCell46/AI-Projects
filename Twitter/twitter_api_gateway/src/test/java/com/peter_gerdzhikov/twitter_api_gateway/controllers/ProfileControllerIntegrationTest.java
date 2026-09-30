@@ -68,6 +68,9 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
             "location",
             "createdAt",
             "birthdate",
+            "followedByMe",
+            "followersCount",
+            "followingCount",
             "coverPictureUrl",
             "profilePictureUrl"
     );

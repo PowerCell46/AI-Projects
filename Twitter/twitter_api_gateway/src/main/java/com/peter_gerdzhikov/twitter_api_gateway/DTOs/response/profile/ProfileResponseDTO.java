@@ -27,6 +27,12 @@ public class ProfileResponseDTO {
 
     private LocalDate birthdate;
 
+    private boolean followedByMe;
+
+    private long followersCount;
+
+    private long followingCount;
+
     private String coverPictureUrl;
 
     private String profilePictureUrl;

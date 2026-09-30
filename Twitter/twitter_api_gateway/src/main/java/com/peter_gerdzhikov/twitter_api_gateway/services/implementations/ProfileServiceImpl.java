@@ -11,6 +11,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.UpdateProfileReques
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.ProfileService;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.ProfileMapper;
@@ -23,15 +24,17 @@ public class ProfileServiceImpl implements ProfileService {
 
     private final UserRepository userRepository;
 
+    private final FollowRepository followRepository;
+
     @Override
     @Transactional(readOnly = true)
-    public ProfileResponseDTO getProfile(String username) {
+    public ProfileResponseDTO getProfile(UUID viewerId, String username) {
         User user = userRepository
                 .findByUsernameNormalized(username.toLowerCase(Locale.ROOT))
                 .filter(User::isEnabled)
                 .orElseThrow(UserNotFoundException::new);
 
-        return ProfileMapper.toResponse(user);
+        return ProfileMapper.toResponse(user, isFollowedBy(viewerId, user));
     }
 
     @Override
@@ -44,7 +47,12 @@ public class ProfileServiceImpl implements ProfileService {
         user.setLocation(blankToNull(request.getLocation()));
         user.setBirthdate(request.getBirthdate());
 
-        return ProfileMapper.toResponse(user);
+        return ProfileMapper.toResponse(user, false);
+    }
+
+    private boolean isFollowedBy(UUID viewerId, User profile) {
+        return !profile.getId().equals(viewerId)
+                && followRepository.existsByFollowerIdAndFollowingId(viewerId, profile.getId());
     }
 
     private String blankToNull(String value) {
