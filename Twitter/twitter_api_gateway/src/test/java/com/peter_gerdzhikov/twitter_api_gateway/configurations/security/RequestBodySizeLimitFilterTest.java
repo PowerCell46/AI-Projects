@@ -6,6 +6,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockFilterChain;
@@ -22,6 +24,10 @@ class RequestBodySizeLimitFilterTest {
 
     private static final int MAX_UPLOAD_BODY_BYTES = 64;
 
+    private static final int MAX_TWEET_BODY_BYTES = 256;
+
+    private static final String TWEETS_PATH = "/api/v1/tweets";
+
     private static final String PICTURE_PATH = "/api/v1/users/me/profile-picture";
 
     private static final String COVER_PATH = "/api/v1/users/me/cover-picture";
@@ -32,7 +38,8 @@ class RequestBodySizeLimitFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new RequestBodySizeLimitFilter(MAX_BODY_BYTES, MAX_UPLOAD_BODY_BYTES, JsonMapper.builder().build());
+        filter = new RequestBodySizeLimitFilter(
+                MAX_BODY_BYTES, MAX_UPLOAD_BODY_BYTES, MAX_TWEET_BODY_BYTES, JsonMapper.builder().build());;
     }
 
     @Test
@@ -129,6 +136,42 @@ class RequestBodySizeLimitFilterTest {
 
         BodySizeLimitingRequestWrapper wrapper = (BodySizeLimitingRequestWrapper) chain.getRequest();
         assertThat(wrapper.getInputStream().readAllBytes()).hasSize(MAX_UPLOAD_BODY_BYTES);
+    }
+
+    @Test
+    void should_pass_a_body_over_the_upload_cap_down_the_chain_when_it_is_a_tweet_creation() throws Exception {
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(requestWithBody("POST", TWEETS_PATH, MAX_TWEET_BODY_BYTES), new MockHttpServletResponse(), chain);
+
+        assertThat(chain.getRequest()).isNotNull();
+    }
+
+    @Test
+    void should_return_413_when_a_tweet_creation_body_is_over_the_tweet_cap() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(requestWithBody("POST", TWEETS_PATH, MAX_TWEET_BODY_BYTES + 1), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE.value());
+        assertThat(chain.getRequest()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "PUT, /api/v1/tweets",
+            "GET, /api/v1/tweets",
+            "POST, /api/v1/tweets/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
+            "POST, /api/v1/tweets/",
+            "PUT, /api/v1/tweets/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b"
+    })
+    void should_keep_the_normal_cap_when_the_request_is_not_a_tweet_creation(String method, String path) throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(requestWithBody(method, path, MAX_BODY_BYTES + 1), response, new MockFilterChain());
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE.value());
     }
 
     private MockHttpServletRequest requestWithBody(String body) {

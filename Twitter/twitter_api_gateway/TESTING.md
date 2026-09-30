@@ -279,3 +279,61 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 - Follow and follow-back in parallel, 50 rounds on fresh pairs: no deadlock, counts correct (`should_count_both_sides_without_deadlock_when_two_users_follow_each_other_in_parallel_50_times`)
 - Seeded 200-operation follow/unfollow storm over 8 users: every `followers_count` and `following_count` equals its `COUNT(*)` (`should_keep_every_counter_equal_to_its_row_count_when_follows_and_unfollows_storm_in_parallel`)
 
+
+# Phase 4 — tweet routing
+
+Written `@Disabled` in step 25 and approved; every group is now enabled (steps 26–29). `TweetRoutesIntegrationTest` uses WireMock as the tweet service. `TweetServiceContractIntegrationTest` runs the real tweet service from its Dockerfile.
+
+## `/api/v1/tweets/**` (proxy)
+
+`TweetRoutesIntegrationTest.Authentication` — enabled
+
+- No cookie returns 401 on GET, POST, PUT and DELETE, and nothing reaches the tweet service (`should_return_401_and_forward_nothing_when_there_is_no_cookie`, method)
+
+`TweetRoutesIntegrationTest.Forwarding` — enabled
+
+- GET forwards path, query and status unchanged (`should_forward_a_get_with_the_path_query_and_status_unchanged_when_the_user_is_authenticated`)
+- POST forwards body and status unchanged (`should_forward_a_post_with_the_body_and_status_unchanged_when_the_user_is_authenticated`)
+- PUT forwards body and status unchanged (`should_forward_a_put_with_the_body_and_status_unchanged_when_the_user_is_authenticated`)
+- DELETE forwards status unchanged (`should_forward_a_delete_with_the_status_unchanged_when_the_user_is_authenticated`)
+- Downstream 400/403/404/413/415 pass through with their body (`should_pass_the_downstream_error_status_and_body_through_unchanged`, status)
+
+`TweetRoutesIntegrationTest.Identity` — enabled
+
+- Tweet service receives `X-User-Id` = the JWT `sub` (`should_send_the_jwt_subject_as_x_user_id_when_the_request_is_forwarded`)
+- Spoofed `X-User-Id` / `x-user-id` is replaced by the `sub` (`should_replace_a_spoofed_x_user_id_with_the_jwt_subject`, header name)
+- Spoofed `X-User-Role` is dropped (`should_drop_a_spoofed_x_user_role_header`)
+- `Cookie` never arrives (`should_not_forward_the_cookie_header`)
+- `Authorization` never arrives (`should_not_forward_the_authorization_header`)
+
+`TweetBodyCapsIntegrationTest` — enabled. Runs on a real servlet container, because MockMvc never applies the multipart limits or the body-size filter to a parsed upload. The tweet service is an in-process recording server that keeps each body's length and SHA-256, because WireMock's client cannot read a body over Jackson's 20 MB string limit.
+
+- Multipart POST exactly at the tweet cap arrives byte-identical (`CreateTweet.should_forward_a_byte_identical_multipart_post_when_the_body_is_exactly_at_the_tweet_cap`)
+- One byte over returns 413, nothing forwarded (`CreateTweet.should_return_413_and_forward_nothing_when_a_multipart_post_is_one_byte_over_the_tweet_cap`)
+- A chunked POST one byte over the tweet cap returns 413 and no complete request reaches the tweet service (`CreateTweet.should_return_413_and_complete_nothing_when_a_chunked_post_is_one_byte_over_the_tweet_cap`)
+- PUT over 8 KB returns 413, nothing forwarded (`EditTweet.should_return_413_and_forward_nothing_when_a_put_body_is_over_8_kb`)
+- A chunked PUT over 8 KB returns 413 and no complete request reaches the tweet service (`EditTweet.should_return_413_and_complete_nothing_when_a_chunked_put_body_is_over_8_kb`)
+- A body over the picture-upload cap but under the tweet cap still returns 413 on the profile-picture route (`PictureRoutes.should_keep_the_5_mb_cap_on_the_profile_picture_routes_when_the_tweet_cap_is_raised`)
+
+`TweetRoutesIntegrationTest.Failures` — enabled. The test profile lowers the read timeout to 1s.
+
+- Tweet service slower than the read timeout returns 504, no exception text (`should_return_504_without_leaking_exception_text_when_the_tweet_service_is_slower_than_the_read_timeout`)
+
+`TweetRoutesIntegrationTest.UnreachableTweetService` — enabled. Its own context points the route at a closed port.
+
+- Tweet service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_tweet_service_is_down`)
+
+The auth, profile, file and follow suites are the "Unaffected" group: they must stay green unchanged.
+
+## Cross-service contract
+
+`TweetServiceContractIntegrationTest` — enabled. Real server; the tweet service is built from `../twitter_tweet_service/Dockerfile` on a Docker network with its own Mongo, MinIO and Kafka. Users come from `TestJwts`. The first run builds the image and takes minutes.
+
+- Alice posts text + 1 image: 201 (`should_return_201_when_alice_posts_a_tweet_with_text_and_one_image`)
+- Bob reads it: 200, `views = 1`, image byte-identical (`should_return_200_with_one_view_and_the_byte_identical_image_when_bob_reads_alices_tweet`)
+- Bob's PUT returns 403 (`should_return_403_when_bob_edits_alices_tweet`)
+- Bob's DELETE returns 403 (`should_return_403_when_bob_deletes_alices_tweet`)
+- Bob's DELETE with spoofed `X-User-Id: <alice>` still returns 403 (`should_return_403_when_bob_deletes_alices_tweet_with_a_spoofed_x_user_id`)
+- Alice edits: 200 (`should_return_200_when_alice_edits_her_tweet`)
+- Alice deletes: 204, then GET returns 404 (`should_return_204_then_404_on_read_when_alice_deletes_her_tweet`)
+- `tweet.created` and `tweet.deleted` for that `tweetId` reach Kafka (`should_publish_tweet_created_and_tweet_deleted_for_the_tweet_id_when_alice_creates_and_deletes_a_tweet`)

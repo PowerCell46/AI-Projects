@@ -3,6 +3,9 @@ package com.peter_gerdzhikov.twitter_api_gateway.controllers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -18,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -153,6 +157,46 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
         assertThat(response.getBody().getMessages()).containsExactly(StorageUnavailableException.MESSAGE);
+    }
+
+    @Test
+    void should_return_504_without_leaking_the_cause_when_the_upstream_read_times_out() {
+        ResourceAccessException e = new ResourceAccessException("I/O error", new HttpTimeoutException("tweets:8081 request timed out"));
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamFailure(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
+        assertThat(response.getBody().getMessages()).containsExactly("Upstream service timed out.");
+    }
+
+    @Test
+    void should_return_413_when_the_body_size_cap_trips_while_the_proxy_streams_the_request() {
+        ResourceAccessException e = new ResourceAccessException("I/O error", new IOException(new RequestBodyTooLargeException()));
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamFailure(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+        assertThat(response.getBody().getMessages()).containsExactly(RequestBodyTooLargeException.MESSAGE);
+    }
+
+    @Test
+    void should_return_502_when_the_upstream_connect_times_out() {
+        ResourceAccessException e = new ResourceAccessException("I/O error", new HttpConnectTimeoutException("tweets:8081 connect timed out"));
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamFailure(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().getMessages()).containsExactly("Upstream service unavailable.");
+    }
+
+    @Test
+    void should_return_502_without_leaking_the_cause_when_the_upstream_refuses_the_connection() {
+        ResourceAccessException e = new ResourceAccessException("I/O error", new ConnectException("tweets:8081 refused"));
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamFailure(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().getMessages()).containsExactly("Upstream service unavailable.");
     }
 
     @Test

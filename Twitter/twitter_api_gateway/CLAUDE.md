@@ -1,9 +1,13 @@
 ## What this is
 
 The single front door of the Twitter clone — it owns users and **all** access rules. One deployable, not a
-gateway plus a separate user service. `PLAN.md` is the backlog and the design: three ordered phases
-(auth + email confirmation → profile with MinIO → follows), each with numbered steps and gates. Read it
+gateway plus a separate user service. `PLAN.md` is the backlog and the design: four ordered phases
+(auth + email confirmation → profile with MinIO → follows → tweet routing), each with numbered steps and gates. Read it
 before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
+
+From phase 4 the gateway also **routes** `/api/v1/tweets/**` to `../twitter_tweet_service` (Spring Cloud Gateway
+MVC, `TWEET_SERVICE_URL`), stripping caller identity headers and adding `X-User-Id` from the JWT. It holds no tweet
+code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`.
 
 The mail service is a separate project (`../twitter_mail_service`, not started). This service ends at "the
 event is on Kafka"; the contract it produces is `EVENTS.md`.

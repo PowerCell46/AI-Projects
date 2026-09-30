@@ -340,3 +340,32 @@ self check, which can't matter because the caller always exists and is confirmed
   `false`, as on your own profile.
 - **Own service and endpoints on `FollowController`:** `FollowListService` keeps `FollowServiceImpl` free of read
   paths.
+
+## Step 25 — `spring.servlet.multipart.enabled=true` is set explicitly
+
+The gateway-mvc starter ships an `EnvironmentPostProcessor` that sets `spring.servlet.multipart.enabled=false`
+whenever the property is unset. Boot then registers no multipart config, and the profile-picture `PUT`s answered
+`500` ("Unable to process parts as no multi-part configuration has been provided") on a real server;
+`PictureUploadLimitsIntegrationTest` caught it. Setting the property to `true` restores Boot's setup and lets the
+starter's `GatewayMvcMultipartResolver` take over, which skips parsing for proxied requests. Step 27 still has to
+prove that a 21 MB tweet body passes through byte-identical under the 5.3 MB gateway multipart limits.
+
+## Step 27 — multipart pass-through needs no extra code; the body-cap tests run on a real server
+
+The `GatewayMvcMultipartResolver` from step 25's `spring.servlet.multipart.enabled=true` already keeps the
+gateway's 5.3 MB multipart limits out of a proxied request: a 21 MB multipart `POST /api/v1/tweets` reaches the
+downstream byte-identical. The only code is a third cap in `RequestBodySizeLimitFilter`, matching `POST` on the
+exact path `/api/v1/tweets` (any other method, sub-path or trailing slash keeps 8 KB). The body-cap scenarios live
+in their own `TweetBodyCapsIntegrationTest` on a real server, since MockMvc applies neither limit. That test's
+downstream is `RecordingHttpServer`, not WireMock: WireMock's client fails reading a recorded body over Jackson's
+20 MB string limit, so the stand-in compares a length and SHA-256 instead.
+
+## Step 29 — the contract test brings its own Mongo, MinIO and Kafka
+
+The containers the other suites share are not on a Docker network, so the real tweet service could not reach
+them by name. `TweetServiceContractIntegrationTest` starts a second Mongo (replica set, for the service's
+transactions), MinIO and Kafka on one network, reached by alias; the Kafka gets an extra `kafka:19092` listener
+for container-to-container traffic. The gateway under test still uses the shared Postgres and MinIO. The test
+lowers nothing in the service; it only raises the gateway's read timeout to 10s for its own context, because
+the test profile's 1s suits a stub, not a service doing Mongo and MinIO work. The image is built from
+`../twitter_tweet_service` with paths relative to the gateway module, so the test assumes that layout.

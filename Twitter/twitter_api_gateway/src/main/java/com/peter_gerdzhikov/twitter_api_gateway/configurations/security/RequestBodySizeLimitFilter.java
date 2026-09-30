@@ -28,7 +28,8 @@ import lombok.extern.slf4j.Slf4j;
  * once the body is already parsed. Ordered ahead of the security chain so an oversized anonymous body
  * (register, login) is refused before any authentication or JSON parsing work happens.
  *
- * <p>The two picture-upload routes get the larger upload cap; every other route keeps the small one.
+ * <p>The two picture-upload routes get the upload cap and tweet creation gets the tweet cap; every other
+ * route keeps the small one.
  */
 @Slf4j
 @Component
@@ -40,7 +41,11 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
             "/api/v1/users/me/cover-picture"
     );
 
+    private static final String TWEET_CREATE_PATH = "/api/v1/tweets";
+
     private final long maxBodyBytes;
+
+    private final long maxTweetBodyBytes;
 
     private final long maxUploadBodyBytes;
 
@@ -49,10 +54,12 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
     public RequestBodySizeLimitFilter(
             @Value("${app.request.max-body-bytes}") long maxBodyBytes,
             @Value("${app.request.max-upload-body-bytes}") long maxUploadBodyBytes,
+            @Value("${app.request.max-tweet-body-bytes}") long maxTweetBodyBytes,
             ObjectMapper objectMapper
     ) {
         this.maxBodyBytes = maxBodyBytes;
         this.maxUploadBodyBytes = maxUploadBodyBytes;
+        this.maxTweetBodyBytes = maxTweetBodyBytes;
         this.objectMapper = objectMapper;
     }
 
@@ -75,9 +82,20 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
     }
 
     private long maxBytesFor(HttpServletRequest request) {
-        boolean isUpload = HttpMethod.PUT.matches(request.getMethod())
-                && UPLOAD_PATHS.contains(request.getRequestURI());
+        if (isPictureUpload(request)) {
+            return maxUploadBodyBytes;
+        }
 
-        return isUpload ? maxUploadBodyBytes : maxBodyBytes;
+        return isTweetCreation(request) ? maxTweetBodyBytes : maxBodyBytes;
+    }
+
+    private boolean isPictureUpload(HttpServletRequest request) {
+        return HttpMethod.PUT.matches(request.getMethod())
+                && UPLOAD_PATHS.contains(request.getRequestURI());
+    }
+
+    private boolean isTweetCreation(HttpServletRequest request) {
+        return HttpMethod.POST.matches(request.getMethod())
+                && TWEET_CREATE_PATH.equals(request.getRequestURI());
     }
 }
