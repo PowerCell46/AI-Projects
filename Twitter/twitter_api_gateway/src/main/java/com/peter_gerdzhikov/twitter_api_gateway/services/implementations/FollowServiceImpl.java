@@ -76,6 +76,7 @@ public class FollowServiceImpl implements FollowService {
         if (followerId.compareTo(targetId) < 0) {
             userRepository.addToFollowingCount(followerId, delta);
             userRepository.addToFollowersCount(targetId, delta);
+
         } else {
             userRepository.addToFollowersCount(targetId, delta);
             userRepository.addToFollowingCount(followerId, delta);

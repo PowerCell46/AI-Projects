@@ -40,6 +40,7 @@ public final class FollowCursorCodec {
             }
 
             return decoded;
+
         } catch (IllegalArgumentException e) {
             throw new InvalidCursorException();
         }

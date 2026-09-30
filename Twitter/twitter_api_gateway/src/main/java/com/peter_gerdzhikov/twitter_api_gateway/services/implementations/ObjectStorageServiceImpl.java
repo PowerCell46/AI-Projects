@@ -29,7 +29,7 @@ public class ObjectStorageServiceImpl implements ObjectStorageService {
         this.minioClient = minioClient;
     }
 
-    @Override // ? You didn't follow the java-code-style for writing try-catches
+    @Override
     public void put(String objectKey, InputStream content, long sizeBytes, String contentType) {
         try {
             minioClient.putObject(PutObjectArgs
@@ -39,6 +39,7 @@ public class ObjectStorageServiceImpl implements ObjectStorageService {
                     .stream(content, sizeBytes, UNKNOWN_PART_SIZE)
                     .contentType(contentType)
                     .build());
+
         } catch (Exception e) {
             throw unavailable("put", e);
         }
@@ -52,6 +53,7 @@ public class ObjectStorageServiceImpl implements ObjectStorageService {
                     .bucket(bucket)
                     .object(objectKey)
                     .build());
+
         } catch (Exception e) {
             throw unavailable("get", e);
         }
@@ -65,6 +67,7 @@ public class ObjectStorageServiceImpl implements ObjectStorageService {
                     .bucket(bucket)
                     .object(objectKey)
                     .build());
+
         } catch (Exception e) {
             throw unavailable("delete", e);
         }

@@ -782,6 +782,7 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
                 }
                 if (list.equals("followers")) {
                     followSuccessfully(member, target);
+
                 } else {
                     followSuccessfully(target, member);
                 }
@@ -794,6 +795,7 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
         private void unlink(String list, User target, User member) {
             if (list.equals("followers")) {
                 unfollow(target.getUsername(), cookieOf(member));
+
             } else {
                 unfollow(member.getUsername(), cookieOf(target));
             }

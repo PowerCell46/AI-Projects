@@ -40,6 +40,7 @@ public final class TestJwts {
             SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims.build());
             signedJwt.sign(new MACSigner(secret));
             return signedJwt.serialize();
+
         } catch (JOSEException e) {
             throw new IllegalStateException("Could not sign the test token.", e);
         }

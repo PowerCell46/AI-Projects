@@ -686,6 +686,7 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
         try {
             minioClient.statObject(StatObjectArgs.builder().bucket(TEST_BUCKET).object(objectKey).build());
             return true;
+
         } catch (ErrorResponseException e) {
             return false;
         }

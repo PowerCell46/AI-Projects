@@ -14,16 +14,15 @@ import lombok.Value;
 @Builder
 public class UserConfirmationRequestedEventDTO {
 
-    UUID eventId;
+    private final UUID eventId;
 
-    UUID userId;
+    private final UUID userId;
 
-    String email;
+    private final String email;
 
-    String username;
+    private final String username;
 
-    String confirmationUrl;
+    private final String confirmationUrl;
 
-    Instant expiresAt;
+    private final Instant expiresAt;
 }
-// ? No access modifiers?

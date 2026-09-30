@@ -1,7 +1,7 @@
 # Twitter API Gateway — plan
 
-The single front door of the Twitter clone: it owns users and all access rules. One deployable, built in three
-ordered phases. **All three are done (2026-09-29 / 2026-09-30).** Design calls were settled in the `/grill-me`
+The single front door of the Twitter clone: it owns users and all access rules. One deployable, built in
+ordered phases. **Phases 1–3 are done (2026-09-29 / 2026-09-30); phase 4 (tweet routing) is planned.** Design calls were settled in the `/grill-me`
 interview of 2026-09-29 (Q-numbers in parentheses). Calls made during implementation live in `DECISIONS.md`, the HTTP
 scenario catalog in `TESTING.md`, the Kafka contract in `EVENTS.md`. The reference for "as SignalFlow" is
 `../../SignalFlow/signal_flow_api_gateway`.
@@ -16,8 +16,10 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 | 1 | Auth + email confirmation (steps 1–10) | 2026-09-29 | `exploit-report-2026-09-29.md` |
 | 2 | Profile + MinIO pictures (steps 11–18) | 2026-09-29 | `exploit-report-2026-09-29-phase2.md`; finding 1 fixed 2026-09-30 |
 | 3 | Follows (steps 19–24) | 2026-09-30 | `exploit-report-2026-09-30-phase3.md`: 3 Low, all covered by accepted gaps |
+| 4 | Tweet routing (steps 25–30) | — | — |
 
-**Left:** the mail service (separate project), plus the accepted gaps below when their triggers land.
+**Left:** phase 4 (starts only after `../twitter_tweet_service/PLAN.md` step 10's gate), the mail service
+(separate project), plus the accepted gaps below when their triggers land.
 
 ---
 
@@ -26,7 +28,7 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 ### Stack and global design
 - Java 25, Spring Boot 4.1.1, Maven wrapper, multi-stage Dockerfile, port 8080, package
   `com.peter_gerdzhikov.twitter_api_gateway`. Postgres 18, Kafka (KRaft) and MinIO in the root
-  `docker-compose.yml`. No Spring Cloud Gateway until a downstream service exists.
+  `docker-compose.yml`. No Spring Cloud Gateway until a downstream service exists (it arrives in phase 4).
 - Layered controller → service → repository; every service is an interface + `Impl`; constructor injection;
   endpoints under `/api/v1`; `Clock` bean for all "now" comparisons (mutable test clock in tests).
 - **Ported from SignalFlow (Q20):** password rules (8–72, upper/lower/digit, BCrypt 12, 4 in tests); `access_token`
@@ -84,6 +86,90 @@ concurrency (latch-released threads, assert final state). No embedded fakes; Doc
 `Thread.sleep` (bounded Awaitility), test clock, jobs disabled and invoked directly, unique data via `TestUsers`,
 Kafka assertions filtered by `userId`. A phase exits on `mvn verify` green 3× in a row.
 
+---
+
+## Phase 4 — Tweet routing (planned, `/grill-me` 2026-09-30)
+
+Connects the gateway to `../twitter_tweet_service`. The tweet service's design, endpoints and interview record
+(Q1–Q17, cited below as T-Qn) live in `../twitter_tweet_service/PLAN.md`. **Starts only after that plan's step
+10 gate.** The reference is SignalFlow's `InterestTopicRoutesConfiguration` and its `InterestTopicRoutesIntegrationTest`.
+
+### Design
+- **Proxy, not hand-written controllers (T-Q1).** Add `spring-cloud-starter-gateway-server-webmvc` (with the
+  `spring-cloud-dependencies` BOM, as SignalFlow) and a `TweetRoutesConfiguration` that forwards
+  `/api/v1/tweets/**` to `app.tweet-service.url` (`TWEET_SERVICE_URL`, default `http://localhost:8081`)
+  with the path unchanged. The gateway has no tweet code and no tweet DTOs.
+- **Identity (T-Q2, T-Q14), in this order:** remove `Cookie`, `Authorization` and every header starting with
+  `X-User-` (case-insensitive, as SignalFlow), **then** add `X-User-Id` from the authenticated JWT's `sub`.
+  Stripping first is what stops a caller planting `X-User-Id: <someone else>`.
+- **Access:** `/api/v1/tweets/**` is `authenticated()`. That's already the default for every non-public
+  route, and a test pins it.
+- **Body caps (T-Q4):** `RequestBodySizeLimitFilter` gets a third cap, `app.request.max-tweet-body-bytes`
+  (`MAX_TWEET_BODY_BYTES`, 21 037 056 = 4 × 5 MB + 64 KB), for `POST /api/v1/tweets` only. `PUT`/`DELETE`/`GET`
+  on tweet routes keep 8 KB.
+- **Multipart must pass through untouched.** The gateway's own `spring.servlet.multipart.max-request-size`
+  (5.3 MB, sized for profile pictures) would reject or eagerly parse a 21 MB tweet before the proxy sees it.
+  Step 27 settles how the proxied route streams the raw body (e.g. the proxy handles it without the gateway's
+  `MultipartResolver`, or with limits raised only where the body filter already caps per route) and records the
+  call in `DECISIONS.md`. The test is that WireMock receives a byte-identical body.
+- **Downstream failures, as SignalFlow:** `spring.http.clients.connect-timeout` 2s,
+  `spring.http.clients.read-timeout` 10s (one value for all routes, T-Q14), HTTP/1.1 pinned. Connect failure →
+  `502`, read timeout → `504`, no retries, and the `GlobalExceptionHandler` body never echoes internals.
+  Tweet-service error bodies (`400`/`403`/`404`/`413`/`415`) pass through unchanged.
+
+### Scenarios (`TweetRoutesIntegrationTest`, WireMock as the tweet service, mirrored in `TESTING.md`)
+- **Auth:** no cookie → `401` on every tweet method, and WireMock received nothing.
+- **Forwarding:** `GET`/`POST`/`PUT`/`DELETE`, with the path, query, method, body and status forwarded unchanged; the
+  downstream's error body passes through.
+- **Identity:** WireMock receives `X-User-Id` = the JWT `sub`; a spoofed `X-User-Id` (and `x-user-id`, and
+  `X-User-Role`) is replaced or dropped; `Cookie` and `Authorization` never arrive.
+- **Body caps:** a multipart `POST` at 21 MB is forwarded byte-identical; one byte over → `413` and WireMock
+  received nothing; `PUT` over 8 KB → `413`; the profile-picture routes keep their 5 MB cap.
+- **Failures:** the downstream is down → `502`; slower than the read timeout → `504` (a WireMock fixed delay, test
+  timeout lowered in the test profile); neither leaks exception text.
+- **Unaffected:** the auth, profile, file and follow suites still pass unchanged.
+
+**Cross-service (`TweetServiceContractIntegrationTest`, T-Q16):** the **real** tweet service built from
+`../twitter_tweet_service/Dockerfile` (Testcontainers `ImageFromDockerfile`), on a shared Docker network with
+Mongo, MinIO and Kafka (network aliases; Kafka with an extra listener on its alias). Through the gateway:
+Alice posts text + 1 image → `201`; Bob `GET`s it → `200` with `views = 1` and loads the image, byte-identical;
+Bob's `PUT` and `DELETE` → `403`; Bob sends a spoofed `X-User-Id: <alice>` on `DELETE` → still `403`; Alice
+edits → `200`, deletes → `204`; `GET` → `404`; `tweet.created` and `tweet.deleted` for that `tweetId` are on
+Kafka after the tweet service's publisher runs (bounded Awaitility, since the real service polls every 3s). Users come from
+`TestJwts` (authorization reads claims only), so no confirmation flow is needed.
+
+### Steps
+25. **Test catalog.** Add the gateway-mvc starter, WireMock test dependencies (as SignalFlow), and
+    `TweetRoutesIntegrationTest` + `TweetServiceContractIntegrationTest` with every scenario above,
+    **all `@Disabled`**, listed in `TESTING.md`. Update `CLAUDE.md` (the gateway now routes to the tweet service).
+
+    **Gate:** it compiles, the existing suites stay green, **and you have reviewed and approved the catalog**.
+26. **Route + identity.** `TweetRoutesConfiguration`, the strip-then-add filters, the HTTP/1.1 pin.
+
+    **Gate:** the **Auth**, **Forwarding** and **Identity** groups are enabled and green.
+27. **Body caps + multipart pass-through.**
+
+    **Gate:** the **Body caps** group is enabled and green; the multipart call is recorded in `DECISIONS.md`.
+28. **Downstream failures.**
+
+    **Gate:** the **Failures** group is enabled and green.
+29. **Cross-service contract test.** Also add `TWEET_SERVICE_URL` and `MAX_TWEET_BODY_BYTES` to the root
+    `.env.example`.
+
+    **Gate:** `TweetServiceContractIntegrationTest` is enabled and green; **no `@Disabled` is left** in either
+    suite.
+30. **Hardening.** An `exploit-hunter` audit of the routing (header spoofing, cap bypass via chunked bodies,
+    path tricks such as `/api/v1/tweets/../users`, error leakage); fix or log each finding.
+
+    **Gate:** `mvn verify` green **3× in a row**.
+
+### Phase 4 accepted gaps
+- **The tweet service trusts `X-User-Id`** and is safe only while nothing but the gateway can reach it.
+  **Trigger:** any shared or deployed network → a shared internal secret or mTLS.
+- **No rate limiting on tweet routes** (same as the gateway-wide gap).
+- **Tweet images are proxied through the gateway** (same trigger as profile images → presigned URLs/CDN).
+- **One 10s read timeout for every route.** **Trigger:** slow uploads start hitting `504` → a per-route timeout.
+
 ## Handoff to `twitter_mail_service` (separate plan and `/grill-me`, Q8)
 The plan ends at "the event is on Kafka". The mail service must consume `user.confirmation-requested` per
 `EVENTS.md`, dedupe on `eventId` (outbox is at-least-once), render `confirmationUrl` and `expiresAt`, and say
@@ -92,9 +178,9 @@ click-the-link e2e test; gateway tests take the token from the outbox payload or
 
 ## Out of scope
 Mail service; SPA pages (incl. `/confirm`); password reset, account deletion, username change, display names
-(Q16); roles/admin (Q5); birthdate at signup and age checks (Q21); tweets, timelines, notifications, blocks,
-mutes, private accounts; anonymous profile viewing (Q29); refresh tokens (Q19); image resizing; Spring Cloud
-Gateway routing.
+(Q16); roles/admin (Q5); birthdate at signup and age checks (Q21); tweet logic (owned by
+`../twitter_tweet_service`; the gateway only routes, phase 4), timelines, notifications, blocks, mutes, private
+accounts; anonymous profile viewing (Q29); refresh tokens (Q19); image resizing.
 
 ## Accepted gaps — revisit when the named trigger lands
 - **One `enabled` flag means "confirmed"; no roles/admin.** Trigger: first ban, or moderation features.

@@ -58,9 +58,6 @@ Within each field group, apply **Field ordering and spacing** below.
 - **Exactly one** blank line after a class, interface or enum opening brace, before the first member.
 - **Exactly one** blank line between methods.
 - No blank line before a class's closing brace.
-- `try`/`catch`: see `references/try-catch.md`.
-- `if`/`else`: see `references/if-else.md`.
-- Enum constants: see `references/enums.md`.
 
 ```java
 // flag
@@ -71,6 +68,80 @@ public class DatabaseLoader implements CommandLineRunner {
 public class DatabaseLoader implements CommandLineRunner {
 
     private final String adminEmail;
+```
+
+### Blank line before `} catch`, `} finally` and `} else`
+
+**Commonly missed.** Standard Java formatting doesn't do this, so check every `try` and `if` you write against it
+before moving on.
+
+Leave exactly one blank line before each `} catch`, `} finally`, `} else` and `} else if`, separating one block's body
+from the next. This holds no matter how the body ends: a statement, a `return`, a `throw` or a multi-line chain.
+
+```java
+// flag
+try {
+    redisTemplate
+            .opsForValue()
+            .set(code, originalUrl, ttl);
+} catch (DataAccessException e) {
+    log.warn("Redis unavailable while caching code '{}'; continuing without cache.", code, e);
+}
+
+// prefer
+try {
+    redisTemplate
+            .opsForValue()
+            .set(code, originalUrl, ttl);
+
+} catch (DataAccessException e) {
+    log.warn("Redis unavailable while caching code '{}'; continuing without cache.", code, e);
+}
+```
+
+```java
+// flag
+if (decodedLowercasedFileName.endsWith(".xlsx")) {
+    return FileContentType.XLSX;
+} else if (decodedLowercasedFileName.endsWith(".xls")) {
+    return FileContentType.XLS;
+} else {
+    return FileContentType.OTHER;
+}
+
+// prefer
+if (decodedLowercasedFileName.endsWith(".xlsx")) {
+    return FileContentType.XLSX;
+
+} else if (decodedLowercasedFileName.endsWith(".xls")) {
+    return FileContentType.XLS;
+
+} else {
+    return FileContentType.OTHER;
+}
+```
+
+### Enum constants
+
+Put a blank line between each constant, not just a comma.
+
+```java
+// flag
+public enum NewsStatus {
+    PENDING,
+    SENT,
+    FAILED
+}
+
+// prefer
+public enum NewsStatus {
+
+    PENDING,
+
+    SENT,
+
+    FAILED
+}
 ```
 
 ### Field ordering and spacing
@@ -261,6 +332,31 @@ Used freely: `@RequiredArgsConstructor`, `@Data`, `@Builder`, `@Slf4j`, `@Getter
 No records. Model data with plain classes and Lombok annotations, even where a record would otherwise fit. This applies
 to DTOs and entities alike.
 
+Always write field modifiers explicitly, even when a Lombok annotation (`@Value`, `@FieldDefaults`) would add them.
+A reader should see a field's access and mutability without knowing what the class annotation does.
+
+```java
+// flag
+@Value
+@Builder
+public class TweetResponseDTO {
+
+    UUID id;
+
+    String content;
+}
+
+// prefer
+@Value
+@Builder
+public class TweetResponseDTO {
+
+    private final UUID id;
+
+    private final String content;
+}
+```
+
 ## JPA entities
 
 Always set `nullable = true` or `nullable = false` explicitly on `@Column`, even when it matches the default.
@@ -309,10 +405,11 @@ entities, DTOs or utilities.
 When judging existing code, check in this order:
 
 1. Class layout order, one blank line after the opening brace, one blank line between methods.
-2. Fields: one blank line between each, ordered shortest line first within each group.
+2. Fields: explicit modifiers (even under `@Value`), one blank line between each, ordered shortest line first within
+   each group.
 3. Annotation stacks ordered shortest first, with a multi-line annotation last.
 4. Chains of two or more calls split one call per line.
-5. `try`/`catch`, `if`/`else` and enum blank lines (see `references/`).
+5. A blank line before every `} catch`, `} finally`, `} else` and `} else if`. A blank line between enum constants.
 6. Declared types are interfaces. No hand-rolled JDK/library one-liners. No unnamed magic numbers.
 7. Names are self-explanatory. JavaDoc only where the name can't say it. No `.md` references in comments.
 8. DTO package and suffix. Subpackages once a package has more than 5 files. Entity enums in `entities/enums`.
