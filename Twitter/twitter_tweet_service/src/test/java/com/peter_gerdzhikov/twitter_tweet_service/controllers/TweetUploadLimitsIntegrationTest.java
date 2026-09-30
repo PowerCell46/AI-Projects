@@ -91,6 +91,7 @@ class TweetUploadLimitsIntegrationTest extends AbstractMinioIntegrationTest {
             body.writeBytes(image);
             body.writeBytes(ascii("\r\n"));
         }
+
         body.writeBytes(ascii("--" + BOUNDARY + "--\r\n"));
 
         return body.toByteArray();

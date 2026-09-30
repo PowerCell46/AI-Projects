@@ -69,6 +69,7 @@ public final class RecordingHttpServer {
         try (InputStream body = new DigestInputStream(exchange.getRequestBody(), digest)) {
             length = body.transferTo(OutputStream.nullOutputStream());
         }
+
         requests.add(new RecordedRequest(
                 exchange.getRequestMethod(), exchange.getRequestURI().getPath(), length, HexFormat.of().formatHex(digest.digest())));
 

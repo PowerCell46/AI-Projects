@@ -780,12 +780,14 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
                 if (advanceClock) {
                     mutableClock.advance(Duration.ofSeconds(1));
                 }
+
                 if (list.equals("followers")) {
                     followSuccessfully(member, target);
 
                 } else {
                     followSuccessfully(target, member);
                 }
+
                 members.add(member);
             }
 

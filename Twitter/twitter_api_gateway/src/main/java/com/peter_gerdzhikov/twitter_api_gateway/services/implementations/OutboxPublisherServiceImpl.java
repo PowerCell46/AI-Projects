@@ -59,6 +59,7 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
                 recordFailure(row);
                 continue;
             }
+
             outboxRepository.delete(row);
             published++;
         }
@@ -91,6 +92,7 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
             row.setStatus(OutboxStatus.FAILED);
             log.warn("Outbox row {} failed {} times and is left for manual inspection.", row.getId(), row.getAttempts());
         }
+
         outboxRepository.save(row);
     }
 }

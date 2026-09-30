@@ -194,6 +194,7 @@ class TweetBodyCapsIntegrationTest extends AbstractMinioIntegrationTest {
         for (int i = head.length; i < totalBytes - tail.length; i++) {
             body[i] = (byte) (i % PRIME_FILLER_PERIOD);
         }
+
         System.arraycopy(tail, 0, body, totalBytes - tail.length, tail.length);
 
         return body;

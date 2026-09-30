@@ -162,12 +162,14 @@ class AuthConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
                     return call.call();
                 }));
             }
+
             start.countDown();
 
             List<Integer> statuses = new ArrayList<>();
             for (Future<Integer> future : futures) {
                 statuses.add(future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS));
             }
+
             return statuses;
 
         } finally {

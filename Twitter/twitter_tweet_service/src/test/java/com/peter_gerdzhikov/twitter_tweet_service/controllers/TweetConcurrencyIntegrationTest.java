@@ -252,6 +252,7 @@ class TweetConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
                     return task.call();
                 }));
             }
+
             ready.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
             start.countDown();
 

@@ -124,6 +124,7 @@ public class User extends CommonEntity {
         if (email != null) {
             email = email.toLowerCase(Locale.ROOT);
         }
+
         if (username != null) {
             usernameNormalized = username.toLowerCase(Locale.ROOT);
         }

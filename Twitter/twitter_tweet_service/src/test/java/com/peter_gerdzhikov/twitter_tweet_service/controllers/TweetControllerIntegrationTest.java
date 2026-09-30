@@ -199,6 +199,7 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
             for (TweetImage image : stored.getImages()) {
                 assertThat(contentTypeOf(image.getObjectKey())).isEqualTo(image.getContentType());
             }
+
             assertThat(imageIdsInEvent(stored)).containsExactlyElementsOf(
                     stored.getImages().stream().map(image -> image.getId().toString()).toList());
             assertThat(body.get("images")).hasSize(4);

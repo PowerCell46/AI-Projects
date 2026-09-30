@@ -120,6 +120,7 @@ public class FollowListServiceImpl implements FollowListService {
         if (members.isEmpty()) {
             return Set.of();
         }
+
         List<UUID> memberIds = members
                 .stream()
                 .map(User::getId)

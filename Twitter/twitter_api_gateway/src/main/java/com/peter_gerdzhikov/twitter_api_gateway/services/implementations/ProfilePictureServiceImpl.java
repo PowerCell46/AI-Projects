@@ -138,6 +138,7 @@ public class ProfilePictureServiceImpl implements ProfilePictureService {
         if (removed == null) {
             return null;
         }
+
         slot.write(user, null);
         dbFileRepository.delete(removed);
 

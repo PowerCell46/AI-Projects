@@ -121,6 +121,42 @@ if (decodedLowercasedFileName.endsWith(".xlsx")) {
 }
 ```
 
+### Blank line after a closing brace
+
+Leave exactly one blank line after the closing `}` of any block (`if`, `for`, `while`, `try`, `switch`) when another
+statement follows in the same scope. This covers consecutive `if` blocks and a statement directly after a loop. It
+doesn't apply when the next line is another closing brace, or a `} else` / `} catch` / `} finally`, which have their
+own rule above.
+
+```java
+// flag
+if (startsWith(header, 0, JPEG_SIGNATURE)) {
+    return "image/jpeg";
+}
+if (startsWith(header, 0, PNG_SIGNATURE)) {
+    return "image/png";
+}
+for (Member member : page) {
+    members.add(member);
+}
+return members;
+
+// prefer
+if (startsWith(header, 0, JPEG_SIGNATURE)) {
+    return "image/jpeg";
+}
+
+if (startsWith(header, 0, PNG_SIGNATURE)) {
+    return "image/png";
+}
+
+for (Member member : page) {
+    members.add(member);
+}
+
+return members;
+```
+
 ### Enum constants
 
 Put a blank line between each constant, not just a comma.
@@ -409,7 +445,8 @@ When judging existing code, check in this order:
    each group.
 3. Annotation stacks ordered shortest first, with a multi-line annotation last.
 4. Chains of two or more calls split one call per line.
-5. A blank line before every `} catch`, `} finally`, `} else` and `} else if`. A blank line between enum constants.
+5. A blank line before every `} catch`, `} finally`, `} else` and `} else if`, and after every block's closing `}` when
+   a statement follows. A blank line between enum constants.
 6. Declared types are interfaces. No hand-rolled JDK/library one-liners. No unnamed magic numbers.
 7. Names are self-explanatory. JavaDoc only where the name can't say it. No `.md` references in comments.
 8. DTO package and suffix. Subpackages once a package has more than 5 files. Entity enums in `entities/enums`.

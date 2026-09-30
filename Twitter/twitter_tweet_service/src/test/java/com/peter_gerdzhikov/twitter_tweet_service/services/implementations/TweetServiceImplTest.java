@@ -244,6 +244,7 @@ class TweetServiceImplTest {
                 if (storedKeys.size() == 2) {
                     throw new StorageUnavailableException(new RuntimeException("down"));
                 }
+
                 storedKeys.add(call.getArgument(0));
 
                 return null;

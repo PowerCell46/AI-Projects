@@ -84,6 +84,7 @@ class CurrentUserIdArgumentResolverTest {
                 return new MethodParameter(method, index);
             }
         }
+
         throw new IllegalArgumentException(methodName);
     }
 

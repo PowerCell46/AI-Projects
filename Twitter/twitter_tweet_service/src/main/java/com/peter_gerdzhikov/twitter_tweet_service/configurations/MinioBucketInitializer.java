@@ -27,11 +27,20 @@ public class MinioBucketInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+        BucketExistsArgs existsArgs = BucketExistsArgs
+                .builder()
+                .bucket(bucket)
+                .build();
+        boolean exists = minioClient.bucketExists(existsArgs);
         if (exists) {
             return;
         }
-        minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+
+        MakeBucketArgs makeArgs = MakeBucketArgs
+                .builder()
+                .bucket(bucket)
+                .build();
+        minioClient.makeBucket(makeArgs);
         log.info("Created MinIO bucket {}.", bucket);
     }
 }

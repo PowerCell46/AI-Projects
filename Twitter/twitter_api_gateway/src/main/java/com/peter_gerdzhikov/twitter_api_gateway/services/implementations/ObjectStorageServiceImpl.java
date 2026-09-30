@@ -77,6 +77,7 @@ public class ObjectStorageServiceImpl implements ObjectStorageService {
         if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
         }
+
         log.error("MinIO {} failed.", operation, e);
         return new StorageUnavailableException(e);
     }
