@@ -13,16 +13,17 @@ proxies `/api/*` to an `app` service on port 8080.
 
 ## Writing code
 
-Hard rules:
+**Before writing or editing any `.ts`, `.tsx` or `.css` file, invoke the `frontend-code-style` skill first.** It
+carries the full style rules, conventions and examples (formatting, naming, TypeScript, components, CSS). No formatter
+or lint rule enforces them — hold them by hand. Applies to hand-written and AI-generated code alike.
+
+Hard rules — these hold whether or not the skill is loaded:
 
 - Functional components only. No class components.
-- 4-space indent in all frontend source (`.tsx`, `.ts`, `.css`, config). No formatter enforces it — hold it by hand.
-- No crammed one-liners: multi-argument calls and object literals put one argument/field per line, single-statement `if` bodies still get braces on their own lines, `else` starts on its own line (never `} else {`), blank lines separate logical steps inside a block.
-- Promise chains break before each link: `.then`/`.catch`/`.finally` always start on their own line, never trail the closing paren.
 - Keep components small; one component per file, co-located `<Name>.css` next to `<Name>.tsx`.
 - API access lives in `/src/api` (one module per resource, base URL from `VITE_BASE_API_URL`).
   Components never hardcode origins or ports.
-- No raw hex in components — semantic tokens in CSS (`src/index.css`). Base font 16px, line-height 1.5.
+- No raw hex in components — semantic tokens in CSS (`src/index.css`). Base font `1rem` (16px at the browser default), line-height 1.5.
 - Touch targets ≥ 44×44px; visible labels on inputs; errors next to the field, not only at the top.
 - Respect `prefers-reduced-motion`; never remove focus rings; icon-only buttons need labels.
 
@@ -38,6 +39,18 @@ Keep `tsc -b` clean — `noUnusedLocals`/`noUnusedParameters` are on.
 
 `auth-design.md` (`../`, one level up) is the design spec for the sign-in/create-account page — read it
 before touching `components/AuthPage`.
+
+## Skills
+
+Load skill bodies on demand (`/skill-name`). Descriptions live here — don't repeat them elsewhere.
+
+| Area | Skills |
+| --- | --- |
+| Code style | `frontend-code-style` — mandatory before any `.ts`/`.tsx`/`.css` edit (see Writing code) |
+| Visual design | `ui-ux-pro-max` — palettes, type, layout, UX; its output is translated to `frontend-code-style` rules, never pasted |
+| Responsive | `responsive-fix` — a named component/view breaks at a given resolution |
+
+Done = re-check touched files against any loaded skill's rules.
 
 ---
 
