@@ -1,0 +1,8 @@
+Twitter
+
+Hi {{FOLLOWEE_USERNAME}},
+
+{{FOLLOWER_USERNAME}} (@{{FOLLOWER_USERNAME}}) is now following you.
+
+Open Twitter:
+{{FEED_URL}}

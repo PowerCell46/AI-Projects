@@ -1,0 +1,10 @@
+Twitter
+
+Hi {{USERNAME}},
+
+Confirm your email to finish creating your account:
+{{CONFIRMATION_URL}}
+
+This link expires on {{EXPIRES_AT}}.
+
+If you didn't sign up, ignore this email.

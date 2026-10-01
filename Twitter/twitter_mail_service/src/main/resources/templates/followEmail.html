@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>{{FOLLOWER_USERNAME}} followed you</title>
+<style>
+    body, table, td {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    @media screen and (max-width: 600px) {
+        .tw-container {
+            width: 100% !important;
+        }
+
+        .tw-pad {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+</style>
+</head>
+<body bgcolor="#00081f" style="margin:0;padding:0;background-color:#00081f;color:#dce6fa;font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;">
+<span style="display:none;overflow:hidden;line-height:0;max-height:0;max-width:0;opacity:0;mso-hide:all;">{{FOLLOWER_USERNAME}} is now following you on Twitter.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#00081f" style="background-color:#00081f;">
+    <tr>
+        <td align="center" bgcolor="#00081f" style="padding:40px 16px;background-color:#00081f;">
+            <table role="presentation" class="tw-container" width="600" cellpadding="0" cellspacing="0" bgcolor="#00081f" style="width:600px;max-width:600px;background-color:#00081f;">
+                <tr>
+                    <td class="tw-pad" bgcolor="#00081f" style="padding:0 32px 24px;border-bottom:1px solid #273046;font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:18px;font-weight:600;letter-spacing:0.04em;color:#dce6fa;">
+                        Twitter
+                    </td>
+                </tr>
+                <tr>
+                    <td class="tw-pad" bgcolor="#00081f" style="padding:32px 32px 0;font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:16px;line-height:1.5;color:#dce6fa;">
+                        <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#dce6fa;">Hi {{FOLLOWEE_USERNAME}},</p>
+                        <p style="margin:0 0 28px;font-size:16px;line-height:1.5;color:#dce6fa;">{{FOLLOWER_USERNAME}} (@{{FOLLOWER_USERNAME}}) is now following you.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="tw-pad" bgcolor="#00081f" style="padding:0 32px 28px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td align="center" bgcolor="#4e8bff" style="background-color:#4e8bff;border-radius:4px;">
+                                    <a href="{{FEED_URL}}" style="display:inline-block;min-height:20px;padding:14px 28px;font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:16px;font-weight:600;line-height:20px;color:#00081f;text-decoration:none;">Open Twitter</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
