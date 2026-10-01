@@ -208,6 +208,9 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 
 - 204; the row exists, target `followersCount` +1, follower `followingCount` +1 (`should_return_204_and_store_the_row_and_increment_both_counts_when_the_target_exists`)
 - Repeat returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_follow_is_repeated`)
+- New follow enqueues one PENDING `user.followed` outbox row with every contract field, keyed by the followee (`should_enqueue_one_pending_outbox_row_with_every_contract_field_when_the_follow_is_new`)
+- Repeated follow keeps one outbox row (`should_keep_one_outbox_row_when_the_follow_is_repeated`)
+- Following yourself enqueues nothing (`should_enqueue_nothing_when_the_user_follows_themselves`)
 - Username in another case returns 204 (`should_return_204_when_the_username_differs_only_in_case`)
 - Following yourself returns 400 and stores nothing (`should_return_400_and_store_nothing_when_the_user_follows_themselves`)
 - Following yourself by a username in another case returns 400 (`should_return_400_when_the_user_follows_themselves_with_a_username_in_another_case`)
@@ -221,6 +224,7 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 
 - 204; the row is gone, both counts -1 (`should_return_204_and_remove_the_row_and_decrement_both_counts_when_the_follow_exists`)
 - Repeat returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_unfollow_is_repeated`)
+- Unfollow enqueues nothing more (`should_enqueue_nothing_more_when_the_follow_is_removed`)
 - Never followed returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_user_never_followed_the_target`)
 - Username in another case returns 204 (`should_return_204_when_the_username_differs_only_in_case`)
 - Unfollowing yourself returns 400 (`should_return_400_when_the_user_unfollows_themselves`)
@@ -274,8 +278,8 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 
 `FollowConcurrencyIntegrationTest` — enabled; calls released together through a latch, no sleeps
 
-- 50 distinct users follow one target in parallel: 50 rows, `followersCount = 50` (`should_store_exactly_50_rows_and_count_50_when_50_users_follow_one_target_in_parallel`)
-- 20 parallel follows of one pair: 1 row, counts 1 (`should_store_one_row_and_count_one_when_the_same_pair_follows_in_parallel`)
+- 50 distinct users follow one target in parallel: 50 rows, `followersCount = 50`, 50 outbox rows (`should_store_exactly_50_rows_and_count_50_when_50_users_follow_one_target_in_parallel`)
+- 20 parallel follows of one pair: 1 row, counts 1, 1 outbox row (`should_store_one_row_and_count_one_when_the_same_pair_follows_in_parallel`)
 - Follow and follow-back in parallel, 50 rounds on fresh pairs: no deadlock, counts correct (`should_count_both_sides_without_deadlock_when_two_users_follow_each_other_in_parallel_50_times`)
 - Seeded 200-operation follow/unfollow storm over 8 users: every `followers_count` and `following_count` equals its `COUNT(*)` (`should_keep_every_counter_equal_to_its_row_count_when_follows_and_unfollows_storm_in_parallel`)
 

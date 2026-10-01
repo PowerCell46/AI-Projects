@@ -19,4 +19,15 @@ public class KafkaTopicConfiguration {
                 .partitions(partitions)
                 .build();
     }
+
+    @Bean
+    public NewTopic userFollowedTopic(
+            @Value("${app.kafka.user-followed.name}") String name,
+            @Value("${app.kafka.user-followed.partitions}") int partitions
+    ) {
+        return TopicBuilder
+                .name(name)
+                .partitions(partitions)
+                .build();
+    }
 }

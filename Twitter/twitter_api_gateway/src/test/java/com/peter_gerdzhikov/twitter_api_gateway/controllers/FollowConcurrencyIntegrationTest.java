@@ -23,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
@@ -63,6 +64,9 @@ class FollowConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private OutboxRepository outboxRepository;
+
     @Test
     void should_store_exactly_50_rows_and_count_50_when_50_users_follow_one_target_in_parallel() throws Exception {
         User target = confirmedUser();
@@ -77,6 +81,7 @@ class FollowConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
         assertThat(statuses).containsOnly(204);
         assertThat(rowsFollowing(target)).isEqualTo(FOLLOWERS);
         assertThat(reload(target).getFollowersCount()).isEqualTo(FOLLOWERS);
+        assertThat(outboxRowsKeyedBy(target)).isEqualTo(FOLLOWERS);
         assertConsistent(followers);
         assertConsistent(List.of(target));
     }
@@ -96,6 +101,7 @@ class FollowConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
         assertThat(rowsFollowing(target)).isEqualTo(1);
         assertThat(reload(target).getFollowersCount()).isEqualTo(1);
         assertThat(reload(follower).getFollowingCount()).isEqualTo(1);
+        assertThat(outboxRowsKeyedBy(target)).isEqualTo(1);
     }
 
     @Test
@@ -195,6 +201,14 @@ class FollowConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         return users;
+    }
+
+    private long outboxRowsKeyedBy(User followee) {
+        return outboxRepository
+                .findAll()
+                .stream()
+                .filter(row -> row.getMessageKey().equals(followee.getId().toString()))
+                .count();
     }
 
     private User confirmedUser() {

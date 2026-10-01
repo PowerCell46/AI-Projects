@@ -9,8 +9,8 @@ From phase 4 the gateway also **routes** `/api/v1/tweets/**` to `../twitter_twee
 MVC, `TWEET_SERVICE_URL`), stripping caller identity headers and adding `X-User-Id` from the JWT. It holds no tweet
 code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`.
 
-The mail service is a separate project (`../twitter_mail_service`, not started). This service ends at "the
-event is on Kafka"; the contract it produces is `EVENTS.md`.
+The mail service is a separate project (`../twitter_mail_service`; the confirmation email is built, the follow
+email is phase 2). This service ends at "the event is on Kafka"; the contract it produces is `EVENTS.md`.
 
 ## Running the project
 

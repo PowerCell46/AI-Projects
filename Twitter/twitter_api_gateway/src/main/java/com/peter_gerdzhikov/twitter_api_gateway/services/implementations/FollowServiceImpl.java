@@ -6,20 +6,20 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.SelfFollowException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.FollowService;
-
-import lombok.RequiredArgsConstructor;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.OutboxService;
 
 @Service
-@RequiredArgsConstructor
 public class FollowServiceImpl implements FollowService {
 
     private static final long ADDED = 1;
@@ -28,26 +28,46 @@ public class FollowServiceImpl implements FollowService {
 
     private final Clock clock;
 
+    private final String topic;
+
+    private final OutboxService outboxService;
+
     private final UserRepository userRepository;
 
     private final FollowRepository followRepository;
 
+    public FollowServiceImpl(
+            Clock clock,
+            @Value("${app.kafka.user-followed.name}") String topic,
+            OutboxService outboxService,
+            UserRepository userRepository,
+            FollowRepository followRepository
+    ) {
+        this.clock = clock;
+        this.topic = topic;
+        this.outboxService = outboxService;
+        this.userRepository = userRepository;
+        this.followRepository = followRepository;
+    }
+
     @Override
     @Transactional
     public void follow(UUID followerId, String targetUsername) {
-        UUID targetId = resolveTargetId(followerId, targetUsername);
-        Instant createdAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        User target = resolveTarget(followerId, targetUsername);
+        Instant now = clock.instant();
 
-        int inserted = followRepository.insertIfAbsent(UUID.randomUUID(), followerId, targetId, createdAt);
+        int inserted = followRepository.insertIfAbsent(
+                UUID.randomUUID(), followerId, target.getId(), now.truncatedTo(ChronoUnit.MICROS));
         if (inserted == 1) {
-            adjustCounts(followerId, targetId, ADDED);
+            adjustCounts(followerId, target.getId(), ADDED);
+            outboxService.enqueue(topic, target.getId().toString(), newFollowedEvent(followerId, target, now));
         }
     }
 
     @Override
     @Transactional
     public void unfollow(UUID followerId, String targetUsername) {
-        UUID targetId = resolveTargetId(followerId, targetUsername);
+        UUID targetId = resolveTarget(followerId, targetUsername).getId();
 
         int deleted = followRepository.deleteByPair(followerId, targetId);
         if (deleted == 1) {
@@ -55,17 +75,32 @@ public class FollowServiceImpl implements FollowService {
         }
     }
 
-    private UUID resolveTargetId(UUID followerId, String targetUsername) {
-        UUID targetId = userRepository
+    private User resolveTarget(UUID followerId, String targetUsername) {
+        User target = userRepository
                 .findByUsernameNormalized(targetUsername.toLowerCase(Locale.ROOT))
                 .filter(User::isEnabled)
-                .map(User::getId)
                 .orElseThrow(UserNotFoundException::new);
-        if (targetId.equals(followerId)) {
+        if (target.getId().equals(followerId)) {
             throw new SelfFollowException();
         }
 
-        return targetId;
+        return target;
+    }
+
+    private UserFollowedEventDTO newFollowedEvent(UUID followerId, User target, Instant occurredAt) {
+        User follower = userRepository
+                .findById(followerId)
+                .orElseThrow(UserNotFoundException::new);
+
+        return UserFollowedEventDTO.builder()
+                .eventId(UUID.randomUUID())
+                .followerId(follower.getId())
+                .followeeId(target.getId())
+                .occurredAt(occurredAt)
+                .followeeEmail(target.getEmail())
+                .followerUsername(follower.getUsername())
+                .followeeUsername(target.getUsername())
+                .build();
     }
 
     /**

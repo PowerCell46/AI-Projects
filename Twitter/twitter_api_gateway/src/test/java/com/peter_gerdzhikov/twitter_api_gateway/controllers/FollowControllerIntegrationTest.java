@@ -5,11 +5,12 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -25,13 +27,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
@@ -46,6 +54,9 @@ import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
 @ActiveProfiles("test")
 class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
+    @Value("${app.kafka.user-followed.name}")
+    private String topicName;
+
     @Autowired
     private MutableClock mutableClock;
 
@@ -59,7 +70,13 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
     private RestTestClient restTestClient;
 
     @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OutboxRepository outboxRepository;
 
     private User confirmedUser() {
         return saveUser(true);
@@ -103,6 +120,14 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
         follow(target.getUsername(), cookieOf(follower))
                 .expectStatus()
                 .isNoContent();
+    }
+
+    private List<Outbox> outboxRowsOf(User followee) {
+        return outboxRepository
+                .findAll()
+                .stream()
+                .filter(row -> row.getMessageKey().equals(followee.getId().toString()))
+                .toList();
     }
 
     private int followRows(User follower, User target) {
@@ -184,6 +209,51 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
+        void should_enqueue_one_pending_outbox_row_with_every_contract_field_when_the_follow_is_new() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+
+            followSuccessfully(follower, target);
+
+            List<Outbox> rows = outboxRowsOf(target);
+            assertThat(rows).hasSize(1);
+            Outbox row = rows.getFirst();
+            assertThat(row.getStatus()).isEqualTo(OutboxStatus.PENDING);
+            assertThat(row.getTopic()).isEqualTo(topicName);
+            JsonNode payload = objectMapper.readTree(row.getPayload());
+            assertThat(payload.propertyNames()).containsExactlyInAnyOrder(
+                    "eventId", "followerId", "followeeId", "occurredAt",
+                    "followeeEmail", "followerUsername", "followeeUsername");
+            assertThat(UUID.fromString(payload.get("eventId").asString())).isNotNull();
+            assertThat(payload.get("followerId").asString()).isEqualTo(follower.getId().toString());
+            assertThat(payload.get("followeeId").asString()).isEqualTo(target.getId().toString());
+            assertThat(payload.get("followeeEmail").asString()).isEqualTo(target.getEmail());
+            assertThat(payload.get("followerUsername").asString()).isEqualTo(follower.getUsername());
+            assertThat(payload.get("followeeUsername").asString()).isEqualTo(target.getUsername());
+            assertThat(Instant.parse(payload.get("occurredAt").asString())).isNotNull();
+        }
+
+        @Test
+        void should_keep_one_outbox_row_when_the_follow_is_repeated() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+            followSuccessfully(follower, target);
+
+            followSuccessfully(follower, target);
+
+            assertThat(outboxRowsOf(target)).hasSize(1);
+        }
+
+        @Test
+        void should_enqueue_nothing_when_the_user_follows_themselves() {
+            User user = confirmedUser();
+
+            follow(user.getUsername(), cookieOf(user));
+
+            assertThat(outboxRowsOf(user)).isEmpty();
+        }
+
+        @Test
         void should_return_204_when_the_username_differs_only_in_case() {
             User follower = confirmedUser();
             User target = confirmedUser();
@@ -247,6 +317,19 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
     @Nested
     class Unfollow {
+
+        @Test
+        void should_enqueue_nothing_more_when_the_follow_is_removed() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+            followSuccessfully(follower, target);
+
+            unfollow(target.getUsername(), cookieOf(follower))
+                    .expectStatus()
+                    .isNoContent();
+
+            assertThat(outboxRowsOf(target)).hasSize(1);
+        }
 
         @Test
         void should_return_204_and_remove_the_row_and_decrement_both_counts_when_the_follow_exists() {

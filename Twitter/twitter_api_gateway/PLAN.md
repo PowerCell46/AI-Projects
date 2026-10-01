@@ -18,7 +18,7 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 | 3 | Follows (steps 19–24) | 2026-09-30 | `exploit-report-2026-09-30-phase3.md`: 3 Low, all covered by accepted gaps |
 | 4 | Tweet routing (steps 25–30) | 2026-09-30 | `exploit-report-2026-09-30-phase4.md`: 1 Low fixed, 1 Low + 2 Info accepted |
 
-**Left:** the mail service (separate project), plus the accepted gaps below when their triggers land.
+**Left:** the mail service's follow email (separate project, phase 2), plus the accepted gaps below when their triggers land.
 
 ---
 
@@ -124,8 +124,9 @@ Kafka assertions filtered by `userId`. A phase exits on `mvn verify` green 3× i
 ## Handoff to `twitter_mail_service` (separate plan and `/grill-me`, Q8)
 The plan ends at "the event is on Kafka". The mail service must consume `user.confirmation-requested` per
 `EVENTS.md`, dedupe on `eventId` (outbox is at-least-once), render `confirmationUrl` and `expiresAt`, and say
-**"If you didn't sign up, ignore this email"** (mitigates the squatter gap). Until it ships there is no
-click-the-link e2e test; gateway tests take the token from the outbox payload or Kafka record.
+**"If you didn't sign up, ignore this email"** (mitigates the squatter gap). The mail service now does all of
+that, and `../e2e` has the click-the-link test: Playwright reads the link from the email in Mailpit. Gateway
+tests still take the token from the outbox payload or Kafka record.
 
 ## Out of scope
 Mail service; SPA pages (incl. `/confirm`); password reset, account deletion, username change, display names

@@ -32,3 +32,33 @@ not part of the contract.
 
 **Sensitivity:** the event carries the email address and a live confirmation token in plaintext. Never log the
 payload.
+
+## `user.followed`
+
+- **Topic:** `user.followed` (`app.kafka.user-followed.name`), 3 partitions.
+- **Key:** `followeeId` (UUID string), the user being followed and the mail recipient. All events for one recipient land on one partition, in order.
+- **Emitted:** when a follow row is newly inserted. A repeated follow and an unfollow emit nothing.
+
+```json
+{
+  "eventId": "5d1e0c2a-8f3b-4c1e-9a52-7b6e4d0c3f21",
+  "followerId": "2f1c1c7e-5b7a-4f0e-8f7e-0c7d2c6f9a10",
+  "followeeId": "9a7b3c1d-4e2f-4a60-b8d1-1c5e7f0a2b34",
+  "occurredAt": "2026-10-01T09:30:00Z",
+  "followeeEmail": "bob@example.com",
+  "followerUsername": "ana",
+  "followeeUsername": "bob"
+}
+```
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `eventId` | UUID | Fresh per event. The dedupe key. |
+| `followerId` | UUID | Who followed. |
+| `followeeId` | UUID | Who was followed. Same as the record key. |
+| `occurredAt` | ISO-8601 instant | When the follow was stored. |
+| `followeeEmail` | string | Recipient, lowercased. |
+| `followerUsername` | string | For the mail text ("ana followed you"). |
+| `followeeUsername` | string | For the greeting. |
+
+**Sensitivity:** the event carries the followee's email address in plaintext. Never log the payload.

@@ -369,3 +369,12 @@ for container-to-container traffic. The gateway under test still uses the shared
 lowers nothing in the service; it only raises the gateway's read timeout to 10s for its own context, because
 the test profile's 1s suits a stub, not a service doing Mongo and MinIO work. The image is built from
 `../twitter_tweet_service` with paths relative to the gateway module, so the test assumes that layout.
+
+## `user.followed` — emitted on a new follow only, keyed by the followee, email in the payload
+
+`FollowServiceImpl.follow` enqueues the event inside its transaction, only when `insertIfAbsent` returns 1, so a
+repeated follow (and any concurrent duplicate) sends no second mail and a rolled-back follow sends none. The key
+is the followee id: the mail goes to them, so per-recipient ordering is what matters. The payload carries the
+followee's email and both usernames so the mail service needs no call back to the gateway. The follower is
+loaded with one `findById` inside the insert branch only. `User` has no display name, so `username` stands in.
+Unfollow emits nothing.
