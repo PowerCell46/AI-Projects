@@ -150,8 +150,6 @@ Exit state: 156 unit and component tests, `npm run build` and `npm run lint` cle
   sides in the same change.
 - **No frontend container / Caddy on `:80`** (Q10); the confirmation link base differs per environment.
   **Trigger:** first deployment, or the mail service's e2e.
-- **No real emails** — the mail service doesn't exist; local testing takes the link from the outbox. **Trigger:**
-  mail service ships → e2e reads Mailpit as SignalFlow does.
 - **Fonts load from Google** (Q13). **Trigger:** offline use or a privacy requirement → self-host.
 - **Alpha hierarchy flattened** to `.52` for contrast (Q15). **Trigger:** a design pass that wants it back with
   passing values.

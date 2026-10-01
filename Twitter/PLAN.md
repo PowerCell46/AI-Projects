@@ -11,5 +11,7 @@ Each service owns its own backlog:
 - **`frontend/PLAN.md`**: the SPA, starting with the "Hadal Descent" auth flow (login, register, `/confirm`,
   `/resend`, placeholder `/feed`) from `frontend/AuthenticationViewsDesigns.md`. Designed via `/grill-me`
   2026-10-01; built 2026-10-01 (all 12 steps done: unit, component and Playwright e2e tests green).
-- **`twitter_mail_service/PLAN.md`**: not yet written. Needs its own `/grill-me`. It consumes
-  `user.confirmation-requested` (contract in `twitter_api_gateway/EVENTS.md`).
+- **`twitter_mail_service/PLAN.md`**: sends the emails over SMTP from Kafka, deduped in Redis. Designed via
+  `/grill-me` 2026-10-01. Phase 1 (the confirmation email, `user.confirmation-requested`; steps 1–9) built
+  2026-10-01, including the Playwright e2e that reads the link from the real email. Phase 2 (the follow email,
+  `user.followed`; steps 10–13) built 2026-10-02: the gateway's `user.followed` change is committed (`85019be`).

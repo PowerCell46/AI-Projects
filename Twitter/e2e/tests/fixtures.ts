@@ -1,100 +1,128 @@
-import { randomUUID } from 'node:crypto'
-import { expect, type APIRequestContext, type Page } from '@playwright/test'
-import pg from 'pg'
+import { randomUUID } from 'node:crypto';
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
+
 
 export interface TestUser {
-    email: string
-    username: string
-    password: string
+    email: string;
+    username: string;
+    password: string;
 }
 
-const DATABASE_URL = 'postgresql://twitter_e2e:twitter_e2e@localhost:5452/twitter_e2e'
+interface MailpitMessageSummary {
+    ID: string;
+}
 
-export const TEST_PASSWORD = 'Passw0rd-e2e'
+interface MailpitSearchResponse {
+    messages: MailpitMessageSummary[];
+}
+
+interface MailpitMessage {
+    Text: string;
+}
+
+const MAILPIT_URL = 'http://127.0.0.1:8125';
+
+// The first email waits for the outbox poll, the Kafka hop and the consumer's first group join.
+const EMAIL_POLL_TIMEOUT_MS = 20_000;
+
+const CONFIRMATION_URL_PATTERN = /https?:\/\/\S+/;
+
+export const TEST_PASSWORD = 'Passw0rd-e2e';
 
 // Usernames are 3-15 letters, digits or underscores, so "e2e_" plus 8 hex characters.
 export function newUser(): TestUser {
-    const suffix = randomUUID().replaceAll('-', '').slice(0, 8)
+    const suffix = randomUUID()
+        .replaceAll('-', '')
+        .slice(0, 8);
 
     return {
         email: `e2e_${suffix}@example.com`,
         username: `e2e_${suffix}`,
         password: TEST_PASSWORD,
-    }
+    };
 }
 
-async function queryConfirmationUrls(email: string): Promise<string[]> {
-    const client = new pg.Client({ connectionString: DATABASE_URL })
+// Newest first, as Mailpit lists them.
+async function searchEmailsTo(email: string): Promise<MailpitMessageSummary[]> {
+    const query = encodeURIComponent(`to:"${email}"`);
+    const response = await fetch(`${MAILPIT_URL}/api/v1/search?query=${query}`);
+    const searchResponse: MailpitSearchResponse = await response.json();
 
-    await client.connect()
+    return searchResponse.messages;
+}
 
-    try {
-        const result = await client.query<{ confirmation_url: string }>(
-            `select payload::jsonb->>'confirmationUrl' as confirmation_url
-             from outbox
-             where payload::jsonb->>'email' = $1
-             order by created_at`,
-            [email],
+async function readConfirmationUrl(messageId: string): Promise<string> {
+    const response = await fetch(`${MAILPIT_URL}/api/v1/message/${messageId}`);
+    const message: MailpitMessage = await response.json();
+    const confirmationUrlMatch = CONFIRMATION_URL_PATTERN.exec(message.Text);
+
+    if (confirmationUrlMatch === null) {
+        throw new Error('The confirmation email has no link in its text part.');
+    }
+
+    return confirmationUrlMatch[0];
+}
+
+// The link in the newest confirmation email sent to this address. Waits until enough emails have arrived.
+export async function latestConfirmationUrl(email: string, minimumEmailCount = 1): Promise<string> {
+    let emails: MailpitMessageSummary[] = [];
+
+    await expect
+        .poll(
+            async () => {
+                emails = await searchEmailsTo(email);
+
+                return emails.length;
+            },
+            { timeout: EMAIL_POLL_TIMEOUT_MS },
         )
+        .toBeGreaterThanOrEqual(minimumEmailCount);
 
-        return result.rows.map((row) => row.confirmation_url)
-
-    } finally {
-        await client.end()
-    }
+    return readConfirmationUrl(emails[0].ID);
 }
 
-// The newest confirmation link the gateway queued for this email. Waits until a row has been written.
-export async function latestConfirmationUrl(email: string, minimumRowCount = 1): Promise<string> {
-    let urls: string[] = []
-
-    await expect.poll(async () => {
-        urls = await queryConfirmationUrls(email)
-
-        return urls.length
-    }).toBeGreaterThanOrEqual(minimumRowCount)
-
-    return urls[urls.length - 1]
-}
-
-export async function confirmationRowCount(email: string): Promise<number> {
-    return (await queryConfirmationUrls(email)).length
+export async function confirmationEmailCount(email: string): Promise<number> {
+    return (await searchEmailsTo(email)).length;
 }
 
 export async function registerViaApi(request: APIRequestContext, user: TestUser) {
-    const response = await request.post('/api/v1/auth/register', { data: user })
+    const response = await request.post('/api/v1/auth/register', { data: user });
 
-    expect(response.ok()).toBe(true)
+    expect(response.ok()).toBe(true);
 }
 
 export async function registerAndConfirmViaApi(request: APIRequestContext, user: TestUser) {
-    await registerViaApi(request, user)
+    await registerViaApi(request, user);
 
-    const confirmationUrl = new URL(await latestConfirmationUrl(user.email))
-    const token = confirmationUrl.searchParams.get('token')
-    const response = await request.post('/api/v1/auth/confirm', { data: { token } })
+    const confirmationUrl = new URL(await latestConfirmationUrl(user.email));
+    const token = confirmationUrl.searchParams.get('token');
+    const response = await request.post('/api/v1/auth/confirm', { data: { token } });
 
-    expect(response.ok()).toBe(true)
+    expect(response.ok()).toBe(true);
 }
 
 // Each step advances on Enter. A password input is not a textbox, so it is found by its label.
 // The form ignores Enter while a step is still sliding in, so the step must be at rest before it is pressed.
 export async function typeStep(page: Page, label: string, value: string) {
-    await page.getByLabel(label, { exact: true }).fill(value)
+    await page
+        .getByLabel(label, { exact: true })
+        .fill(value);
 
-    await expect(page.locator('.step-flow-block')).toHaveAttribute('data-slide', 'idle')
+    await expect(page.locator('.step-flow-block')).toHaveAttribute('data-slide', 'idle');
 
-    await page.getByLabel(label, { exact: true }).press('Enter')
+    await page
+        .getByLabel(label, { exact: true })
+        .press('Enter');
 }
 
 export async function logIn(page: Page, identifier: string, password: string) {
-    await page.goto('/login')
-    await typeStep(page, 'email or username', identifier)
-    await typeStep(page, 'password', password)
+    await page.goto('/login');
+    await typeStep(page, 'email or username', identifier);
+    await typeStep(page, 'password', password);
 }
 
 export async function logInAndWaitForFeed(page: Page, user: TestUser) {
-    await logIn(page, user.username, user.password)
+    await logIn(page, user.username, user.password);
 
-    await expect(page).toHaveURL(/\/feed$/)
+    await expect(page).toHaveURL(/\/feed$/);
 }

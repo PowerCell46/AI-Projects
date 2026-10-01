@@ -11,9 +11,12 @@ decisions: `PLAN.md`; the visual brief: `AuthenticationViewsDesigns.md`.
 
 - `npm install`, then `npm run dev`: the dev server on `:5173`. `/api` is proxied to the gateway on `:8080`, or to
   `GATEWAY_URL` when set. Start the gateway first (see `../twitter_api_gateway/CLAUDE.md`).
-- Local confirmation links: there is no mail service yet. The gateway writes the link into its `outbox` table;
-  read it with `select payload::jsonb->>'confirmationUrl' from outbox order by created_at desc limit 1;`. The base
-  is `CONFIRMATION_LINK_BASE_URL` in `../.env` (`http://localhost:5173/confirm`).
+- Local confirmation links: the gateway queues the link in its `outbox` table and the mail service
+  (`../twitter_mail_service`) emails it. Start `redis` and `mailpit` from the Twitter root, run the mail service
+  with `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, and read the email at
+  `http://localhost:8025`. Without the mail service, read the link from the table:
+  `select payload::jsonb->>'confirmationUrl' from outbox order by created_at desc limit 1;`. The base is
+  `CONFIRMATION_LINK_BASE_URL` in `../.env` (`http://localhost:5173/confirm`).
 - On a phone: `LAN-DEV-SERVER.md`.
 
 ## Checks

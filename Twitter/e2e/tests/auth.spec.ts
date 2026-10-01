@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
-    confirmationRowCount,
+    confirmationEmailCount,
     latestConfirmationUrl,
     logIn,
     logInAndWaitForFeed,
@@ -104,7 +104,7 @@ test('should_offer_a_prefilled_resend_when_an_unconfirmed_user_logs_in', async (
     await page.getByRole('button', { name: 'SEND LINK' }).click()
 
     await expect(page.getByText('LINK DISPATCHED')).toBeVisible()
-    await expect.poll(() => confirmationRowCount(user.email)).toBe(2)
+    await expect.poll(() => confirmationEmailCount(user.email)).toBe(2)
 })
 
 test('should_reject_a_confirmation_link_that_was_already_used', async ({ page, request }) => {

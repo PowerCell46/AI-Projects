@@ -63,6 +63,39 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: redis:8.10.2
+    command: ["redis-server", "--requirepass", "twitter-e2e-redis-secret"]
+    environment:
+      REDISCLI_AUTH: twitter-e2e-redis-secret
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - "127.0.0.1:8125:8025"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   gateway:
     build: ../twitter_api_gateway
     ports:
@@ -82,9 +115,9 @@ services:
       CONFIRMATION_LINK_BASE_URL: http://localhost:5273/confirm
       # No cooldown, so a test can resend straight after registering.
       CONFIRMATION_RESEND_COOLDOWN: 0s
-      # Outbox rows are the tests' only source for the confirmation link; a poll that publishes them would
-      # delete them, so the poller waits a day and the cleanup never fires.
-      OUTBOX_POLL_FIXED_DELAY_MS: 86400000
+      # The confirmation link the tests click is read from the email the mail service sends, so the outbox
+      # poller has to run; half a second keeps the wait short.
+      OUTBOX_POLL_FIXED_DELAY_MS: 500
       UNCONFIRMED_CLEANUP_CRON: 0 0 4 29 2 *
     deploy:
       resources:
@@ -103,4 +136,37 @@ services:
       kafka:
         condition: service_healthy
       minio:
+        condition: service_healthy
+
+  mail-service:
+    build: ../twitter_mail_service
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PASSWORD: twitter-e2e-redis-secret
+      # The e2e Mailpit takes mail with no auth and no TLS.
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
+      MAIL_FROM: twitter-e2e@example.com
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      gateway:
         condition: service_healthy
