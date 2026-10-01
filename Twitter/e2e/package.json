@@ -1,0 +1,19 @@
+{
+  "name": "twitter-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:fast": "E2E_NO_BUILD=1 playwright test",
+    "test:headed": "playwright test --headed",
+    "stack:down": "docker compose -p twitter-e2e -f docker-compose.e2e.yml down -v"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1",
+    "typescript": "^7.0.2"
+  }
+}

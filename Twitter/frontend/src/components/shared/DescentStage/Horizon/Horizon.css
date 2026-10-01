@@ -1,0 +1,93 @@
+/* Full stage height, so the % in translateY resolves against the same basis as the ruler's tick positions. */
+.horizon {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: transform 1150ms var(--s);
+}
+
+.horizon-marker {
+    position: absolute;
+    top: 0;
+    left: 1.375rem;
+    width: 3.375rem;
+    height: 1px;
+    background: var(--glow);
+    transition: background-color 500ms;
+}
+
+.horizon-marker::after {
+    content: '';
+    position: absolute;
+    top: -0.25rem;
+    right: 0;
+    width: 2px;
+    height: 0.5rem;
+    background: inherit;
+}
+
+.horizon-hairline {
+    position: absolute;
+    top: 0;
+    left: var(--ruler-width);
+    right: 0;
+    height: 1px;
+    background: var(--glow-hairline);
+    transition: background-color 500ms;
+}
+
+.horizon-readout {
+    position: absolute;
+    top: 0;
+    right: var(--content-pad);
+    padding-bottom: 0.875rem;
+    text-align: right;
+    color: var(--pale);
+    transform: translateY(-100%);
+    transition: color 500ms;
+}
+
+.horizon-readout-label {
+    display: block;
+    font-size: 0.53125rem;
+    letter-spacing: 0.26em;
+    color: var(--pale-depth-label);
+}
+
+.horizon-readout-value {
+    display: block;
+    font-size: clamp(1.75rem, 5vw, 2.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.horizon-readout-unit {
+    margin-left: 0.5625rem;
+    font-size: 0.34em;
+    letter-spacing: 0.2em;
+    vertical-align: top;
+}
+
+.horizon[data-alarm='true'] .horizon-marker {
+    background: var(--alarm);
+}
+
+.horizon[data-alarm='true'] .horizon-hairline {
+    background: var(--alarm-hairline);
+}
+
+.horizon[data-alarm='true'] .horizon-readout {
+    color: var(--alarm);
+}
+
+@media (max-width: 720px) {
+    .horizon-marker {
+        left: 1rem;
+        width: 2.25rem;
+    }
+
+    .horizon-readout {
+        padding-bottom: 0.6875rem;
+    }
+}

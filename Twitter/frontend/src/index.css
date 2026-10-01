@@ -1,0 +1,98 @@
+:root {
+    --deep: #00081f;
+    --glow: #4e8bff;
+    --pale: #dce6fa;
+    --alarm: #ff7a5c;
+    --input-text: #ffffff;
+    --glow-hover: #9cc0ff;
+
+    /* Text alphas on --pale. The brief's .34/.40/.50 fail 4.5:1 on --deep, so all three sit at .52 (4.7:1). */
+    --pale-brand: rgb(220 230 250 / 0.52);
+    --pale-secondary: rgb(220 230 250 / 0.52);
+    --pale-footer: rgb(220 230 250 / 0.52);
+    --pale-depth-label: rgb(220 230 250 / 0.3);
+    --pale-tick-major: rgb(220 230 250 / 0.28);
+    --pale-tick-numeral: rgb(220 230 250 / 0.26);
+    --pale-bar-empty: rgb(220 230 250 / 0.2);
+    --pale-rule: rgb(220 230 250 / 0.18);
+    --pale-placeholder: rgb(220 230 250 / 0.17);
+    --pale-tick-minor: rgb(220 230 250 / 0.12);
+    --pale-ruler-border: rgb(220 230 250 / 0.1);
+    --glow-underline: rgb(78 139 255 / 0.45);
+    --glow-hairline: rgb(78 139 255 / 0.14);
+    --alarm-hairline: rgb(255 122 92 / 0.18);
+
+    --ruler-width: 4.875rem;
+    --content-pad: clamp(1.625rem, 6vw, 5.5rem);
+
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --font-headline: 'Inter Tight', system-ui, sans-serif;
+
+    /* Settling motion: rule fill, message reveal, button nudge, arrival rule. */
+    --e: cubic-bezier(0.16, 0.84, 0.26, 1);
+    /* Weighted travel: horizon movement, step enter/exit. */
+    --s: cubic-bezier(0.34, 0.02, 0.18, 1);
+}
+
+@media (max-width: 720px) {
+    :root {
+        --ruler-width: 3.25rem;
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 100%;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    background: var(--deep);
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--pale);
+    background: var(--deep);
+}
+
+h1,
+h2,
+p {
+    margin: 0;
+}
+
+button,
+input {
+    font: inherit;
+    color: inherit;
+    border-radius: 0;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

@@ -1,0 +1,44 @@
+.step-input {
+    position: relative;
+    max-width: 35rem;
+    border-bottom: 1px solid var(--pale-rule);
+}
+
+.step-input-field {
+    width: 100%;
+    min-width: 0;
+    padding: 0 0 1rem;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: clamp(1.0625rem, 3.2vw, 1.5625rem);
+    letter-spacing: -0.01em;
+    color: var(--input-text);
+}
+
+.step-input-field::placeholder {
+    color: var(--pale-placeholder);
+}
+
+/* The rule filling in is the input's focus indicator; the input itself shows no outline. */
+.step-input-rule {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    background: var(--glow);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 720ms var(--e), background-color 500ms;
+}
+
+.step-input:focus-within .step-input-rule {
+    transform: scaleX(1);
+}
+
+.step-input[data-invalid='true'] .step-input-rule {
+    background: var(--alarm);
+    transform: scaleX(1);
+}

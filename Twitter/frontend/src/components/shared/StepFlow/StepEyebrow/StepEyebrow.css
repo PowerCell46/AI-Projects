@@ -1,0 +1,25 @@
+.step-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-bottom: 1.375rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.2em;
+    color: var(--glow);
+}
+
+.step-eyebrow-bars {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.step-eyebrow-bar {
+    width: 1.5rem;
+    height: 2px;
+    background: var(--pale-bar-empty);
+    transition: background-color 500ms;
+}
+
+.step-eyebrow-bar[data-filled='true'] {
+    background: var(--glow);
+}

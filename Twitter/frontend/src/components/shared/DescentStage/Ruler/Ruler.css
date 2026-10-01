@@ -1,0 +1,41 @@
+.ruler {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--ruler-width);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-right: 1px solid var(--pale-ruler-border);
+}
+
+.ruler-tick {
+    position: absolute;
+    right: 0;
+    width: 0.625rem;
+    height: 1px;
+    background: var(--pale-tick-minor);
+}
+
+.ruler-tick-label {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 0.375rem);
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+    color: var(--pale-tick-numeral);
+    transform: translateY(-50%);
+}
+
+.ruler-tick[data-major='true'] {
+    width: 1.125rem;
+    background: var(--pale-tick-major);
+}
+
+@media (max-width: 720px) {
+    .ruler-tick-label {
+        font-size: 0.46875rem;
+    }
+}

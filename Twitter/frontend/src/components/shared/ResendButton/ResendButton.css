@@ -1,0 +1,24 @@
+.resend-button {
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    color: var(--pale-secondary);
+    cursor: pointer;
+}
+
+.resend-button[aria-disabled='true'] {
+    cursor: default;
+}
+
+.resend-button:not([aria-disabled='true']):hover {
+    color: var(--pale);
+}
+
+.resend-button:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}

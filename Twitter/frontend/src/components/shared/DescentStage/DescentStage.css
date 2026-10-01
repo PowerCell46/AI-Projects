@@ -1,0 +1,45 @@
+.descent-stage {
+    position: relative;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 37.5rem;
+    overflow: hidden;
+    background: var(--deep);
+}
+
+.descent-stage-brand {
+    position: absolute;
+    top: clamp(1.75rem, 4.4vh, 2.75rem);
+    left: calc(var(--ruler-width) + var(--content-pad));
+    font-size: 0.6875rem;
+    letter-spacing: 0.44em;
+    color: var(--pale-brand);
+}
+
+.descent-stage-well {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--ruler-width);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 var(--content-pad);
+}
+
+.descent-stage-content {
+    width: 100%;
+    max-width: 40rem;
+    min-width: 0;
+}
+
+.descent-stage-footer {
+    position: absolute;
+    right: var(--content-pad);
+    bottom: 0;
+    padding: 1.5rem 0;
+    font-size: 0.65625rem;
+    letter-spacing: 0.11em;
+    color: var(--pale-footer);
+}

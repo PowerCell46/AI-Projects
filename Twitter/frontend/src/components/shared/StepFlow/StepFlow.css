@@ -1,0 +1,96 @@
+.step-flow-block {
+    transition: transform 600ms var(--s), opacity 400ms;
+}
+
+.step-flow-question {
+    margin-bottom: 2.25rem;
+    font-family: var(--font-headline);
+    font-size: clamp(1.5625rem, 4.8vw, 2.625rem);
+    font-weight: 400;
+    line-height: 1.04;
+    letter-spacing: -0.032em;
+}
+
+.step-flow-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    margin-top: 2.125rem;
+}
+
+.step-flow-primary,
+.step-flow-back {
+    min-height: 2.75rem;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.step-flow-primary {
+    padding: 0 1.75rem;
+    background: var(--glow);
+    font-size: 0.78125rem;
+    letter-spacing: 0.14em;
+    color: var(--deep);
+    transition: background-color 300ms, transform 500ms var(--e);
+}
+
+.step-flow-back {
+    padding: 0 0.5rem;
+    background: transparent;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    color: var(--pale-secondary);
+}
+
+.step-flow-primary[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: progress;
+}
+
+.step-flow-back[hidden] {
+    display: none;
+}
+
+.step-flow-primary:not([aria-disabled='true']):hover {
+    background: var(--glow-hover);
+    transform: translateX(0.25rem);
+}
+
+.step-flow-primary:focus-visible,
+.step-flow-back:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+/* The block leaves 38px (2.375rem) up when going forward, and enters from 38px below. */
+.step-flow-block[data-slide='exit'] {
+    opacity: 0;
+}
+
+.step-flow-block[data-slide='exit'][data-direction='forward'] {
+    transform: translateY(-2.375rem);
+}
+
+.step-flow-block[data-slide='exit'][data-direction='back'] {
+    transform: translateY(2.375rem);
+}
+
+.step-flow-block[data-slide='enter'] {
+    opacity: 0;
+    transition: none;
+}
+
+.step-flow-block[data-slide='enter'][data-direction='forward'] {
+    transform: translateY(2.375rem);
+}
+
+.step-flow-block[data-slide='enter'][data-direction='back'] {
+    transform: translateY(-2.375rem);
+}
+
+@media (max-width: 720px) {
+    .step-flow-actions {
+        gap: 1.125rem;
+    }
+}

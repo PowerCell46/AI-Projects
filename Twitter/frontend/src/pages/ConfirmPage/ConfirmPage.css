@@ -1,0 +1,21 @@
+.confirm-page-retry {
+    min-height: 2.75rem;
+    padding: 0 1.75rem;
+    border: 0;
+    border-radius: 0;
+    background: var(--glow);
+    font-size: 0.78125rem;
+    letter-spacing: 0.14em;
+    color: var(--deep);
+    cursor: pointer;
+    transition: background-color 300ms;
+}
+
+.confirm-page-retry:hover {
+    background: var(--glow-hover);
+}
+
+.confirm-page-retry:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
