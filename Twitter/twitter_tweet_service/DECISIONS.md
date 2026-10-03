@@ -173,8 +173,8 @@ the contended operations are Mongo writes, not the servlet layer.
 custom repository method was added. The 1-100 limit counts the ids as sent, before repeats collapse, so the
 request size is bounded; a list outside it answers 400 "Provide between 1 and 100 tweet ids." through its own
 `TweetIdsOutOfRangeException`. A non-UUID id, an empty `ids` and a missing `ids` are all 400 through the
-existing Spring MVC handlers. `TweetResponseDTO` is returned unchanged, `views` included, until timeline phase 3
-removes it.
+existing Spring MVC handlers. `TweetResponseDTO` was returned unchanged, `views` included, until timeline phase 3
+(step 24) removed it.
 
 
 ## Timeline plan step 12 - the collections are created at startup
@@ -186,3 +186,10 @@ if missing, as a `SmartInitializingSingleton`, so it runs before the web server 
 `ApplicationRunner` like the MinIO bucket initializer would leave a short window). If another instance creates
 one first, the failure is swallowed once the collection is seen to exist. Chosen over a retry of the transaction,
 which would hide the cause; the `TransientTransactionError` label stays unhandled for other conflicts.
+
+## Timeline plan step 24 - `views` is removed, old documents keep a stale field
+
+`Tweet`, `TweetResponseDTO`, `TweetMapper` and `findAndIncrementViews` no longer know `views`, and
+`GET /tweets/{id}` is a plain `findById` that writes nothing. Existing development documents still carry a
+`views` field: Spring Data ignores an unknown field on read, nothing writes the whole document back (edits are a
+conditional `$set`), so it is never read or changed again. No `$unset` script: development data only.

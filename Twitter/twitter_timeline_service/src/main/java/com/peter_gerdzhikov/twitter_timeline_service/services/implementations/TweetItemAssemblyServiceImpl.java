@@ -18,6 +18,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResp
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewService;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.mappers.TweetItemMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
+
+    private final ViewService viewService;
 
     private final ExecutorService downstreamCallExecutor;
 
@@ -51,11 +54,15 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
                 CompletableFuture.supplyAsync(() -> userLookupService.findByIds(authorIds), downstreamCallExecutor);
         Map<UUID, TweetClientDTO> tweetsById = await(tweetsRequest);
         Map<UUID, UserClientDTO> authorsById = await(authorsRequest);
+        Map<UUID, Long> viewsByTweetId = viewService.countViews(tweetIds);
 
         return rows
                 .stream()
                 .filter(row -> tweetsById.containsKey(tweetIdOf.apply(row)) && authorsById.containsKey(authorIdOf.apply(row)))
-                .map(row -> TweetItemMapper.toItem(tweetsById.get(tweetIdOf.apply(row)), authorsById.get(authorIdOf.apply(row))))
+                .map(row -> TweetItemMapper.toItem(
+                        tweetsById.get(tweetIdOf.apply(row)),
+                        authorsById.get(authorIdOf.apply(row)),
+                        viewsByTweetId.getOrDefault(tweetIdOf.apply(row), 0L)))
                 .toList();
     }
 

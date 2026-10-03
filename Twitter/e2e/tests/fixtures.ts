@@ -188,3 +188,9 @@ export async function deleteTweet(author: Account, tweetId: string) {
 
     expect(response.status()).toBe(204);
 }
+
+export async function follow(follower: Account, followee: Account) {
+    const response = await follower.api.put(`/api/v1/users/${followee.user.username}/follow`);
+
+    expect(response.status()).toBe(204);
+}

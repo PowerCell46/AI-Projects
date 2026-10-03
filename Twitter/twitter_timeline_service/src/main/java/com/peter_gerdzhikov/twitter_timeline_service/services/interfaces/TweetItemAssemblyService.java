@@ -11,7 +11,8 @@ public interface TweetItemAssemblyService {
     /**
      * One item per row, in row order, for the tweet and the author the row names. The tweets and the authors
      * are fetched side by side, one call each, for the distinct ids of these rows only. A row whose tweet or
-     * author is missing is skipped, so the result can be shorter than the rows. No call is made for no rows.
+     * author is missing is skipped, so the result can be shorter than the rows. Each item carries the number of unique
+     * viewers of its tweet, read in one query for the page. No call is made for no rows.
      *
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException
      *         when either downstream can't be reached, answers an error or sends something unreadable

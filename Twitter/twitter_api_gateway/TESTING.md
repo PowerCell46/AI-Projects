@@ -331,9 +331,9 @@ Written `@Disabled` in step 25 and approved; every group is now enabled (steps 2
 
 - Tweet service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_tweet_service_is_down`)
 
-## `/api/v1/feed` and `/api/v1/saved-tweets/**` (proxy to the timeline service)
+## `/api/v1/feed`, `/api/v1/saved-tweets/**` and `/api/v1/views` (proxy to the timeline service)
 
-Added in timeline step 11 (feed) and step 17 (saved tweets). `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
+Added in timeline step 11 (feed), step 17 (saved tweets) and step 25 (views). `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
 
 `TimelineRoutesIntegrationTest.Authentication` - enabled
 
@@ -364,6 +364,16 @@ Added in timeline step 11 (feed) and step 17 (saved tweets). `TimelineRoutesInte
 - A `404` with its body passes through (`should_pass_the_downstream_404_and_body_through_unchanged_when_the_tweet_is_unknown`)
 - The JWT `sub` is sent as `X-User-Id` and a spoofed one is replaced on a PUT (`should_send_the_jwt_subject_as_x_user_id_and_drop_a_spoofed_one_when_a_put_is_forwarded`)
 - `Cookie` and `Authorization` are not forwarded on a PUT (`should_not_forward_the_cookie_or_the_authorization_header_when_a_put_is_forwarded`)
+
+`TimelineRoutesIntegrationTest.Views` - enabled (step 25). The same identity filters apply to `/api/v1/views`, which is an exact path.
+
+- No cookie returns 401 on GET and POST and nothing is forwarded (`should_return_401_and_forward_nothing_when_there_is_no_cookie`, method)
+- A POST arrives with its JSON body, status 204 unchanged (`should_forward_a_post_with_its_body_and_status_unchanged_when_the_user_is_authenticated`)
+- A GET arrives with its `tweetIds` query (decoded value equal) and status unchanged (`should_forward_a_get_with_the_query_and_status_unchanged_when_the_user_is_authenticated`)
+- A `400` with its body passes through (`should_pass_the_downstream_400_and_body_through_unchanged_when_the_batch_is_rejected`)
+- The JWT `sub` is sent as `X-User-Id` and a spoofed one is replaced on a POST (`should_send_the_jwt_subject_as_x_user_id_and_drop_a_spoofed_one_when_a_post_is_forwarded`)
+- `Cookie` and `Authorization` are not forwarded on a POST (`should_not_forward_the_cookie_or_the_authorization_header_when_a_post_is_forwarded`)
+- A path below `/api/v1/views` is not forwarded (`should_not_forward_a_path_below_views`)
 
 `TimelineRoutesIntegrationTest.Failures` - enabled
 
@@ -427,7 +437,7 @@ The auth, profile, file and follow suites are the "Unaffected" group: they must 
 `TweetServiceContractIntegrationTest` — enabled. Real server; the tweet service is built from `../twitter_tweet_service/Dockerfile` on a Docker network with its own Mongo, MinIO and Kafka. Users come from `TestJwts`. The first run builds the image and takes minutes.
 
 - Alice posts text + 1 image: 201 (`should_return_201_when_alice_posts_a_tweet_with_text_and_one_image`)
-- Bob reads it: 200, `views = 1`, image byte-identical (`should_return_200_with_one_view_and_the_byte_identical_image_when_bob_reads_alices_tweet`)
+- Bob reads it: 200, content as posted, image byte-identical (`should_return_200_with_the_byte_identical_image_when_bob_reads_alices_tweet`)
 - Bob's PUT returns 403 (`should_return_403_when_bob_edits_alices_tweet`)
 - Bob's DELETE returns 403 (`should_return_403_when_bob_deletes_alices_tweet`)
 - Bob's DELETE with spoofed `X-User-Id: <alice>` still returns 403 (`should_return_403_when_bob_deletes_alices_tweet_with_a_spoofed_x_user_id`)

@@ -19,8 +19,6 @@ import lombok.experimental.SuperBuilder;
 @Document(collection = "tweets")
 public class Tweet extends CommonDocument {
 
-    private long views;
-
     private UUID authorId;
 
     private String content;

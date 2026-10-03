@@ -2,12 +2,10 @@ package com.peter_gerdzhikov.twitter_tweet_service.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -82,26 +80,6 @@ class TweetConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
     private OutboxMessageRepository outboxMessageRepository;
 
     @Nested
-    class Views {
-
-        @Test
-        void should_count_every_view_and_hand_out_distinct_counts_when_fifty_reads_overlap() throws Exception {
-            UUID authorId = UUID.randomUUID();
-            UUID tweetId = tweetService.create(authorId, "popular", null).getId();
-
-            List<Callable<Long>> reads = IntStream
-                    .range(0, 50)
-                    .<Callable<Long>>mapToObj(i -> () -> viewsFromGet(tweetId))
-                    .toList();
-            List<Long> counts = runTogether(reads);
-
-            assertThat(tweetRepository.findById(tweetId).orElseThrow().getViews()).isEqualTo(50);
-            assertThat(Set.copyOf(counts)).hasSize(50);
-            assertThat(counts).containsExactlyInAnyOrderElementsOf(expectedCounts());
-        }
-    }
-
-    @Nested
     class Deletes {
 
         @Test
@@ -172,23 +150,6 @@ class TweetConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
             Tweet stored = tweetRepository.findById(tweetId).orElseThrow();
             assertThat(contents).contains(stored.getContent());
         }
-    }
-
-    private List<Long> expectedCounts() {
-        return IntStream
-                .rangeClosed(1, 50)
-                .mapToObj(Long::valueOf)
-                .toList();
-    }
-
-    private long viewsFromGet(UUID tweetId) throws Exception {
-        String body = mockMvc
-                .perform(get("/api/v1/tweets/" + tweetId).header(USER_ID_HEADER, UUID.randomUUID().toString()))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return objectMapper.readTree(body).get("views").asLong();
     }
 
     private int deleteStatus(UUID tweetId, UUID callerId) throws Exception {

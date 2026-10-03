@@ -157,7 +157,7 @@ public class TweetServiceImpl implements TweetService {
     @Override
     public TweetResponseDTO get(UUID tweetId) {
         return tweetRepository
-                .findAndIncrementViews(tweetId)
+                .findById(tweetId)
                 .map(TweetMapper::toResponse)
                 .orElseThrow(TweetNotFoundException::new);
     }

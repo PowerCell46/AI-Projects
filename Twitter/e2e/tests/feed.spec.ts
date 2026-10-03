@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { deleteTweet, postTweet, test, type Account } from './fixtures';
+import { deleteTweet, follow, postTweet, test, type Account } from './fixtures';
 
 
 interface FeedAuthor {
@@ -23,12 +23,6 @@ const TEST_TIMEOUT_MS = 120_000;
 const FEED_POLL_TIMEOUT_MS = 30_000;
 
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
-
-async function follow(follower: Account, followee: Account) {
-    const response = await follower.api.put(`/api/v1/users/${followee.user.username}/follow`);
-
-    expect(response.status()).toBe(204);
-}
 
 async function unfollow(follower: Account, followee: Account) {
     const response = await follower.api.delete(`/api/v1/users/${followee.user.username}/follow`);

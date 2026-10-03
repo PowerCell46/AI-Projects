@@ -37,8 +37,13 @@ import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 
 import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntry;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweet;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetView;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewCount;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewRecordingService;
 
 /**
  * What every listener suite needs: a raw producer for the three input topics, the events written the way their
@@ -73,6 +78,15 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
 
     @Autowired
     protected SavedTweetRepository savedTweetRepository;
+
+    @Autowired
+    protected TweetViewRepository tweetViewRepository;
+
+    @Autowired
+    protected ViewRecordingService viewRecordingService;
+
+    @Autowired
+    protected TweetViewCountRepository tweetViewCountRepository;
 
     /**
      * The event as the tweet service writes it, with the text and image ids this service ignores.
@@ -219,5 +233,42 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
                 .atMost(AWAIT_TIMEOUT)
                 .pollInterval(Duration.ofMillis(100))
                 .untilAsserted(() -> assertThat(tweetIdsSavedBy(userId)).doesNotContain(tweetId));
+    }
+
+    /**
+     * A view recorded the way a report records it, so the counter and the view rows agree.
+     */
+    protected void seedView(UUID viewerId, UUID tweetId) {
+        viewRecordingService.record(viewerId, List.of(tweetId));
+    }
+
+    protected void seedViews(UUID tweetId, int viewers) {
+        newUsers(viewers).forEach(viewerId -> seedView(viewerId, tweetId));
+    }
+
+    protected long viewsOf(UUID tweetId) {
+        return tweetViewCountRepository
+                .findById(tweetId)
+                .map(TweetViewCount::getViews)
+                .orElse(0L);
+    }
+
+    protected List<UUID> viewersOf(UUID tweetId) {
+        return tweetViewRepository
+                .findAll()
+                .stream()
+                .filter(view -> view.getTweetId().equals(tweetId))
+                .map(TweetView::getViewerId)
+                .toList();
+    }
+
+    protected void awaitViewsGone(UUID tweetId) {
+        Awaitility.await()
+                .atMost(AWAIT_TIMEOUT)
+                .pollInterval(Duration.ofMillis(100))
+                .untilAsserted(() -> {
+                    assertThat(viewersOf(tweetId)).isEmpty();
+                    assertThat(tweetViewCountRepository.existsById(tweetId)).isFalse();
+                });
     }
 }

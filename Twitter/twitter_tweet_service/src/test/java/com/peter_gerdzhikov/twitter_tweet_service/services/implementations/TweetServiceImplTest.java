@@ -11,7 +11,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -126,7 +125,6 @@ class TweetServiceImplTest {
             assertThat(saved.getValue().getAuthorId()).isEqualTo(AUTHOR_ID);
             assertThat(saved.getValue().getCreatedAt()).isEqualTo(expectedInstant);
             assertThat(saved.getValue().getUpdatedAt()).isEqualTo(expectedInstant);
-            assertThat(saved.getValue().getViews()).isZero();
             assertThat(response.getImages()).isEmpty();
             verifyNoInteractions(objectStorageService);
         }
@@ -524,21 +522,20 @@ class TweetServiceImplTest {
     class Get {
 
         @Test
-        void should_return_the_tweet_the_atomic_increment_returned_when_it_exists() {
+        void should_return_the_tweet_when_it_exists() {
             Tweet tweet = TestDocuments.tweet();
-            tweet.setViews(7);
-            when(tweetRepository.findAndIncrementViews(tweet.getId())).thenReturn(Optional.of(tweet));
+            when(tweetRepository.findById(tweet.getId())).thenReturn(Optional.of(tweet));
 
             TweetResponseDTO response = tweetService.get(tweet.getId());
 
             assertThat(response.getId()).isEqualTo(tweet.getId());
-            assertThat(response.getViews()).isEqualTo(7);
+            assertThat(response.getContent()).isEqualTo(tweet.getContent());
         }
 
         @Test
         void should_throw_not_found_when_the_tweet_does_not_exist() {
             UUID id = UUID.randomUUID();
-            when(tweetRepository.findAndIncrementViews(id)).thenReturn(Optional.empty());
+            when(tweetRepository.findById(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> tweetService.get(id)).isInstanceOf(TweetNotFoundException.class);
         }
@@ -571,15 +568,6 @@ class TweetServiceImplTest {
             ArgumentCaptor<Iterable<UUID>> queried = ArgumentCaptor.captor();
             verify(tweetRepository).findAllById(queried.capture());
             assertThat(queried.getValue()).containsExactly(id, other);
-        }
-
-        @Test
-        void should_not_touch_the_view_counter_when_ids_are_read() {
-            when(tweetRepository.findAllById(any())).thenReturn(List.of());
-
-            tweetService.findByIds(List.of(UUID.randomUUID()));
-
-            verify(tweetRepository, never()).findAndIncrementViews(any());
         }
 
         @Test
@@ -629,7 +617,6 @@ class TweetServiceImplTest {
             assertThat(response.getContent()).isSameAs(stream);
             assertThat(response.getContentType()).isEqualTo(image.getContentType());
             assertThat(response.getSizeBytes()).isEqualTo(image.getSizeBytes());
-            verify(tweetRepository, times(0)).findAndIncrementViews(any());
         }
 
         @Test

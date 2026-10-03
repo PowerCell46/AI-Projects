@@ -25,6 +25,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.ErrorResponse
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCallerIdentityException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
@@ -84,6 +85,14 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().getMessages()).containsExactly("Page size must be between 1 and 100.");
+    }
+
+    @Test
+    void should_return_400_for_invalid_tweet_ids() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleInvalidTweetIds(new InvalidTweetIdsException(50));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly("Between 1 and 50 tweet ids are required, none of them null.");
     }
 
     @Test

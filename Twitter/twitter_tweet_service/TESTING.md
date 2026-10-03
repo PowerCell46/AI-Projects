@@ -23,7 +23,7 @@ The two limit scenarios that need a real servlet container live in `TweetUploadL
 
 `TweetControllerIntegrationTest.CreateTweet`
 
-- Text only returns 201 with the response body shape, `views = 0`, `createdAt == updatedAt`; Mongo holds the document with trimmed content and `authorId` from the header; one `PENDING` outbox message with every contract field (`should_return_201_and_store_the_tweet_and_a_pending_event_when_the_text_is_valid`)
+- Text only returns 201 with the response body shape without `views`, `createdAt == updatedAt`; Mongo holds the document with trimmed content and `authorId` from the header; one `PENDING` outbox message with every contract field (`should_return_201_and_store_the_tweet_and_a_pending_event_when_the_text_is_valid`)
 - Text + 1 image returns 201; the object is in MinIO under its `objectKey` with the detected type; `imageIds` in the outbox payload match (`should_return_201_and_store_the_object_in_minio_when_one_image_is_attached`)
 - Text + 4 images (JPEG, PNG, WebP mixed) returns 201; every object is in MinIO with its detected type; `imageIds` in the outbox payload match, in order (`should_return_201_and_keep_the_upload_order_when_four_mixed_images_are_attached`)
 - Images with no `content` part returns 201 with `content = ""` (`should_return_201_with_empty_content_when_only_images_are_attached`)
@@ -57,9 +57,8 @@ Added in step 5:
 `TweetControllerIntegrationTest.GetTweet`
 
 - Returns 200 with the response body shape (`should_return_200_with_the_body_shape_when_the_tweet_exists`)
-- `views` is 1 on the first GET and 2 on the second (`should_count_each_get_as_a_view_when_the_tweet_is_read_repeatedly`)
-- The author's own GET counts as a view (`should_count_the_view_when_the_author_reads_their_own_tweet`)
-- `updatedAt` is unchanged by views (`should_leave_updated_at_unchanged_when_the_tweet_is_viewed`)
+- Repeated GETs return no `views` field and leave the stored document unchanged (`should_leave_the_document_unchanged_and_return_no_views_when_the_tweet_is_read_repeatedly`)
+- `updatedAt` is unchanged by reads (`should_leave_updated_at_unchanged_when_the_tweet_is_read`)
 - An unknown id returns 404 "Tweet not found." (`should_return_404_when_the_tweet_is_unknown`)
 - A non-UUID id returns 400 (`should_return_400_when_the_id_is_not_a_uuid`)
 
@@ -70,13 +69,13 @@ Added in step 5:
 - Returns 200, the bytes identical to the upload, the stored `Content-Type`, `Content-Length`, `Cache-Control: private, max-age=31536000, immutable` and `X-Content-Type-Options: nosniff` (`should_return_200_with_the_uploaded_bytes_and_headers_when_the_image_exists`)
 - An unknown tweet returns 404 (`should_return_404_when_the_tweet_is_unknown`)
 - An image id that belongs to another tweet returns 404 (`should_return_404_when_the_image_belongs_to_another_tweet`)
-- Fetching an image does not change `views` (`should_not_change_views_when_an_image_is_fetched`)
+- Fetching an image leaves the stored document unchanged (`should_leave_the_document_unchanged_when_an_image_is_fetched`)
 
 ## `PUT /api/v1/tweets/{id}`
 
 `TweetControllerIntegrationTest.UpdateTweet`
 
-- The author gets 200 with the new trimmed content, `updatedAt` moved (test clock), images and `views` unchanged (`should_return_200_and_update_the_content_when_the_author_edits`)
+- The author gets 200 with the new trimmed content, `updatedAt` moved (test clock), images unchanged, no `views` in the response (`should_return_200_and_update_the_content_when_the_author_edits`)
 - An edit writes no outbox message (`should_not_write_an_outbox_message_when_the_content_is_edited`)
 - Blank content on a tweet with images returns 200 (`should_return_200_when_the_content_is_blank_and_the_tweet_has_images`)
 - Blank content on a text-only tweet returns 400 (`should_return_400_when_the_content_is_blank_and_the_tweet_has_no_images`)
@@ -107,7 +106,7 @@ Added in step 5:
 - A repeated id returns its tweet once (`should_return_each_tweet_once_when_an_id_is_repeated`)
 - A comma-separated `ids` value is accepted (`should_accept_a_comma_separated_list_when_ids_are_joined`)
 - Works without `X-User-Id` (`should_not_require_the_user_id_header`)
-- Reading counts no view: `views` stays 0 in the response and in Mongo (`should_not_count_a_view_when_tweets_are_read`)
+- Reading returns no `views` and leaves the documents unchanged (`should_return_no_views_and_leave_the_documents_unchanged_when_tweets_are_read`)
 - 100 ids return 200 (`should_return_200_when_exactly_100_ids_are_given`)
 - 101 ids return 400 "Provide between 1 and 100 tweet ids." (`should_return_400_when_101_ids_are_given`)
 - An empty `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_empty`)
@@ -118,7 +117,6 @@ Added in step 5:
 
 `TweetConcurrencyIntegrationTest` - through MockMvc, every scenario releases its threads from one latch and asserts only the final state.
 
-- 50 overlapping GETs leave `views == 50` and hand out 50 distinct counts, 1 to 50 (`Views.should_count_every_view_and_hand_out_distinct_counts_when_fifty_reads_overlap`)
 - 20 overlapping deletes by the author give exactly one 204 and 19 404s, one `tweet.deleted` outbox message, and no image objects left (`Deletes.should_answer_one_204_and_nineteen_404s_and_write_one_event_when_twenty_deletes_overlap`)
 - An edit racing a delete, 50 rounds: the edit answers 200 or 404 and never 500, the delete answers 204, and every round ends with no tweet and one deleted event (`Edits.should_end_with_no_tweet_and_never_answer_500_when_an_edit_races_a_delete_fifty_times`)
 - 20 overlapping edits all answer 200 and leave one of the 20 contents (`Edits.should_answer_200_to_every_edit_and_keep_one_of_the_contents_when_twenty_edits_overlap`)

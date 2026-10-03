@@ -1,10 +1,8 @@
 package com.peter_gerdzhikov.twitter_tweet_service.repositories;
 
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -18,18 +16,6 @@ import lombok.RequiredArgsConstructor;
 public class TweetRepositoryCustomImpl implements TweetRepositoryCustom {
 
     private final MongoTemplate mongoTemplate;
-
-    @Override
-    public Optional<Tweet> findAndIncrementViews(UUID id) {
-        Tweet tweet = mongoTemplate.findAndModify(
-                byId(id),
-                new Update().inc("views", 1),
-                FindAndModifyOptions.options().returnNew(true),
-                Tweet.class
-        );
-
-        return Optional.ofNullable(tweet);
-    }
 
     @Override
     public boolean updateContentIfAuthor(UUID id, UUID authorId, String content, Instant updatedAt) {
@@ -47,10 +33,6 @@ public class TweetRepositoryCustomImpl implements TweetRepositoryCustom {
         return mongoTemplate
                 .remove(byIdAndAuthor(id, authorId), Tweet.class)
                 .getDeletedCount() > 0;
-    }
-
-    private Query byId(UUID id) {
-        return Query.query(Criteria.where("id").is(id));
     }
 
     private Query byIdAndAuthor(UUID id, UUID authorId) {

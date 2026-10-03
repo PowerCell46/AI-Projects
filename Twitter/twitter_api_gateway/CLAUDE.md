@@ -7,7 +7,7 @@ before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
 
 From phase 4 the gateway also **routes** `/api/v1/tweets/**` to `../twitter_tweet_service` (Spring Cloud Gateway
 MVC, `TWEET_SERVICE_URL`), stripping caller identity headers and adding `X-User-Id` from the JWT. It holds no tweet
-code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`. `/api/v1/feed` and `/api/v1/saved-tweets/**` are routed the same way
+code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`. `/api/v1/feed`, `/api/v1/saved-tweets/**` and `/api/v1/views` are routed the same way
 to `../twitter_timeline_service` (`TIMELINE_SERVICE_URL`); both routes share `CallerIdentityFilters`.
 
 It also serves `/internal/v1/**` (follower ids and user lookups for `../twitter_timeline_service`). Those routes sit on

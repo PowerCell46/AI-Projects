@@ -142,4 +142,83 @@ class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTes
             assertThat(tweetIdsSavedBy(userId)).containsExactly(keptTweetId);
         }
     }
+
+    @Nested
+    class Views {
+
+        @Test
+        void should_remove_the_view_rows_and_the_counter_of_the_tweet_when_it_is_deleted() {
+            UUID tweetId = TestIds.tweetId();
+            seedViews(tweetId, 3);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, TestIds.userId()));
+
+            awaitViewsGone(tweetId);
+        }
+
+        @Test
+        void should_leave_the_views_and_the_counter_of_other_tweets_when_a_tweet_is_deleted() {
+            UUID deletedTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            seedViews(deletedTweetId, 2);
+            seedViews(keptTweetId, 2);
+
+            publish(TWEET_DELETED_TOPIC, deletedTweetId.toString(), tweetDeletedJson(deletedTweetId, TestIds.userId()));
+            awaitViewsGone(deletedTweetId);
+
+            assertThat(viewersOf(keptTweetId)).hasSize(2);
+            assertThat(viewsOf(keptTweetId)).isEqualTo(2);
+        }
+
+        @Test
+        void should_remove_the_feed_entries_the_saved_rows_and_the_views_together_when_a_tweet_is_deleted() {
+            UUID tweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            UUID userId = TestIds.userId();
+            seedEntry(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedSavedTweet(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedViews(tweetId, 2);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+
+            awaitFeedLacks(userId, tweetId);
+            awaitSavedLacks(userId, tweetId);
+            awaitViewsGone(tweetId);
+        }
+
+        @Test
+        void should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_had_views() {
+            UUID tweetId = TestIds.tweetId();
+            UUID sentinelTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            seedViews(tweetId, 2);
+            seedViews(sentinelTweetId, 1);
+            seedViews(keptTweetId, 2);
+            String delete = tweetDeletedJson(tweetId, TestIds.userId());
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), delete);
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), delete);
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(sentinelTweetId, TestIds.userId()));
+            awaitViewsGone(sentinelTweetId);
+
+            awaitViewsGone(tweetId);
+            assertThat(viewsOf(keptTweetId)).isEqualTo(2);
+        }
+
+        @Test
+        void should_do_nothing_when_the_tweet_had_no_views() {
+            UUID tweetId = TestIds.tweetId();
+            UUID sentinelTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            seedViews(sentinelTweetId, 1);
+            seedViews(keptTweetId, 2);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, TestIds.userId()));
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(sentinelTweetId, TestIds.userId()));
+            awaitViewsGone(sentinelTweetId);
+
+            assertThat(viewsOf(tweetId)).isZero();
+            assertThat(viewsOf(keptTweetId)).isEqualTo(2);
+        }
+    }
 }

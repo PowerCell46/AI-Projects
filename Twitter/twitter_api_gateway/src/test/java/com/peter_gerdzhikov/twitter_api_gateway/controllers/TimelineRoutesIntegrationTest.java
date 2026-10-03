@@ -4,8 +4,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.requestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -55,6 +58,10 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
     private static final String SAVED_TWEETS_PATH = "/api/v1/saved-tweets";
 
     private static final String SAVED_TWEET_PATH = SAVED_TWEETS_PATH + "/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+
+    private static final String VIEWS_PATH = "/api/v1/views";
+
+    private static final String REPORT_BODY = "{\"tweetIds\":[\"6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b\"]}";
 
     private static final int DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS = 3000;
 
@@ -292,6 +299,94 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
     }
 
     @Nested
+    class Views {
+
+        @ParameterizedTest
+        @ValueSource(strings = {"GET", "POST"})
+        void should_return_401_and_forward_nothing_when_there_is_no_cookie(String method) {
+            send(HttpMethod.valueOf(method), VIEWS_PATH, null)
+                    .expectStatus().isUnauthorized();
+
+            assertNothingWasForwarded();
+        }
+
+        @Test
+        void should_forward_a_post_with_its_body_and_status_unchanged_when_the_user_is_authenticated() {
+            stubEveryRequestWith(204, "");
+
+            postReport(cookieFor(UUID.randomUUID()))
+                    .expectStatus().isNoContent();
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("POST", urlEqualTo(VIEWS_PATH))
+                    .withRequestBody(equalToJson(REPORT_BODY)));
+        }
+
+        @Test
+        void should_forward_a_get_with_the_query_and_status_unchanged_when_the_user_is_authenticated() {
+            String pathAndQuery = VIEWS_PATH + "?tweetIds=a,b";
+
+            send(HttpMethod.GET, pathAndQuery, cookieFor(UUID.randomUUID()))
+                    .expectStatus().isOk()
+                    .expectBody(String.class).isEqualTo(DOWNSTREAM_BODY);
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("GET", urlPathEqualTo(VIEWS_PATH))
+                    .withQueryParam("tweetIds", equalTo("a,b")));
+        }
+
+        @Test
+        void should_pass_the_downstream_400_and_body_through_unchanged_when_the_batch_is_rejected() {
+            String errorBody = "{\"status\":400,\"messages\":[\"Between 1 and 50 tweet ids are required, none of them null.\"]}";
+            stubEveryRequestWith(400, errorBody);
+
+            postReport(cookieFor(UUID.randomUUID()))
+                    .expectStatus().isBadRequest()
+                    .expectBody(String.class).isEqualTo(errorBody);
+        }
+
+        @Test
+        void should_send_the_jwt_subject_as_x_user_id_and_drop_a_spoofed_one_when_a_post_is_forwarded() {
+            UUID userId = UUID.randomUUID();
+            stubEveryRequestWith(204, "");
+
+            restTestClient.post()
+                    .uri(VIEWS_PATH)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(userId))
+                    .header(USER_ID_HEADER, UUID.randomUUID().toString())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(REPORT_BODY)
+                    .exchange()
+                    .expectStatus().isNoContent();
+
+            assertThat(forwardedUserIds()).containsExactly(userId.toString());
+        }
+
+        @Test
+        void should_not_forward_the_cookie_or_the_authorization_header_when_a_post_is_forwarded() {
+            stubEveryRequestWith(204, "");
+
+            restTestClient.post()
+                    .uri(VIEWS_PATH)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(UUID.randomUUID()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer should-never-leave-the-gateway")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(REPORT_BODY)
+                    .exchange()
+                    .expectStatus().isNoContent();
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("POST", urlEqualTo(VIEWS_PATH))
+                    .withoutHeader(HttpHeaders.COOKIE)
+                    .withoutHeader(HttpHeaders.AUTHORIZATION));
+        }
+
+        @Test
+        void should_not_forward_a_path_below_views() {
+            send(HttpMethod.GET, VIEWS_PATH + "/anything", cookieFor(UUID.randomUUID()));
+
+            assertNothingWasForwarded();
+        }
+    }
+
+    @Nested
     class Failures {
 
         @Test
@@ -354,6 +449,15 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
         }
 
         return request.exchange();
+    }
+
+    private RestTestClient.ResponseSpec postReport(String cookie) {
+        return restTestClient.post()
+                .uri(VIEWS_PATH)
+                .cookie(CookieFactory.COOKIE_NAME, cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(REPORT_BODY)
+                .exchange();
     }
 
     private String cookieFor(UUID userId) {

@@ -208,3 +208,92 @@ Written `@Disabled` in step 14 and approved. Enabled in step 16: the saved-tweet
 - Saved rows of other tweets stay (`should_leave_the_saved_rows_of_other_tweets_when_a_tweet_is_deleted`)
 - Feed entries and saved rows of the tweet are both gone (`should_remove_the_feed_entries_and_the_saved_rows_together_when_a_tweet_is_deleted`)
 - A repeated delete of a saved tweet is a no-op (`should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_was_saved`)
+
+## Phase 3 - Views
+
+Written `@Disabled` in step 20 and approved. Enabled: the views endpoints (step 22), the inline counts and the `tweet.deleted` additions (step 23). Concurrency scenarios (50 viewers on one tweet, one viewer 50x in parallel, two overlapping reports in opposite order) live in `ViewConcurrencyIntegrationTest` (step 27) and are not listed here. The `[tweet]` scenario (repeated `GET /tweets/{id}` leaves the document unchanged, no `views` in the response) lives in the tweet service's `TESTING.md`, step 24.
+
+### `POST` / `GET /api/v1/views`
+
+`ViewControllerIntegrationTest` - WireMock stands in for the tweet service. The gateway is never called. Enabled (step 22).
+
+`Identity`
+
+- A missing `X-User-Id` returns 400 on report and on read (`should_return_400_when_the_user_id_header_is_missing_on_report`, `..._on_read`)
+- A non-UUID, non-canonical or empty `X-User-Id` returns 400 on both (`should_return_400_when_the_user_id_header_is_not_a_uuid`, parameterized over the three values)
+
+`Report` - `POST /api/v1/views`, body `{ "tweetIds": [...] }`
+
+- A first report returns 204 and the count is 1 (`should_return_204_and_count_one_view_when_a_viewer_reports_a_tweet_for_the_first_time`)
+- The same viewer again keeps the count at 1 (`should_keep_the_count_at_one_when_the_same_viewer_reports_the_tweet_again`)
+- A second viewer makes it 2 (`should_count_two_when_a_second_viewer_reports_the_tweet`)
+- The author's own view counts (`should_count_the_view_when_the_author_reports_their_own_tweet`)
+- A batch of several tweets counts each once (`should_count_each_tweet_once_when_one_batch_holds_several_tweets`)
+- A batch repeating one id counts it once (`should_count_the_tweet_once_when_one_batch_repeats_its_id`)
+- Unknown ids are dropped silently and the known ones in the same batch are counted (`should_drop_the_unknown_ids_and_count_the_known_ones_when_a_batch_mixes_them`)
+- A batch of only unknown ids returns 204 and records nothing (`should_return_204_and_record_nothing_when_every_id_is_unknown`)
+- Exactly 50 ids returns 204 (`should_return_204_when_the_batch_holds_exactly_50_ids`)
+- A batch of seen and unseen tweets bumps only the unseen ones (`should_count_only_the_new_pairs_when_a_batch_mixes_seen_and_unseen_tweets`)
+
+`ReportValidation`
+
+- An empty list returns 400 (`should_return_400_when_the_ids_list_is_empty`)
+- 51 ids return 400 (`should_return_400_when_the_batch_holds_51_ids`)
+- The 50-id limit applies to the list as sent: 51 entries that collapse to fewer ids return 400 (`should_return_400_when_the_batch_holds_51_entries_that_collapse_to_fewer_ids`)
+- A malformed id returns 400 (`should_return_400_when_an_id_is_malformed`)
+- A `null` id returns 400 (`should_return_400_when_an_id_is_null`)
+- A missing `tweetIds` field returns 400 (`should_return_400_when_the_ids_field_is_missing`)
+- A missing or non-JSON body returns 400 (`should_return_400_when_the_body_is_missing_or_not_json`)
+- A rejected batch records nothing (`should_record_nothing_when_the_batch_is_rejected`)
+
+`ReportCalls`
+
+- One tweet call carrying only the distinct ids, and no user call (`should_make_one_tweet_call_with_the_distinct_ids_and_no_user_call_when_views_are_reported`)
+- A rejected batch makes no tweet call (`should_make_no_tweet_call_when_the_batch_is_rejected`)
+
+`ReportFailures` - "down" is a connection reset, as in the feed
+
+- Tweet service down returns 502, nothing recorded (`should_return_502_and_record_nothing_when_the_tweet_service_is_down`)
+- A `5xx` from the tweet service returns 502, nothing recorded (`should_return_502_and_record_nothing_when_the_tweet_service_answers_5xx`)
+- Tweet service slower than the read timeout returns 504, nothing recorded (`should_return_504_and_record_nothing_when_the_tweet_service_is_slower_than_the_read_timeout`)
+- The downstream body is not leaked (`should_not_leak_the_downstream_body_when_the_tweet_service_fails`)
+
+`Read` - `GET /api/v1/views?tweetIds=a,b`
+
+- Known tweets return their counts (`should_return_the_counts_of_known_tweets_when_they_have_views`)
+- A tweet nobody viewed returns `0` (`should_return_zero_for_a_tweet_nobody_viewed`)
+- One entry per requested id, `0` for unknown ids (`should_return_one_entry_per_requested_id_when_known_and_unknown_ids_are_mixed`)
+- An id requested twice gives one entry (`should_return_one_entry_when_the_same_id_is_requested_twice`)
+- Every caller sees the same counts (`should_return_the_same_counts_to_every_caller_when_different_users_read`)
+- Exactly 100 ids returns 200 (`should_return_200_when_exactly_100_ids_are_requested`)
+- Reading unknown ids creates no row (`should_create_nothing_when_unknown_ids_are_read`)
+- No tweet-service call and no gateway call (`should_make_no_downstream_call_when_counts_are_read`)
+
+`ReadValidation`
+
+- A missing `tweetIds` returns 400 (`should_return_400_when_the_tweet_ids_parameter_is_missing`)
+- An empty `tweetIds` returns 400 (`should_return_400_when_the_tweet_ids_parameter_is_empty`)
+- 101 ids return 400 (`should_return_400_when_101_ids_are_requested`)
+- A malformed id returns 400 (`should_return_400_when_an_id_is_malformed`)
+- An empty element (`a,,b`) returns 400 (`should_return_400_when_the_list_holds_an_empty_element`)
+
+### Inline counts
+
+New group `Views` in `FeedControllerIntegrationTest` and in `SavedTweetControllerIntegrationTest`, same four scenarios in each. Enabled (step 23).
+
+- Each item carries `views` from the tweet's counter (`should_return_the_view_count_of_each_item_when_tweets_have_views`, `..._when_saved_tweets_have_views`)
+- `views` is `0` when nobody viewed the tweet (`should_return_zero_views_when_nobody_viewed_the_tweet`, `..._the_saved_tweet`)
+- The count equals what `GET /views` returns for the same tweet (`should_return_the_same_count_as_the_views_endpoint_when_a_tweet_has_views`, `..._a_saved_tweet_has_views`)
+- Views add no downstream call: still one tweet call and one user call per page (`should_make_no_extra_downstream_call_when_views_are_added_to_the_page`)
+
+### `tweet.deleted` additions
+
+`TweetDeletedListenerIntegrationTest`, new group `Views`. Enabled (step 23).
+
+`Views`
+
+- The tweet's view rows and its counter are removed (`should_remove_the_view_rows_and_the_counter_of_the_tweet_when_it_is_deleted`)
+- Views and counters of other tweets stay (`should_leave_the_views_and_the_counter_of_other_tweets_when_a_tweet_is_deleted`)
+- Feed entries, saved rows and views of the tweet are all gone (`should_remove_the_feed_entries_the_saved_rows_and_the_views_together_when_a_tweet_is_deleted`)
+- A repeated delete of a viewed tweet is a no-op (`should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_had_views`)
+- A delete of a tweet with no views is a no-op (`should_do_nothing_when_the_tweet_had_no_views`)

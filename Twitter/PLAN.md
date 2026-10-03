@@ -16,7 +16,7 @@ Each service owns its own backlog:
   2026-10-01, including the Playwright e2e that reads the link from the real email. Phase 2 (the follow email,
   `user.followed`; steps 10–13) built 2026-10-02: the gateway's `user.followed` change is committed (`85019be`).
 - **`twitter_timeline_service/PLAN.md`**: the feed (fan-out on `tweet.created`, 7-day retention), saved tweets and
-  unique views, in Postgres. Designed via `/grill-me` 2026-10-03; three phases, phases 1 (the feed) and 2 (saved tweets) built 2026-10-03. Its plan also holds
+  unique views, in Postgres. Designed via `/grill-me` 2026-10-03; three phases, all built 2026-10-03 (the feed, saved tweets, views). Its plan also holds
   the gateway steps (internal endpoints, `user.unfollowed`, routes) and the tweet-service steps (internal batch
   read, `views` removed).
 

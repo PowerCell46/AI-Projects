@@ -143,7 +143,7 @@ class TweetServiceContractIntegrationTest extends AbstractMinioIntegrationTest {
     }
 
     @Test
-    void should_return_200_with_one_view_and_the_byte_identical_image_when_bob_reads_alices_tweet() {
+    void should_return_200_with_the_byte_identical_image_when_bob_reads_alices_tweet() {
         byte[] image = image(2048);
         JsonNode created = createTweet(UUID.randomUUID(), "look", image);
         UUID bob = UUID.randomUUID();
@@ -156,7 +156,7 @@ class TweetServiceContractIntegrationTest extends AbstractMinioIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        assertThat(read.get("views").asLong()).isEqualTo(1);
+        assertThat(read.get("content").asString()).isEqualTo("look");
         assertThat(loaded).isEqualTo(image);
     }
 

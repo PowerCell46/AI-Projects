@@ -1,6 +1,8 @@
 package com.peter_gerdzhikov.twitter_timeline_service.controllers;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -46,6 +48,8 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
     private static final String FEED_PATH = "/api/v1/feed";
 
     private static final String USER_ID_HEADER = "X-User-Id";
+
+    private static final String VIEWS_PATH = "/api/v1/views";
 
     private static final String USERS_PATH = "/internal/v1/users";
 
@@ -138,7 +142,7 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
 
             JsonNode item = feed(owner, "", status().isOk()).get("items").get(0);
 
-            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "content", "createdAt", "updatedAt", "images", "author");
+            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "content", "createdAt", "updatedAt", "images", "author");
             assertThat(item.get("id").asString()).isEqualTo(tweetId.toString());
             assertThat(item.get("content").asString()).isEqualTo("tweet " + tweetId);
             assertThat(item.get("createdAt").asString()).isEqualTo(TWEET_CREATED_AT.toString());
@@ -494,6 +498,62 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
         }
     }
 
+    @Nested
+    class Views {
+
+        @Test
+        void should_return_the_view_count_of_each_item_when_tweets_have_views() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID lessViewed = entry(owner, author, TWEET_CREATED_AT);
+            UUID moreViewed = entry(owner, author, TWEET_CREATED_AT.plusSeconds(1));
+            seedViews(lessViewed, 3);
+            seedViews(moreViewed, 5);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemViews(body)).containsEntry(lessViewed.toString(), 3L).containsEntry(moreViewed.toString(), 5L);
+        }
+
+        @Test
+        void should_return_zero_views_when_nobody_viewed_the_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID tweetId = entry(owner, knownAuthor("ana"), TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemViews(body)).containsEntry(tweetId.toString(), 0L);
+        }
+
+        @Test
+        void should_return_the_same_count_as_the_views_endpoint_when_a_tweet_has_views() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID tweetId = entry(owner, knownAuthor("ana"), TWEET_CREATED_AT);
+            seedViews(tweetId, 4);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemViews(body)).containsEntry(tweetId.toString(), viewsEndpointCountOf(owner, tweetId));
+        }
+
+        @Test
+        void should_make_no_extra_downstream_call_when_views_are_added_to_the_page() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            seedViews(entry(owner, author, TWEET_CREATED_AT), 2);
+            seedViews(entry(owner, author, TWEET_CREATED_AT.plusSeconds(1)), 2);
+            stubDownstreams();
+
+            feed(owner, "", status().isOk());
+
+            assertThat(TWEET_SERVICE_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+            assertThat(GATEWAY_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+        }
+    }
+
     private MockHttpServletRequestBuilder feedRequest(UUID userId, String query) {
         return get(FEED_PATH + query).header(USER_ID_HEADER, userId.toString());
     }
@@ -513,6 +573,27 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
                 .valueStream()
                 .map(item -> item.get("id").asString())
                 .toList();
+    }
+
+    private Map<String, Long> itemViews(JsonNode page) {
+        Map<String, Long> views = new LinkedHashMap<>();
+        page
+                .get("items")
+                .forEach(item -> views.put(item.get("id").asString(), item.get("views").asLong()));
+
+        return views;
+    }
+
+    private long viewsEndpointCountOf(UUID userId, UUID tweetId) throws Exception {
+        MvcResult result = mockMvc
+                .perform(get(VIEWS_PATH).header(USER_ID_HEADER, userId.toString()).param("tweetIds", tweetId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper
+                .readTree(result.getResponse().getContentAsString())
+                .get(tweetId.toString())
+                .asLong();
     }
 
     private List<String> requestedIds(WireMock stub, String path) {

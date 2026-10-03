@@ -13,8 +13,6 @@ public class TweetResponseDTO {
 
     private final UUID id;
 
-    private final long views;
-
     private final UUID authorId;
 
     private final String content;

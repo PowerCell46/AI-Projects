@@ -237,3 +237,72 @@ hide its overlap. The latch-and-threads helper moved from `FeedConcurrencyIntegr
 `exploit-report-2026-10-03-phase2.md`: nothing above Low. One Low (no rate limit on saves, now named in the
 existing accepted gap) and one Info (save racing a delete, already an accepted gap). Nothing fixed, because
 nothing needed it.
+
+## Step 20 - views catalog leaves concurrency to step 27
+
+As in step 14, the plan's concurrency scenarios (50 viewers, one viewer 50x, opposite-order reports) are not
+`@Disabled` stubs here; they are written in step 27 as `ViewConcurrencyIntegrationTest`. The catalog adds, beyond
+the plan's list: `Identity` on both endpoints, `ReportValidation` / `ReadValidation` edge cases, `ReportCalls`,
+and four inline-count scenarios per list. The 50-id limit counts the list as sent, before duplicates collapse.
+
+## Step 21 - ids are sorted by Postgres, not by Java
+
+Both view statements (`tweet_views` insert-returning, `tweet_view_counts` upsert) put `ORDER BY tweet_id` on the
+`unnest` select, so overlapping reports take their locks in one order. Sorting in SQL, not in the service, because
+Java's `UUID.compareTo` (signed longs) orders differently from Postgres's `uuid`, and two callers sorting by
+different rules would not share an order. The counter's `views` is `updatable = false`: only the upsert changes it.
+`incrementAll` needs distinct ids (Postgres refuses to update a row twice in one statement), so the service
+deduplicates first.
+
+## Step 22 - one validator and one exception for both tweet-id lists
+
+`TweetIdsValidator` (1 to a limit, none `null`, counted as sent) serves the report body (limit 50) and the read
+parameter (limit 100); a bad list is `InvalidTweetIdsException`, 400 "Between 1 and N tweet ids are required, none
+of them null." The request DTO carries no bean-validation annotations, so a missing `tweetIds` field and a bad size
+get the same answer. A malformed id or a body that isn't JSON is Spring's own 400.
+
+## Step 22 - the transaction lives in `ViewRecordingService`
+
+`ViewServiceImpl.report` makes the tweet-service call first and then hands the existing ids to
+`ViewRecordingService.record`, whose `@Transactional` wraps the insert-returning and the counter upsert. A separate
+bean because a self-call would skip the proxy, and so no connection is held during the HTTP call. Reports log
+nothing: they arrive every few seconds per open browser, and no outcome is worth a line.
+
+## Step 23 - inline counts come through `ViewService.countViews`
+
+`TweetItemAssemblyServiceImpl` asks `ViewService.countViews` once per page, after the two downstream calls, with the
+page's distinct tweet ids; a tweet without a counter gets `0`. `countViews` is `getViews` without the 1-100 size
+check (a page is at most 100 ids and never empty there), so both read the counters one way. `views` sits second in
+`TweetItemResponseDTO`, after `id`. The tweet service still sends its own `views` until step 24; the client DTO
+ignores it, and the stubs keep sending `7` so the "zero views" scenarios prove the count comes from this service.
+The two "exact item shape" assertions in the feed and saved suites gained `views`; they stay exact.
+
+## Step 23 - the view seeding helpers go through `ViewRecordingService`
+
+`AbstractListenerIntegrationTest.seedView` / `seedViews` record views with the real `ViewRecordingService`, so a
+seeded counter and its rows agree the way a report leaves them. `ViewControllerIntegrationTest` uses them too.
+
+## Step 25 - a gate run lost to Docker clock skew was restarted, not retried in place
+
+The first gateway `mvn verify` sequence had two green runs, then the machine slept mid-run and the Docker VM clock fell
+8.5 minutes behind the host: MinIO answered `RequestTimeTooSkewed` and run 3 failed with 311 errors. After the clock
+resynced, the 3x-in-a-row count started over and all three runs were green (711 tests each). No test or code changed.
+
+## Step 26 - `follow` moves to the shared e2e fixtures
+
+`views.spec.ts` needs Ana to follow Bob before he posts, as the feed spec does, so `follow` moved from `feed.spec.ts`
+to `fixtures.ts` (the same move `postTweet` and `deleteTweet` made in phase 2). `unfollow` stays in the feed spec, the
+only place that uses it. The spec reports through `POST /views`, reads `GET /views`, then polls Ana's feed for the
+inline count and the count after Bob's delete.
+
+## Step 27 - the concurrency suite does not prove the lock order
+
+`ViewConcurrencyIntegrationTest` has three scenarios: 50 viewers report one tweet (count 50, 50 rows, all 204), one
+viewer reports it 50x in parallel (count 1), and two workers report the same 200 tweets in opposite order, 100 times
+each, calling `ViewRecordingService` directly because the tweet-service call in front of a request spreads two
+requests too far apart to meet in the database. The overlap scenario asserts that both finish and every counter is
+exact. Removing the `ORDER BY` from the counter upsert did **not** make it fail (five variants tried: fresh rows,
+1,000 and 20,000 ids per report, existing rows with 30, 100 and 300 reports per worker, with the workers shown to
+overlap), so the scenario guards against a deadlock only if one shows up; the ascending order stays as a defence
+against the hazard Postgres documents for `INSERT ... ON CONFLICT DO UPDATE`, covered by the repository test of the
+returned order.

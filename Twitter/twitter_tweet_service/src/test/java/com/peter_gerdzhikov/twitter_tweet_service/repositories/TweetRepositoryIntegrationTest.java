@@ -61,51 +61,13 @@ class TweetRepositoryIntegrationTest extends AbstractMongoIntegrationTest {
         }
 
         @Test
-        void should_default_to_no_images_and_zero_views_when_the_tweet_is_built_without_them() {
+        void should_default_to_no_images_when_the_tweet_is_built_without_them() {
             Tweet tweet = TestDocuments.tweet();
             tweetRepository.save(tweet);
 
             Tweet found = tweetRepository.findById(tweet.getId()).orElseThrow();
 
             assertThat(found.getImages()).isEmpty();
-            assertThat(found.getViews()).isZero();
-        }
-    }
-
-    @Nested
-    class FindAndIncrementViews {
-
-        @Test
-        void should_return_the_count_including_this_view_when_the_tweet_exists() {
-            Tweet tweet = tweetRepository.save(TestDocuments.tweet());
-
-            long first = tweetRepository.findAndIncrementViews(tweet.getId()).orElseThrow().getViews();
-            long second = tweetRepository.findAndIncrementViews(tweet.getId()).orElseThrow().getViews();
-
-            assertThat(first).isEqualTo(1);
-            assertThat(second).isEqualTo(2);
-        }
-
-        @Test
-        void should_return_empty_and_create_nothing_when_the_tweet_is_unknown() {
-            UUID unknownId = UUID.randomUUID();
-
-            assertThat(tweetRepository.findAndIncrementViews(unknownId)).isEmpty();
-            assertThat(tweetRepository.findById(unknownId)).isEmpty();
-        }
-
-        @Test
-        void should_leave_every_other_field_unchanged_when_a_view_is_counted() {
-            Tweet tweet = TestDocuments.tweet();
-            tweet.setImages(TestDocuments.images(1));
-            tweetRepository.save(tweet);
-
-            Tweet viewed = tweetRepository.findAndIncrementViews(tweet.getId()).orElseThrow();
-
-            assertThat(viewed)
-                    .usingRecursiveComparison()
-                    .ignoringFields("views")
-                    .isEqualTo(tweet);
         }
     }
 

@@ -3,9 +3,9 @@
 **Status: built (steps 1-10 done, 2026-09-30).** `mvn verify` is green 3x in a row (202 tests, none
 disabled). Gateway phase 4 (`../twitter_api_gateway/PLAN.md`) may start.
 
-**Next:** `../twitter_timeline_service/PLAN.md` added `GET /internal/v1/tweets?ids=` here (its phase 1, built
-2026-10-03, plus the startup collection creation) and removes `views` (phase 3, which also retires the view gaps
-below). Both are planned there, not here.
+**Later changes:** `../twitter_timeline_service/PLAN.md` added `GET /internal/v1/tweets?ids=` here (its phase 1,
+built 2026-10-03, plus the startup collection creation) and removed `views` (its phase 3, step 24, 2026-10-03):
+the counter now lives in the timeline service, and the view gaps moved with it. Both are planned there, not here.
 
 Owns tweets: create (text and up to 4 images), read, edit the text, delete, and the `tweet.created` /
 `tweet.deleted` events. It knows nothing about users or authentication: the gateway proxies
@@ -24,15 +24,15 @@ Kafka contracts in `EVENTS.md`, conventions in `CLAUDE.md`, the security audit i
   shape, body-size filter, image signature check, storage service, outbox publisher.
 - **Identity:** `X-User-Id` (canonical UUID) read by `@CurrentUserId`; missing or malformed gives `400`. Trusted
   blindly, so the service must only be reachable through the gateway.
-- **Tweet:** `id`, `authorId`, `content` (trimmed, at most 280 code points), `views` (long), up to 4 embedded
+- **Tweet:** `id`, `authorId`, `content` (trimmed, at most 280 code points), up to 4 embedded
   images (JPEG/PNG/WebP by magic bytes, 5 MB each, never editable), `createdAt`, `updatedAt` (changes only on a
   text edit). A tweet needs text or an image. Timestamps come from the `Clock`, in milliseconds.
 - **Endpoints** (all need `X-User-Id`):
   - `POST /api/v1/tweets`: multipart `content` and `images`, `201`. Validates everything first, stores the
     images, then saves the tweet and its outbox message in one transaction; the images are removed if that
     fails. Body cap 21 037 056 bytes; other routes keep 8 KB.
-  - `GET /api/v1/tweets/{id}`: atomic `$inc` of `views` on every read, returns the count including this view.
-  - `GET /api/v1/tweets/{id}/images/{imageId}`: streams the image, no view counted.
+  - `GET /api/v1/tweets/{id}`: returns the tweet and writes nothing.
+  - `GET /api/v1/tweets/{id}/images/{imageId}`: streams the image.
   - `PUT /api/v1/tweets/{id}`: author only (`403` otherwise), text only, conditional update, no event.
   - `DELETE /api/v1/tweets/{id}`: author only, hard delete; tweet delete and `tweet.deleted` message in one
     transaction, images deleted after commit (failure logged only). A write conflict is retried unless the
@@ -57,14 +57,8 @@ gateway (gateway phase 4).
   secret, or mTLS between gateway and service.
 - **No `tweet.updated` event** (Q11). **Trigger:** the first consumer that stores tweet text (search,
   timeline cache).
-- **Views count every GET,** including repeats and the author's own (Q7). **Trigger:** views need to mean
-  "people" → unique viewers: a per-tweet set of viewer ids (a `tweet_views` collection with a unique
-  `(tweetId, viewerId)` index, counting only on insert), or HyperLogLog (e.g. Redis `PFADD`) once tweets reach
-  millions of viewers.
-- **A view is a write** on a single hot document. **Trigger:** a viral tweet's view latency → buffered or
-  sharded counters.
-- **Views only come from `GET /tweets/{id}`.** **Trigger:** timelines exist → decide whether a timeline
-  impression counts.
+- **Views are not counted here any more** (Q7 is superseded). The timeline service counts unique viewers; its
+  gaps (rows kept forever, hot counter, the author's own views) are in `../twitter_timeline_service/PLAN.md`.
 - **No edit window and no edit history.** **Trigger:** misuse of edits (e.g. changing a tweet after it gets
   attention) → a 1h window and/or stored versions.
 - **Images can't be edited** (Q5); delete and repost instead.

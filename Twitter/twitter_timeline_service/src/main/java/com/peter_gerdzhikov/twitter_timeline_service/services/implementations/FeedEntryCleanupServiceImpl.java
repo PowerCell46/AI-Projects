@@ -9,6 +9,8 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEven
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedEntryCleanupService;
 
@@ -22,9 +24,13 @@ public class FeedEntryCleanupServiceImpl implements FeedEntryCleanupService {
 
     private final FeedEntryRepository feedEntryRepository;
 
+    private final TweetViewRepository tweetViewRepository;
+
     private final SavedTweetRepository savedTweetRepository;
 
     private final EventValidationService eventValidationService;
+
+    private final TweetViewCountRepository tweetViewCountRepository;
 
     @Override
     @Transactional
@@ -33,8 +39,12 @@ public class FeedEntryCleanupServiceImpl implements FeedEntryCleanupService {
 
         int removedFromFeeds = feedEntryRepository.deleteByTweetId(event.getTweetId());
         int removedFromSavedLists = savedTweetRepository.deleteByTweetId(event.getTweetId());
+        int removedViews = tweetViewRepository.deleteByTweetId(event.getTweetId());
+        tweetViewCountRepository.deleteByTweetId(event.getTweetId());
 
-        log.info("Removed tweet {} from {} feeds and {} saved lists.", event.getTweetId(), removedFromFeeds, removedFromSavedLists);
+        log.info(
+                "Removed tweet {} from {} feeds and {} saved lists, with its {} views.",
+                event.getTweetId(), removedFromFeeds, removedFromSavedLists, removedViews);
     }
 
     @Override

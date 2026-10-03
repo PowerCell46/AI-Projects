@@ -14,7 +14,6 @@ public final class TweetMapper {
         return TweetResponseDTO
                 .builder()
                 .id(tweet.getId())
-                .views(tweet.getViews())
                 .authorId(tweet.getAuthorId())
                 .content(tweet.getContent())
                 .createdAt(tweet.getCreatedAt())

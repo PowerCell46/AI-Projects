@@ -149,7 +149,7 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
             UUID tweetId = UUID.fromString(body.get("id").asString());
             assertThat(body.get("authorId").asString()).isEqualTo(authorId.toString());
             assertThat(body.get("content").asString()).isEqualTo("hello world");
-            assertThat(body.get("views").asLong()).isZero();
+            assertThat(body.has("views")).isFalse();
             assertThat(body.get("images")).isEmpty();
             assertThat(body.get("createdAt").asString()).isEqualTo(body.get("updatedAt").asString());
             Tweet stored = tweetRepository.findById(tweetId).orElseThrow();
@@ -410,28 +410,21 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
-        void should_count_each_get_as_a_view_when_the_tweet_is_read_repeatedly() throws Exception {
-            String id = create(UUID.randomUUID(), "views").get("id").asString();
+        void should_leave_the_document_unchanged_and_return_no_views_when_the_tweet_is_read_repeatedly() throws Exception {
+            JsonNode created = create(UUID.randomUUID(), "read", image("a.png", TestImages.png()));
+            String id = created.get("id").asString();
+            Tweet before = storedTweet(created);
 
-            long first = getTweet(id, UUID.randomUUID(), status().isOk()).get("views").asLong();
-            long second = getTweet(id, UUID.randomUUID(), status().isOk()).get("views").asLong();
+            getTweet(id, UUID.randomUUID(), status().isOk());
+            getTweet(id, UUID.randomUUID(), status().isOk());
+            JsonNode body = getTweet(id, UUID.randomUUID(), status().isOk());
 
-            assertThat(first).isEqualTo(1);
-            assertThat(second).isEqualTo(2);
+            assertThat(body.has("views")).isFalse();
+            assertThat(storedTweet(created)).usingRecursiveComparison().isEqualTo(before);
         }
 
         @Test
-        void should_count_the_view_when_the_author_reads_their_own_tweet() throws Exception {
-            UUID authorId = UUID.randomUUID();
-            String id = create(authorId, "mine").get("id").asString();
-
-            JsonNode body = getTweet(id, authorId, status().isOk());
-
-            assertThat(body.get("views").asLong()).isEqualTo(1);
-        }
-
-        @Test
-        void should_leave_updated_at_unchanged_when_the_tweet_is_viewed() throws Exception {
+        void should_leave_updated_at_unchanged_when_the_tweet_is_read() throws Exception {
             JsonNode created = create(UUID.randomUUID(), "still");
             String id = created.get("id").asString();
 
@@ -498,14 +491,15 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
-        void should_not_change_views_when_an_image_is_fetched() throws Exception {
+        void should_leave_the_document_unchanged_when_an_image_is_fetched() throws Exception {
             JsonNode created = create(UUID.randomUUID(), "quiet", image("a.png", TestImages.png()));
+            Tweet before = storedTweet(created);
 
             mockMvc
                     .perform(getImage(created, 0))
                     .andExpect(status().isOk());
 
-            assertThat(storedTweet(created).getViews()).isZero();
+            assertThat(storedTweet(created)).usingRecursiveComparison().isEqualTo(before);
         }
     }
 
@@ -522,7 +516,6 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
             UUID authorId = UUID.randomUUID();
             JsonNode created = create(authorId, "before", image("a.png", TestImages.png()));
             String id = created.get("id").asString();
-            getTweet(id, authorId, status().isOk());
             mutableClock.advance(Duration.ofHours(1));
 
             JsonNode body = update(id, authorId, "  after  ", status().isOk());
@@ -531,7 +524,7 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
             assertThat(Instant.parse(body.get("updatedAt").asString()))
                     .isEqualTo(Instant.parse(body.get("createdAt").asString()).plus(Duration.ofHours(1)));
             assertThat(body.get("images")).isEqualTo(created.get("images"));
-            assertThat(body.get("views").asLong()).isEqualTo(1);
+            assertThat(body.has("views")).isFalse();
             assertThat(storedTweet(created).getContent()).isEqualTo("after");
         }
 
@@ -769,14 +762,16 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
-        void should_not_count_a_view_when_tweets_are_read() throws Exception {
-            String id = create(UUID.randomUUID(), "unseen").get("id").asString();
+        void should_return_no_views_and_leave_the_documents_unchanged_when_tweets_are_read() throws Exception {
+            JsonNode created = create(UUID.randomUUID(), "unseen");
+            String id = created.get("id").asString();
+            Tweet before = storedTweet(created);
 
             JsonNode body = findByIds(List.of(id), status().isOk());
             findByIds(List.of(id), status().isOk());
 
-            assertThat(body.get(0).get("views").asLong()).isZero();
-            assertThat(tweetRepository.findById(UUID.fromString(id)).orElseThrow().getViews()).isZero();
+            assertThat(body.get(0).has("views")).isFalse();
+            assertThat(storedTweet(created)).usingRecursiveComparison().isEqualTo(before);
         }
 
         @Test

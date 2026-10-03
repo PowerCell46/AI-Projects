@@ -42,6 +42,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.Upstrea
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursorCodec;
 
@@ -57,6 +58,9 @@ class FeedServiceImplTest {
     private FeedServiceImpl feedService;
 
     @Mock
+    private ViewService viewService;
+
+    @Mock
     private UserLookupService userLookupService;
 
     @Mock
@@ -68,7 +72,8 @@ class FeedServiceImplTest {
     @BeforeEach
     void setUp() {
         feedService = new FeedServiceImpl(
-                feedEntryRepository, new TweetItemAssemblyServiceImpl(executor, userLookupService, tweetLookupService));
+                feedEntryRepository,
+                new TweetItemAssemblyServiceImpl(viewService, executor, userLookupService, tweetLookupService));
     }
 
     @AfterEach
@@ -169,6 +174,35 @@ class FeedServiceImplTest {
                     .extracting(item -> item.getId())
                     .containsExactly(newer.getTweetId(), older.getTweetId());
             assertThat(page.getItems().getFirst().getAuthor().getId()).isEqualTo(newer.getAuthorId());
+        }
+
+        @Test
+        void should_put_the_view_count_of_each_tweet_on_its_item_and_zero_when_it_has_none() {
+            FeedEntry viewed = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry unviewed = entry(CREATED_AT);
+            givenRows(viewed, unviewed);
+            givenEverythingExists(viewed, unviewed);
+            when(viewService.countViews(any())).thenReturn(Map.of(viewed.getTweetId(), 7L));
+
+            FeedResponseDTO page = feedService.getFeed(OWNER, null, 20);
+
+            assertThat(page.getItems())
+                    .extracting(item -> item.getViews())
+                    .containsExactly(7L, 0L);
+        }
+
+        @Test
+        void should_count_views_once_for_the_tweets_of_the_page() {
+            FeedEntry first = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry second = entry(CREATED_AT);
+            givenRows(first, second);
+            givenEverythingExists(first, second);
+
+            feedService.getFeed(OWNER, null, 20);
+
+            ArgumentCaptor<Collection<UUID>> tweetIds = ArgumentCaptor.captor();
+            verify(viewService).countViews(tweetIds.capture());
+            assertThat(tweetIds.getValue()).containsExactly(first.getTweetId(), second.getTweetId());
         }
 
         @Test

@@ -22,6 +22,7 @@ phase *n+1* starts until phase *n*'s final gate passes (`mvn verify` green 3× i
 |---|---|---|---|
 | 1 | Feed (steps 1–13) | 2026-10-03 | exploit-report-2026-10-03.md |
 | 2 | Saved tweets (steps 14–19) | 2026-10-03 | exploit-report-2026-10-03-phase2.md |
+| 3 | Views (steps 20–27) | 2026-10-03 | exploit-report-2026-10-03-phase3.md |
 
 ---
 
@@ -202,72 +203,48 @@ Twitter/
 
 ---
 
-## Phase 3 — Views
+## Phase 3 — Views ✅ **Done** (2026-10-03)
 
-### Design
+### What was built
 
-**What counts (Q11–Q12):** a tweet the browser reports as actually on screen. **Unique viewers**: one viewer
-counts once per tweet, however often they scroll past it. The author's own views count.
+- **`TweetView` (`tweet_views`)**, PK `(tweet_id, viewer_id)` (Hibernate orders the key by attribute name, so the key also
+  serves the delete by tweet), no timestamp; **`TweetViewCount` (`tweet_view_counts`)**, PK `tweet_id`, `views` (`bigint`,
+  `updatable = false`, `ck_tweet_view_counts_views_non_negative`). Unique viewers, the author's own views count (Q11, Q12,
+  Q18).
+- **`POST /api/v1/views`** `{ "tweetIds": [...] }` → 204: 1–50 ids counted as sent, duplicates collapsed, one tweet-service
+  call for the distinct ids (unknown ids dropped silently), then `ViewRecordingService.record` in one transaction:
+  `INSERT … ON CONFLICT DO NOTHING RETURNING tweet_id`, then the counter upsert for the returned ids only. Both statements
+  sort the ids in SQL (`ORDER BY`), so overlapping reports lock in one order. Tweet service down → `502` / `504`, nothing
+  recorded. Reports log nothing.
+- **`GET /api/v1/views?tweetIds=a,b`** → `{ "<id>": <views>, … }`: 1–100 ids, one entry per distinct id in request order,
+  `0` for unknown ids, one `IN` query, no downstream call (Q13). Both endpoints need `X-User-Id`; a bad list is
+  `InvalidTweetIdsException` → `400` through one `TweetIdsValidator`.
+- **Inline counts (Q13):** feed and saved items gain `views` (second field of `TweetItemResponseDTO`) from
+  `ViewService.countViews`, one query per page, `0` when missing.
+- **`tweet.deleted`** also removes the tweet's `tweet_views` rows and its counter, in the one transaction with the feed and
+  saved deletes (`FeedEntryCleanupServiceImpl.onTweetDeleted`).
+- **[tweet]** `views`, `findAndIncrementViews` and the `$inc` are gone: `GET /tweets/{id}` is a plain `findById` and writes
+  nothing; old dev documents keep a stale field Spring ignores (`DECISIONS.md` there). Its view scenarios were replaced by
+  "no `views`, document unchanged" checks.
+- **[gateway]** `/api/v1/views` is an exact path on the one timeline route (`TimelineRoutesConfiguration`), same identity
+  filters and timeouts; the contract test with the real tweet service no longer asserts `views`.
+- **Handoff to `frontend/PLAN.md`** (not built here): report a tweet once it has been at least half visible for about a
+  second; batch the ids and `POST /api/v1/views` every few seconds (≤50 per request) and on page hide; render `views` from
+  the feed and saved items, and from `GET /api/v1/views` on a tweet page.
+- **Tests:** 432 in this service, 0 `@Disabled` (repository 21 new, controller 42 + inline 8 + listener 5, unit, and
+  `ViewConcurrencyIntegrationTest`: 50 viewers, one viewer 50×, two workers in opposite order); tweet service 226; gateway
+  711; e2e `views.spec.ts` (17 specs in all, `follow` moved to the shared fixtures). Catalog in `TESTING.md` (HTTP and
+  listener scenarios); calls made while building in each project's `DECISIONS.md`.
+- **Audit:** `exploit-report-2026-10-03-phase3.md`, nothing above Low; two Lows folded into the accepted gaps below (viewer
+  minting through a forged `X-User-Id`, no rate limit on reports) and two Infos.
 
-**Entities**
+---
 
-- `TweetView` (`tweet_views`): PK `(tweet_id, viewer_id)`. No timestamp: nothing reads one.
-- `TweetViewCount` (`tweet_view_counts`): PK `tweet_id`, `views` (`bigint`, `@Check views >= 0`).
+## Left open
 
-**`POST /api/v1/views`** — body `{ "tweetIds": [...] }`, 1–50 ids (duplicates collapsed), else `400` → `204`.
-
-1. Ask the tweet service which ids exist (one call); drop the rest silently.
-2. One transaction: `INSERT INTO tweet_views … ON CONFLICT DO NOTHING RETURNING tweet_id`, then, for the returned
-   ids only, upsert `tweet_view_counts` (`views = views + 1`). Ids are processed in sorted order so two reports
-   with overlapping ids can't deadlock (as the gateway's follow counters).
-3. Tweet service down → `502` / `504`, nothing recorded.
-
-**`GET /api/v1/views?tweetIds=a,b`** — 1–100 ids → `200 { "<tweetId>": <views>, … }`, one entry per requested id,
-`0` for unknown ids. No tweet-service call: a read can't create anything. For the tweet details page and the
-future liked list (Q13).
-
-**Inline counts (Q13):** feed and saved items gain `"views"`, from one `IN` query on `tweet_view_counts` per page
-(missing → `0`).
-
-**`tweet.deleted`** also removes the tweet's `tweet_views` rows and its counter.
-
-**[tweet] Remove `views`:** drop the field from `Tweet`, `TweetResponseDTO` and `TweetMapper`;
-`findAndIncrementViews` becomes a plain `findById`, so `GET /tweets/{id}` writes nothing. Update the four test
-classes, `TESTING.md` (the view scenarios go), `PLAN.md` (the view gaps go, pointing here), `CLAUDE.md`.
-Existing dev documents keep a stale `views` field: Spring ignores it on read, no `$unset` script (note in
-`DECISIONS.md`).
-
-**[gateway]** `TweetServiceContractIntegrationTest` stops asserting `views`; `TESTING.md` line updated. Route
-`/api/v1/views` → timeline service.
-
-**Handoff to `frontend/PLAN.md`** (not built here): report a tweet once it has been at least half visible for
-about a second; batch the ids and `POST /api/v1/views` every few seconds (≤50 per request) and on page hide;
-render `views` from the feed and saved items, and from `GET /api/v1/views` on a tweet page.
-
-### Scenarios (`ViewControllerIntegrationTest`, plus additions)
-
-- **Report:** first report → `204`, count 1; same viewer again → count still 1; a second viewer → 2; the author →
-  counts; unknown ids dropped, known ones in the same batch counted; 0 / 51 ids or a malformed id → `400`; tweet
-  service down → `502`, nothing recorded.
-- **Read:** counts for known ids, `0` for unknown; 0 / 101 ids → `400`.
-- **Inline:** feed and saved items carry the same count as `GET /views`.
-- **Listener:** `tweet.deleted` removes views and the counter.
-- **Concurrency:** 50 viewers report one tweet in parallel → 50; one viewer reports it 50× in parallel → 1; two
-  reports with the same ids in opposite order → no deadlock, counts exact.
-- **[tweet]:** repeated `GET /tweets/{id}` leaves the document unchanged and the response has no `views`.
-
-### Steps
-
-20. **Test catalog**, all `@Disabled`, in `TESTING.md`. **Gate:** compiles, **and you have approved it**.
-21. **Entities and repositories.** **Gate:** repository tests green (insert-returning, counter upsert, delete).
-22. **Endpoints.** `ViewController`, `ViewService`. **Gate:** report and read groups green.
-23. **Inline counts and listener.** **Gate:** inline and listener groups green; no `@Disabled` left.
-24. **[tweet] Remove `views`.** **Gate:** tweet service `mvn verify` green 3×.
-25. **[gateway] Contract test and views route.** **Gate:** gateway `mvn verify` green 3×.
-26. **e2e.** `views.spec.ts`: Ana and Carol report Bob's tweet twice each → `GET /views` says 2, Ana's feed item
-    says 2; Bob deletes it → `0`. **Gate:** e2e green 3×.
-27. **Hardening.** Concurrency suite, `exploit-hunter` on the phase 3 surface, docs reconciled.
-    **Gate:** `mvn verify` green **3× in a row**.
+- **The opposite-order concurrency scenario does not prove the counter upsert's lock order:** removing the `ORDER BY` did
+  not fail it in five variants (`DECISIONS.md`, step 27; `exploit-report-2026-10-03-phase3.md` #4). **Decide:** a test that
+  observes the lock order, or accept that the sort is a documented-hazard defence with no regression guard.
 
 ---
 
@@ -319,12 +296,12 @@ account deletion; a Redis cache; a DLT replay tool.
 - **Orphans from cross-topic order.** `tweet.deleted` before `tweet.created`, or a save / view racing a delete,
   leaves rows for a dead tweet. Feed orphans are hidden and expire in 7 days; saved and view orphans are hidden but
   never removed. **Trigger:** noticeable growth → a sweep job checking ids against the tweet service.
-- **This service trusts `X-User-Id` blindly** (as the tweet service). **Trigger:** port 8083 reachable by anything
+- **This service trusts `X-User-Id` blindly** (as the tweet service); since phase 3 that also lets anyone who reaches port 8083 mint viewers and inflate any tweet's count (`exploit-report-2026-10-03-phase3.md` #1). **Trigger:** port 8083 reachable by anything
   but the gateway → the shared secret on this service too, or mTLS.
 - **One static internal secret on the gateway's public port, no rotation.** **Trigger:** any deployment → a private
   port or mTLS for `/internal/**`, and rotation.
 - **The tweet service's internal endpoint has no secret.** Same trigger as its `X-User-Id` gap.
-- **No rate limiting on feed reads** (`exploit-report-2026-10-03.md` #3), and none on saves (each one a tweet-service call and an INFO log line, `exploit-report-2026-10-03-phase2.md` #1) or view reports. **Trigger:** abuse, or a second instance.
+- **No rate limiting on feed reads** (`exploit-report-2026-10-03.md` #3), and none on saves (each one a tweet-service call and an INFO log line, `exploit-report-2026-10-03-phase2.md` #1) or view reports (each a tweet-service call and up to 50 new rows, `exploit-report-2026-10-03-phase3.md` #2). **Trigger:** abuse, or a second instance.
 - **View rows kept forever** (one per viewer per tweet). **Trigger:** table size → HyperLogLog (e.g. Redis
   `PFADD`) for the count.
 - **Hot counter row** on a viral tweet. **Trigger:** view-report latency → buffered or sharded counters.

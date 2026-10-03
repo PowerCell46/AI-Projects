@@ -443,3 +443,10 @@ now starts the container with `max_connections=300`. Test infrastructure only; n
 `path(FEED_PATH, SAVED_TWEETS_PATH)`, so the same four identity filters and the same upstream timeouts apply. The
 saved-tweets pattern is `/**` (the list is the bare path, an item is `/{tweetId}`), unlike the feed's exact match.
 Views (step 25) will add its own constant the same way.
+
+## Timeline plan step 25 - `/api/v1/views` is an exact path on the same route
+
+`VIEWS_PATH` joins the feed and saved-tweets patterns on the one `timeline-service` route, so the same identity
+filters and timeouts apply. It is exact (no `/**`): `POST` reports and `GET` reads on the bare path, nothing below it.
+The contract test with the real tweet service stops asserting `views`; it checks the posted content instead, so the
+read still proves the body came through.
