@@ -57,6 +57,9 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
     @Value("${app.kafka.user-followed.name}")
     private String topicName;
 
+    @Value("${app.kafka.user-unfollowed.name}")
+    private String unfollowedTopicName;
+
     @Autowired
     private MutableClock mutableClock;
 
@@ -127,6 +130,15 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
                 .findAll()
                 .stream()
                 .filter(row -> row.getMessageKey().equals(followee.getId().toString()))
+                .toList();
+    }
+
+    private List<Outbox> unfollowedRowsOf(User follower) {
+        return outboxRepository
+                .findAll()
+                .stream()
+                .filter(row -> row.getTopic().equals(unfollowedTopicName))
+                .filter(row -> row.getMessageKey().equals(follower.getId().toString()))
                 .toList();
     }
 
@@ -319,7 +331,7 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
     class Unfollow {
 
         @Test
-        void should_enqueue_nothing_more_when_the_follow_is_removed() {
+        void should_enqueue_no_user_followed_row_when_the_follow_is_removed() {
             User follower = confirmedUser();
             User target = confirmedUser();
             followSuccessfully(follower, target);
@@ -329,6 +341,70 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
                     .isNoContent();
 
             assertThat(outboxRowsOf(target)).hasSize(1);
+        }
+
+        @Test
+        void should_enqueue_one_pending_unfollowed_row_with_every_contract_field_when_the_follow_is_removed() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+            followSuccessfully(follower, target);
+
+            unfollow(target.getUsername(), cookieOf(follower))
+                    .expectStatus()
+                    .isNoContent();
+
+            List<Outbox> rows = unfollowedRowsOf(follower);
+            assertThat(rows).hasSize(1);
+            Outbox row = rows.getFirst();
+            assertThat(row.getStatus()).isEqualTo(OutboxStatus.PENDING);
+            JsonNode payload = objectMapper.readTree(row.getPayload());
+            assertThat(payload.propertyNames()).containsExactlyInAnyOrder(
+                    "eventId", "followerId", "followeeId", "occurredAt");
+            assertThat(UUID.fromString(payload.get("eventId").asString())).isNotNull();
+            assertThat(payload.get("followerId").asString()).isEqualTo(follower.getId().toString());
+            assertThat(payload.get("followeeId").asString()).isEqualTo(target.getId().toString());
+            assertThat(Instant.parse(payload.get("occurredAt").asString())).isNotNull();
+        }
+
+        @Test
+        void should_enqueue_nothing_more_when_the_unfollow_is_repeated() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+            followSuccessfully(follower, target);
+            unfollow(target.getUsername(), cookieOf(follower));
+
+            unfollow(target.getUsername(), cookieOf(follower))
+                    .expectStatus()
+                    .isNoContent();
+
+            assertThat(unfollowedRowsOf(follower)).hasSize(1);
+        }
+
+        @Test
+        void should_enqueue_nothing_when_the_user_never_followed_the_target_before_unfollowing() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+
+            unfollow(target.getUsername(), cookieOf(follower))
+                    .expectStatus()
+                    .isNoContent();
+
+            assertThat(unfollowedRowsOf(follower)).isEmpty();
+        }
+
+        @Test
+        void should_enqueue_one_unfollowed_row_per_removal_when_the_user_follows_and_unfollows_twice() {
+            User follower = confirmedUser();
+            User target = confirmedUser();
+            followSuccessfully(follower, target);
+            unfollow(target.getUsername(), cookieOf(follower));
+            followSuccessfully(follower, target);
+
+            unfollow(target.getUsername(), cookieOf(follower))
+                    .expectStatus()
+                    .isNoContent();
+
+            assertThat(unfollowedRowsOf(follower)).hasSize(2);
         }
 
         @Test

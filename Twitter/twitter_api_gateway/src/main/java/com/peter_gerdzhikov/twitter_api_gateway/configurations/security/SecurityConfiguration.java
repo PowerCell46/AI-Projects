@@ -52,7 +52,9 @@ public class SecurityConfiguration {
             PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/login"),
             PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/logout"),
             PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/confirm"),
-            PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/confirm/resend")
+            PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/confirm/resend"),
+            // Guarded by InternalApiSecretFilter instead of a login: callers here are services, with no cookie
+            PathPatternRequestMatcher.pathPattern("/internal/v1/**")
     };
 
     private final AccessDeniedHandler accessDeniedHandler;

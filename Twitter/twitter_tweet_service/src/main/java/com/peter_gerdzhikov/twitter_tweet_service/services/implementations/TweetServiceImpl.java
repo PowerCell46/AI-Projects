@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +27,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadE
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
@@ -44,9 +46,11 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class TweetServiceImpl implements TweetService {
 
-    private static final int WRITE_CONFLICT_CODE = 112;
-
     private static final int MAX_DELETE_ATTEMPTS = 3;
+
+    private static final int MAX_IDS_PER_READ = 100;
+
+    private static final int WRITE_CONFLICT_CODE = 112;
 
     private final Clock clock;
 
@@ -156,6 +160,19 @@ public class TweetServiceImpl implements TweetService {
                 .findAndIncrementViews(tweetId)
                 .map(TweetMapper::toResponse)
                 .orElseThrow(TweetNotFoundException::new);
+    }
+
+    @Override
+    public List<TweetResponseDTO> findByIds(List<UUID> ids) {
+        if (ids.isEmpty() || ids.size() > MAX_IDS_PER_READ) {
+            throw new TweetIdsOutOfRangeException(MAX_IDS_PER_READ);
+        }
+
+        return tweetRepository
+                .findAllById(new LinkedHashSet<>(ids))
+                .stream()
+                .map(TweetMapper::toResponse)
+                .toList();
     }
 
     @Override

@@ -29,6 +29,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedI
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
@@ -58,6 +59,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(TooManyImagesException.class)
     public ResponseEntity<ErrorResponseDTO> handleTooManyImages(TooManyImagesException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(TweetIdsOutOfRangeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTweetIdsOutOfRange(TweetIdsOutOfRangeException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 

@@ -70,6 +70,8 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
     private static final String USER_ID_HEADER = "X-User-Id";
 
+    private static final String INTERNAL_TWEETS_PATH = "/internal/v1/tweets";
+
     @Value("${app.minio.bucket}")
     private String bucket;
 
@@ -700,6 +702,115 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
     }
 
+    @Nested
+    class Internal {
+
+        @Test
+        void should_return_200_with_the_body_shape_when_the_tweet_exists() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            JsonNode created = create(authorId, "internal", image("a.png", TestImages.png()));
+
+            JsonNode body = findByIds(List.of(created.get("id").asString()), status().isOk());
+
+            assertThat(body).hasSize(1);
+            assertThat(body.get(0).get("id").asString()).isEqualTo(created.get("id").asString());
+            assertThat(body.get(0).get("authorId").asString()).isEqualTo(authorId.toString());
+            assertThat(body.get(0).get("content").asString()).isEqualTo("internal");
+            assertThat(body.get(0).get("images")).hasSize(1);
+            assertThat(body.get(0).get("images").get(0).has("objectKey")).isFalse();
+        }
+
+        @Test
+        void should_return_only_the_tweets_that_exist_when_some_ids_are_unknown() throws Exception {
+            String first = create(UUID.randomUUID(), "first").get("id").asString();
+            String second = create(UUID.randomUUID(), "second").get("id").asString();
+
+            JsonNode body = findByIds(List.of(first, UUID.randomUUID().toString(), second), status().isOk());
+
+            assertThat(idsIn(body)).containsExactlyInAnyOrder(first, second);
+        }
+
+        @Test
+        void should_return_an_empty_list_when_no_id_exists() throws Exception {
+            JsonNode body = findByIds(List.of(UUID.randomUUID().toString()), status().isOk());
+
+            assertThat(body).isEmpty();
+        }
+
+        @Test
+        void should_return_each_tweet_once_when_an_id_is_repeated() throws Exception {
+            String id = create(UUID.randomUUID(), "once").get("id").asString();
+
+            JsonNode body = findByIds(List.of(id, id, id), status().isOk());
+
+            assertThat(idsIn(body)).containsExactly(id);
+        }
+
+        @Test
+        void should_accept_a_comma_separated_list_when_ids_are_joined() throws Exception {
+            String first = create(UUID.randomUUID(), "first").get("id").asString();
+            String second = create(UUID.randomUUID(), "second").get("id").asString();
+
+            MvcResult result = mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH).param("ids", first + "," + second))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            assertThat(idsIn(json(result))).containsExactlyInAnyOrder(first, second);
+        }
+
+        @Test
+        void should_not_require_the_user_id_header() throws Exception {
+            String id = create(UUID.randomUUID(), "anonymous").get("id").asString();
+
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH).param("ids", id))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        void should_not_count_a_view_when_tweets_are_read() throws Exception {
+            String id = create(UUID.randomUUID(), "unseen").get("id").asString();
+
+            JsonNode body = findByIds(List.of(id), status().isOk());
+            findByIds(List.of(id), status().isOk());
+
+            assertThat(body.get(0).get("views").asLong()).isZero();
+            assertThat(tweetRepository.findById(UUID.fromString(id)).orElseThrow().getViews()).isZero();
+        }
+
+        @Test
+        void should_return_200_when_exactly_100_ids_are_given() throws Exception {
+            findByIds(randomIds(100), status().isOk());
+        }
+
+        @Test
+        void should_return_400_when_101_ids_are_given() throws Exception {
+            JsonNode body = findByIds(randomIds(101), status().isBadRequest());
+
+            assertThat(body.get("messages").get(0).asString()).isEqualTo("Provide between 1 and 100 tweet ids.");
+        }
+
+        @Test
+        void should_return_400_when_the_ids_parameter_is_empty() throws Exception {
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH).param("ids", ""))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_the_ids_parameter_is_missing() throws Exception {
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_an_id_is_not_a_uuid() throws Exception {
+            findByIds(List.of(UUID.randomUUID().toString(), "not-a-uuid"), status().isBadRequest());
+        }
+    }
+
     static Stream<String> endpoints() {
         return Stream.of(
                 "POST /api/v1/tweets",
@@ -753,6 +864,28 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
                         .content(objectMapper.writeValueAsString(Map.of("content", content))))
                 .andExpect(expected)
                 .andReturn());
+    }
+
+    private JsonNode findByIds(List<String> ids, ResultMatcher expected) throws Exception {
+        return json(mockMvc
+                .perform(get(INTERNAL_TWEETS_PATH).param("ids", ids.toArray(String[]::new)))
+                .andExpect(expected)
+                .andReturn());
+    }
+
+    private List<String> idsIn(JsonNode tweets) {
+        return tweets
+                .valueStream()
+                .map(tweet -> tweet.get("id").asString())
+                .toList();
+    }
+
+    private List<String> randomIds(int count) {
+        return Stream
+                .generate(UUID::randomUUID)
+                .map(UUID::toString)
+                .limit(count)
+                .toList();
     }
 
     private JsonNode getTweet(String id, UUID callerId, ResultMatcher expected) throws Exception {

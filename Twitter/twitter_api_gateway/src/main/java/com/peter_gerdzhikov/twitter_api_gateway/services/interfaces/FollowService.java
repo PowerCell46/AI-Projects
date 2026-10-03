@@ -15,7 +15,8 @@ public interface FollowService {
     void follow(UUID followerId, String targetUsername);
 
     /**
-     * Idempotent: unfollowing someone not followed changes nothing. Same failures as {@link #follow}.
+     * Idempotent: unfollowing someone not followed changes nothing. Same failures as {@link #follow}. A
+     * {@code user.unfollowed} event is queued only when a follow row was actually removed.
      */
     void unfollow(UUID followerId, String targetUsername);
 }

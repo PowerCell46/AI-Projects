@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.RegisterRequestDTO;
@@ -25,9 +26,12 @@ import com.peter_gerdzhikov.twitter_api_gateway.entities.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.AuthService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.FollowService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.OutboxPublisherService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestUser;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestUsers;
 
@@ -40,11 +44,20 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
     @Value("${app.kafka.user-confirmation-requested.name}")
     private String topicName;
 
+    @Value("${app.kafka.user-unfollowed.name}")
+    private String unfollowedTopicName;
+
     @Autowired
     private AuthService authService;
 
     @Autowired
+    private FollowService followService;
+
+    @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private OutboxRepository outboxRepository;
@@ -96,6 +109,28 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
         assertThat(objectMapper.readTree(record.value()).get("email").asString()).isEqualTo(credentials.getEmail());
     }
 
+    @Test
+    void should_put_the_unfollowed_event_on_its_topic_keyed_by_the_follower_id() throws Exception {
+        User follower = confirmedUser();
+        User target = confirmedUser();
+        followService.follow(follower.getId(), target.getUsername());
+        followService.unfollow(follower.getId(), target.getUsername());
+
+        outboxPublisherService.publishPending();
+
+        JsonNode payload = objectMapper.readTree(
+                recordForKey(unfollowedTopicName, follower.getId().toString()).value());
+        assertThat(payload.get("followerId").asString()).isEqualTo(follower.getId().toString());
+        assertThat(payload.get("followeeId").asString()).isEqualTo(target.getId().toString());
+    }
+
+    private User confirmedUser() {
+        User user = TestEntities.newUser();
+        user.setEnabled(true);
+
+        return userRepository.save(user);
+    }
+
     private Outbox pendingRow(String key, String payload) {
         return Outbox.builder()
                 .topic(topicName)
@@ -106,9 +141,13 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
     }
 
     private ConsumerRecord<String, String> recordForKey(String key) {
+        return recordForKey(topicName, key);
+    }
+
+    private ConsumerRecord<String, String> recordForKey(String topic, String key) {
         List<ConsumerRecord<String, String>> matches = new ArrayList<>();
 
-        try (KafkaConsumer<String, String> consumer = newConsumer()) {
+        try (KafkaConsumer<String, String> consumer = newConsumer(topic)) {
             await().atMost(AWAIT_TIMEOUT).until(() -> {
                 consumer.poll(Duration.ofMillis(500)).forEach(record -> {
                     if (key.equals(record.key())) {
@@ -125,7 +164,7 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
     private List<ConsumerRecord<String, String>> consumeAll(String key) {
         List<ConsumerRecord<String, String>> matches = new ArrayList<>();
 
-        try (KafkaConsumer<String, String> consumer = newConsumer()) {
+        try (KafkaConsumer<String, String> consumer = newConsumer(topicName)) {
             consumer.poll(Duration.ofSeconds(2)).forEach(record -> {
                 if (key.equals(record.key())) {
                     matches.add(record);
@@ -136,7 +175,7 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
         return matches;
     }
 
-    private KafkaConsumer<String, String> newConsumer() {
+    private KafkaConsumer<String, String> newConsumer(String topic) {
         Properties properties = new Properties();
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
@@ -145,7 +184,7 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
-        consumer.subscribe(List.of(topicName));
+        consumer.subscribe(List.of(topic));
         return consumer;
     }
 }

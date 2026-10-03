@@ -30,4 +30,15 @@ public class KafkaTopicConfiguration {
                 .partitions(partitions)
                 .build();
     }
+
+    @Bean
+    public NewTopic userUnfollowedTopic(
+            @Value("${app.kafka.user-unfollowed.name}") String name,
+            @Value("${app.kafka.user-unfollowed.partitions}") int partitions
+    ) {
+        return TopicBuilder
+                .name(name)
+                .partitions(partitions)
+                .build();
+    }
 }

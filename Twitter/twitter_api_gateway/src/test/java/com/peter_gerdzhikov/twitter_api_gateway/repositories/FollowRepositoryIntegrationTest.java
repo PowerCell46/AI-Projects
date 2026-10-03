@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.Follow;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.projections.FollowerEdge;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 
@@ -316,6 +317,87 @@ class FollowRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
             return follows
                     .stream()
                     .map(Follow::getId)
+                    .toList();
+        }
+    }
+
+    @Nested
+    class FollowerEdgePages {
+
+        @Test
+        void should_expose_the_follow_id_the_follower_id_and_the_timestamp_when_a_follower_exists() {
+            User target = savedUser();
+            User follower = savedUser();
+            Follow stored = follow(follower, target, CREATED_AT);
+
+            List<FollowerEdge> page = followRepository.findFollowerEdgesFirstPage(target.getId(), PageRequest.of(0, 10));
+
+            assertThat(page).hasSize(1);
+            assertThat(page.getFirst().getFollowId()).isEqualTo(stored.getId());
+            assertThat(page.getFirst().getFollowerId()).isEqualTo(follower.getId());
+            assertThat(page.getFirst().getCreatedAt()).isEqualTo(CREATED_AT);
+        }
+
+        @Test
+        void should_order_followers_newest_first_and_break_ties_by_follow_id_descending() {
+            User target = savedUser();
+            Follow oldest = follow(savedUser(), target, CREATED_AT);
+            Follow tiedLowId = follow(LOW_ID, savedUser(), target, CREATED_AT.plusSeconds(1));
+            Follow tiedHighId = follow(HIGH_ID, savedUser(), target, CREATED_AT.plusSeconds(1));
+            Follow newest = follow(savedUser(), target, CREATED_AT.plusSeconds(2));
+
+            List<FollowerEdge> page = followRepository.findFollowerEdgesFirstPage(target.getId(), PageRequest.of(0, 10));
+
+            assertThat(followIdsOf(page))
+                    .containsExactly(newest.getId(), tiedHighId.getId(), tiedLowId.getId(), oldest.getId());
+        }
+
+        @Test
+        void should_cover_every_follower_exactly_once_when_every_follow_shares_one_timestamp() {
+            User target = savedUser();
+            List<UUID> all = new ArrayList<>();
+            for (int index = 0; index < 7; index++) {
+                all.add(follow(savedUser(), target, CREATED_AT).getFollower().getId());
+            }
+
+            List<UUID> seen = new ArrayList<>();
+            List<FollowerEdge> page = followRepository.findFollowerEdgesFirstPage(target.getId(), PageRequest.of(0, 3));
+            while (!page.isEmpty()) {
+                page.forEach(edge -> seen.add(edge.getFollowerId()));
+                FollowerEdge last = page.getLast();
+                page = followRepository.findFollowerEdgesAfter(
+                        target.getId(), last.getCreatedAt(), last.getFollowId(), PageRequest.of(0, 3));
+            }
+
+            assertThat(seen).hasSize(7);
+            assertThat(seen).containsExactlyInAnyOrderElementsOf(all);
+        }
+
+        @Test
+        void should_return_only_the_followers_of_the_given_user() {
+            User target = savedUser();
+            User other = savedUser();
+            User mine = savedUser();
+            follow(mine, target, CREATED_AT);
+            follow(savedUser(), other, CREATED_AT);
+            follow(target, savedUser(), CREATED_AT);
+
+            List<FollowerEdge> page = followRepository.findFollowerEdgesFirstPage(target.getId(), PageRequest.of(0, 10));
+
+            assertThat(page)
+                    .extracting(FollowerEdge::getFollowerId)
+                    .containsExactly(mine.getId());
+        }
+
+        @Test
+        void should_return_nothing_when_the_user_is_unknown() {
+            assertThat(followRepository.findFollowerEdgesFirstPage(UUID.randomUUID(), PageRequest.of(0, 10))).isEmpty();
+        }
+
+        private List<UUID> followIdsOf(List<FollowerEdge> edges) {
+            return edges
+                    .stream()
+                    .map(FollowerEdge::getFollowId)
                     .toList();
         }
     }

@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.InternalUserResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
@@ -74,6 +75,28 @@ class ProfileMapperTest {
     @Test
     void toListItem_returnsNullUrlWhenThereIsNoPicture() {
         assertThat(ProfileMapper.toListItem(TestEntities.newUser(), false).getProfilePictureUrl()).isNull();
+    }
+
+    @Test
+    void toInternalUser_copiesTheIdUsernameAndBuildsThePictureUrl() {
+        User user = TestEntities.newUser();
+        user.setId(UUID.randomUUID());
+        DbFile profilePicture = fileWithId();
+        user.setProfilePicture(profilePicture);
+
+        InternalUserResponseDTO response = ProfileMapper.toInternalUser(user);
+
+        assertThat(response.getId()).isEqualTo(user.getId());
+        assertThat(response.getUsername()).isEqualTo(user.getUsername());
+        assertThat(response.getProfilePictureUrl()).isEqualTo("/api/v1/files/" + profilePicture.getId());
+    }
+
+    @Test
+    void toInternalUser_returnsANullUrlWhenThereIsNoPicture() {
+        User user = TestEntities.newUser();
+        user.setId(UUID.randomUUID());
+
+        assertThat(ProfileMapper.toInternalUser(user).getProfilePictureUrl()).isNull();
     }
 
     private DbFile fileWithId() {

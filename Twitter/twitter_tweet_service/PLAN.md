@@ -3,6 +3,10 @@
 **Status: built (steps 1-10 done, 2026-09-30).** `mvn verify` is green 3x in a row (202 tests, none
 disabled). Gateway phase 4 (`../twitter_api_gateway/PLAN.md`) may start.
 
+**Next:** `../twitter_timeline_service/PLAN.md` added `GET /internal/v1/tweets?ids=` here (its phase 1, built
+2026-10-03, plus the startup collection creation) and removes `views` (phase 3, which also retires the view gaps
+below). Both are planned there, not here.
+
 Owns tweets: create (text and up to 4 images), read, edit the text, delete, and the `tweet.created` /
 `tweet.deleted` events. It knows nothing about users or authentication: the gateway proxies
 `/api/v1/tweets/**` and sets `X-User-Id`. Designed via `/grill-me` on 2026-09-30.

@@ -39,6 +39,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidConfirmat
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRangeException;
 
 class GlobalExceptionHandlerTest {
 
@@ -113,6 +114,24 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().getMessages()).containsExactly(InvalidPageSizeException.MESSAGE);
+    }
+
+    @Test
+    void should_return_400_with_the_given_bounds_for_an_invalid_page_size_with_its_own_limits() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleInvalidPagination(new InvalidPageSizeException(1, 1000));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly("Page size must be between 1 and 1000.");
+    }
+
+    @Test
+    void should_return_400_for_a_user_id_list_outside_the_allowed_size() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleUserIdsOutOfRange(new UserIdsOutOfRangeException(100));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly("Provide between 1 and 100 user ids.");
     }
 
     @Test

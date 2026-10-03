@@ -224,7 +224,11 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 
 - 204; the row is gone, both counts -1 (`should_return_204_and_remove_the_row_and_decrement_both_counts_when_the_follow_exists`)
 - Repeat returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_unfollow_is_repeated`)
-- Unfollow enqueues nothing more (`should_enqueue_nothing_more_when_the_follow_is_removed`)
+- Unfollow adds no `user.followed` row for the followee (`should_enqueue_no_user_followed_row_when_the_follow_is_removed`)
+- A real unfollow enqueues one PENDING `user.unfollowed` outbox row with every contract field (`eventId`, `followerId`, `followeeId`, `occurredAt`), keyed by the follower (`should_enqueue_one_pending_unfollowed_row_with_every_contract_field_when_the_follow_is_removed`)
+- A repeated unfollow enqueues nothing more (`should_enqueue_nothing_more_when_the_unfollow_is_repeated`)
+- Unfollowing someone never followed enqueues nothing (`should_enqueue_nothing_when_the_user_never_followed_the_target_before_unfollowing`)
+- Follow, unfollow, follow, unfollow leaves two `user.unfollowed` rows (`should_enqueue_one_unfollowed_row_per_removal_when_the_user_follows_and_unfollows_twice`)
 - Never followed returns 204, counts unchanged (`should_return_204_and_keep_the_counts_when_the_user_never_followed_the_target`)
 - Username in another case returns 204 (`should_return_204_when_the_username_differs_only_in_case`)
 - Unfollowing yourself returns 400 (`should_return_400_when_the_user_unfollows_themselves`)
@@ -327,7 +331,86 @@ Written `@Disabled` in step 25 and approved; every group is now enabled (steps 2
 
 - Tweet service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_tweet_service_is_down`)
 
+## `/api/v1/feed` (proxy to the timeline service)
+
+Added in timeline step 11. `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
+
+`TimelineRoutesIntegrationTest.Authentication` - enabled
+
+- No cookie returns 401 and nothing reaches the timeline service (`should_return_401_and_forward_nothing_when_there_is_no_cookie`)
+- A cookie that is not a valid JWT returns 401 and nothing is forwarded (`should_return_401_and_forward_nothing_when_the_cookie_is_not_a_valid_jwt`)
+
+`TimelineRoutesIntegrationTest.Forwarding` - enabled
+
+- GET arrives with path, query and status unchanged (`should_forward_a_get_with_the_path_query_and_status_unchanged_when_the_user_is_authenticated`)
+- A `400`, `404`, `502` or `504` from the timeline service passes through with its body (`should_pass_the_downstream_error_status_and_body_through_unchanged`, status)
+- A path below the feed is not forwarded (`should_not_forward_a_path_below_the_feed`)
+- A tweet path is not sent to the timeline service (`should_not_send_the_tweet_routes_to_the_timeline_service`)
+
+`TimelineRoutesIntegrationTest.Identity` - enabled
+
+- The timeline service receives `X-User-Id` = the JWT `sub` (`should_send_the_jwt_subject_as_x_user_id_when_the_request_is_forwarded`)
+- A spoofed `X-User-Id` is replaced, in either letter case (`should_replace_a_spoofed_x_user_id_with_the_jwt_subject`, header name)
+- A spoofed `X-User-Role` is dropped (`should_drop_a_spoofed_x_user_role_header`)
+- `Cookie` and `Authorization` are not forwarded (`should_not_forward_the_cookie_header`, `should_not_forward_the_authorization_header`)
+- `X-Internal-Secret` is not sent: the secret guards the gateway's own internal endpoints only (`should_not_send_the_internal_secret_to_the_timeline_service`)
+
+`TimelineRoutesIntegrationTest.Failures` - enabled
+
+- Timeline service slower than the read timeout returns 504, no exception text (`should_return_504_without_leaking_exception_text_when_the_timeline_service_is_slower_than_the_read_timeout`)
+
+`TimelineRoutesIntegrationTest.UnreachableTimelineService` - enabled. Its own context points the route at a closed port.
+
+- Timeline service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_timeline_service_is_down`)
+
 The auth, profile, file and follow suites are the "Unaffected" group: they must stay green unchanged.
+
+## `/internal/v1/**` (service-to-service)
+
+`InternalUserControllerIntegrationTest` (`controllers/internal`), plus `InternalApiSecretFilterTest` for the filter alone. The timeline service is the caller; the secret is the only guard.
+
+`Secret`
+
+- A missing `X-Internal-Secret` returns 404 on both endpoints (`should_return_404_when_the_secret_header_is_missing`)
+- A wrong secret returns 404 on both endpoints (`should_return_404_when_the_secret_is_wrong`)
+- The right secret returns 200 on both endpoints (`should_return_200_when_the_secret_is_right`)
+- A rejected request gets the error body of an unknown path, 404 "No resource found for this path." (`should_answer_with_the_error_shape_of_an_unknown_path_when_the_secret_is_missing`)
+- No login is needed with the right secret (`should_not_ask_for_a_login_when_the_secret_is_right`)
+- A garbage `access_token` cookie is ignored with the right secret (`should_ignore_an_invalid_login_cookie_when_the_secret_is_right`)
+- `GET /actuator/health` stays open without the secret (`should_leave_a_public_route_open_when_no_secret_is_sent`)
+- The secret does not open a non-internal route: `/api/v1/users/{username}` still returns 401 (`should_still_require_a_login_for_a_non_internal_route_when_the_secret_is_sent`)
+
+`FollowerIds` - `GET /internal/v1/users/{id}/follower-ids?cursor=&size=`
+
+- An unknown user returns 200 with `ids: []` and `nextCursor: null` (`should_return_an_empty_page_when_the_user_is_unknown`)
+- A user with no followers returns an empty page (`should_return_an_empty_page_when_the_user_has_no_followers`)
+- The body holds only `ids` and `nextCursor` (`should_return_only_ids_and_a_cursor_when_the_user_has_followers`)
+- Follower ids come newest follow first (`should_return_the_follower_ids_newest_follow_first`)
+- Only that user's followers appear, not other users' followers or who the user follows (`should_return_only_the_followers_of_that_user`)
+- The default size covers a small list with `nextCursor: null` (`should_return_every_follower_with_no_cursor_when_the_default_size_covers_them_all`)
+- A page that exactly fills `size` has `nextCursor: null` (`should_return_no_cursor_when_the_followers_exactly_fill_the_page`)
+- Walking the cursor visits every follower exactly once (`should_visit_every_follower_exactly_once_when_walking_the_cursor`)
+- The same, with every follow at one timestamp (`should_visit_every_follower_exactly_once_when_every_follow_shares_one_timestamp`)
+- `size=1000` returns 200 (`should_return_200_when_the_size_is_1000`)
+- `size` 0, -1 or 1001 returns 400 "Page size must be between 1 and 1000." (`should_return_400_when_the_size_is_out_of_range`)
+- A non-numeric `size` returns 400 (`should_return_400_when_the_size_is_not_a_number`)
+- A bad cursor returns 400 "Invalid cursor." (`should_return_400_when_the_cursor_is_invalid`)
+- A non-UUID user id returns 400 (`should_return_400_when_the_user_id_is_not_a_uuid`)
+
+`Users` - `GET /internal/v1/users?ids=a,b`
+
+- Each item is exactly `id`, `username`, `profilePictureUrl` (`/api/v1/files/{id}`) (`should_return_the_id_username_and_picture_url_and_nothing_else`)
+- `profilePictureUrl` is `null` without a picture (`should_return_a_null_picture_url_when_the_user_has_no_picture`)
+- Unknown ids are omitted (`should_return_only_the_known_users_when_some_ids_are_unknown`)
+- No known id returns an empty list (`should_return_an_empty_list_when_no_id_is_known`)
+- An unconfirmed user is omitted (`should_leave_out_a_user_who_has_not_confirmed_the_account`)
+- A repeated id returns its user once (`should_return_each_user_once_when_an_id_is_repeated`)
+- A comma-separated `ids` value is accepted (`should_accept_a_comma_separated_list_when_ids_are_joined`)
+- 100 ids return 200 (`should_return_200_when_exactly_100_ids_are_given`)
+- 101 ids return 400 "Provide between 1 and 100 user ids." (`should_return_400_when_101_ids_are_given`)
+- An empty `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_empty`)
+- A missing `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_missing`)
+- A non-UUID id returns 400 (`should_return_400_when_an_id_is_not_a_uuid`)
 
 ## Cross-service contract
 

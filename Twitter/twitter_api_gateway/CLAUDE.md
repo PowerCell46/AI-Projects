@@ -7,7 +7,13 @@ before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
 
 From phase 4 the gateway also **routes** `/api/v1/tweets/**` to `../twitter_tweet_service` (Spring Cloud Gateway
 MVC, `TWEET_SERVICE_URL`), stripping caller identity headers and adding `X-User-Id` from the JWT. It holds no tweet
-code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`.
+code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`. `/api/v1/feed` is routed the same way
+to `../twitter_timeline_service` (`TIMELINE_SERVICE_URL`); both routes share `CallerIdentityFilters`.
+
+It also serves `/internal/v1/**` (follower ids and user lookups for `../twitter_timeline_service`). Those routes sit on
+the public port and are permitted by the JWT chain; `InternalApiSecretFilter` is their only guard: a missing or wrong
+`X-Internal-Secret` answers 404, and `INTERNAL_API_SECRET` (no default, 32+ bytes) must be set or the app won't start.
+Never log the secret. The timeline service's plan (`../twitter_timeline_service/PLAN.md`) owns these steps.
 
 The mail service is a separate project (`../twitter_mail_service`; the confirmation email is built, the follow
 email is phase 2). This service ends at "the event is on Kafka"; the contract it produces is `EVENTS.md`.

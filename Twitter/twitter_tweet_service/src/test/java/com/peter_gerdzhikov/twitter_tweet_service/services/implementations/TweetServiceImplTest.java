@@ -11,6 +11,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +54,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedI
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
@@ -538,6 +541,74 @@ class TweetServiceImplTest {
             when(tweetRepository.findAndIncrementViews(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> tweetService.get(id)).isInstanceOf(TweetNotFoundException.class);
+        }
+    }
+
+    @Nested
+    class FindByIds {
+
+        @Test
+        void should_return_the_tweets_the_repository_found_when_ids_are_given() {
+            Tweet first = TestDocuments.tweet();
+            Tweet second = TestDocuments.tweet();
+            when(tweetRepository.findAllById(any())).thenReturn(List.of(first, second));
+
+            List<TweetResponseDTO> response = tweetService.findByIds(List.of(first.getId(), second.getId()));
+
+            assertThat(response)
+                    .extracting(TweetResponseDTO::getId)
+                    .containsExactly(first.getId(), second.getId());
+        }
+
+        @Test
+        void should_query_each_id_once_when_ids_repeat() {
+            UUID id = UUID.randomUUID();
+            UUID other = UUID.randomUUID();
+            when(tweetRepository.findAllById(any())).thenReturn(List.of());
+
+            tweetService.findByIds(List.of(id, other, id));
+
+            ArgumentCaptor<Iterable<UUID>> queried = ArgumentCaptor.captor();
+            verify(tweetRepository).findAllById(queried.capture());
+            assertThat(queried.getValue()).containsExactly(id, other);
+        }
+
+        @Test
+        void should_not_touch_the_view_counter_when_ids_are_read() {
+            when(tweetRepository.findAllById(any())).thenReturn(List.of());
+
+            tweetService.findByIds(List.of(UUID.randomUUID()));
+
+            verify(tweetRepository, never()).findAndIncrementViews(any());
+        }
+
+        @Test
+        void should_accept_exactly_100_ids() {
+            when(tweetRepository.findAllById(any())).thenReturn(List.of());
+
+            assertThatCode(() -> tweetService.findByIds(randomIds(100))).doesNotThrowAnyException();
+        }
+
+        @Test
+        void should_throw_out_of_range_and_not_query_when_no_ids_are_given() {
+            assertThatThrownBy(() -> tweetService.findByIds(List.of()))
+                    .isInstanceOf(TweetIdsOutOfRangeException.class)
+                    .hasMessage("Provide between 1 and 100 tweet ids.");
+            verifyNoInteractions(tweetRepository);
+        }
+
+        @Test
+        void should_throw_out_of_range_and_not_query_when_101_ids_are_given() {
+            assertThatThrownBy(() -> tweetService.findByIds(randomIds(101)))
+                    .isInstanceOf(TweetIdsOutOfRangeException.class);
+            verifyNoInteractions(tweetRepository);
+        }
+
+        private List<UUID> randomIds(int count) {
+            return Stream
+                    .generate(UUID::randomUUID)
+                    .limit(count)
+                    .toList();
         }
     }
 

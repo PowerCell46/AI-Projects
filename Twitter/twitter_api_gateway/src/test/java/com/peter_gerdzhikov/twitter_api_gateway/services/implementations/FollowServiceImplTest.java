@@ -30,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.event.UserFollowedEventDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.SelfFollowException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
@@ -41,7 +42,9 @@ import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 @ExtendWith(MockitoExtension.class)
 class FollowServiceImplTest {
 
-    private static final String TOPIC = "user.followed";
+    private static final String FOLLOWED_TOPIC = "user.followed";
+
+    private static final String UNFOLLOWED_TOPIC = "user.unfollowed";
 
     private static final UUID SMALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -67,7 +70,8 @@ class FollowServiceImplTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        followService = new FollowServiceImpl(clock, TOPIC, outboxService, userRepository, followRepository);
+        followService = new FollowServiceImpl(
+                clock, FOLLOWED_TOPIC, UNFOLLOWED_TOPIC, outboxService, userRepository, followRepository);
     }
 
     @Nested
@@ -267,9 +271,26 @@ class FollowServiceImplTest {
         }
 
         @Test
-        void should_not_enqueue_an_event() {
+        void should_enqueue_one_unfollowed_event_keyed_by_the_follower_when_a_follow_was_removed() {
             givenConfirmedTarget("target", LARGER_ID);
             when(followRepository.deleteByPair(SMALLER_ID, LARGER_ID)).thenReturn(1);
+
+            followService.unfollow(SMALLER_ID, "target");
+
+            ArgumentCaptor<Object> payload = ArgumentCaptor.forClass(Object.class);
+            verify(outboxService).enqueue(eq(UNFOLLOWED_TOPIC), eq(SMALLER_ID.toString()), payload.capture());
+            UserUnfollowedEventDTO event = (UserUnfollowedEventDTO) payload.getValue();
+            assertThat(event.getEventId()).isNotNull();
+            assertThat(event.getFollowerId()).isEqualTo(SMALLER_ID);
+            assertThat(event.getFolloweeId()).isEqualTo(LARGER_ID);
+            assertThat(event.getOccurredAt()).isEqualTo(NOW);
+            verifyNoMoreInteractions(outboxService);
+        }
+
+        @Test
+        void should_not_enqueue_an_event_when_there_was_no_follow() {
+            givenConfirmedTarget("target", LARGER_ID);
+            when(followRepository.deleteByPair(SMALLER_ID, LARGER_ID)).thenReturn(0);
 
             followService.unfollow(SMALLER_ID, "target");
 
@@ -315,7 +336,7 @@ class FollowServiceImplTest {
 
     private List<UserFollowedEventDTO> enqueuedEvents(int expectedCalls) {
         ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
-        verify(outboxService, times(expectedCalls)).enqueue(eq(TOPIC), eq(LARGER_ID.toString()), captor.capture());
+        verify(outboxService, times(expectedCalls)).enqueue(eq(FOLLOWED_TOPIC), eq(LARGER_ID.toString()), captor.capture());
 
         return captor.getAllValues().stream().map(UserFollowedEventDTO.class::cast).toList();
     }

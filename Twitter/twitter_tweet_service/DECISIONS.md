@@ -166,3 +166,23 @@ The `exploit-hunter` audit (`exploit-report-2026-09-30.md`) found nothing above 
 suite runs through MockMvc (every scenario overlaps its threads on one latch) rather than a real port, since
 the contended operations are Mongo writes, not the servlet layer.
 
+
+## Timeline plan step 1 - internal batch read reuses `findAllById`
+
+`GET /internal/v1/tweets?ids=` calls Spring Data's `findAllById`, which is already one `_id $in` query, so no
+custom repository method was added. The 1-100 limit counts the ids as sent, before repeats collapse, so the
+request size is bounded; a list outside it answers 400 "Provide between 1 and 100 tweet ids." through its own
+`TweetIdsOutOfRangeException`. A non-UUID id, an empty `ids` and a missing `ids` are all 400 through the
+existing Spring MVC handlers. `TweetResponseDTO` is returned unchanged, `views` included, until timeline phase 3
+removes it.
+
+
+## Timeline plan step 12 - the collections are created at startup
+
+The timeline e2e posted three first-ever tweets at once on a fresh Mongo and one answered 500: each write
+transaction tried to create the empty `tweets` collection and Mongo failed all but one with a `WriteConflict`
+("Collection namespace ... is already in use"). `MongoCollectionInitializer` now creates `tweets` and `outbox`
+if missing, as a `SmartInitializingSingleton`, so it runs before the web server accepts a request (an
+`ApplicationRunner` like the MinIO bucket initializer would leave a short window). If another instance creates
+one first, the failure is swallowed once the collection is seen to exist. Chosen over a retry of the transaction,
+which would hide the cause; the `TransientTransactionError` label stays unhandled for other conflicts.

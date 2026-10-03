@@ -20,6 +20,10 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 
 **Left:** the mail service's follow email (separate project, phase 2), plus the accepted gaps below when their triggers land.
 
+**Next:** the gateway steps of `../twitter_timeline_service/PLAN.md` (`/internal/v1/**` behind a shared secret,
+`user.unfollowed`, routes to the timeline service) are planned there, not here. Phase 1's (internal endpoints,
+`user.unfollowed`, the `/api/v1/feed` route) were built 2026-10-03; the saved-tweets and views routes are still to come.
+
 ---
 
 ## What was built

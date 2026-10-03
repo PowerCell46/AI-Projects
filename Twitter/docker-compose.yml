@@ -22,6 +22,29 @@ services:
       retries: 5
       start_period: 10s
 
+  postgres-timeline:
+    image: postgres:18
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_USER: ${TIMELINE_POSTGRES_USER:?TIMELINE_POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${TIMELINE_POSTGRES_PASSWORD:?TIMELINE_POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${TIMELINE_POSTGRES_DB:-twitter_timeline_service_db}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    volumes:
+      - postgres_timeline_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TIMELINE_POSTGRES_USER} -d ${TIMELINE_POSTGRES_DB:-twitter_timeline_service_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   kafka:
     image: apache/kafka:4.3.1
     restart: unless-stopped
@@ -140,6 +163,7 @@ services:
 
 volumes:
   postgres_data:
+  postgres_timeline_data:
   kafka_data:
   minio_data:
   mongo_data:

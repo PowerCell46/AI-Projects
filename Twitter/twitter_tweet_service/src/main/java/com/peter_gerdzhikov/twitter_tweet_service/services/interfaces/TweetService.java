@@ -34,6 +34,15 @@ public interface TweetService {
     TweetResponseDTO get(UUID tweetId);
 
     /**
+     * Reads the tweets that exist among the ids, in no particular order; unknown ids are left out and repeated
+     * ids collapse. Doesn't count a view.
+     *
+     * @param ids between 1 and 100 ids, repeats included
+     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException
+     */
+    List<TweetResponseDTO> findByIds(List<UUID> ids);
+
+    /**
      * Doesn't count a view.
      *
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException

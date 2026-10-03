@@ -1,4 +1,4 @@
-Project-wide rules. Each service carries its own `CLAUDE.md` (`twitter_api_gateway/`, `twitter_tweet_service/`, `twitter_mail_service/`) —
+Project-wide rules. Each service carries its own `CLAUDE.md` (`twitter_api_gateway/`, `twitter_tweet_service/`, `twitter_mail_service/`, `twitter_timeline_service/`) —
 read the one for the service being touched.
 
 ## Writing frontend code

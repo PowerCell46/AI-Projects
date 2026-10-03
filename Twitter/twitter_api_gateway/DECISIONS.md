@@ -378,3 +378,61 @@ is the followee id: the mail goes to them, so per-recipient ordering is what mat
 followee's email and both usernames so the mail service needs no call back to the gateway. The follower is
 loaded with one `findById` inside the insert branch only. `User` has no display name, so `username` stands in.
 Unfollow emits nothing.
+
+## Timeline plan step 2 - the internal API
+
+- **Filter path check.** `InternalApiSecretFilter` reads the path the way Spring MVC resolves it
+  (`UrlPathHelper.getPathWithinApplication`: decoded, `//` collapsed, `;` parameters dropped), so a raw variant
+  of an internal URL can't skip the prefix check. The secret is compared in constant time
+  (`MessageDigest.isEqual`) and the 404 body is the unknown-path message.
+- **`/internal/v1/**` joins `PUBLIC_MATCHERS`,** so one entry makes it `permitAll()` and makes
+  `CookieBearerTokenResolver` ignore it.
+- **Follower pages use a projection,** not the `Follow` entity: `FollowerEdge` (follow id, follower id,
+  timestamp) so a page of 1,000 loads no user rows. The cursor is the existing `FollowCursorCodec` over the
+  follow row, in the order of `ix_follows_following_created`. `InvalidPageSizeException` gained a
+  `(min, max)` constructor so the message says 1 to 1,000 here.
+- **User lookup leaves out unconfirmed accounts,** like the public profile read, and counts the 1-100 limit on
+  the ids as sent, before repeats collapse.
+- **New classes sit in `internal` subpackages** (controller, service, DTOs) because those packages already
+  hold more than five files; the existing classes were not moved.
+- **`INTERNAL_API_SECRET` is also set in `.env.example` and the e2e compose gateway now,** because the gateway
+  refuses to start without it. The plan had those in steps 4 and 12.
+
+
+## Timeline plan step 3 - `user.unfollowed`
+
+Enqueued in the unfollow transaction only when `deleteByPair` returns 1, keyed by `followerId`. `occurredAt` is
+`clock.instant()` as it is (not truncated), like `user.followed`. Two earlier tests asserted that an unfollow
+enqueues nothing; they now assert the new behaviour instead (`FollowServiceImplTest.Unfollow` and the
+`FollowControllerIntegrationTest.Unfollow` group, renamed to say a `user.followed` row is still not added).
+`.env.example` gets `USER_UNFOLLOWED_TOPIC_NAME` with the timeline section in step 4.
+
+## Timeline plan step 11 - the identity filters moved to `CallerIdentityFilters`
+
+`configurations/routing/CallerIdentityFilters.forwardAsTheAuthenticatedUser(route)` adds the four filters (drop
+`Cookie`, drop `Authorization`, drop every `X-User-*`, set `X-User-Id` from the JWT) to a route builder. Both
+`TweetRoutesConfiguration` and the new `TimelineRoutesConfiguration` call it. `USER_ID_HEADER` moved there from
+`TweetRoutesConfiguration` (nothing else read it). The "no JWT" error text no longer says "tweet route".
+The HTTP/1.1-only client customizer stays in `TweetRoutesConfiguration`: it is global, and moving it was outside
+the step.
+
+## Timeline plan step 11 - the feed route matches `/api/v1/feed` exactly
+
+Not `/api/v1/feed/**`: the timeline service has no sub-path today, and phase 2 and 3 add their own paths with
+their own route steps (17 and 25). A request to a sub-path is therefore not forwarded; it falls to the gateway's
+default rule (authenticated, then 404). `TIMELINE_SERVICE_URL` (default `http://localhost:8083`) maps to
+`app.timeline-service.url`; the existing upstream timeouts (`UPSTREAM_CONNECT_TIMEOUT`, `UPSTREAM_READ_TIMEOUT`)
+cover this route too.
+
+## Timeline plan step 11 - the stand-in's base class extends the tweet one
+
+`AbstractTimelineServiceIntegrationTest` extends `AbstractTweetServiceIntegrationTest` and adds a second WireMock.
+The route test is its own cached context (it sets `app.timeline-service.url`); the other contexts keep the
+default URL, which is only dialled when a request reaches the route.
+
+## Timeline plan step 11 - the test Postgres allows 300 connections
+
+The feed route tests add two cached Spring contexts (the route's own and the closed-port one). Each keeps a
+10-connection pool open until the JVM exits, which took the suite past Postgres's default of 100 ("too many
+clients already") and failed `TweetBodyCapsIntegrationTest` at context load. `AbstractPostgresIntegrationTest`
+now starts the container with `max_connections=300`. Test infrastructure only; no assertion changed.

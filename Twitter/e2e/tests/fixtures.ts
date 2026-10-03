@@ -1,11 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test as base, type APIRequestContext, type Page } from '@playwright/test';
 
 
 export interface TestUser {
     email: string;
     username: string;
     password: string;
+}
+
+// A confirmed user with an API client that holds their session cookie.
+export interface Account {
+    user: TestUser;
+    api: APIRequestContext;
+}
+
+interface AccountFixtures {
+    createAccount: () => Promise<Account>;
 }
 
 interface MailpitMessageSummary {
@@ -126,3 +136,35 @@ export async function logInAndWaitForFeed(page: Page, user: TestUser) {
 
     await expect(page).toHaveURL(/\/feed$/);
 }
+
+export async function logInViaApi(api: APIRequestContext, user: TestUser) {
+    const response = await api.post('/api/v1/auth/login', {
+        data: {
+            identifier: user.username,
+            password: user.password,
+        },
+    });
+
+    expect(response.ok()).toBe(true);
+}
+
+// Registers, confirms by the emailed link and logs in, all through the API. Each account gets its own client,
+// because the session is a cookie and two users must not share a cookie jar.
+export const test = base.extend<AccountFixtures>({
+    createAccount: async ({ playwright, baseURL }, use) => {
+        const clients: APIRequestContext[] = [];
+
+        await use(async () => {
+            const user = newUser();
+            const api = await playwright.request.newContext({ baseURL });
+
+            clients.push(api);
+            await registerAndConfirmViaApi(api, user);
+            await logInViaApi(api, user);
+
+            return { user, api };
+        });
+
+        await Promise.all(clients.map((client) => client.dispose()));
+    },
+});

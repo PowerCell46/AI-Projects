@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.event.UserFollowedEventDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.SelfFollowException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
@@ -28,7 +29,9 @@ public class FollowServiceImpl implements FollowService {
 
     private final Clock clock;
 
-    private final String topic;
+    private final String followedTopic;
+
+    private final String unfollowedTopic;
 
     private final OutboxService outboxService;
 
@@ -38,13 +41,15 @@ public class FollowServiceImpl implements FollowService {
 
     public FollowServiceImpl(
             Clock clock,
-            @Value("${app.kafka.user-followed.name}") String topic,
+            @Value("${app.kafka.user-followed.name}") String followedTopic,
+            @Value("${app.kafka.user-unfollowed.name}") String unfollowedTopic,
             OutboxService outboxService,
             UserRepository userRepository,
             FollowRepository followRepository
     ) {
         this.clock = clock;
-        this.topic = topic;
+        this.followedTopic = followedTopic;
+        this.unfollowedTopic = unfollowedTopic;
         this.outboxService = outboxService;
         this.userRepository = userRepository;
         this.followRepository = followRepository;
@@ -60,7 +65,7 @@ public class FollowServiceImpl implements FollowService {
                 UUID.randomUUID(), followerId, target.getId(), now.truncatedTo(ChronoUnit.MICROS));
         if (inserted == 1) {
             adjustCounts(followerId, target.getId(), ADDED);
-            outboxService.enqueue(topic, target.getId().toString(), newFollowedEvent(followerId, target, now));
+            outboxService.enqueue(followedTopic, target.getId().toString(), newFollowedEvent(followerId, target, now));
         }
     }
 
@@ -72,6 +77,7 @@ public class FollowServiceImpl implements FollowService {
         int deleted = followRepository.deleteByPair(followerId, targetId);
         if (deleted == 1) {
             adjustCounts(followerId, targetId, REMOVED);
+            outboxService.enqueue(unfollowedTopic, followerId.toString(), newUnfollowedEvent(followerId, targetId));
         }
     }
 
@@ -100,6 +106,15 @@ public class FollowServiceImpl implements FollowService {
                 .followeeEmail(target.getEmail())
                 .followerUsername(follower.getUsername())
                 .followeeUsername(target.getUsername())
+                .build();
+    }
+
+    private UserUnfollowedEventDTO newUnfollowedEvent(UUID followerId, UUID targetId) {
+        return UserUnfollowedEventDTO.builder()
+                .eventId(UUID.randomUUID())
+                .followerId(followerId)
+                .followeeId(targetId)
+                .occurredAt(clock.instant())
                 .build();
     }
 

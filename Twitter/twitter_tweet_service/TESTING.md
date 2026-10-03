@@ -97,6 +97,23 @@ Added in step 5:
 - `GET` after delete returns 404 (`should_return_404_when_the_deleted_tweet_is_read`)
 - `GET image` after delete returns 404 (`should_return_404_when_the_deleted_tweets_image_is_read`)
 
+## `GET /internal/v1/tweets?ids=a,b`
+
+`TweetControllerIntegrationTest.Internal` - service-to-service batch read for the timeline service; needs no `X-User-Id`.
+
+- Returns 200 with the tweet body shape (`id`, `authorId`, `content`, `images` without `objectKey`) (`should_return_200_with_the_body_shape_when_the_tweet_exists`)
+- Unknown ids are left out, known ones returned in any order (`should_return_only_the_tweets_that_exist_when_some_ids_are_unknown`)
+- No existing id returns 200 with an empty list (`should_return_an_empty_list_when_no_id_exists`)
+- A repeated id returns its tweet once (`should_return_each_tweet_once_when_an_id_is_repeated`)
+- A comma-separated `ids` value is accepted (`should_accept_a_comma_separated_list_when_ids_are_joined`)
+- Works without `X-User-Id` (`should_not_require_the_user_id_header`)
+- Reading counts no view: `views` stays 0 in the response and in Mongo (`should_not_count_a_view_when_tweets_are_read`)
+- 100 ids return 200 (`should_return_200_when_exactly_100_ids_are_given`)
+- 101 ids return 400 "Provide between 1 and 100 tweet ids." (`should_return_400_when_101_ids_are_given`)
+- An empty `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_empty`)
+- A missing `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_missing`)
+- A non-UUID id returns 400 (`should_return_400_when_an_id_is_not_a_uuid`)
+
 ## Concurrency
 
 `TweetConcurrencyIntegrationTest` - through MockMvc, every scenario releases its threads from one latch and asserts only the final state.

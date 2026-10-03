@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.Follow;
+import com.peter_gerdzhikov.twitter_api_gateway.repositories.projections.FollowerEdge;
 
 public interface FollowRepository extends JpaRepository<Follow, UUID> {
 
@@ -91,6 +92,32 @@ public interface FollowRepository extends JpaRepository<Follow, UUID> {
             ORDER BY f.createdAt DESC, f.id DESC
             """)
     List<Follow> findFollowingAfter(
+            @Param("userId") UUID userId,
+            @Param("createdAt") Instant createdAt,
+            @Param("id") UUID id,
+            Pageable limit
+    );
+
+    /**
+     * Same order and keyset as {@link #findFollowersFirstPage}, but selecting only ids and the timestamp, so a
+     * page of a thousand followers loads no user rows.
+     */
+    @Query("""
+            SELECT f.id AS followId, f.follower.id AS followerId, f.createdAt AS createdAt
+            FROM Follow f
+            WHERE f.following.id = :userId
+            ORDER BY f.createdAt DESC, f.id DESC
+            """)
+    List<FollowerEdge> findFollowerEdgesFirstPage(@Param("userId") UUID userId, Pageable limit);
+
+    @Query("""
+            SELECT f.id AS followId, f.follower.id AS followerId, f.createdAt AS createdAt
+            FROM Follow f
+            WHERE f.following.id = :userId
+              AND (f.createdAt < :createdAt OR (f.createdAt = :createdAt AND f.id < :id))
+            ORDER BY f.createdAt DESC, f.id DESC
+            """)
+    List<FollowerEdge> findFollowerEdgesAfter(
             @Param("userId") UUID userId,
             @Param("createdAt") Instant createdAt,
             @Param("id") UUID id,

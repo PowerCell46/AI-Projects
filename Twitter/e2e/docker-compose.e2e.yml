@@ -19,6 +19,46 @@ services:
       retries: 5
       start_period: 10s
 
+  postgres-timeline:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: twitter_e2e
+      POSTGRES_PASSWORD: twitter_e2e
+      POSTGRES_DB: twitter_timeline_e2e
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twitter_e2e -d twitter_timeline_e2e"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo:
+    image: mongo:8.2
+    # A single-node replica set, because the tweet service's multi-document transactions need one
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    # Initiates the replica set on the first run. Healthy once rs.status().ok is 1
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval
+          "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]}).ok }"
+          | grep -q 1
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
   kafka:
     image: apache/kafka:4.3.1
     environment:
@@ -105,6 +145,7 @@ services:
       DATASOURCE_USERNAME: twitter_e2e
       DATASOURCE_PASSWORD: twitter_e2e
       JWT_SECRET: e2e-test-only-jwt-secret-not-for-any-real-use-0123456789abcdef
+      INTERNAL_API_SECRET: e2e-test-only-internal-secret-not-for-any-real-use-0123456789
       COOKIE_SECURE: "false"
       BCRYPT_STRENGTH: 4
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -119,6 +160,8 @@ services:
       # poller has to run; half a second keeps the wait short.
       OUTBOX_POLL_FIXED_DELAY_MS: 500
       UNCONFIRMED_CLEANUP_CRON: 0 0 4 29 2 *
+      TWEET_SERVICE_URL: http://tweet-service:8081
+      TIMELINE_SERVICE_URL: http://timeline-service:8083
     deploy:
       resources:
         limits:
@@ -169,4 +212,68 @@ services:
       mailpit:
         condition: service_healthy
       gateway:
+        condition: service_healthy
+
+  tweet-service:
+    build: ../twitter_tweet_service
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/twitter_tweet_service_e2e?directConnection=true
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: twitter-e2e
+      MINIO_SECRET_KEY: twitter-e2e-secret
+      # The feed shows a tweet once its event has left the outbox, so the poller has to run; half a second
+      # keeps the wait short.
+      OUTBOX_POLL_FIXED_DELAY_MS: 500
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  timeline-service:
+    build: ../twitter_timeline_service
+    environment:
+      TIMELINE_DATASOURCE_URL: jdbc:postgresql://postgres-timeline:5432/twitter_timeline_e2e
+      TIMELINE_DATASOURCE_USERNAME: twitter_e2e
+      TIMELINE_DATASOURCE_PASSWORD: twitter_e2e
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GATEWAY_INTERNAL_URL: http://gateway:8080
+      TWEET_SERVICE_URL: http://tweet-service:8081
+      # The same secret as the gateway's: it guards the gateway's /internal/v1/** endpoints.
+      INTERNAL_API_SECRET: e2e-test-only-internal-secret-not-for-any-real-use-0123456789
+      # Never fires: 29 February at 04:00, as the gateway's cleanup job.
+      FEED_CLEANUP_CRON: 0 0 4 29 2 *
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      postgres-timeline:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      tweet-service:
         condition: service_healthy

@@ -38,6 +38,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.UnsupportedImag
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.SelfFollowException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +75,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler({InvalidCursorException.class, InvalidPageSizeException.class})
     public ResponseEntity<ErrorResponseDTO> handleInvalidPagination(RuntimeException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(UserIdsOutOfRangeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserIdsOutOfRange(UserIdsOutOfRangeException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
