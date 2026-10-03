@@ -1,163 +1,290 @@
 # Twitter Frontend — plan
 
-**Status: built 2026-10-01 (all 12 steps done); open items are in the TODO section.** Designed via `/grill-me` on 2026-10-01 (Q-numbers in parentheses).
-Visual source of truth: `AuthenticationViewsDesigns.md` (the "Hadal Descent" brief, §-numbers below). This plan
-records where the build departs from or extends the brief; everything not mentioned here is built as the brief says.
+**Status: phase 2 (feed) designed via `/grill-me` on 2026-10-04 (Q-numbers in parentheses); not started.**
+Phase 1 (the "Hadal Descent" auth flow) was built 2026-10-01; its plan is in git history (`git show 95502e1:./PLAN.md`
+from this folder) and its still-open items are under "Carried over" below.
+
+Visual source of truth: `feed-design.md` (§-numbers below). This plan records where the build departs from or extends
+the brief; everything not mentioned here is built as the brief says.
+
+Two steps touch other projects, marked **[gateway]** and **[timeline]**. They follow that project's `CLAUDE.md` and
+standing rules (`java-code-style`, `java-junit`, `TESTING.md`, `DECISIONS.md`, `mvn verify` 3×).
 
 **Hard rule:** no step starts on a red or missing test, each step ends green. Invoke `frontend-code-style` before
 touching any `.ts`/`.tsx`/`.css`.
 
 ## Design in short
 
-- **Stack (copied from `../../SignalFlow/frontend`):** Vite 8, React 19, TypeScript 6 (`strict`), react-router 7,
-  oxlint, 4-space indent, plain co-located CSS. Dev server `:5173`, `/api` proxied to the gateway on `:8080` (Q10).
-  The proxy target comes from an env var in `vite.config.ts` (default `http://localhost:8080`) so e2e can repoint it.
-  No frontend container or Caddy yet (Q10).
-- **New dependencies (need approval in step 1):** `react-router-dom`; dev: `vitest`, `jsdom`,
-  `@testing-library/react`, `@testing-library/user-event`. In `../e2e`: `@playwright/test`, `pg`, `@types/pg` (Q11–12).
-- **Fonts:** Google Fonts `<link>` in `index.html`: IBM Plex Mono 400/500, Inter Tight 400, `display=swap` (Q13).
-- **Routes (`src/routes.ts`):** `/login`, `/register`, `/confirm`, `/resend`, `/feed`; `/` and unknown paths →
-  `/feed` or `/login` by session (Q8–9). On app load `me` decides the session; logged in → auth routes redirect
-  to `/feed`; logged out → `/feed` redirects to `/login`.
-- **API (`src/api/endpoints.ts` + `src/api/auth.ts`):** `register`, `login`, `logout`, `me`, `confirm`,
-  `resendConfirmation`. `AuthApiError` carries `status` and the gateway's `messages[]` (`ErrorResponseDTO`
-  `{status, messages, timestamp}`); a failed `fetch` (network) throws it with status `0`.
-- **Units:** the brief's px become rem (÷16) per the style skill; px only for borders/hairlines and the `720px`
-  breakpoint. Root font `100%` on `html`, one band (the brief is already fluid via `clamp()`).
+### Pages and routes
 
-### Flows (one machine, step arrays per flow — §4)
+- **`/feed`** and **`/saved`** (new), both behind `ProtectedRoute`, inside one layout route (the shell): the header,
+  the compose modal and an `<Outlet>`. Both pages render the same post list; only the fetch differs (Q4). The brand
+  `TWITTER` links to `/feed`.
+- The placeholder `FeedPage` (`DescentStage`, `@username`, `LOG OUT`) is replaced; `LOG OUT` moves into the menu.
+- `/saved` shows a mono `SAVED TWEETS` label above its list.
+- **Menu (Q4):** `SAVED TWEETS` → `/saved`, `LOG OUT`. EDIT ACCOUNT and LIKED TWEETS are left out (accepted gaps).
 
-| Flow | Steps | Seafloor |
+### What the backend gives (as of 2026-10-04)
+
+| Need | Call | Notes |
 |---|---|---|
-| login | identifier (text, `autocomplete="username"`) → password (`current-password`) | 4900 |
-| register | email (`email`, `autocomplete="email"`) → username (`username`) → password (`new-password`) | 10910 |
-| resend (Q3) | `IDENTITY` / "Where should we send it?" / placeholder "email address", type email, depth 140 | 4900 |
+| Feed page | `GET /api/v1/feed?cursor=&size=` | `{items, nextCursor}`, newest first, own posts included, 7-day retention |
+| Saved page | `GET /api/v1/saved-tweets?cursor=&size=` | same shape, `savedAt` order |
+| Save / unsave | `PUT` / `DELETE /api/v1/saved-tweets/{tweetId}` | `204`, idempotent |
+| Like / unlike | `PUT` / `DELETE /api/v1/likes/{tweetId}` | **stub, step 1** — `204`, stores nothing |
+| Report views | `POST /api/v1/views` `{tweetIds}` | `204`, 1–50 ids |
+| Publish | `POST /api/v1/tweets` multipart `content` + `images` | `201` `TweetResponseDTO` (no author) |
+| Image bytes | `GET /api/v1/tweets/{tweetId}/images/{imageId}` | built by the client; the item lists only image ids |
+| Own picture | `GET /api/v1/users/{username}` | `profilePictureUrl`; `me` has no picture |
 
-- **Steps don't change the URL** (Q9): each advance pushes a history entry on the same path with the step index in
-  `history.state`; `popstate` steps back. Footer link switches `/login` ↔ `/register` (index 0, horizon 140,
-  forward transition, §5). Refresh restarts at step 1 — nothing typed is persisted.
-- **Horizon positioning (§4 fix):** the horizon element is the stage's full height and moves by
-  `translateY(y%)`, so `%` resolves against the stage height, the same basis as the ticks.
+- Item shape after step 2: `{id, views, savedByMe, content, createdAt, updatedAt, author: {id, username,
+  profilePictureUrl}, images: [{id, sizeBytes, contentType}]}`.
+- **A short or empty page is not the end** (deleted posts are skipped server-side); only `nextCursor: null` is.
+- Picture URLs come back as `/api/v1/files/{id}`; the client prefixes `VITE_BASE_API_URL`.
 
-### Validation and errors
+### Post cell (§3)
 
-- **Client checks mirror `RegisterRequestDTO` exactly (Q5)**, run on Enter before advancing; the gauge holds.
-  Email `^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$` and ≤254; username `^[A-Za-z0-9_]{3,15}$`; password 8–72 chars,
-  ≤72 UTF-8 bytes, a lowercase, an uppercase and a digit. Messages are the server's wording, authored uppercase:
-  `EMAIL MUST BE A VALID EMAIL ADDRESS`, `USERNAME MUST BE 3 TO 15 LETTERS, DIGITS OR UNDERSCORES`,
-  `PASSWORD MUST BE 8 TO 72 CHARACTERS`, `PASSWORD MUST CONTAIN A LOWERCASE LETTER, AN UPPERCASE LETTER AND A DIGIT`.
-  Login and resend only check non-empty (login never reveals the rules); resend also checks email format.
-- **Empty field:** `NO VALUE ENTERED — HOLDING AT DEPTH`, gauge holds (§5).
-- **Server responses → screen:**
+- **Author row (Q6):** avatar, username once in the display-name style (Inter Tight 500, white), **no `@handle`**,
+  time on the right.
+- **Avatars (Q13):** the real picture when `profilePictureUrl` is set (square, `1px` border); otherwise two
+  letters on a tint. Letters: the first two letters or digits of the username, uppercased (`peter_g` → `PE`). Tint:
+  one of the brief's eight, picked from a hash of the user id, so a person always gets the same one.
+- **Times (Q12):** `NOW` (<1 min), `5M`, `3H`, `2D` (<7 days), `12 SEP`, `12 SEP 2025` (other year — only possible
+  on `/saved`). One shared one-minute tick re-renders them. `<time datetime="<ISO>">` carries the full value.
+- **Body:** line breaks kept (`white-space: pre-wrap`), `dir="auto"`, links not clickable. **Bidi controls stripped
+  (Q21)** before rendering: U+202A–U+202E and U+2066–U+2069 (closes the tweet service's "first consumer that renders
+  `content`" gap). LRM/RLM, emoji and right-to-left scripts stay.
+- **Images:** grid per §3, `object-fit: cover` into the fixed aspect boxes, `loading="lazy"`, no click action.
+  **`alt="Image 1 of 3"`** etc. (Q10).
+- **Like (Q1, Q2, Q17):** heart + count, the count **always shown, `0` included**. Every post loads at `0`, not
+  liked (the stub has no read). A click flips at once and moves the count ±1, then calls the stub.
+- **Save (Q3, Q5):** the bookmark's initial state is `savedByMe`. On `/saved` an unsaved post **stays in place** with an
+  empty bookmark until the next load.
+- **Optimistic toggles (§4):** flip immediately; requests for one post and one action go one at a time, and the last
+  click wins (a click while a request is in flight is sent after it if the state differs). A failure reverts
+  silently; a `401` goes to login (Q14).
+- **Fill icon (§4):** one `FillIcon` component (outline path + clipped solid copy, rising `<rect>`), clipPath ids from
+  `useId()`. Heart and bookmark differ only in path and active colour.
 
-| Response | Where | Gauge | Message |
-|---|---|---|---|
-| register `409` "Email already registered." | back to step 1 (Q4) | travels to step 1 depth | `EMAIL ALREADY REGISTERED` |
-| register `409` "Username already taken." | back to step 2 | travels to step 2 depth | `USERNAME ALREADY TAKEN` |
-| register `400` | earliest failing field's step | travels there | that field's server message |
-| login `401` | password step | rises 420 m, alarm colours (§5) | `INVALID CREDENTIALS — RISING 420 M` |
-| login `403` (Q6) | password step | holds | `PLEASE CONFIRM YOUR EMAIL FIRST` + secondary `RESEND LINK` → `/resend` (email prefilled if the identifier contains `@`) |
-| network / `5xx` / anything else (Q7) | current step | holds | `SIGNAL LOST — TRY AGAIN`; Enter retries |
+### List and pagination (§7, Q11)
 
-  Server messages are shown uppercased with the trailing period dropped. Typed values survive every error; any
-  keystroke clears it (§5). 409s are told apart by exact message text — see accepted gaps.
+- One list hook shared by both pages: items, cursor, status. A busy ref guards against parallel fetches; pages are
+  **appended, deduplicated by id**. An `IntersectionObserver` sentinel with a `500px` bottom root margin triggers the
+  next fetch. If a page adds nothing visible but has a cursor, the hook fetches the next one right away.
+- Polite live region: "5 more posts loaded"; focus never moves on append.
+- Bottom-of-list states, mono like the loading text:
 
-### Screens beyond the brief
+| Situation | `/feed` | `/saved` |
+|---|---|---|
+| Loading | `■ FETCHING MORE` (blinking square, §7) | same |
+| `nextCursor: null` | `END OF FEED` | `END OF SAVED TWEETS` |
+| No items at all | `NOTHING HERE YET` | `NO SAVED TWEETS YET` |
+| Load failed | `SIGNAL LOST` + `TRY AGAIN` button | same |
 
-- **Register arrival (Q1):** eyebrow `ACCOUNT ESTABLISHED`, headline "Check your inbox.", mono line
-  `CONFIRMATION SENT TO <EMAIL>`, secondary `RESEND` button, footer → login. No redirect — no session exists.
-- **Login arrival:** brief copy; holds for the rule draw (150 ms + 1.3 s), then `navigate(ROUTES.feed)`;
-  reduced motion → immediate.
-- **`/confirm` (Q2):** same stage, no input. Calls `confirm` once on mount (guarded by a ref — StrictMode runs
-  effects twice in dev and the token is single-use). While pending: the arrival rule draws as the loader (§5).
-  - `204` → eyebrow `ACCOUNT CONFIRMED`, headline "You're cleared to descend.", horizon to 4900, primary `LOG IN` → `/login`.
-  - `400` or no `token` param → alarm treatment `LINK EXPIRED OR ALREADY USED`, secondary `RESEND LINK` → `/resend`,
-    footer → login.
-  - network/other → `SIGNAL LOST — TRY AGAIN` with a retry button.
-- **`/resend` (Q3):** the one-step flow above. On submit (always `202`) → arrival: eyebrow `LINK DISPATCHED`,
-  line `IF AN ACCOUNT IS WAITING, A NEW LINK IS ON ITS WAY`, footer → login.
-- **Resend cooldown (Q14):** after any send, the button reads `LINK SENT` and is disabled for 60 s (matches the
-  gateway's `CONFIRMATION_RESEND_COOLDOWN`), on the register arrival and on `/resend`.
-- **`/feed` placeholder (Q8):** `@username` from `me` and a `LOG OUT` button (`logout` → `/login`). Nothing else;
-  the real feed replaces it.
+### Views (Q7)
 
-### Accessibility deltas
+- Report a post once it has been at least half visible for 1 s, **once per post per page load**, on both pages.
+  Queue the ids; `POST /api/v1/views` every 5 s while the queue is non-empty (chunks of ≤50), and on
+  `visibilitychange` → hidden / `pagehide` with `fetch(…, { keepalive: true })`. A failed batch is dropped.
+- The `views` count is **not rendered**; it belongs on the tweet-details page (out of scope).
 
-- **Contrast (Q15):** the `.34`, `.40` and `.50` pale alphas all fail 4.5:1 on `--deep` (2.6 / 3.2 / 4.4). All three
-  become `.52` (4.7:1). `.26`/`.30` stay — decorative, `aria-hidden`.
-- **Focus (Q17):** the input's rule fill is its focus indicator. Buttons and links get a `1px` `--pale` outline
-  with an offset on `:focus-visible` only — no `--glow`, no radius.
-- Touch targets ≥ 44×44 px: buttons and the footer link get `min-height: 2.75rem` / padding.
-- Everything else per §6 (labels, one `<form>`, persistent hidden identifier, live region, `role="alert"`,
-  reduced motion).
+### New posts while reading (Q19)
 
-## Test strategy (Q11–12)
+- `/feed` only: every 60 s (paused while the tab is hidden) fetch the first page without a cursor. Items ordered
+  before the current top post (keyset order `createdAt DESC, id DESC`) and not already shown count as new.
+- If any: a sticky `NEW POSTS` button under the header (mono, `1px` pale border, **no `--glow`** — §9 limits it to
+  four roles). Tap: prepend them and scroll to top. If the whole page (20) is new, a gap is possible, so the tap
+  reloads the list from the top instead (the one exception to "never replace").
 
-- **Unit (Vitest):** depth maths, validators (cases mirror the register `400` rows of
-  `../twitter_api_gateway/TESTING.md`), error → screen mapping, API module with a stubbed `fetch`.
-- **Component (Vitest + RTL, jsdom):** flows with a stubbed API module and fake timers (`vi.useFakeTimers`,
-  `requestAnimationFrame` faked) — no real waits. Assert DOM state, ARIA and `data-*` attributes, not pixels.
-- **E2E (Playwright, `../e2e/`, layout as `../../SignalFlow/e2e`):** own compose project — Postgres, Kafka,
-  MinIO, gateway built from `../twitter_api_gateway/Dockerfile` (`BCRYPT_STRENGTH=4`, `CONFIRMATION_LINK_BASE_URL`
-  → the e2e frontend's `/confirm`, `OUTBOX_POLL_FIXED_DELAY_MS` set to a day so outbox rows are never published
-  and deleted, cleanup cron set to never). Playwright's `webServer` starts Vite with the proxy pointed at the e2e
-  gateway. `reducedMotion: 'reduce'`, fresh `e2e-<uuid>` user per test, `retries: 0`, Playwright's auto-waiting
-  only (no `waitForTimeout`). The confirmation link comes from the newest `outbox` row whose `payload->>'email'`
-  matches (`pg`).
-- **Manual gates:** visual check vs the brief at 1440, 720 and 320 px, plus reduced motion; iOS keyboard (step 10).
-- **Exit:** `npm run build`, `npm run lint`, `npm test` clean, and `npx playwright test` green **3× in a row**.
+### Compose (§6, Q8, Q9, Q18, Q20)
 
-## Steps — all done 2026-10-01
+| Element | Text |
+|---|---|
+| Eyebrow | `NEW POST` |
+| Headline | "What's worth sending up?" |
+| Placeholder | "write something" |
+| Attach | `ATTACH IMAGE` |
+| Counter | `n / 280` |
+| Publish | `PUBLISH ⌘↵` (Mac), `PUBLISH CTRL↵` (else) |
+| Cancel | `CANCEL` |
+| Header button | `POST` (label hidden ≤600px) |
 
-1. **Scaffold:** Vite, React, TS, oxlint, tokens in `index.css`, routes, endpoints, proxy to the gateway.
-2. **Pure logic:** `depth`, `flows`, `validation`, `authErrors` (unit-tested).
-3. **API module:** `src/api/auth.ts`, `AuthApiError` (status `0` on a network failure).
-4. **Stage and depth readout:** `DescentStage`, `Ruler`, `Horizon`, `useDepthCount`.
-5. **Step machine:** `StepFlow`, `useStepFlow`, `useStepTransition`; history-driven steps.
-6. **Login and register wiring:** error table, arrival states, resend cooldown, `AuthContext`, route guards.
-7. **`/feed` placeholder:** `@username` and `LOG OUT`.
-8. **`/confirm`:** one confirm call under StrictMode, expired and signal-lost states.
-9. **`/resend`:** one-step flow, prefill from router state, always-202 arrival.
-10. **iOS keyboard check:** iPhone 17 Pro, Safari, every flow: the question and input stayed visible, so no
-    `visualViewport` fix. How to run it: `LAN-DEV-SERVER.md`.
-11. **E2E:** `../e2e`, 10 Playwright tests, green 3× in a row from a fresh stack. The e2e gateway sets
-    `CONFIRMATION_RESEND_COOLDOWN=0s`, and the `typeStep` helper waits for `data-slide="idle"` because the form
-    ignores Enter while a step slides in.
-12. **Finish:** style review (no violations), `exploit-report-2026-10-01.md` (no Critical, High or Medium), `CLAUDE.md`.
+- **Counter:** Unicode code points of the trimmed text (the tweet service's rule). Past 280 it turns `--alarm` and
+  Publish is disabled; Publish is also disabled when there is no text and no image.
+- **Images (Q9):** previews under the text, each with a labelled remove button (object URLs revoked on remove and
+  close). Checked on pick, error next to the attach control, in the server's wording uppercased without the period:
+  5th image → `A TWEET CAN HAVE AT MOST 4 IMAGES`; not JPEG/PNG/WebP (browser MIME type) →
+  `UNSUPPORTED IMAGE TYPE`; over 5,242,880 bytes → `THE UPLOADED FILE IS TOO LARGE`. The server's magic-byte check
+  still decides.
+- **Publish errors:** the server's message (uppercased, no period) next to Publish; network/`5xx` →
+  `SIGNAL LOST — TRY AGAIN`. The draft stays.
+- **Discard (Q18):** Cancel or Escape with an empty draft closes. With text or images, the button row becomes
+  `DISCARD POST?` + `DISCARD` (`--alarm`, destructive) + `KEEP EDITING`; Escape there means keep editing. No
+  browser dialog.
+- **Your new post (Q8):** on `201` the modal closes, focus returns to `POST`, and the post is shown **at the top of
+  `/feed` at once**, built from the reply + `me` + your own picture (`views` 0, `savedByMe` false). The shell keeps
+  the posts published this session and hands them to the feed (outlet context); the list deduplicates them when the
+  fan-out delivers the same id.
+- Dialog requirements per §6: focus trap, `role="dialog"`, `aria-modal`, scroll lock, autofocus after 80 ms.
 
-Exit state: 156 unit and component tests, `npm run build` and `npm run lint` clean.
+### Header and menu (§5)
 
-## TODO
+- Avatar: your picture from `GET /users/{username}` once per shell mount, letters until it loads or if none.
+- Menu: menu-button pattern (`aria-haspopup="menu"`, `aria-expanded`, `role="menu"`/`menuitem`), arrow keys,
+  Escape, outside click closes, focus back to the avatar. `LOG OUT` keeps the placeholder's behaviour (`logout` →
+  `signOut`; failure shows `SIGNAL LOST` in the menu).
 
-- [ ] **Visual check at 720 px and 320 px** (carried over from step 4), with reduced motion on and off. Check
-      `/login`, `/register`, the arrival states, `/confirm` and `/resend`. Only 1440 px and the iPhone were looked at.
-- [ ] **Footer switch animation:** `/login` ↔ `/register` remounts the page instead of animating the step block
-      forward and returning the horizon to 140 m, as brief §5 describes. Needs one shared page component (or a key
-      kept across both routes).
-- [ ] **Referrer policy** (exploit report #1, Low): add `<meta name="referrer" content="same-origin">` to
-      `index.html`, so the confirmation token in `/confirm?token=…` never leaves the origin. Before any deployment.
-- [ ] **Content-Security-Policy and self-hosted fonts** (exploit report #2, Low): with the first frontend
-      deployment, send a CSP and serve the fonts locally so `style-src 'self'` works.
-- [ ] **E2E with motion on** (optional): the suite runs headless Chromium with `reducedMotion: 'reduce'`, so step
-      transitions are never exercised. Add one project or test for it if a motion bug shows up.
-- [ ] **Commit:** nothing from `frontend/`, `e2e/`, `.env.example` or the plans is committed yet.
+### Session expiry (Q14)
+
+- `src/api/http.ts` (extracted from `auth.ts`): one `send`, one `ApiError` (`AuthApiError` renamed; same `status`
+  and `messages`, `0` on a network failure). A `401` from any **non-auth** endpoint calls the handler the
+  `AuthProvider` registers → `signOut` → `ProtectedRoute` sends the user to `/login`. Auth endpoints keep their own
+  `401` meaning (wrong password, anonymous `me`). An open draft is lost.
+
+### Colours, type, units (Q15, Q16)
+
+- **One palette for the whole app (Q15):** the feed uses the login's `--deep` (`#00081F`) wherever the brief says
+  `--bg`, and the login's `--pale` (`#DCE6FA`) as the alpha base. The brief's `#050E22` and `#E2E9F7` are not used.
+- New tokens in `src/index.css`: `--cell` `#07142C`, the menu surface `#071634`, `--like` `#FF3B5C`, the brief's
+  alphas on the login pale, and the eight avatar tints.
+- **Contrast (Q16):** brand `.50`, handles/times `.40`, modal meta and counter `.40` and loading text `.35` fail
+  4.5:1 on `--deep`/`--cell` (4.4 / 3.3 / 3.2 / 2.7). All become `.52` (≈4.7:1), the login's `--pale-secondary`.
+  Action icons at `.42` pass 3:1 on `--cell` (3.5) and stay. The textarea placeholder follows the login's
+  `--pale-placeholder`.
+- Inter Tight **500** is added to the Google Fonts link (display names).
+- Units per the style skill: rem everywhere, px only for borders, outlines and breakpoints. The brief's `600px`
+  breakpoint is used as written (the auth screens keep `720px`).
+
+### Calls made without a question (object if any is wrong)
+
+- Edit and delete of your own posts are not built (the brief has no control for them).
+- The `POST` button stays in the header on phones (§8's fallback is a gap with a trigger).
+- No new dependencies. jsdom has no `IntersectionObserver`; `src/test/setup.ts` gets a controllable test double.
+- **[gateway]** the like stub has no service layer: there's no logic to delegate. Recorded in the gateway's
+  `DECISIONS.md`.
+
+## Test strategy
+
+- **Unit (Vitest):** relative time, initials and tint, bidi stripping, compose checks (code points, file rules),
+  list merge/dedupe and "is newer" ordering, view batching, every new API module with a stubbed `fetch`.
+- **Component (Vitest + RTL, jsdom, fake timers, API modules stubbed with `vi.mock`):** pagination states and
+  auto-continue on short pages; like/save optimistic, revert and last-click-wins; menu keyboard and focus; compose
+  focus trap, Escape/discard, `⌘/Ctrl+Enter`, previews, errors, prepend; `NEW POSTS` after advancing 60 s; views
+  dwell and batching through the observer double; `401` → `/login`. DOM, ARIA and `data-*` state, not pixels.
+  Under fake timers advance in stages (`src/test/stepFlowHelpers.ts`); never wait in real time.
+- **E2E (Playwright, `../e2e`, `reducedMotion: 'reduce'`, fresh users per test, `expect.poll` for fan-out):**
+  1. Post text + 1 image → at the top at once, image loads.
+  2. Alice follows Bob; Bob's post is in Alice's feed.
+  3. Save, reload → bookmark still filled; the post is on `/saved`.
+  4. Unsave on `/saved` → stays with an empty bookmark; gone after reload.
+  5. Like → heart filled, count `0` → `1`.
+  6. 25 posts → scrolling loads the second page and ends at `END OF FEED`.
+  7. Bob posts while Alice is on `/feed` → `NEW POSTS` appears (Playwright's `page.clock` fast-forwards 60 s); tap
+     shows Bob's post.
+  8. A post kept on screen gets its view counted (checked through `GET /api/v1/views`).
+  9. Typing a post and pressing Escape asks `DISCARD POST?`.
+  10. Menu: `SAVED TWEETS` → `/saved`; `LOG OUT` → login.
+  11. Cookie cleared mid-session → the next action lands on `/login`.
+
+  Fixtures gain an image upload in `postTweet`. The e2e stack rebuilds the gateway and timeline images (steps 1–2).
+- **Manual gates:** visual check against the brief at 1440, 600 and 320 px, reduced motion on and off; iPhone
+  Safari via `LAN-DEV-SERVER.md` (thumb reach of `POST`, compose keyboard, safe areas).
+- **Exit:** `npm run build`, `npm run lint`, `npm test` clean; `npx playwright test` green **3× in a row** from a
+  fresh stack; both backend projects' `mvn verify` green 3×.
+
+## Steps
+
+1. **[gateway] Like stub (Q2).** `PUT` and `DELETE /api/v1/likes/{tweetId}` → `204`, nothing stored. Integration
+   scenarios: each returns `204`, repeat `204`, non-UUID `400`, no cookie `401` (added to the `Security`
+   parameterized paths). `TESTING.md` and `DECISIONS.md` updated in the same change.
+   **Gate:** `./mvnw verify` green 3×.
+2. **[timeline] `savedByMe` on items (Q3).** `TweetItemAssemblyService.assemble` takes the viewer id; one `IN` query
+   on `saved_tweets` per page (as `views`). Feed items true/false per item; saved-list items always true. Scenarios:
+   exact key set (shape tests), per-item correctness with some saved, flips after unsave, saved list all true.
+   `TESTING.md` updated. **Gate:** `mvn verify` green 3×.
+3. **Foundation.** Tokens and font weight (Q15, Q16); `ENDPOINTS` and `ROUTES` (`/saved`); `src/api/http.ts` with
+   `ApiError` and the `401` handler (Q14); API modules `feed`, `savedTweets`, `likes`, `views`, `tweets`, `users`,
+   unit-tested on a stubbed `fetch`. Existing auth tests renamed to `ApiError`, otherwise unchanged.
+   **Gate:** build, lint, test clean; the auth suite unchanged in behaviour.
+4. **Pure helpers.** Relative time, initials and tint, bidi stripping, compose checks, list merge/dedupe/newer.
+   **Gate:** unit tests green.
+5. **Post cell.** Author row with avatar, body, image grid (0–4, alt text), action row, `FillIcon`, optimistic like
+   and save. **Gate:** component tests green.
+6. **Shell and header.** Layout route, brand, `POST` button (opens nothing yet), avatar with picture fetch, menu
+   with `SAVED TWEETS` and `LOG OUT`; the placeholder's tests move to the menu. **Gate:** component tests green.
+7. **Post list on `/feed` and `/saved`.** List hook, sentinel, auto-continue, the four bottom states, live region,
+   minute tick, unsave-stays on `/saved`. **Gate:** component tests green.
+8. **Views reporter.** Observer double, 1 s dwell, once per load, 5 s batches of ≤50, flush on hide.
+   **Gate:** component tests green.
+9. **Compose modal.** Copy, counter, previews and file checks, publish and errors, discard confirmation, keyboard,
+   focus trap, scroll lock, prepend of your own post. **Gate:** component tests green.
+10. **`NEW POSTS`.** 60 s poll on `/feed`, pause when hidden, prepend or reload-from-top. **Gate:** component tests
+    green.
+11. **E2E.** The 11 scenarios above. **Gate:** green 3× in a row from a fresh stack.
+12. **Manual check.** 1440 / 600 / 320 px, reduced motion, iPhone. Fix what it finds (each fix with a test where one
+    can catch it). **Gate:** the user signs off on the visual check.
+13. **Finish.** Style review of every touched file, `exploit-hunter` on the feed, `CLAUDE.md` (routes, the observer
+    double, the like stub), root `PLAN.md` line. **Gate:** no style violations; nothing above Low open.
 
 ## Accepted gaps — revisit when the named trigger lands
 
-- **409s are told apart by exact message text** ("Email already registered." / "Username already taken.").
-  **Trigger:** either message changes → give `ErrorResponseDTO` a `field` or `code`.
-- **Validation rules live twice** (frontend + `RegisterRequestDTO`, Q5). **Trigger:** any rule change → both
-  sides in the same change.
-- **No frontend container / Caddy on `:80`** (Q10); the confirmation link base differs per environment.
-  **Trigger:** first deployment, or the mail service's e2e.
-- **Fonts load from Google** (Q13). **Trigger:** offline use or a privacy requirement → self-host.
-- **Alpha hierarchy flattened** to `.52` for contrast (Q15). **Trigger:** a design pass that wants it back with
-  passing values.
-- **Resend cooldown is a client timer;** a reload re-enables the button (the server still throttles silently).
-- **Login by username can't prefill `/resend`** — the email is unknown.
-- **Session expiry (JWT 1h) is only checked on app load;** `/feed` doesn't react to a mid-session 401.
-  **Trigger:** the real feed → a shared 401 handler.
-- **No forgot-password link** — no backend flow (§7). **Trigger:** password reset exists.
+- **Likes are a stub (Q1, Q2):** nothing stored, every post loads at `0`, a reload forgets your like.
+  **Trigger:** a likes service → a read for counts and `likedByMe`, the `LIKED TWEETS` menu item and page.
+- **No display names (Q6).** **Trigger:** the backend gets one → bring the `@handle` back.
+- **Alt text is generic (Q10).** **Trigger:** the tweet service stores descriptions → a field in compose.
+- **No `EDIT ACCOUNT` (Q4).** **Trigger:** an account screen is designed (the backend already exists).
+- **View counts aren't shown (Q7).** **Trigger:** the tweet-details page.
+- **Views are best-effort:** a failed batch and reports pending when the tab dies are lost.
+- **`NEW POSTS` reads a full feed page every 60 s** per open tab, with both downstream calls. **Trigger:** load
+  concern → a "count newer than" endpoint.
+- **A new user can't follow anyone** — no profile, search or follow UI — so their feed is only their own posts.
+  **Trigger:** profiles or search.
+- **An open draft is lost on session expiry (Q14)** and on reload.
+- **`POST` stays in the header on phones.** **Trigger:** the iPhone check finds the thumb reach bad → a bottom trigger
+  below `600px`, same ghost treatment and upward fill (§8).
+- **Client file checks trust the browser's MIME type;** a renamed file gets the server's `415` message instead.
+- **Edited posts aren't marked** (`updatedAt` is ignored). **Trigger:** an edit UI.
+
+## Carried over from phase 1 (still open)
+
+- Visual check of the auth screens at 720 px and 320 px, reduced motion on and off.
+- Footer `/login` ↔ `/register` switch remounts instead of animating (brief §5 of the auth design).
+- `<meta name="referrer" content="same-origin">` before any deployment (exploit report #1, Low).
+- CSP and self-hosted fonts with the first deployment (exploit report #2, Low).
+- E2E with motion on (optional).
 
 ## Out of scope
-Everything in brief §7; the real feed, profiles, tweets; frontend containerisation; email templates.
+
+Everything in brief §9; edit and delete of your own posts; an image viewer; clickable links or mentions; profile
+pages, follow UI, search; the tweet-details page; the edit-account and liked-tweets pages; frontend containerisation.
+
+## Interview record (`/grill-me`, 2026-10-04)
+
+| Q | Question | Answer |
+|---|---|---|
+| 1 | Likes have no backend — build them? | Yes, against a stub |
+| 2 | Where does the stub live? | Gateway, `PUT`/`DELETE` that do nothing |
+| 3 | How does the bookmark know a post is saved? | Timeline service adds `savedByMe` |
+| 4 | Which menu items get pages? | `/saved` built; menu = SAVED TWEETS + LOG OUT |
+| 5 | Unsave on `/saved` | Post stays, bookmark empties, gone on reload |
+| 6 | No display name | Username once, no `@handle` |
+| 7 | Report views? | Yes, count not shown (tweet details, later) |
+| 8 | Own post after publishing | Shown at the top at once |
+| 9 | Attached images | Previews with remove; errors on pick |
+| 10 | Image descriptions | "Image 1 of 3" |
+| 11 | Bottom-of-list texts | As proposed |
+| 12 | Time format | As proposed, updates every minute |
+| 13 | Profile pictures | Real pictures, letters as fallback |
+| 14 | Login expires mid-session | Go to the login page |
+| 15 | Two background blues | The login's everywhere |
+| 16 | Too-faint small text | Raised to the login's `.52` |
+| 17 | Like count at 0 | Always shown |
+| 18 | Closing with a draft | Ask "Discard post?" |
+| 19 | New posts while reading | `NEW POSTS` button, 60 s check |
+| 20 | Compose texts | As proposed |
+| 21 | Hidden direction characters | Stripped |
+| 22 | E2E list | As proposed |
+| 23 | Plan file | Fresh plan in `frontend/PLAN.md` |
+
+Questions that needed re-asking: Q7, Q8, Q15 (the first wording explained mechanics instead of asking what the user
+sees).
