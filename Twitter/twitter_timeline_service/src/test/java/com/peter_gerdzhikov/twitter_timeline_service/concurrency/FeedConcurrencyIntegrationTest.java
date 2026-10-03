@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_timeline_service.concurrency;
 
+import static com.peter_gerdzhikov.twitter_timeline_service.support.LatchedTasks.runTogether;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -7,11 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Nested;
@@ -31,8 +27,6 @@ import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
  * hand-over, and Kafka's per-key ordering would hide the overlap this suite is about.
  */
 class FeedConcurrencyIntegrationTest extends AbstractListenerIntegrationTest {
-
-    private static final int TIMEOUT_SECONDS = 60;
 
     private static final int PARALLEL_FAN_OUTS = 8;
 
@@ -181,37 +175,6 @@ class FeedConcurrencyIntegrationTest extends AbstractListenerIntegrationTest {
                 .build());
 
         return null;
-    }
-
-    private <T> List<T> runTogether(List<Callable<T>> tasks) throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(tasks.size());
-        CountDownLatch ready = new CountDownLatch(tasks.size());
-        CountDownLatch start = new CountDownLatch(1);
-
-        try {
-            List<Future<T>> futures = new ArrayList<>();
-            for (Callable<T> task : tasks) {
-                futures.add(executor.submit(() -> {
-                    ready.countDown();
-                    start.await();
-
-                    return task.call();
-                }));
-            }
-
-            ready.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            start.countDown();
-
-            List<T> results = new ArrayList<>();
-            for (Future<T> future : futures) {
-                results.add(future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS));
-            }
-
-            return results;
-
-        } finally {
-            executor.shutdownNow();
-        }
     }
 
     @Value

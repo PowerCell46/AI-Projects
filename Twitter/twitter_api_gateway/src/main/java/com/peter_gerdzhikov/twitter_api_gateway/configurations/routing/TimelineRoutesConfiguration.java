@@ -20,12 +20,14 @@ public class TimelineRoutesConfiguration {
 
     public static final String FEED_PATH = "/api/v1/feed";
 
+    public static final String SAVED_TWEETS_PATH = "/api/v1/saved-tweets/**";
+
     @Bean
     public RouterFunction<ServerResponse> timelineServiceRoutes(
             @Value("${app.timeline-service.url}") String timelineServiceUrl
     ) {
         return CallerIdentityFilters.forwardAsTheAuthenticatedUser(route("timeline-service")
-                        .route(path(FEED_PATH), http())
+                        .route(path(FEED_PATH, SAVED_TWEETS_PATH), http())
                         .before(uri(timelineServiceUrl)))
                 .build();
     }

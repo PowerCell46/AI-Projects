@@ -436,3 +436,10 @@ The feed route tests add two cached Spring contexts (the route's own and the clo
 10-connection pool open until the JVM exits, which took the suite past Postgres's default of 100 ("too many
 clients already") and failed `TweetBodyCapsIntegrationTest` at context load. `AbstractPostgresIntegrationTest`
 now starts the container with `max_connections=300`. Test infrastructure only; no assertion changed.
+
+## Timeline plan step 17 - one route, two path patterns, `/api/v1/saved-tweets/**`
+
+`TimelineRoutesConfiguration` keeps its single `timeline-service` route and widens the predicate to
+`path(FEED_PATH, SAVED_TWEETS_PATH)`, so the same four identity filters and the same upstream timeouts apply. The
+saved-tweets pattern is `/**` (the list is the bare path, an item is `/{tweetId}`), unlike the feed's exact match.
+Views (step 25) will add its own constant the same way.

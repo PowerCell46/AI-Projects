@@ -36,7 +36,9 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 
 import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 
 /**
  * What every listener suite needs: a raw producer for the three input topics, the events written the way their
@@ -68,6 +70,9 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
 
     @Autowired
     protected FeedEntryRepository feedEntryRepository;
+
+    @Autowired
+    protected SavedTweetRepository savedTweetRepository;
 
     /**
      * The event as the tweet service writes it, with the text and image ids this service ignores.
@@ -195,5 +200,24 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
                 .atMost(AWAIT_TIMEOUT)
                 .pollInterval(Duration.ofMillis(100))
                 .untilAsserted(() -> assertThat(tweetIdsInFeedOf(userId)).doesNotContain(tweetId));
+    }
+
+    protected void seedSavedTweet(UUID userId, UUID tweetId, UUID authorId, Instant savedAt) {
+        savedTweetRepository.insertIfAbsent(userId, tweetId, authorId, savedAt);
+    }
+
+    protected List<UUID> tweetIdsSavedBy(UUID userId) {
+        return savedTweetRepository
+                .findFirstPage(userId, PageRequest.of(0, 100))
+                .stream()
+                .map(SavedTweet::getTweetId)
+                .toList();
+    }
+
+    protected void awaitSavedLacks(UUID userId, UUID tweetId) {
+        Awaitility.await()
+                .atMost(AWAIT_TIMEOUT)
+                .pollInterval(Duration.ofMillis(100))
+                .untilAsserted(() -> assertThat(tweetIdsSavedBy(userId)).doesNotContain(tweetId));
     }
 }

@@ -197,3 +197,43 @@ the tweet, a tweet posted after the unfollow always stays, the unfollower's olde
 `exploit-report-2026-10-03.md`: nothing above Low. One fixed (`show-details=always` removed from the health
 endpoint), four written into PLAN.md Accepted gaps with triggers (rate limit on feed reads, any `createdAt` on
 `tweet.created`, a WARN line per rejected internal call, a forwarded client `X-Internal-Secret`).
+
+## Step 14 - saved-tweets catalog leaves concurrency to step 19
+
+The plan lists the concurrency scenarios under phase 2's scenarios, but `TESTING.md` scopes itself to HTTP and
+listener tests (the phase 1 concurrency suite isn't in it either). They are written in step 19 as
+`SavedTweetConcurrencyIntegrationTest`, not as `@Disabled` stubs here. The catalog also gains `Identity` (all three
+endpoints need `X-User-Id`), a `5xx` save case, and the `Calls` groups, which the plan's list implies but doesn't name.
+
+## Step 16 - the feed's tweet-and-author join moves to `TweetItemAssemblyService`
+
+The saved list needs the same parallel tweet + author lookup, skip-the-missing and mapping as the feed, so it is
+extracted (`TweetItemAssemblyService.assemble(rows, tweetIdOf, authorIdOf)`) and `FeedServiceImpl` now calls it.
+`FeedServiceImplTest` keeps every assertion; only its `setUp` changed, building the real assembler over the
+mocked lookups, so the join and failure scenarios still run through the feed. `SavedTweetServiceImplTest` mocks
+the assembler. No separate assembler test: both services' tests and both controller suites cover it.
+
+## Step 16 - saved page is `SavedTweetsResponseDTO`, not `FeedResponseDTO`
+
+Same JSON (`items`, `nextCursor`), its own class so the feed's name doesn't leak into the saved endpoint and the
+two can diverge (phase 3 adds `views` to both through the shared item).
+
+## Step 16 - the `tweet.deleted` delete stays in `FeedEntryCleanupService`
+
+`onTweetDeleted` is now `@Transactional` and deletes from `feed_entries` and `saved_tweets` in one transaction
+(the repositories' own `@Transactional` joins it). The class keeps its name; a rename would touch the listener,
+the spy bean and three tests for no behaviour. `save` isn't transactional: it makes the HTTP call first, and
+`open-in-view` is off, so no connection is held meanwhile.
+
+## Step 19 - concurrency suite goes through the HTTP layer; the latch helper is shared
+
+`SavedTweetConcurrencyIntegrationTest` drives `PUT` / `DELETE` through MockMvc (the plan asks for "all 204", which
+is a client-visible status), unlike the feed suite, which calls services because Kafka's per-key ordering would
+hide its overlap. The latch-and-threads helper moved from `FeedConcurrencyIntegrationTest` to
+`support/LatchedTasks`; the feed suite's assertions are unchanged.
+
+## Step 19 - audit result
+
+`exploit-report-2026-10-03-phase2.md`: nothing above Low. One Low (no rate limit on saves, now named in the
+existing accepted gap) and one Info (save racing a delete, already an accepted gap). Nothing fixed, because
+nothing needed it.

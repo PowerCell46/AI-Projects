@@ -77,4 +77,69 @@ class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTes
             awaitFeedHolds(authorId, tweetId);
         }
     }
+
+    @Nested
+    class SavedTweets {
+
+        @Test
+        void should_remove_the_saved_rows_of_the_tweet_across_users_when_it_is_deleted() {
+            UUID tweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            List<UUID> users = newUsers(3);
+            users.forEach(userId -> seedSavedTweet(userId, tweetId, authorId, TWEET_CREATED_AT));
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+
+            users.forEach(userId -> awaitSavedLacks(userId, tweetId));
+        }
+
+        @Test
+        void should_leave_the_saved_rows_of_other_tweets_when_a_tweet_is_deleted() {
+            UUID deletedTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            UUID userId = TestIds.userId();
+            seedSavedTweet(userId, deletedTweetId, authorId, TWEET_CREATED_AT);
+            seedSavedTweet(userId, keptTweetId, authorId, TWEET_CREATED_AT.plusSeconds(1));
+
+            publish(TWEET_DELETED_TOPIC, deletedTweetId.toString(), tweetDeletedJson(deletedTweetId, authorId));
+            awaitSavedLacks(userId, deletedTweetId);
+
+            assertThat(tweetIdsSavedBy(userId)).containsExactly(keptTweetId);
+        }
+
+        @Test
+        void should_remove_the_feed_entries_and_the_saved_rows_together_when_a_tweet_is_deleted() {
+            UUID tweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            UUID userId = TestIds.userId();
+            seedEntry(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedSavedTweet(userId, tweetId, authorId, TWEET_CREATED_AT);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+
+            awaitFeedLacks(userId, tweetId);
+            awaitSavedLacks(userId, tweetId);
+        }
+
+        @Test
+        void should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_was_saved() {
+            UUID tweetId = TestIds.tweetId();
+            UUID sentinelTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            UUID userId = TestIds.userId();
+            seedSavedTweet(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedSavedTweet(userId, sentinelTweetId, authorId, TWEET_CREATED_AT.plusSeconds(1));
+            seedSavedTweet(userId, keptTweetId, authorId, TWEET_CREATED_AT.plusSeconds(2));
+            String delete = tweetDeletedJson(tweetId, authorId);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), delete);
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), delete);
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(sentinelTweetId, authorId));
+            awaitSavedLacks(userId, sentinelTweetId);
+
+            assertThat(tweetIdsSavedBy(userId)).containsExactly(keptTweetId);
+        }
+    }
 }

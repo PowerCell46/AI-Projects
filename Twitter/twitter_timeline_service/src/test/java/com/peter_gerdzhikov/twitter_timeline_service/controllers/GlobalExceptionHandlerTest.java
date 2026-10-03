@@ -26,6 +26,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCallerIde
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 
@@ -58,6 +59,14 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
         assertThat(response.getBody().getMessages()).containsExactly("Upstream service timed out.");
+    }
+
+    @Test
+    void should_return_404_when_the_tweet_does_not_exist() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleTweetNotFound(new TweetNotFoundException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getMessages()).containsExactly("Tweet not found.");
     }
 
     @Test

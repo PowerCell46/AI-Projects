@@ -21,6 +21,7 @@ phase *n+1* starts until phase *n*'s final gate passes (`mvn verify` green 3× i
 | Phase | Scope | Done | Audit |
 |---|---|---|---|
 | 1 | Feed (steps 1–13) | 2026-10-03 | exploit-report-2026-10-03.md |
+| 2 | Saved tweets (steps 14–19) | 2026-10-03 | exploit-report-2026-10-03-phase2.md |
 
 ---
 
@@ -169,59 +170,35 @@ Twitter/
 
 ---
 
-## Phase 2 — Saved tweets
+## Phase 2 — Saved tweets ✅ **Done** (2026-10-03)
 
-### Design
+### What was built
 
-**Entity `SavedTweet` (`saved_tweets`)**
-
-| Column | Notes |
-|---|---|
-| `user_id`, `tweet_id` | PK `(user_id, tweet_id)` |
-| `author_id` | from the existence check; used to fetch the author on read |
-| `saved_at` | `Clock`, truncated to micros; sort key |
-
-Indexes: `ix_saved_tweets_user_saved` `(user_id, saved_at, tweet_id)` for the list, `ix_saved_tweets_tweet`
-`(tweet_id)` for the delete. Kept until unsaved or the tweet is deleted (no retention job).
-
-**Endpoints (Q10), all idempotent, all need `X-User-Id`:**
-
-- **`PUT /api/v1/saved-tweets/{tweetId}`** → `204`. Asks the tweet service whether the tweet exists (`GET
-  /internal/v1/tweets?ids=<id>`); absent → `404` "Tweet not found.". Then `INSERT … ON CONFLICT DO NOTHING`, so
-  saving again keeps the original `saved_at` and still answers `204`.
-- **`DELETE /api/v1/saved-tweets/{tweetId}`** → `204` whether or not it was saved. **No existence check**: a
-  deleted tweet must still be removable.
-- **`GET /api/v1/saved-tweets?cursor=&size=`** → newest saved first, cursor `(saved_at, tweet_id)`, same item
-  shape and the same parallel tweet + author lookups as the feed; missing ones skipped.
-- Malformed `tweetId` → `400`; tweet service down on `PUT` → `502` / `504`.
-
-**`tweet.deleted`** also removes the tweet from every saved list, in the same transaction as the feed delete.
-
-**[gateway] route:** `/api/v1/saved-tweets/**` → timeline service, same filters.
-
-### Scenarios (`SavedTweetControllerIntegrationTest`, plus listener additions)
-
-- **Save:** `204` and stored with the author; again → `204`, one row, `saved_at` unchanged; unknown tweet →
-  `404`, nothing stored; malformed id → `400`; tweet service down / slow → `502` / `504`, nothing stored.
-- **Unsave:** saved → `204`, row gone; not saved → `204`; tweet already deleted → `204`; only the caller's row.
-- **List:** empty; newest saved first; paging, ties and cursor errors as the feed; deleted tweets skipped; only the
-  caller's saves; one tweet call and one user call per page.
-- **Listener:** `tweet.deleted` removes saved rows for that tweet across users and leaves other tweets.
-- **Concurrency:** 50 parallel saves of one tweet by one user → one row, all `204`; save racing unsave ends in a
-  consistent state (row present or absent, never an error).
-
-### Steps
-
-14. **Test catalog**, all `@Disabled`, in `TESTING.md`. **Gate:** compiles, **and you have approved it**.
-15. **Entity and repository.** **Gate:** repository tests green (insert-if-absent, list ordering and ties, both
-    deletes).
-16. **Endpoints and listener change.** `SavedTweetController`, `SavedTweetService`, `tweet.deleted` extension.
-    **Gate:** the catalog groups are enabled and green; no `@Disabled` left.
-17. **[gateway] Saved-tweets route.** **Gate:** route tests green; gateway `mvn verify` green 3×.
-18. **e2e.** `saved-tweets.spec.ts`: save twice, list shows it once with its author; unsave twice; Bob deletes a
-    saved tweet → gone from Ana's list. **Gate:** e2e green 3×.
-19. **Hardening.** Concurrency scenarios, `exploit-hunter` on the phase 2 surface, docs reconciled.
-    **Gate:** `mvn verify` green **3× in a row**.
+- **`SavedTweet` (`saved_tweets`)**, PK `(user_id, tweet_id)` (attribute `ownerId`, as `FeedEntry`), plus `author_id`
+  (from the existence check) and `saved_at` (`Clock`, micros); indexes `ix_saved_tweets_user_saved`
+  `(user_id, saved_at, tweet_id)` for the list and `ix_saved_tweets_tweet` for the delete. Inserted (native
+  `INSERT … ON CONFLICT DO NOTHING`) or deleted, never edited (Q10, Q18). No retention job: kept until unsaved or the
+  tweet is deleted.
+- **`PUT /api/v1/saved-tweets/{tweetId}` → 204:** asks the tweet service whether the tweet exists (`TweetNotFoundException`
+  → `404` "Tweet not found."; `502` / `504` on a downstream failure, nothing stored), then inserts; saving again keeps
+  the original `saved_at`.
+- **`DELETE /api/v1/saved-tweets/{tweetId}` → 204** whether or not it was saved, no existence check, so a deleted tweet
+  can still be removed.
+- **`GET /api/v1/saved-tweets?cursor=&size=`:** newest saved first, cursor `(saved_at, tweet_id)` through the feed's
+  codec, `SavedTweetsResponseDTO` (`items`, `nextCursor`), missing tweets or authors skipped, `nextCursor` from the last
+  row read.
+- **`TweetItemAssemblyService`:** the feed's parallel tweet + author lookup, skip-the-missing and mapping, extracted so
+  the feed and the saved list share it (Q14); `FeedServiceImpl` now calls it.
+- **`tweet.deleted`** removes the tweet from `feed_entries` and `saved_tweets` in one transaction
+  (`FeedEntryCleanupServiceImpl.onTweetDeleted`, `@Transactional`).
+- **[gateway]** `/api/v1/saved-tweets/**` joins the feed on the one timeline route (`TimelineRoutesConfiguration`), same
+  identity filters and timeouts; 9 new route tests.
+- **Tests:** 370 in this service (repository 23, service unit, controller 51, listener group 4, concurrency 3: 50
+  parallel saves, save racing unsave), 0 `@Disabled`; e2e `saved-tweets.spec.ts` (3 tests) with `postTweet` /
+  `deleteTweet` moved to the shared fixtures. Catalog in `TESTING.md` (HTTP and listener scenarios); calls made while
+  building in `DECISIONS.md`.
+- **Audit:** `exploit-report-2026-10-03-phase2.md`, nothing above Low; the one Low is folded into the "no rate
+  limiting" gap below.
 
 ---
 
@@ -347,7 +324,7 @@ account deletion; a Redis cache; a DLT replay tool.
 - **One static internal secret on the gateway's public port, no rotation.** **Trigger:** any deployment → a private
   port or mTLS for `/internal/**`, and rotation.
 - **The tweet service's internal endpoint has no secret.** Same trigger as its `X-User-Id` gap.
-- **No rate limiting on feed reads** (`exploit-report-2026-10-03.md` #3), and none on saves or view reports. **Trigger:** abuse, or a second instance.
+- **No rate limiting on feed reads** (`exploit-report-2026-10-03.md` #3), and none on saves (each one a tweet-service call and an INFO log line, `exploit-report-2026-10-03-phase2.md` #1) or view reports. **Trigger:** abuse, or a second instance.
 - **View rows kept forever** (one per viewer per tweet). **Trigger:** table size → HyperLogLog (e.g. Redis
   `PFADD`) for the count.
 - **Hot counter row** on a viral tweet. **Trigger:** view-report latency → buffered or sharded counters.

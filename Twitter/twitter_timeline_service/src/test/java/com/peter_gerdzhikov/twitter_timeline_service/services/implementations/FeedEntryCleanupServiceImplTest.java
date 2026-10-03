@@ -23,6 +23,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEven
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.events.InvalidEventException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
@@ -35,11 +36,14 @@ class FeedEntryCleanupServiceImplTest {
     private FeedEntryRepository feedEntryRepository;
 
     @Mock
+    private SavedTweetRepository savedTweetRepository;
+
+    @Mock
     private EventValidationService eventValidationService;
 
     @BeforeEach
     void setUp() {
-        feedEntryCleanupService = new FeedEntryCleanupServiceImpl(feedEntryRepository, eventValidationService);
+        feedEntryCleanupService = new FeedEntryCleanupServiceImpl(feedEntryRepository, savedTweetRepository, eventValidationService);
     }
 
     @Nested
@@ -59,13 +63,20 @@ class FeedEntryCleanupServiceImplTest {
         }
 
         @Test
+        void should_remove_the_tweet_from_every_saved_list() {
+            feedEntryCleanupService.onTweetDeleted(event);
+
+            verify(savedTweetRepository).deleteByTweetId(event.getTweetId());
+        }
+
+        @Test
         void should_validate_the_event_before_removing_anything() {
             InvalidEventException invalid = new InvalidEventException("Invalid tweet.deleted event.");
             doThrow(invalid).when(eventValidationService).validate(eq(event), any());
 
             assertThatThrownBy(() -> feedEntryCleanupService.onTweetDeleted(event)).isSameAs(invalid);
 
-            verifyNoInteractions(feedEntryRepository);
+            verifyNoInteractions(feedEntryRepository, savedTweetRepository);
         }
     }
 

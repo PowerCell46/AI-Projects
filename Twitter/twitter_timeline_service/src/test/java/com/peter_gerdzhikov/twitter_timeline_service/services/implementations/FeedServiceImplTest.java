@@ -67,7 +67,8 @@ class FeedServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        feedService = new FeedServiceImpl(executor, userLookupService, tweetLookupService, feedEntryRepository);
+        feedService = new FeedServiceImpl(
+                feedEntryRepository, new TweetItemAssemblyServiceImpl(executor, userLookupService, tweetLookupService));
     }
 
     @AfterEach

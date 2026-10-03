@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { test, type Account } from './fixtures';
+import { deleteTweet, postTweet, test, type Account } from './fixtures';
 
 
 interface FeedAuthor {
@@ -17,10 +17,6 @@ interface FeedPage {
     nextCursor: string | null;
 }
 
-interface CreatedTweet {
-    id: string;
-}
-
 // Three registrations each wait for a confirmation email, and every feed change crosses Kafka and the outbox.
 const TEST_TIMEOUT_MS = 120_000;
 
@@ -36,22 +32,6 @@ async function follow(follower: Account, followee: Account) {
 
 async function unfollow(follower: Account, followee: Account) {
     const response = await follower.api.delete(`/api/v1/users/${followee.user.username}/follow`);
-
-    expect(response.status()).toBe(204);
-}
-
-async function postTweet(author: Account, content: string): Promise<string> {
-    const response = await author.api.post('/api/v1/tweets', { multipart: { content } });
-
-    expect(response.status()).toBe(201);
-
-    const created: CreatedTweet = await response.json();
-
-    return created.id;
-}
-
-async function deleteTweet(author: Account, tweetId: string) {
-    const response = await author.api.delete(`/api/v1/tweets/${tweetId}`);
 
     expect(response.status()).toBe(204);
 }

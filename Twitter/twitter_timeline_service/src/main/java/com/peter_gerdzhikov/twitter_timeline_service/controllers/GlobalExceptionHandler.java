@@ -25,6 +25,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCallerIde
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 
@@ -44,6 +45,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler({InvalidCursorException.class, InvalidPageSizeException.class})
     public ResponseEntity<ErrorResponseDTO> handleInvalidPagination(RuntimeException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(TweetNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTweetNotFound(TweetNotFoundException e) {
+        return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(RequestBodyTooLargeException.class)

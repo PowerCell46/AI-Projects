@@ -331,9 +331,9 @@ Written `@Disabled` in step 25 and approved; every group is now enabled (steps 2
 
 - Tweet service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_tweet_service_is_down`)
 
-## `/api/v1/feed` (proxy to the timeline service)
+## `/api/v1/feed` and `/api/v1/saved-tweets/**` (proxy to the timeline service)
 
-Added in timeline step 11. `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
+Added in timeline step 11 (feed) and step 17 (saved tweets). `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
 
 `TimelineRoutesIntegrationTest.Authentication` - enabled
 
@@ -354,6 +354,16 @@ Added in timeline step 11. `TimelineRoutesIntegrationTest` uses WireMock as the 
 - A spoofed `X-User-Role` is dropped (`should_drop_a_spoofed_x_user_role_header`)
 - `Cookie` and `Authorization` are not forwarded (`should_not_forward_the_cookie_header`, `should_not_forward_the_authorization_header`)
 - `X-Internal-Secret` is not sent: the secret guards the gateway's own internal endpoints only (`should_not_send_the_internal_secret_to_the_timeline_service`)
+
+`TimelineRoutesIntegrationTest.SavedTweets` - enabled (step 17). The same identity filters apply to the saved-tweets paths.
+
+- No cookie returns 401 on GET, PUT and DELETE and nothing is forwarded (`should_return_401_and_forward_nothing_when_there_is_no_cookie`, method)
+- A PUT arrives with its path, status 204 unchanged (`should_forward_a_put_with_the_path_and_status_unchanged_when_the_user_is_authenticated`)
+- A DELETE arrives with its path, status 204 unchanged (`should_forward_a_delete_with_the_path_and_status_unchanged_when_the_user_is_authenticated`)
+- A GET of the list arrives with its query and status unchanged (`should_forward_a_get_of_the_list_with_the_query_and_status_unchanged_when_the_user_is_authenticated`)
+- A `404` with its body passes through (`should_pass_the_downstream_404_and_body_through_unchanged_when_the_tweet_is_unknown`)
+- The JWT `sub` is sent as `X-User-Id` and a spoofed one is replaced on a PUT (`should_send_the_jwt_subject_as_x_user_id_and_drop_a_spoofed_one_when_a_put_is_forwarded`)
+- `Cookie` and `Authorization` are not forwarded on a PUT (`should_not_forward_the_cookie_or_the_authorization_header_when_a_put_is_forwarded`)
 
 `TimelineRoutesIntegrationTest.Failures` - enabled
 

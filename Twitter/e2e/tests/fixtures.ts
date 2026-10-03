@@ -14,6 +14,10 @@ export interface Account {
     api: APIRequestContext;
 }
 
+interface CreatedTweet {
+    id: string;
+}
+
 interface AccountFixtures {
     createAccount: () => Promise<Account>;
 }
@@ -168,3 +172,19 @@ export const test = base.extend<AccountFixtures>({
         await Promise.all(clients.map((client) => client.dispose()));
     },
 });
+
+export async function postTweet(author: Account, content: string): Promise<string> {
+    const response = await author.api.post('/api/v1/tweets', { multipart: { content } });
+
+    expect(response.status()).toBe(201);
+
+    const created: CreatedTweet = await response.json();
+
+    return created.id;
+}
+
+export async function deleteTweet(author: Account, tweetId: string) {
+    const response = await author.api.delete(`/api/v1/tweets/${tweetId}`);
+
+    expect(response.status()).toBe(204);
+}
