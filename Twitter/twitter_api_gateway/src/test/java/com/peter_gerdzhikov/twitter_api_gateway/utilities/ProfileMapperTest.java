@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.InternalUserResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
@@ -97,6 +98,34 @@ class ProfileMapperTest {
         user.setId(UUID.randomUUID());
 
         assertThat(ProfileMapper.toInternalUser(user).getProfilePictureUrl()).isNull();
+    }
+
+    @Test
+    void toUserListItem_copiesTheSixFieldsAndBuildsThePictureUrl() {
+        User user = TestEntities.newUser();
+        user.setId(UUID.randomUUID());
+        user.setBio("Hello");
+        user.setFollowersCount(7);
+        DbFile profilePicture = fileWithId();
+        user.setProfilePicture(profilePicture);
+
+        UserListItemResponseDTO item = ProfileMapper.toUserListItem(user, true);
+
+        assertThat(item.getId()).isEqualTo(user.getId());
+        assertThat(item.getUsername()).isEqualTo(user.getUsername());
+        assertThat(item.getBio()).isEqualTo("Hello");
+        assertThat(item.getFollowersCount()).isEqualTo(7);
+        assertThat(item.isFollowedByMe()).isTrue();
+        assertThat(item.getProfilePictureUrl()).isEqualTo("/api/v1/files/" + profilePicture.getId());
+    }
+
+    @Test
+    void toUserListItem_returnsANullPictureUrlAndANullBioWhenTheUserHasNeither() {
+        UserListItemResponseDTO item = ProfileMapper.toUserListItem(TestEntities.newUser(), false);
+
+        assertThat(item.getProfilePictureUrl()).isNull();
+        assertThat(item.getBio()).isNull();
+        assertThat(item.isFollowedByMe()).isFalse();
     }
 
     private DbFile fileWithId() {

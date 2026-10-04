@@ -15,6 +15,8 @@ Phase 2 catalog (profile and files, at the bottom): written `@Disabled` in step 
 
 Phase 3 catalog (follows, at the bottom): written `@Disabled` in step 19 and approved. Bodies are empty until the step that enables the group: Follow and Unfollow are enabled (step 21), Profile is enabled (step 22), Lists is enabled (step 23). No `@Disabled` is left.
 
+Phase 5 catalog (people to follow, `GET /api/v1/users`, after the cross-service contract section): written `@Disabled` in step 31 and approved. Bodies are empty until the step that enables the group: repository group (step 32, enabled); HTTP, service, mapper and page-size groups (step 33, enabled); concurrency (step 35, enabled).
+
 ## `POST /api/v1/auth/register`
 
 `AuthControllerIntegrationTest.Register` — enabled
@@ -460,3 +462,99 @@ Added in frontend plan step 1. The gateway answers these itself and stores nothi
 - Alice edits: 200 (`should_return_200_when_alice_edits_her_tweet`)
 - Alice deletes: 204, then GET returns 404 (`should_return_204_then_404_on_read_when_alice_deletes_her_tweet`)
 - `tweet.created` and `tweet.deleted` for that `tweetId` reach Kafka (`should_publish_tweet_created_and_tweet_deleted_for_the_tweet_id_when_alice_creates_and_deletes_a_tweet`)
+
+# Phase 5 — people to follow
+
+HTTP scenarios live in `UserListControllerIntegrationTest`, enabled in step 33. Every test starts from an empty `users` table (the list covers every confirmed user and the Postgres container is shared). `UserListConcurrencyIntegrationTest` is enabled in step 35 and also starts from an empty `users` table.
+
+## `GET /api/v1/users`
+
+`UserListControllerIntegrationTest.Content` — enabled
+
+- Body is exactly `{items, nextCursor}` (`should_return_exactly_items_and_next_cursor_when_the_list_is_requested`)
+- Each item has exactly the six keys `id`, `username`, `bio`, `profilePictureUrl`, `followersCount`, `followedByMe` (`should_return_exactly_the_six_item_keys_when_a_user_is_listed`)
+- No email, password, location, birthdate, `createdAt`, `followingCount` or cover picture key anywhere (`should_carry_no_private_or_extra_key_anywhere_when_users_are_listed`)
+- `username` keeps its registered case (`should_keep_the_registered_case_of_the_username_when_a_user_is_listed`)
+- `profilePictureUrl` is `null` without a picture (`should_return_a_null_picture_url_when_the_user_has_no_picture`)
+- `profilePictureUrl` is `/api/v1/files/{id}` with one (`should_return_the_file_url_when_the_user_has_a_picture`)
+- `bio` `null` stays `null` (`should_return_a_null_bio_when_the_user_has_no_bio`)
+- Emoji, `<script>` and quotes in bio and username come back verbatim as `application/json` text (`should_return_bio_and_username_verbatim_as_json_text_when_they_hold_emoji_script_tags_and_quotes`)
+- Newest account first (`should_return_the_newest_account_first_when_the_users_have_different_creation_times`)
+- The caller is never in the list, even as the newest account (`should_leave_the_caller_out_when_the_caller_is_the_newest_account`)
+- An unconfirmed user is never in the list (`should_leave_out_unconfirmed_users_when_users_are_listed`)
+- A caller alone in the database gets `items: []` and `nextCursor: null` (`should_return_empty_items_and_a_null_next_cursor_when_the_caller_is_alone`)
+
+`UserListControllerIntegrationTest.FollowState` — enabled
+
+- `followedByMe` true only for the people the caller follows (`should_mark_followed_by_me_true_only_for_the_users_the_caller_follows`)
+- False for someone who follows the caller without being followed back (`should_mark_followed_by_me_false_when_a_user_follows_the_caller_without_being_followed_back`)
+- True on the next call after `PUT /users/{username}/follow` (`should_mark_followed_by_me_true_on_the_next_call_when_the_caller_follows_a_user`)
+- False on the next call after `DELETE` (`should_mark_followed_by_me_false_on_the_next_call_when_the_caller_unfollows_a_user`)
+- A mutual follow shows true on both sides' lists (`should_mark_followed_by_me_true_on_both_lists_when_two_users_follow_each_other`)
+- `followersCount` equals the person's real follower count (`should_return_the_real_follower_count_when_a_user_has_followers`)
+- +1 after a new follow by another user (`should_raise_the_followers_count_by_one_when_another_user_follows_them`)
+- -1 after that user unfollows (`should_lower_the_followers_count_by_one_when_another_user_unfollows_them`)
+- The caller following one person leaves everyone else's `followersCount` as it was (`should_keep_the_followers_count_of_the_others_when_the_caller_follows_one_user`)
+
+`UserListControllerIntegrationTest.Paging` — enabled
+
+- With 25 people: default size 20 and a `nextCursor` (`should_return_20_items_and_a_next_cursor_when_no_size_is_given_and_25_people_exist`)
+- Following that cursor gives the last 5 and `nextCursor: null` (`should_return_the_last_5_items_and_a_null_next_cursor_when_the_cursor_of_the_first_page_is_followed`)
+- A walk with `size=7` visits every other confirmed user exactly once (`should_return_every_other_confirmed_user_exactly_once_when_the_pages_are_followed_to_the_end`)
+- The same when every `createdAt` is identical (id tie-break) (`should_return_every_other_confirmed_user_exactly_once_when_all_users_share_the_same_created_at`)
+- A user confirmed mid-walk with a newer `createdAt` is not in the rest of the walk; nobody seen is repeated or skipped (`should_skip_a_user_confirmed_mid_walk_with_a_newer_created_at_and_repeat_nobody_when_the_walk_continues`)
+- A user confirmed mid-walk with an older `createdAt` appears once on a later page (`should_show_a_user_confirmed_mid_walk_with_an_older_created_at_once_on_a_later_page`)
+- The cursor row deleted between requests still continues from the right place (`should_continue_from_the_right_place_when_the_cursor_row_was_deleted_between_requests`)
+- Entries exactly filling the page: `nextCursor: null` (`should_return_a_null_next_cursor_when_the_entries_exactly_fill_the_page`)
+- Size 1 and 100 return 200 (`should_return_200_when_the_size_is_at_a_boundary`, size)
+- Size 0, -1 and 101 return 400 "Page size must be between 1 and 100." (`should_return_400_with_the_page_size_message_when_the_size_is_out_of_range`, size)
+- Size `abc`, `1.5`, `1;DROP TABLE users` and `2147483648` return 400 "Malformed request parameter." (`should_return_400_with_the_malformed_parameter_message_when_the_size_is_not_an_int`, size)
+- A repeated `size=1&size=2` uses the first value and returns 200 (`should_use_the_first_value_and_return_200_when_the_size_is_repeated`)
+- An empty `size=` takes the default 20 (`should_return_20_items_when_the_size_is_empty`)
+- Garbage and hostile cursor text (`garbage`, `!!!`, `' OR 1=1`, `<script>`, `../`, `%0d%0a`, `%00`, whitespace) returns 400 "Invalid cursor." (`should_return_400_with_the_invalid_cursor_message_when_the_cursor_is_garbage_or_hostile_text`, cursor)
+- Valid base64url with the wrong content returns 400 (`should_return_400_with_the_invalid_cursor_message_when_the_cursor_is_valid_base64url_but_has_the_wrong_content`)
+- A padded, upper-case-id, leading-zero or signed cursor returns 400 (`should_return_400_with_the_invalid_cursor_message_when_the_cursor_is_not_the_form_the_codec_produces`, form)
+- An empty `cursor=` returns 400 (`should_return_400_with_the_invalid_cursor_message_when_the_cursor_is_empty`)
+- A repeated `cursor=a&cursor=b` returns 400 (`should_return_400_with_the_invalid_cursor_message_when_the_cursor_is_repeated`)
+- A 5,000-character cursor returns 400 (`should_return_400_with_the_invalid_cursor_message_when_the_cursor_is_5000_characters_long`)
+- A bad size with a bad cursor returns the size message (`should_return_the_page_size_message_when_both_the_size_and_the_cursor_are_bad`)
+- A well-formed cursor at the far end (`999999999999999999` micros, nil UUID) returns 200 with the whole list (`should_return_200_with_the_whole_list_when_the_cursor_is_at_the_far_end`)
+- A well-formed cursor at the start (`0` micros, any UUID) returns 200, `items: []`, `nextCursor: null`, never 500 (`should_return_200_with_empty_items_and_a_null_next_cursor_when_the_cursor_is_at_the_start`)
+- An unknown query parameter is ignored (`should_ignore_the_parameter_and_return_200_when_an_unknown_query_parameter_is_sent`)
+- Two identical calls return identical bodies (`should_return_identical_bodies_when_the_same_call_is_made_twice`)
+
+`UserListControllerIntegrationTest.Identity` — enabled
+
+- No cookie returns 401 (`should_return_401_when_there_is_no_cookie`)
+- Expired token returns 401 (`should_return_401_when_the_token_is_expired`)
+- Tampered token returns 401 (`should_return_401_when_the_token_is_tampered`)
+- Wrong-secret token returns 401 (`should_return_401_when_the_token_is_signed_with_another_secret`)
+- A valid token for a user that no longer exists returns 200 with every confirmed user, all `followedByMe` false (`should_list_every_confirmed_user_with_followed_by_me_false_when_the_token_belongs_to_a_deleted_user`)
+- Forged `X-User-Id` and other `X-User-*` headers change nothing: the caller left out is the cookie's user (`should_leave_out_the_cookie_user_and_ignore_the_header_when_x_user_id_headers_are_forged`)
+- `POST`, `PUT`, `DELETE` and `PATCH` return 405 with an `Allow` header containing `GET` (`should_return_405_with_an_allow_header_containing_get_when_another_method_is_used`, method)
+- `HEAD` returns 200; the body is not asserted because MockMvc keeps the body Tomcat drops (`should_return_200_when_the_method_is_head`)
+- `GET /api/v1/users/` returns 404 "No resource found for this path." (`should_return_404_when_the_path_has_a_trailing_slash`)
+- A `GET` carrying a 9 KB body returns 413 "The request body is too large." (`should_return_413_when_a_get_carries_a_9_kb_body`)
+
+`UserListControllerIntegrationTest.CostAndLeaks` — enabled
+
+- A full page of 20 people who all have pictures runs exactly 2 SQL statements (Hibernate statistics) (`should_run_exactly_2_sql_statements_when_a_full_page_of_20_users_with_pictures_is_listed`)
+- An empty page runs exactly 1 (`should_run_exactly_1_sql_statement_when_the_page_is_empty`)
+- Every `400` body carries no exception, package, SQL or host name (`should_carry_no_exception_package_sql_or_host_name_when_a_400_is_returned`, query: bad size, non-numeric size, bad cursor)
+- An invalid cursor value never appears in the captured log output (`should_keep_an_invalid_cursor_value_out_of_the_log_output`)
+
+## Concurrency (phase 5)
+
+`UserListConcurrencyIntegrationTest` — enabled; calls released together through a latch, no sleeps
+
+- 8 threads follow and unfollow while 4 threads page the list: every response 200, no page repeats an id, no negative `followersCount`, and after the threads stop each listed `followersCount` equals the `COUNT(*)` of that person's follows (`should_keep_every_page_valid_and_every_count_equal_to_its_row_count_when_8_threads_follow_and_unfollow_while_4_threads_page_the_list`)
+- A walk of the list while 20 confirmed users are inserted in parallel: every user that existed at the start is seen exactly once (`should_see_every_user_that_existed_at_the_start_exactly_once_when_20_confirmed_users_are_inserted_during_a_walk`)
+
+## Not HTTP-layer (listed for completeness)
+
+All enabled (steps 32 and 33). Not part of the e2e catalog above.
+
+- `UserRepositoryIntegrationTest.UserListFirstPage`, `UserListPageAfterCursor`, `UserListIndex` (enabled, step 32): newest first, caller and unconfirmed left out, limit, equal `created_at` ordered by id, strict after-cursor, no gap or repeat across pages, nothing after the oldest row, `ix_users_enabled_created` in `pg_indexes`
+- `UserListServiceImplTest.ListUsers` (enabled, step 33): size checked before cursor, bad cursor rejected before any query, first-page vs after-cursor query, caller id passed on, `size + 1` rows sliced, cursor from the last returned row, null cursor on the last page, `followedByMe` query skipped for an empty page
+- `ProfileMapperTest` `toUserListItem_*` (enabled, step 33): all six fields set, missing picture and bio map to `null`
+- `PageSizeValidatorTest` (enabled, step 33): 1 and 100 accepted; 0, -1 and 101 rejected

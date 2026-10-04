@@ -6,7 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
@@ -29,6 +35,8 @@ import jakarta.validation.ConstraintViolationException;
 class UserRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final Instant CUTOFF = Instant.parse("2026-01-08T00:00:00Z");
+
+    private static final Instant NEWEST_BASE = Instant.parse("2999-01-01T00:00:00Z");
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -299,19 +307,6 @@ class UserRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
             assertThat(deleted).isZero();
             assertThat(userRepository.findById(confirmed.getId())).isPresent();
         }
-
-        private User savedUserCreatedAt(boolean enabled, Instant createdAt) {
-            User user = TestEntities.newUser();
-            user.setEnabled(enabled);
-            User saved = userRepository.saveAndFlush(user);
-            jdbcTemplate.update(
-                    "UPDATE users SET created_at = ? WHERE id = ?",
-                    Timestamp.from(createdAt),
-                    saved.getId()
-            );
-            entityManager.clear();
-            return saved;
-        }
     }
 
     @Nested
@@ -464,6 +459,211 @@ class UserRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
         void should_return_zero_rows_when_the_user_is_unknown() {
             assertThat(userRepository.addToFollowingCount(UUID.randomUUID(), 1)).isZero();
         }
+    }
+
+    @Nested
+    class UserListFirstPage {
+
+        @Test
+        void should_return_the_users_newest_first() {
+            User oldest = savedUserCreatedAt(true, NEWEST_BASE);
+            User newest = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            User middle = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+
+            List<User> page = userRepository.findUserListFirstPage(caller.getId(), PageRequest.of(0, 3));
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newest.getId(), middle.getId(), oldest.getId());
+        }
+
+        @Test
+        void should_leave_out_the_caller() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(30));
+            User newer = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            User older = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+
+            List<User> page = userRepository.findUserListFirstPage(caller.getId(), PageRequest.of(0, 2));
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newer.getId(), older.getId());
+        }
+
+        @Test
+        void should_leave_out_unconfirmed_users() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+            savedUserCreatedAt(false, NEWEST_BASE.plusSeconds(30));
+            User newer = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            User older = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+
+            List<User> page = userRepository.findUserListFirstPage(caller.getId(), PageRequest.of(0, 2));
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newer.getId(), older.getId());
+        }
+
+        @Test
+        void should_return_at_most_the_requested_number_of_rows() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+            User newest = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(30));
+            User second = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+
+            List<User> page = userRepository.findUserListFirstPage(caller.getId(), PageRequest.of(0, 2));
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newest.getId(), second.getId());
+        }
+
+        @Test
+        void should_return_the_users_with_equal_created_at_ordered_by_id_descending() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+            List<UUID> sameInstantIds = savedUsersCreatedAt(3, NEWEST_BASE);
+
+            List<User> page = userRepository.findUserListFirstPage(caller.getId(), PageRequest.of(0, 3));
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactlyElementsOf(descendingByPostgresOrder(sameInstantIds));
+        }
+    }
+
+    @Nested
+    class UserListPageAfterCursor {
+
+        @Test
+        void should_return_the_users_strictly_older_than_the_cursor_newest_first() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+            User cursorUser = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(30));
+            User newer = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+            User older = savedUserCreatedAt(true, NEWEST_BASE);
+
+            List<User> page = pageAfter(caller, cursorUser, NEWEST_BASE.plusSeconds(20), 2);
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newer.getId(), older.getId());
+        }
+
+        @Test
+        void should_leave_out_the_caller() {
+            User cursorUser = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(40));
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(30));
+            User newer = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            User older = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+
+            List<User> page = pageAfter(caller, cursorUser, NEWEST_BASE.plusSeconds(40), 2);
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newer.getId(), older.getId());
+        }
+
+        @Test
+        void should_leave_out_unconfirmed_users() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+            User cursorUser = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(40));
+            savedUserCreatedAt(false, NEWEST_BASE.plusSeconds(30));
+            User newer = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(20));
+            User older = savedUserCreatedAt(true, NEWEST_BASE.plusSeconds(10));
+
+            List<User> page = pageAfter(caller, cursorUser, NEWEST_BASE.plusSeconds(40), 2);
+
+            assertThat(page)
+                    .extracting(User::getId)
+                    .containsExactly(newer.getId(), older.getId());
+        }
+
+        @Test
+        void should_break_equal_created_at_by_id_with_no_gap_or_repeat_across_pages() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE.minusSeconds(10));
+            List<UUID> sameInstantIds = savedUsersCreatedAt(5, NEWEST_BASE);
+
+            List<User> firstPage = userRepository.findUserListFirstPage(caller.getId(), PageRequest.of(0, 2));
+            List<User> secondPage = pageAfter(caller, lastOf(firstPage), NEWEST_BASE, 2);
+            List<User> thirdPage = pageAfter(caller, lastOf(secondPage), NEWEST_BASE, 1);
+
+            List<UUID> walked = new ArrayList<>();
+            Stream
+                    .of(firstPage, secondPage, thirdPage)
+                    .flatMap(List::stream)
+                    .forEach(user -> walked.add(user.getId()));
+            assertThat(walked).containsExactlyElementsOf(descendingByPostgresOrder(sameInstantIds));
+        }
+
+        @Test
+        void should_return_nothing_when_the_cursor_is_the_oldest_row() {
+            User caller = savedUserCreatedAt(true, NEWEST_BASE);
+            User oldest = savedUserCreatedAt(true, Instant.EPOCH);
+
+            List<User> page = pageAfter(caller, oldest, Instant.EPOCH, 10);
+
+            assertThat(page).isEmpty();
+        }
+    }
+
+    @Nested
+    class UserListIndex {
+
+        @Test
+        void should_create_the_enabled_created_at_id_index_on_the_users_table() {
+            List<String> definitions = jdbcTemplate.queryForList(
+                    "SELECT indexdef FROM pg_indexes WHERE tablename = 'users' AND indexname = ?",
+                    String.class,
+                    "ix_users_enabled_created"
+            );
+
+            assertThat(definitions)
+                    .singleElement()
+                    .asString()
+                    .contains("(enabled, created_at, id)");
+        }
+    }
+
+    private List<User> pageAfter(User caller, User cursorUser, Instant cursorCreatedAt, int size) {
+        return userRepository.findUserListAfter(
+                caller.getId(),
+                cursorCreatedAt,
+                cursorUser.getId(),
+                PageRequest.of(0, size)
+        );
+    }
+
+    private User lastOf(List<User> page) {
+        return page.getLast();
+    }
+
+    private List<UUID> savedUsersCreatedAt(int count, Instant createdAt) {
+        return IntStream
+                .range(0, count)
+                .mapToObj(index -> savedUserCreatedAt(true, createdAt).getId())
+                .toList();
+    }
+
+    private List<UUID> descendingByPostgresOrder(List<UUID> ids) {
+        return ids
+                .stream()
+                .sorted(Comparator.comparing(UUID::toString).reversed())
+                .toList();
+    }
+
+    private User savedUserCreatedAt(boolean enabled, Instant createdAt) {
+        User user = TestEntities.newUser();
+        user.setEnabled(enabled);
+        User saved = userRepository.saveAndFlush(user);
+        jdbcTemplate.update(
+                "UPDATE users SET created_at = ? WHERE id = ?",
+                Timestamp.from(createdAt),
+                saved.getId()
+        );
+        entityManager.clear();
+
+        return saved;
     }
 
     private User userWithCounts(long followersCount, long followingCount) {

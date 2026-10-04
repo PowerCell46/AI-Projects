@@ -10,6 +10,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
@@ -45,7 +46,8 @@ import lombok.Setter;
         uniqueConstraints = {
                 @UniqueConstraint(name = User.EMAIL_CONSTRAINT, columnNames = "email"),
                 @UniqueConstraint(name = User.USERNAME_CONSTRAINT, columnNames = "username_normalized")
-        }
+        },
+        indexes = @Index(name = "ix_users_enabled_created", columnList = "enabled, created_at, id")
 )
 public class User extends CommonEntity {
 

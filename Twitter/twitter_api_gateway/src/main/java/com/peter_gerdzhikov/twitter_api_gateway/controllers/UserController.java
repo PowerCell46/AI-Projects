@@ -19,9 +19,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.UpdateProfileRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.PictureSlot;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.ProfilePictureService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.ProfileService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.UserListService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,9 +33,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
 
+    private static final String DEFAULT_PAGE_SIZE = "20";
+
     private final ProfileService profileService;
 
     private final ProfilePictureService profilePictureService;
+
+    private final UserListService userListService;
+
+    @GetMapping
+    public UserListResponseDTO getUsers(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size
+    ) {
+        return userListService.listUsers(UUID.fromString(jwt.getSubject()), cursor, size);
+    }
 
     @GetMapping("/{username}")
     public ProfileResponseDTO getProfile(@AuthenticationPrincipal Jwt jwt, @PathVariable String username) {

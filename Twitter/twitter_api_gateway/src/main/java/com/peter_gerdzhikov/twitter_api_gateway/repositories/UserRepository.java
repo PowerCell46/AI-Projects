@@ -1,9 +1,11 @@
 package com.peter_gerdzhikov.twitter_api_gateway.repositories;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -33,6 +35,32 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u.id FROM User u WHERE u.id = :id")
     Optional<UUID> lockById(@Param("id") UUID id);
+
+    /**
+     * Keyset pages of confirmed users other than the caller, newest first. Ties on {@code createdAt} are broken
+     * by id, so a page boundary that falls inside a run of equal timestamps loses and repeats nothing. The cursor
+     * is compared as a row value because Postgres can turn that into an index bound; the equivalent
+     * {@code OR} form makes every page read all the rows newer than the cursor.
+     */
+    @Query("""
+            SELECT u FROM User u LEFT JOIN FETCH u.profilePicture
+            WHERE u.enabled = true AND u.id <> :callerId
+            ORDER BY u.createdAt DESC, u.id DESC
+            """)
+    List<User> findUserListFirstPage(@Param("callerId") UUID callerId, Pageable limit);
+
+    @Query("""
+            SELECT u FROM User u LEFT JOIN FETCH u.profilePicture
+            WHERE u.enabled = true AND u.id <> :callerId
+              AND (u.createdAt, u.id) < (:createdAt, :id)
+            ORDER BY u.createdAt DESC, u.id DESC
+            """)
+    List<User> findUserListAfter(
+            @Param("callerId") UUID callerId,
+            @Param("createdAt") Instant createdAt,
+            @Param("id") UUID id,
+            Pageable limit
+    );
 
     /**
      * Bulk delete: the database cascades to the users' tokens, and nothing else is touched. Returns the

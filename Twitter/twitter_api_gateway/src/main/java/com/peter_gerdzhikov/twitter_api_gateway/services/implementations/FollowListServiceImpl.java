@@ -15,7 +15,6 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowList
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.Follow;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
@@ -23,16 +22,13 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.FollowListSe
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.FollowCursor;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.FollowCursorCodec;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.ProfileMapper;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.paging.PageSizeValidator;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class FollowListServiceImpl implements FollowListService {
-
-    public static final int MIN_PAGE_SIZE = 1;
-
-    public static final int MAX_PAGE_SIZE = 100;
 
     private final UserRepository userRepository;
 
@@ -58,7 +54,7 @@ public class FollowListServiceImpl implements FollowListService {
             PageFetcher fetcher,
             Function<Follow, User> memberOf
     ) {
-        validateSize(size);
+        PageSizeValidator.validate(size);
         FollowCursor decodedCursor = cursor == null ? null : FollowCursorCodec.decode(cursor);
         UUID userId = resolveUserId(username);
 
@@ -71,12 +67,6 @@ public class FollowListServiceImpl implements FollowListService {
                 .items(toItems(viewerId, pageRows, memberOf))
                 .nextCursor(hasNext ? cursorAfter(pageRows.getLast()) : null)
                 .build();
-    }
-
-    private void validateSize(int size) {
-        if (size < MIN_PAGE_SIZE || size > MAX_PAGE_SIZE) {
-            throw new InvalidPageSizeException();
-        }
     }
 
     private UUID resolveUserId(String username) {

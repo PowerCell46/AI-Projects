@@ -136,9 +136,7 @@ export async function registerViaApi(request: APIRequestContext, user: TestUser)
     expect(response.ok()).toBe(true);
 }
 
-export async function registerAndConfirmViaApi(request: APIRequestContext, user: TestUser) {
-    await registerViaApi(request, user);
-
+export async function confirmViaApi(request: APIRequestContext, user: TestUser) {
     const confirmationUrl = new URL(await latestConfirmationUrl(user.email));
     const token = confirmationUrl.searchParams.get('token');
     const response = await request.post(
@@ -147,6 +145,11 @@ export async function registerAndConfirmViaApi(request: APIRequestContext, user:
     );
 
     expect(response.ok()).toBe(true);
+}
+
+export async function registerAndConfirmViaApi(request: APIRequestContext, user: TestUser) {
+    await registerViaApi(request, user);
+    await confirmViaApi(request, user);
 }
 
 // Each step advances on Enter. A password input is not a textbox, so it is found by its label.

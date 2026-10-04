@@ -1,7 +1,7 @@
 # Twitter API Gateway — plan
 
 The single front door of the Twitter clone: it owns users and all access rules. One deployable, built in
-ordered phases. **Phases 1–4 are done (2026-09-29 / 2026-09-30).** Design calls were settled in the `/grill-me`
+ordered phases. **Phases 1–5 are done (2026-09-29 to 2026-10-04).** Design calls were settled in the `/grill-me`
 interview of 2026-09-29 (Q-numbers in parentheses). Calls made during implementation live in `DECISIONS.md`, the HTTP
 scenario catalog in `TESTING.md`, the Kafka contract in `EVENTS.md`. The reference for "as SignalFlow" is
 `../../SignalFlow/signal_flow_api_gateway`.
@@ -17,6 +17,7 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 | 2 | Profile + MinIO pictures (steps 11–18) | 2026-09-29 | `exploit-report-2026-09-29-phase2.md`; finding 1 fixed 2026-09-30 |
 | 3 | Follows (steps 19–24) | 2026-09-30 | `exploit-report-2026-09-30-phase3.md`: 3 Low, all covered by accepted gaps |
 | 4 | Tweet routing (steps 25–30) | 2026-09-30 | `exploit-report-2026-09-30-phase4.md`: 1 Low fixed, 1 Low + 2 Info accepted |
+| 5 | People to follow (steps 31–35) | 2026-10-04 | `exploit-report-2026-10-04-phase5.md`: 1 Medium fixed, 1 Low accepted |
 
 **Left:** the mail service's follow email (separate project, phase 2), plus the accepted gaps below when their triggers land.
 
@@ -102,12 +103,54 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 - **Audit:** `exploit-report-2026-09-30-phase4.md`: 1 Low fixed (chunked overrun answered `502`), 1 Low and 2 Info
   logged below. `mvn verify` green 3× (573 tests).
 
+### Phase 5 — People to follow
+- **Endpoint:** `GET /api/v1/users?cursor=&size=` → `{items, nextCursor}`: every confirmed user except the caller, newest
+  account first (Q1). Item `{id, username, bio, profilePictureUrl, followersCount, followedByMe}` (Q2). Other methods on
+  the path answer `405` with `Allow: GET`; `HEAD` answers `200`; the trailing-slash path is `404`.
+- **Code:** `UserListService` + `UserListServiceImpl` (read-only transaction), `UserController.getUsers`,
+  `UserListItemResponseDTO` / `UserListResponseDTO` in `DTOs/response/users`, `ProfileMapper.toUserListItem`. The size
+  check is shared with the follow lists in `utilities/paging/PageSizeValidator`; the cursor is `FollowCursorCodec`.
+- **Queries:** `UserRepository.findUserListFirstPage` / `findUserListAfter` (`LEFT JOIN FETCH` of the picture; keyset on
+  the row value `(created_at, id)`) over `ix_users_enabled_created (enabled, created_at, id)`. Two SQL statements per
+  call, one for an empty page; counted in tests with Hibernate statistics (`SqlStatementCounter`, test profile only).
+- **Behaviour pinned by tests, not by the plan:** a repeated `size=1&size=2` is `200` with the first value (Spring's
+  conversion); a deleted caller's token sees every confirmed user, all `followedByMe = false`.
+- **Tests:** `UserListControllerIntegrationTest` (80, each starting from an empty `users` table), repository, service,
+  mapper and page-size unit tests, `UserListConcurrencyIntegrationTest` (follow/unfollow storm while paging; inserts during
+  a walk), `people.spec.ts` (two journeys, 3× green). Scenarios are in `TESTING.md`; calls made while building in
+  `DECISIONS.md`.
+- **Audit:** `exploit-report-2026-10-04-phase5.md`: finding 1 (Medium: the `OR` cursor predicate made a crafted cursor
+  scan every newer row; 8× slower at 300,003 users) fixed with the row-value form; finding 2 (Low: time-based ids carry
+  the host's IP) accepted below. The index was used at 300,003 rows. `mvnw verify` green 3×.
+
 ## Test strategy (Q37–38)
 Unit (Mockito) → repository (real Postgres) → HTTP e2e (Postgres, Kafka, MinIO via Testcontainers) →
 concurrency (latch-released threads, assert final state). No embedded fakes; Docker is required. The approved
 `@Disabled` catalog came first each phase, then each step enabled its group. Deterministic only: no
 `Thread.sleep` (bounded Awaitility), test clock, jobs disabled and invoked directly, unique data via `TestUsers`,
 Kafka assertions filtered by `userId`. A phase exits on `mvn verify` green 3× in a row.
+
+---
+
+## Phase 5 — People to follow ✅ **Done** (2026-10-04)
+
+What was built is under "What was built" above (Phase 5). Design settled in the `/plan-backend` interview of 2026-10-04
+(record at the bottom, Q1–Q3); `(my call)` items were accepted with the phase cut (Q3). Steps 31–35 are in the Status
+table; scenarios are in `TESTING.md`.
+
+- **Handoff to `frontend/PLAN.md`** (not built here): a "who to follow" view calls `GET /api/v1/users`, then follows
+  `nextCursor` as the user scrolls or presses "more", sending `size` and the cursor back untouched. Each card shows
+  `username`, `bio`, the picture and `followersCount`. The follow button calls the existing
+  `PUT|DELETE /api/v1/users/{username}/follow`; the list is not refetched for that, so the UI flips `followedByMe` and
+  moves `followersCount` by 1 itself. The list is ordered by registration time, so an account that confirms later
+  appears at its registration position: at the top of the next fresh load if it is recent, never in a part of a walk
+  that already passed it.
+- **e2e (`people.spec.ts`, `e2e/tests/`):** (1) three accounts sign up and confirm; the first lists `GET /api/v1/users`,
+  walks `nextCursor` (at most 5 pages; the new accounts are the newest) until it finds the other two, both
+  `followedByMe: false`, itself absent; it follows one, lists again and sees `followedByMe: true` and `followersCount` 1
+  on that one and 0 on the other; (2) an account registered but not yet confirmed is absent from the first page of
+  `size=100`, then present after its confirmation; the same call without a cookie answers `401`. Both look only at their
+  own users, because the database is shared with the specs running in parallel.
 
 ---
 
@@ -136,7 +179,8 @@ tests still take the token from the outbox payload or Kafka record.
 Mail service; SPA pages (incl. `/confirm`); password reset, account deletion, username change, display names
 (Q16); roles/admin (Q5); birthdate at signup and age checks (Q21); tweet logic (owned by
 `../twitter_tweet_service`; the gateway only routes, phase 4), timelines, notifications, blocks, mutes, private
-accounts; anonymous profile viewing (Q29); refresh tokens (Q19); image resizing.
+accounts; anonymous profile viewing (Q29); refresh tokens (Q19); image resizing; searching or filtering the people list,
+hiding people the caller already follows, and any frontend step for it (phase 5, Q1–Q3).
 
 ## Accepted gaps — revisit when the named trigger lands
 - **One `enabled` flag means "confirmed"; no roles/admin.** Trigger: first ban, or moderation features.
@@ -166,3 +210,33 @@ accounts; anonymous profile viewing (Q29); refresh tokens (Q19); image resizing.
   only JPEG/PNG/WebP are accepted). Trigger: loosening the type check (e.g. SVG).
 - **Hot-row contention on a popular account's counters.** Trigger: measurable follow latency → sharded counters.
 - **No counter reconciliation job** (`@Check >= 0` catches only negative drift). Trigger: any observed drift.
+- **Any logged-in user can page through every confirmed account** (phase 5), and the list shows each person's
+  `followersCount`. Profiles were already readable by username; this makes them enumerable. Same gateway-wide
+  no-rate-limit gap as above. **Trigger:** abuse, or a second instance → rate limit on `GET /api/v1/users`.
+- **No popularity ordering** (phase 5, Q1): the list is newest account first, because counters move while a reader
+  pages and would repeat or skip people. **Trigger:** newest-first stops being useful (many accounts, the frontend asks
+  for "most followed") → a ranked list from a snapshot or a stored score, which needs its own design.
+- **User ids are time-based UUIDs** (`@UuidGenerator(style = TIME)` in `CommonEntity`): they embed the gateway host's
+  IPv4 address, JVM start time and a counter, and the people list hands out ids in bulk (phase 5 audit finding 2, Low;
+  file ids are the same, so the phase 2 report's "random" was wrong). No id is a secret today. **Trigger:** a deployment
+  whose network addresses matter, or any use of an id as a secret → a random or v7 generator (existing rows keep their ids).
+- **The three follow-list queries still use the `OR` cursor predicate** (audit finding 1, note): a page reads the rows
+  newer than the cursor within one account's follows. **Trigger:** an account with six-figure follows or a slow list →
+  the row-value form the people list uses.
+- **No frontend caller yet** (phase 5): `frontend/PLAN.md` has no people view; only `people.spec.ts` calls the
+  endpoint. **Trigger:** the frontend plan picks up `GET /api/v1/users` (see the handoff in phase 5).
+- **No search or filter on the people list** (phase 5). **Trigger:** the first request to find someone by name →
+  a `q` parameter on the same endpoint.
+
+---
+
+## Interview record (`/plan-backend`, 2026-10-04)
+
+New phase 5 of this plan: a paged "people you can follow" endpoint, paged like the timeline service's feed.
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | Order of the list | Newest account first (`createdAt DESC, id DESC` keyset). Popularity ordering is an accepted gap. List includes everyone confirmed except the caller, followed or not, marked `followedByMe` |
+| 2 | Fields per person | `id`, `username`, `bio`, `profilePictureUrl`, `followersCount`, `followedByMe`; no email, location, birthdate, createdAt, followingCount or cover picture |
+| 3 | Phase cut | One phase, steps 31–35: catalog, index + repository, service + endpoint, e2e, hardening. The listed calls were accepted with it: path `GET /api/v1/users`, paging as the follow lists, two statements per call, no new event or service call, the three accepted gaps |
+| — | `(my call)` | Index `ix_users_enabled_created` (use unproven, logged as a gap); picture fetched in the page query, statements counted with Hibernate statistics; reuse of `FollowCursorCodec` (a follow-list cursor also decodes); a deleted caller sees everyone; the size check shared between the two lists instead of copied; `405` for other methods, `404` for the trailing slash |

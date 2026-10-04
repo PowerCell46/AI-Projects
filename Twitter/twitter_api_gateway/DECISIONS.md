@@ -459,3 +459,51 @@ mismatch, so the existing handler answers `400` "Malformed request parameter." a
 without a cookie. The controller sits in `controllers/likes`: `controllers` already holds five files, so a sixth
 needs a subpackage; the existing controllers were not moved. When a likes service lands, replace the stub with a
 route like the timeline one or a real service behind the same paths.
+
+## Phase 5 step 31 - names chosen in the test catalog
+
+Names the plan left open, so the `@Disabled` catalog could compile: the shared page-size check is
+`utilities/paging/PageSizeValidator` (test `PageSizeValidatorTest`); the service method group is `ListUsers`; the
+repository groups are `UserListFirstPage`, `UserListPageAfterCursor` and `UserListIndex`. Step 32/33 may rename the
+production side; if so, rename the test groups with it.
+
+## Phase 5 step 32 - repository query names; picture fetch waits for step 33
+
+`UserRepository.findUserListFirstPage(callerId, limit)` and `findUserListAfter(callerId, createdAt, id, limit)`, named
+like the follow-list queries. They do not `LEFT JOIN FETCH` the picture yet: the plan puts that in step 33 with the
+2-statement test that proves it. Repository tests put their users at 2999-01-01 (or the epoch for "oldest") so rows
+other suites committed to the shared Postgres can't enter a page, and compare ids in `UUID.toString` order, which
+matches Postgres's bytewise uuid order (Java's `UUID.compareTo` is signed).
+
+## Phase 5 step 33 - list tests wipe `users`; repeated size; HEAD
+
+- `UserListControllerIntegrationTest` runs `DELETE FROM users` before every test (approved). The list covers every
+  confirmed user and the Postgres container is shared, so exact counts ("25 people", "caller alone") need an empty
+  table. No other suite wipes users; they create unique data and are unaffected because suites run one at a time.
+- Repeated `size=1&size=2` is `200` with the first value, not `400`: Spring converts the repeated `String[]` to an
+  `int` by taking the first element, and a repeated `cursor` is joined to `a,b` and fails as an invalid cursor. The
+  follow lists behave the same; the test pins it (approved).
+- The `HEAD` test asserts `200` only: MockMvc keeps the body that Tomcat drops (approved).
+- `SqlStatementCounter` (in `support/`) reads Hibernate's prepared-statement count before and after a call;
+  `hibernate.generate_statistics` is on in the test profile only.
+- `UserController` repeats the follow controller's `DEFAULT_PAGE_SIZE = "20"`; the two controllers don't share a
+  class, and a constant for one string wasn't worth a new one.
+
+## Phase 5 step 34 - `confirmViaApi` extracted in the e2e fixtures
+
+Journey 2 registers an account, looks, then confirms it, so the confirm half of `registerAndConfirmViaApi` is now
+its own exported `confirmViaApi` in `e2e/tests/fixtures.ts`; `registerAndConfirmViaApi` calls it. Behaviour of the
+existing specs is unchanged. Both journeys read the list through the account's API client and compare only their own
+usernames, so the shared database and parallel specs don't matter.
+
+## Phase 5 step 35 - audit outcome and outbox cleanup in the concurrency test
+
+- Audit finding 1 (Medium) fixed: the after-cursor query compares the row value `(created_at, id) < (:c, :id)`, which
+  Postgres can use as an index bound; the `OR` form read every row newer than the cursor. The follow-list queries keep
+  the `OR` form (bounded by one account's follows) and are logged as an accepted gap. Finding 2 (Low, time-based ids
+  carry the host IP) is an accepted gap with a trigger (approved).
+- `UserListConcurrencyIntegrationTest` deletes the outbox rows keyed by its users after each test. Its follow/unfollow
+  storm leaves ~200 PENDING rows, and with them `OutboxPublisherServiceKafkaIntegrationTest` failed 3 of 3 runs: its
+  publisher call takes only the first `app.outbox.batch-size` pending rows, so its own row fell outside the batch.
+  That test is left as it is; other suites that add many outbox rows will hit the same limit.
+
