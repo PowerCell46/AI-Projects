@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.lookups;
 
 import java.util.Collection;
 import java.util.UUID;

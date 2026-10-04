@@ -37,15 +37,15 @@ import lombok.Value;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntry;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweet;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetView;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewCount;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetView;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewCount;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewRecordingService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;
 
 /**
  * What every listener suite needs: a raw producer for the three input topics, the events written the way their

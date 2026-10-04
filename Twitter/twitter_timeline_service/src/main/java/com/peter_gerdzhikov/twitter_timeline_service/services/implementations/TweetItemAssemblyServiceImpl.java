@@ -17,9 +17,9 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewService;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.mappers.TweetItemMapper;
 
 import lombok.RequiredArgsConstructor;

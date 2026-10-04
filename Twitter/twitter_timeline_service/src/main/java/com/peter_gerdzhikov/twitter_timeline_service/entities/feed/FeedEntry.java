@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.entities;
+package com.peter_gerdzhikov.twitter_timeline_service.entities.feed;
 
 import java.time.Instant;
 import java.util.UUID;

@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewCount;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewCount;
 
 public interface TweetViewCountRepository extends JpaRepository<TweetViewCount, UUID> {
 

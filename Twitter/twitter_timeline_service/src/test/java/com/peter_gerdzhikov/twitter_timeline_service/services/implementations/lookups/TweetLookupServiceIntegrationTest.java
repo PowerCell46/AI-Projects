@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.lookups;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
@@ -26,7 +26,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractDownstreamIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 

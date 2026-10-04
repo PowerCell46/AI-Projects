@@ -12,7 +12,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetView;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetView;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 

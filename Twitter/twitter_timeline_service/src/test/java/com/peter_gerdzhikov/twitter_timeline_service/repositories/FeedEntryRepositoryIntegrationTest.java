@@ -16,8 +16,8 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntry;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntryId;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntryId;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 

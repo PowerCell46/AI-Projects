@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.feed;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,7 +29,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.events.InvalidEv
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FollowerLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowerLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 @ExtendWith(MockitoExtension.class)

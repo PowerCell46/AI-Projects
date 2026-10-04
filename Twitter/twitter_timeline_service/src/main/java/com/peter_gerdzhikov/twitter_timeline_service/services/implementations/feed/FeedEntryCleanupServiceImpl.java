@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.feed;
 
 import java.time.temporal.ChronoUnit;
 
@@ -12,7 +12,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepo
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedEntryCleanupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedEntryCleanupService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -8,7 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedRetentionService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedRetentionService;
 
 @ExtendWith(MockitoExtension.class)
 class FeedRetentionJobTest {

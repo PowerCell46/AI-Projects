@@ -43,7 +43,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweet;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.MutableClock;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;

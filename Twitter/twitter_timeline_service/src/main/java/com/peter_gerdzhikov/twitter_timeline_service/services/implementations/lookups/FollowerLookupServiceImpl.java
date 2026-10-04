@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.lookups;
 
 import java.util.List;
 import java.util.UUID;
@@ -10,7 +10,7 @@ import org.springframework.web.client.RestClient;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.FollowerIdsClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FollowerLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowerLookupService;
 
 @Service
 public class FollowerLookupServiceImpl extends DownstreamLookupSupport implements FollowerLookupService {

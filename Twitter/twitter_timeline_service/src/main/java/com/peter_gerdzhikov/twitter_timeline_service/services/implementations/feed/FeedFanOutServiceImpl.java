@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.feed;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -11,8 +11,8 @@ import org.springframework.stereotype.Service;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedFanOutService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FollowerLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedFanOutService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowerLookupService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

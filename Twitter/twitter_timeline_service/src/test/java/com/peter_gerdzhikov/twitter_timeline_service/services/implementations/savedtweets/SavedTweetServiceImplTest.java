@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.savedtweets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,14 +29,14 @@ import org.springframework.data.domain.Pageable;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.SavedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweet;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursorCodec;
 

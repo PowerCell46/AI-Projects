@@ -12,8 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweet;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.SavedTweetId;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweetId;
 
 public interface SavedTweetRepository extends JpaRepository<SavedTweet, SavedTweetId> {
 

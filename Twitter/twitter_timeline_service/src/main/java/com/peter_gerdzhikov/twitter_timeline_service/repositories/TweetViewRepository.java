@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetView;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewId;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetView;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewId;
 
 public interface TweetViewRepository extends JpaRepository<TweetView, TweetViewId> {
 

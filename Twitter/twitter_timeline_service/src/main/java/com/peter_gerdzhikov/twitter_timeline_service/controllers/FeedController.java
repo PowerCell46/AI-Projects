@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.FeedResponseDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedService;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.CurrentUserId;
 
 import lombok.RequiredArgsConstructor;

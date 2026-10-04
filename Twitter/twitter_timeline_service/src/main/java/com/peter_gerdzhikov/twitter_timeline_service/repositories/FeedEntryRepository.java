@@ -11,8 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntry;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntryId;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntryId;
 
 public interface FeedEntryRepository extends JpaRepository<FeedEntry, FeedEntryId> {
 

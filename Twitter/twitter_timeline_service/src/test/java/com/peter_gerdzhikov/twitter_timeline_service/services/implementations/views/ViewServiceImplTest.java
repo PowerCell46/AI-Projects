@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.views;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,12 +23,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewCount;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewCount;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewRecordingService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 @ExtendWith(MockitoExtension.class)

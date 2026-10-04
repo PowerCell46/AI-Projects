@@ -11,9 +11,9 @@ import org.wiremock.integrations.testcontainers.WireMockContainer;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedBackfillService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedEntryCleanupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedFanOutService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedBackfillService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedEntryCleanupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedFanOutService;
 
 /**
  * Adds two WireMock containers, one standing in for the gateway's internal API and one for the tweet service,

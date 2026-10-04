@@ -4,7 +4,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEventDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedFanOutService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedFanOutService;
 
 import lombok.RequiredArgsConstructor;
 

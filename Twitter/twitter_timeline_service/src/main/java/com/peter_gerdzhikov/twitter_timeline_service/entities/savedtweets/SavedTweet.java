@@ -1,5 +1,6 @@
-package com.peter_gerdzhikov.twitter_timeline_service.entities;
+package com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets;
 
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
 import java.time.Instant;
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.lookups;
 
 import java.util.Collection;
 import java.util.List;
@@ -14,7 +14,7 @@ import org.springframework.web.client.RestClient;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
 
 @Service
 public class UserLookupServiceImpl extends DownstreamLookupSupport implements UserLookupService {

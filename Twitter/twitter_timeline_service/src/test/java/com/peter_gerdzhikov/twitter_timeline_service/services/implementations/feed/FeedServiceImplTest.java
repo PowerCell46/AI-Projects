@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.feed;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,16 +34,17 @@ import org.springframework.data.domain.Pageable;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.FeedResponseDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.entities.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.implementations.TweetItemAssemblyServiceImpl;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursorCodec;
 

@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.views;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -10,11 +10,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewCount;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewRecordingService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewService;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.TweetIdsValidator;
 
 import lombok.RequiredArgsConstructor;

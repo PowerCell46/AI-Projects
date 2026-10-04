@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.entities;
+package com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets;
 
 import java.io.Serializable;
 import java.util.UUID;

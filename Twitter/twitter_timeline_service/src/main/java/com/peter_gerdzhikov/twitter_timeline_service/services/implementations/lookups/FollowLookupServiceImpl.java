@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.lookups;
 
 import java.util.UUID;
 
@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.FollowCheckClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FollowLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowLookupService;
 
 import lombok.extern.slf4j.Slf4j;
 

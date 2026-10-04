@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.feed;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -13,9 +13,9 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryCli
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedBackfillService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FollowLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedBackfillService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 
 import lombok.extern.slf4j.Slf4j;
 

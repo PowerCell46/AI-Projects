@@ -14,7 +14,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.peter_gerdzhikov.twitter_timeline_service.entities.TweetViewCount;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewCount;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 

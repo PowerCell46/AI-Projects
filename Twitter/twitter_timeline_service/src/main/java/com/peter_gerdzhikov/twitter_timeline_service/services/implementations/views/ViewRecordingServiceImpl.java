@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
+package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.views;
 
 import java.util.Collection;
 import java.util.List;
@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewRecordingService;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;
 
 import lombok.RequiredArgsConstructor;
 
