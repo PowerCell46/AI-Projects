@@ -12,8 +12,8 @@ Owns tweets: create (text and up to 4 images), read, edit the text, delete, and 
 `/api/v1/tweets/**` and sets `X-User-Id`. Designed via `/grill-me` on 2026-09-30.
 
 Where things live now: calls made while building are in `DECISIONS.md`, the test catalog in `TESTING.md`, the
-Kafka contracts in `EVENTS.md`, conventions in `CLAUDE.md`, the security audit in
-`exploit-report-2026-09-30.md`. The original step-by-step plan (steps, gates, interview record) was trimmed out of this file.
+Kafka contracts in `EVENTS.md`, conventions in `CLAUDE.md`, the security audits in
+`SECURITY-AUDITS.md`. The original step-by-step plan (steps, gates, interview record) was trimmed out of this file.
 
 ---
 
@@ -77,10 +77,12 @@ gateway (gateway phase 4).
 - **Dev Mongo has no auth** (bound to `127.0.0.1`). **Trigger:** any shared environment → auth plus a
   replica-set keyfile.
 - **A large `content` text part is read into memory before it is rejected** (up to the 21 MB create cap), and
-  **up to 10 file parts are parsed before the 4-image limit applies** (`exploit-report-2026-09-30.md`,
-  findings 2 and 3). **Trigger:** a caller path that isn't authenticated and metered → a per-part size cap
+  **up to 10 file parts are parsed before the 4-image limit applies** (`SECURITY-AUDITS.md`, 2026-09-30). **Trigger:** a caller path that isn't authenticated and metered → a per-part size cap
   (e.g. a custom multipart check or a smaller `content` limit) and Tomcat's `max-part-count` set to 5.
-- **Tweet text keeps control and bidirectional characters** (finding 4). **Trigger:** the first consumer that
+- **Tweet text keeps control and bidirectional characters** (`SECURITY-AUDITS.md`). **Trigger:** the first consumer that
   renders `content` → sanitise there, or reject control characters on write.
+- **A `since` outside `java.util.Date`'s range on the by-author read answers `500` with a stack trace** (Low).
+  **Trigger:** any caller that doesn't compute `since` itself → reject out-of-window values with the `limit` 400 shape,
+  or map `ConversionFailedException` to 400.
 - **Mongo schema is enforced only by the application** (no `$jsonSchema` validator). **Trigger:** a second
   writer to the collection.
