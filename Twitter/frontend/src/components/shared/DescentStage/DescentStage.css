@@ -43,3 +43,24 @@
     letter-spacing: 0.11em;
     color: var(--pale-footer);
 }
+
+/* Fades every layer out so the feed's header can draw in over the same dark ground. Must match STAGE_LEAVE_MS in
+   LoginPage.tsx. */
+.descent-stage[data-leaving='true'] > * {
+    opacity: 0;
+    transition: opacity 500ms var(--e);
+}
+
+.descent-stage[data-entering='true'] > * {
+    animation: descent-stage-fade-in 900ms var(--e) backwards;
+}
+
+@keyframes descent-stage-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

@@ -30,6 +30,8 @@ vi.mock('../../../../../api/users', () => ({
     fetchUserProfile: vi.fn(),
 }));
 
+const SIGN_OUT_LEAVE_MS = 1200;
+
 const SIGNED_IN_USER = {
     id: 'user-1',
     username: 'peter_g',
@@ -286,10 +288,26 @@ describe('log out', () => {
         vi.mocked(me).mockRejectedValue(new ApiError(401, []));
 
         await user.click(screen.getByRole('menuitem', { name: 'LOG OUT' }));
-        await advance(1);
+        await advance(SIGN_OUT_LEAVE_MS);
 
         expect(logout).toHaveBeenCalledTimes(1);
         expect(window.location.pathname).toBe(ROUTES.login);
+    });
+
+    it('should_play_the_feed_out_before_landing_on_login_when_log_out_is_chosen', async () => {
+        vi.mocked(logout).mockResolvedValue(undefined);
+        vi.mocked(me).mockRejectedValue(new ApiError(401, []));
+
+        await user.click(screen.getByRole('menuitem', { name: 'LOG OUT' }));
+        await advance(SIGN_OUT_LEAVE_MS - 1);
+
+        expect(document.querySelector('.shell')?.getAttribute('data-signing-out')).toBe('true');
+        expect(window.location.pathname).toBe(ROUTES.feed);
+
+        await advance(1);
+
+        expect(window.location.pathname).toBe(ROUTES.login);
+        expect(document.querySelector('.descent-stage')?.getAttribute('data-entering')).toBe('true');
     });
 
     it('should_stay_on_the_feed_with_signal_lost_in_the_menu_when_logout_fails', async () => {

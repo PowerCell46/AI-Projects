@@ -8,6 +8,8 @@ interface DescentStageProps {
     depthMetres: number;
     seafloorDepthMetres: number;
     isAlarm?: boolean;
+    isLeaving?: boolean;
+    isEntering?: boolean;
     footer?: ReactNode;
     children: ReactNode;
 }
@@ -16,11 +18,13 @@ function DescentStage({
     depthMetres,
     seafloorDepthMetres,
     isAlarm = false,
+    isLeaving = false,
+    isEntering = false,
     footer,
     children,
 }: DescentStageProps) {
     return (
-        <div className="descent-stage" data-alarm={isAlarm}>
+        <div className="descent-stage" data-alarm={isAlarm} data-leaving={isLeaving} data-entering={isEntering}>
             <Ruler />
             <Horizon
                 depthMetres={depthMetres}

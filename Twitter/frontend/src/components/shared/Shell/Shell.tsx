@@ -12,7 +12,7 @@ import './Shell.css';
 
 
 function Shell() {
-    const { user } = useAuth();
+    const { user, isSigningOut } = useAuth();
     const pictureUrl = useProfilePicture(user?.username);
     const [isComposing, setIsComposing] = useState(false);
     const [ownPosts, setOwnPosts] = useState<TweetItem[]>([]);
@@ -35,14 +35,16 @@ function Shell() {
 
     return (
         <>
-            <Header
-                pictureUrl={pictureUrl}
-                postButtonRef={postButtonRef}
-                onPostClick={() => setIsComposing(true)}
-            />
-            <main className="shell-main">
-                <Outlet context={outletContext} />
-            </main>
+            <div className="shell" data-signing-out={isSigningOut}>
+                <Header
+                    pictureUrl={pictureUrl}
+                    postButtonRef={postButtonRef}
+                    onPostClick={() => setIsComposing(true)}
+                />
+                <main className="shell-main">
+                    <Outlet context={outletContext} />
+                </main>
+            </div>
             {isComposing && <ComposeModal onClose={closeCompose} onPublished={handlePublished} />}
         </>
     );

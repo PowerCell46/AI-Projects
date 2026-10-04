@@ -37,3 +37,85 @@
     align-items: center;
     gap: 1rem;
 }
+
+/* The line the login arrival drew, continued: it crosses the header's bottom edge once, then fades into the rule. */
+.header::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    background: var(--glow);
+    transform-origin: left;
+    animation: header-rule-draw 1800ms var(--e) both;
+}
+
+.header-brand,
+.header-actions {
+    animation: header-content-fade 900ms var(--e) 400ms backwards;
+}
+
+/* Signing out plays the arrival backwards: the rule flashes in and retracts, and the content fades away. */
+[data-signing-out='true'] .header::after {
+    animation: header-rule-retract 1200ms var(--e) both;
+}
+
+[data-signing-out='true'] .header-brand,
+[data-signing-out='true'] .header-actions {
+    animation: header-content-leave 700ms var(--e) both;
+}
+
+@keyframes header-rule-draw {
+    0% {
+        opacity: 1;
+        transform: scaleX(0);
+    }
+
+    60% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scaleX(1);
+    }
+}
+
+@keyframes header-content-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes header-rule-retract {
+    0% {
+        opacity: 0;
+        transform: scaleX(1);
+    }
+
+    20% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scaleX(0);
+    }
+}
+
+@keyframes header-content-leave {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}

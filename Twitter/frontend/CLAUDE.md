@@ -41,7 +41,11 @@ through outlet context (`useShellContext().ownPosts`).
 - The step is held in router location state, not the URL, so Back, `history.back()` and refresh share one path.
   A reload on a later step resets to step 1.
 - `STEP_SWAP_MS` (`useStepTransition.ts`) must match the 400 ms opacity in `StepFlow.css`. The login arrival delay
-  must match the arrival rule's 150 ms + 1300 ms in `Arrival.css`.
+  must match the arrival rule's 150 ms + 1300 ms in `Arrival.css`; `STAGE_LEAVE_MS` (`LoginPage.tsx`) must match the 500 ms
+  fade in `DescentStage.css`, after which `signIn` mounts the feed, whose header rule and post entrance take over.
+  Signing out runs it in reverse: `SIGN_OUT_LEAVE_MS` (`AuthContext.tsx`) must cover the 1200 ms header rule retract and
+  post leave in `Header.css` and `PostList.css`; `ProtectedRoute` then hands the login page `isAscending`, which fades the
+  stage in with the gauge rising from the seafloor (`ASCENT_START_DELAY_MS`, `LoginPage.tsx`).
 - The form ignores Enter while a step is sliding in, so e2e helpers wait for `data-slide="idle"`.
 - Validation rules mirror the gateway's `RegisterRequestDTO`; change both sides together.
 - Every request goes through `src/api/http.ts`. A `401` from a non-auth endpoint calls the handler `AuthProvider`

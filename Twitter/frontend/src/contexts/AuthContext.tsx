@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { me } from '../api/auth';
 import type { AuthUser } from '../api/auth';
 import { setUnauthorizedHandler } from '../api/http';
+import { prefersReducedMotion } from '../utils/motion';
 
 
 export type SessionStatus = 'loading' | 'authenticated' | 'anonymous';
@@ -13,6 +14,8 @@ interface Session {
 }
 
 interface AuthContextValue extends Session {
+    isSigningOut: boolean;
+    hasSignedOut: boolean;
     signIn: (user: AuthUser) => void;
     signOut: () => void;
 }
@@ -20,6 +23,10 @@ interface AuthContextValue extends Session {
 interface AuthProviderProps {
     children: ReactNode;
 }
+
+// How long the feed plays out before the session ends; the longest leave animation in Header.css and PostList.css
+// is 1200ms.
+const SIGN_OUT_LEAVE_MS = 1200;
 
 const LOADING_SESSION: Session = {
     status: 'loading',
@@ -42,6 +49,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: AuthProviderProps) {
     const [session, setSession] = useState<Session>(LOADING_SESSION);
+    const [isSigningOut, setIsSigningOut] = useState(false);
+    const [hasSignedOut, setHasSignedOut] = useState(false);
+    const signOutTimerIdRef = useRef<number | undefined>(undefined);
 
     useEffect(() => {
         let isCancelled = false;
@@ -68,16 +78,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return () => setUnauthorizedHandler(null);
     }, []);
 
+    useEffect(() => () => window.clearTimeout(signOutTimerIdRef.current), []);
+
     function signIn(authUser: AuthUser) {
         setSession(authenticatedSession(authUser));
+        setHasSignedOut(false);
     }
 
-    function signOut() {
+    function endSession() {
         setSession(ANONYMOUS_SESSION);
+        setIsSigningOut(false);
+        setHasSignedOut(true);
+    }
+
+    // The session ends after the feed has played out, so the leave animation runs while the feed is still mounted.
+    function signOut() {
+        if (isSigningOut) {
+            return;
+        }
+
+        setIsSigningOut(true);
+        signOutTimerIdRef.current = window.setTimeout(
+            endSession,
+            prefersReducedMotion() ? 0 : SIGN_OUT_LEAVE_MS,
+        );
     }
 
     const value: AuthContextValue = {
         ...session,
+        isSigningOut,
+        hasSignedOut,
         signIn,
         signOut,
     };

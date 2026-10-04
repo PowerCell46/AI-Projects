@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { login, me } from '../../api/auth';
@@ -27,9 +27,15 @@ vi.mock('../../api/auth', async (importOriginal) => ({
 
 const ARRIVAL_RULE_DRAW_MS = 1450;
 
+const STAGE_LEAVE_MS = 500;
+
+const ASCENT_START_DELAY_MS = 400;
+
 const PASSWORD_STEP_DEPTH_METRES = 3860;
 
 const SEAFLOOR_DEPTH_METRES = 4900;
+
+const SURFACE_DEPTH_METRES = 140;
 
 const SIGNED_IN_USER = {
     id: 'user-1',
@@ -51,6 +57,10 @@ async function submitCredentials(identifier: string, password: string) {
 
 function isAlarmShown(): boolean {
     return document.querySelector('.descent-stage')?.getAttribute('data-alarm') === 'true';
+}
+
+function isLeavingShown(): boolean {
+    return document.querySelector('.descent-stage')?.getAttribute('data-leaving') === 'true';
 }
 
 beforeEach(async () => {
@@ -179,17 +189,56 @@ describe('arrival', () => {
         expect(horizonTransform()).toBe(expectedTransform(SEAFLOOR_DEPTH_METRES, SEAFLOOR_DEPTH_METRES));
     });
 
-    it('should_go_to_the_feed_when_the_arrival_rule_has_been_drawn', async () => {
+    it('should_fade_the_stage_out_when_the_arrival_rule_has_been_drawn', async () => {
         vi.mocked(login).mockResolvedValue(SIGNED_IN_USER);
         await submitCredentials('peter_g', 'secret');
 
         await advance(ARRIVAL_RULE_DRAW_MS - 1);
+
+        expect(isLeavingShown()).toBe(false);
+
+        await advance(1);
+
+        expect(isLeavingShown()).toBe(true);
+        expect(window.location.pathname).toBe(ROUTES.login);
+    });
+
+    it('should_go_to_the_feed_when_the_stage_has_faded_out', async () => {
+        vi.mocked(login).mockResolvedValue(SIGNED_IN_USER);
+        await submitCredentials('peter_g', 'secret');
+
+        await advance(ARRIVAL_RULE_DRAW_MS + STAGE_LEAVE_MS - 1);
 
         expect(window.location.pathname).toBe(ROUTES.login);
 
         await advance(1);
 
         expect(window.location.pathname).toBe(ROUTES.feed);
+    });
+});
+
+describe('arriving from a sign-out', () => {
+    beforeEach(async () => {
+        cleanup();
+        await renderApp(ROUTES.login, { isAscending: true });
+    });
+
+    it('should_start_the_gauge_at_the_seafloor_and_fade_the_stage_in', () => {
+        expect(horizonTransform()).toBe(expectedTransform(SEAFLOOR_DEPTH_METRES, SEAFLOOR_DEPTH_METRES));
+        expect(document.querySelector('.descent-stage')?.getAttribute('data-entering')).toBe('true');
+    });
+
+    it('should_raise_the_gauge_to_the_surface_when_the_ascent_starts', async () => {
+        await advance(ASCENT_START_DELAY_MS);
+
+        expect(horizonTransform()).toBe(expectedTransform(SURFACE_DEPTH_METRES, SEAFLOOR_DEPTH_METRES));
+    });
+});
+
+describe('arriving without a sign-out', () => {
+    it('should_start_the_gauge_at_the_surface_without_the_fade_in', () => {
+        expect(horizonTransform()).toBe(expectedTransform(SURFACE_DEPTH_METRES, SEAFLOOR_DEPTH_METRES));
+        expect(document.querySelector('.descent-stage')?.getAttribute('data-entering')).toBe('false');
     });
 });
 
