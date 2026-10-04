@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import lombok.Builder;
@@ -17,6 +18,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @Document(collection = "tweets")
+@CompoundIndex(name = "ix_tweets_author_created_id", def = "{'authorId': 1, 'createdAt': -1, '_id': -1}")
 public class Tweet extends CommonDocument {
 
     private UUID authorId;

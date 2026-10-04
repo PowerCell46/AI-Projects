@@ -10,7 +10,9 @@ export const ENDPOINTS = {
     views: `${API_V1}/views`,
     tweets: `${API_V1}/tweets`,
     tweetImage: (tweetId: string, imageId: string) => `${API_V1}/tweets/${tweetId}/images/${imageId}`,
+    users: `${API_V1}/users`,
     user: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}`,
+    follow: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}/follow`,
     // The backend hands out paths like /api/v1/files/{id}; the browser needs them on the API's own origin.
     backendPath: (path: string) => `${BASE_URL}${path}`,
     auth: {

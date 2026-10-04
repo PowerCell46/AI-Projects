@@ -1,7 +1,8 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PageRequest, TweetItem, TweetPage } from '../../../api/tweetPage';
+import type { PageRequest } from '../../../api/paging';
+import type { TweetItem, TweetPage } from '../../../api/tweetPage';
 import { IntersectionObserverDouble, intersect, observersWatching } from '../../../test/intersectionObserver';
 import PostList from './PostList';
 
@@ -1225,3 +1226,171 @@ describe('new posts while reading', () => {
         });
     });
 });
+
+describe('the empty action', () => {
+    const EMPTY_ACTION_LABEL = 'FIND PEOPLE';
+
+    async function renderEmptyList(onEmptyAction = vi.fn()) {
+        await act(async () => {
+            render(
+                <PostList
+                    fetchPage={fetchPage}
+                    endText={END_TEXT}
+                    emptyText={EMPTY_TEXT}
+                    emptyAction={{
+                        label: EMPTY_ACTION_LABEL,
+                        onClick: onEmptyAction,
+                    }}
+                />,
+            );
+        });
+
+        return { onEmptyAction };
+    }
+
+    it('should_show_the_action_button_beside_the_empty_text_when_the_list_is_empty', async () => {
+        fetchPage.mockResolvedValue(page([], null));
+
+        await renderEmptyList();
+
+        expect(screen.getByText(EMPTY_TEXT)).toBeTruthy();
+        expect(screen.getByRole('button', { name: EMPTY_ACTION_LABEL })).toBeTruthy();
+    });
+
+    it('should_call_the_action_when_the_button_is_pressed', async () => {
+        fetchPage.mockResolvedValue(page([], null));
+        const { onEmptyAction } = await renderEmptyList();
+
+        await act(async () => {
+            await userEvent.click(screen.getByRole('button', { name: EMPTY_ACTION_LABEL }));
+        });
+
+        expect(onEmptyAction).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_not_show_the_action_when_the_list_has_posts', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+
+        await renderEmptyList();
+
+        expect(screen.queryByRole('button', { name: EMPTY_ACTION_LABEL })).toBeNull();
+    });
+
+    it('should_not_show_the_action_while_the_first_page_is_loading', async () => {
+        fetchPage.mockReturnValue(new Promise(() => undefined));
+
+        await renderEmptyList();
+
+        expect(screen.queryByRole('button', { name: EMPTY_ACTION_LABEL })).toBeNull();
+    });
+
+    it('should_not_show_a_button_when_no_action_is_given', async () => {
+        fetchPage.mockResolvedValue(page([], null));
+
+        await renderList();
+
+        expect(screen.getByText(EMPTY_TEXT)).toBeTruthy();
+        expect(screen.queryByRole('button')).toBeNull();
+    });
+});
+
+describe('reloading an empty list', () => {
+    function listWithKey(reloadEmptyKey: number) {
+        return (
+            <PostList
+                fetchPage={fetchPage}
+                endText={END_TEXT}
+                emptyText={EMPTY_TEXT}
+                reloadEmptyKey={reloadEmptyKey}
+            />
+        );
+    }
+
+    async function renderListWithKey(reloadEmptyKey: number) {
+        let rendered: ReturnType<typeof render> | null = null;
+
+        await act(async () => {
+            rendered = render(listWithKey(reloadEmptyKey));
+        });
+
+        return async (nextKey: number) => {
+            await act(async () => {
+                rendered?.rerender(listWithKey(nextKey));
+            });
+        };
+    }
+
+    it('should_not_read_again_when_the_list_is_first_shown', async () => {
+        fetchPage.mockResolvedValue(page([], null));
+
+        await renderListWithKey(3);
+
+        expect(fetchPage).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_read_the_first_page_again_when_the_key_changes_and_the_list_is_empty', async () => {
+        fetchPage
+            .mockResolvedValueOnce(page([], null))
+            .mockResolvedValueOnce(page(posts('a'), null));
+        const changeKey = await renderListWithKey(0);
+
+        await changeKey(1);
+
+        expect(fetchPage).toHaveBeenCalledTimes(2);
+        expect(vi.mocked(fetchPage).mock.calls[1][0]).toEqual({
+            cursor: null,
+            size: 20,
+        });
+        expect(postIds()).toEqual(['a']);
+        expect(screen.queryByText(EMPTY_TEXT)).toBeNull();
+    });
+
+    it('should_keep_the_posts_and_read_nothing_when_the_key_changes_and_the_list_is_not_empty', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+        const changeKey = await renderListWithKey(0);
+
+        await changeKey(1);
+
+        expect(fetchPage).toHaveBeenCalledTimes(1);
+        expect(postIds()).toEqual(['a']);
+    });
+
+    it('should_read_nothing_when_the_key_stays_the_same_on_a_new_render', async () => {
+        fetchPage.mockResolvedValue(page([], null));
+        const changeKey = await renderListWithKey(2);
+
+        await changeKey(2);
+
+        expect(fetchPage).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_not_start_a_second_read_when_the_first_page_is_still_on_its_way', async () => {
+        fetchPage.mockReturnValue(new Promise(() => undefined));
+        const changeKey = await renderListWithKey(0);
+
+        await changeKey(1);
+
+        expect(fetchPage).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_not_read_again_when_the_first_page_failed', async () => {
+        fetchPage.mockRejectedValue(new Error('The request failed.'));
+        const changeKey = await renderListWithKey(0);
+
+        await changeKey(1);
+
+        expect(fetchPage).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('SIGNAL LOST')).toBeTruthy();
+    });
+
+    it('should_read_again_for_every_change_while_the_list_stays_empty', async () => {
+        fetchPage.mockResolvedValue(page([], null));
+        const changeKey = await renderListWithKey(0);
+
+        await changeKey(1);
+        await changeKey(2);
+
+        expect(fetchPage).toHaveBeenCalledTimes(3);
+    });
+});
+

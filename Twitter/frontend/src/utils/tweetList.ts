@@ -1,3 +1,4 @@
+import type { Identified } from '../api/paging';
 import type { TweetItem } from '../api/tweetPage';
 
 
@@ -42,19 +43,19 @@ function isOrderedBefore(candidate: TweetItem, other: TweetItem): boolean {
     return byTime !== 0 ? byTime > 0 : candidate.id > other.id;
 }
 
-function withoutIds(items: TweetItem[], excludedIds: Set<string>): TweetItem[] {
-    return items.filter((tweet) => !excludedIds.has(tweet.id));
+function withoutIds<T extends Identified>(items: T[], excludedIds: Set<string>): T[] {
+    return items.filter((item) => !excludedIds.has(item.id));
 }
 
-function idsOf(items: TweetItem[]): Set<string> {
-    return new Set(items.map((tweet) => tweet.id));
+function idsOf(items: Identified[]): Set<string> {
+    return new Set(items.map((item) => item.id));
 }
 
-export function appendUnique(current: TweetItem[], incoming: TweetItem[]): TweetItem[] {
+export function appendUnique<T extends Identified>(current: T[], incoming: T[]): T[] {
     return [...current, ...withoutIds(incoming, idsOf(current))];
 }
 
-export function prependUnique(current: TweetItem[], incoming: TweetItem[]): TweetItem[] {
+export function prependUnique<T extends Identified>(current: T[], incoming: T[]): T[] {
     return [...withoutIds(incoming, idsOf(current)), ...current];
 }
 

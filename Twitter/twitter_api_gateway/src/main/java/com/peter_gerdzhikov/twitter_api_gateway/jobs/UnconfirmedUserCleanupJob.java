@@ -8,6 +8,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.UnconfirmedU
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+// TODO: Add a javadoc explaining what this class does
 @Slf4j
 @Component
 @RequiredArgsConstructor

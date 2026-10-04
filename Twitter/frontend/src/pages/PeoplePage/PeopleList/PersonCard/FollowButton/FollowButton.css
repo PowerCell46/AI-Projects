@@ -1,0 +1,60 @@
+.follow-button {
+    position: relative;
+    min-width: 6.5rem;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    overflow: hidden;
+    background: none;
+    border: 1px solid var(--glow-border);
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    letter-spacing: 0.16em;
+    color: var(--glow);
+    cursor: pointer;
+    transition: color 360ms var(--e), border-color 360ms var(--e);
+}
+
+/* The panel rises from the bottom, the same direction as the post button and the action icons. */
+.follow-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 500ms var(--e);
+}
+
+.follow-button-label {
+    position: relative;
+}
+
+.follow-button:hover,
+.follow-button[data-following='true'] {
+    color: var(--deep);
+}
+
+.follow-button:hover::before,
+.follow-button[data-following='true']::before {
+    transform: scaleY(1);
+}
+
+/* Armed: the panel drops, so the button no longer looks followed while it asks to unfollow. */
+.follow-button[data-phase='armed'] {
+    color: var(--pale);
+}
+
+.follow-button[data-phase='armed']::before,
+.follow-button[data-phase='failed']::before {
+    transform: scaleY(0);
+}
+
+.follow-button[data-phase='failed'] {
+    color: var(--alarm);
+    border-color: var(--alarm);
+}
+
+.follow-button:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}

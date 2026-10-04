@@ -58,6 +58,7 @@ public class EmailConfirmationServiceImpl implements EmailConfirmationService {
         EmailConfirmationToken token = tokenRepository
                 .findByTokenHash(confirmationTokenService.hash(rawToken))
                 .orElseThrow(InvalidConfirmationTokenException::new);
+
         if (!token.getExpiresAt().isAfter(clock.instant())) {
             throw new InvalidConfirmationTokenException();
         }

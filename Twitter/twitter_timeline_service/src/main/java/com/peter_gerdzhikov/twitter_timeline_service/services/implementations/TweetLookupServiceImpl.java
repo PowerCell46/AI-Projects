@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
 
@@ -20,6 +22,8 @@ import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLo
 public class TweetLookupServiceImpl extends DownstreamLookupSupport implements TweetLookupService {
 
     private static final String TWEETS_PATH = "/internal/v1/tweets?ids={ids}";
+
+    private static final String BY_AUTHOR_PATH = "/internal/v1/tweets/by-author/{authorId}?since={since}&limit={limit}";
 
     private final RestClient tweetServiceRestClient;
 
@@ -46,5 +50,15 @@ public class TweetLookupServiceImpl extends DownstreamLookupSupport implements T
         return tweets
                 .stream()
                 .collect(Collectors.toMap(TweetClientDTO::getId, Function.identity(), (first, second) -> first));
+    }
+
+    @Override
+    public List<TweetSummaryClientDTO> findNewestByAuthor(UUID authorId, Instant since, int limit) {
+        return execute(() -> tweetServiceRestClient
+                .get()
+                .uri(BY_AUTHOR_PATH, authorId, since.toString(), limit)
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<TweetSummaryClientDTO>>() {
+                }));
     }
 }

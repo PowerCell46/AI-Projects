@@ -25,6 +25,7 @@ import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEventDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.events.InvalidEventException;
 
@@ -84,6 +85,23 @@ public class KafkaErrorHandlingConfiguration {
     ) {
         return errorHandler(
                 UserUnfollowedEventDTO.class,
+                dltName,
+                kafkaProperties,
+                connectionDetails,
+                backOff(initialInterval, maxInterval, maxRetries));
+    }
+
+    @Bean
+    public CommonErrorHandler userFollowedErrorHandler(
+            KafkaProperties kafkaProperties,
+            KafkaConnectionDetails connectionDetails,
+            @Value("${app.kafka.user-followed.dlt-name}") String dltName,
+            @Value("${app.kafka.retry.initial-interval}") Duration initialInterval,
+            @Value("${app.kafka.retry.max-interval}") Duration maxInterval,
+            @Value("${app.kafka.retry.max-retries}") int maxRetries
+    ) {
+        return errorHandler(
+                UserFollowedEventDTO.class,
                 dltName,
                 kafkaProperties,
                 connectionDetails,

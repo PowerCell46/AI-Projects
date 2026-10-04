@@ -1,7 +1,7 @@
-/* Sticks just under the header; --header-height is the header's own height, set in index.css. */
+/* Sticks just under the header and the tab row; their heights are set in index.css. */
 .new-posts-button {
     position: sticky;
-    top: calc(var(--header-height) + 0.75rem);
+    top: calc(var(--header-height) + var(--tab-row-height) + 0.75rem);
     z-index: 5;
     display: block;
     min-height: 2.75rem;

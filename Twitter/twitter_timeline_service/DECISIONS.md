@@ -322,3 +322,65 @@ The second `mvn verify` after the change failed with 14 errors, all at context l
 test container crashed on startup with a segfault inside the image (before any test ran), and the Docker daemon also
 reported a missing container snapshot. No test assertion failed. The 3x-in-a-row count started over and all three
 runs were green (446 tests each). No test or code changed between the runs.
+
+## Frontend plan step 16 - the timeline's DLT env vars carry a `TIMELINE_` prefix
+
+The plan named `USER_FOLLOWED_DLT_NAME` for `user.followed-timeline-dlt`, but the mail service reads the same names
+(and `USER_FOLLOWED_DLT_PARTITIONS`) from the shared root `.env`, so setting one would have moved both services'
+dead letters onto one topic. The timeline reads `TIMELINE_USER_FOLLOWED_DLT_NAME` and
+`TIMELINE_USER_FOLLOWED_DLT_PARTITIONS`, as it already does for `TIMELINE_DATASOURCE_*`. The topic name stays
+`USER_FOLLOWED_TOPIC_NAME`, shared on purpose with the gateway and the mail service. The user chose this on
+2026-10-04; the plan's step text was changed with it.
+
+## Frontend plan step 16 - back-fill is its own service, with two lookups beside the existing ones
+
+`FeedBackfillService` (insert, check, undo) is called by `UserFollowedListener`. The by-author read is a method of
+`TweetLookupService`; the follow check is a new `FollowLookupService`, because it asks the gateway something other
+than follower ids. `FeedBackfillServiceImpl` is not `@Transactional`: each insert and the undo delete already run in
+their own repository transaction, and no database connection should be held across the two HTTP calls.
+
+## Frontend plan step 16 - the follow check reads the status itself; only 204 and 404 are answers (superseded by step 24 below)
+
+`FollowLookupServiceImpl` uses `exchange`, which hands the status back instead of throwing, so a `404` means "no
+follow" (`false`) and `204` means `true`. Every other status, a `401` from a wrong secret included, is "unavailable"
+and retried, then dead-lettered: a misconfigured secret must never read as "unfollowed" and delete the back-fill.
+
+## Frontend plan step 16 - one insert per tweet, through the existing statement
+
+The back-fill inserts up to 50 rows with the existing `insertIfAbsent` (one user, one tweet), each in its own
+transaction, not with a new multi-tweet statement. Fifty tiny inserts per follow is cheap, the statement is already
+proven idempotent, and a retry from the top re-runs them harmlessly. **Trigger:** the back-fill size grows past a few
+hundred, or follow volume makes it show up in the database → one statement over two arrays.
+
+## Frontend plan step 16 - the undo bound is the clock's now
+
+When the check says the follow is gone, the delete removes the follower's entries by that author up to the injected
+clock's now (cut to microseconds). That also removes entries the author's own fan-out put there in the meantime,
+which is right: the follow no longer exists. It is the same delete `user.unfollowed` runs.
+
+## Frontend plan step 16 - the feed-order scenario is covered one level down
+
+The plan's test strategy lists "back-filled rows page in time order in `GET /api/v1/feed`". A back-filled row is
+indistinguishable from a fanned-out one, and the feed endpoint's own suite already covers order and paging over
+those rows. The listener test asserts the order through the repository's feed query, and e2e scenario 1 (step 17)
+asserts it through the endpoint, so no scenario was added to `FeedControllerIntegrationTest`.
+
+## Frontend plan step 16 - no compose change was needed
+
+The dev compose passes the root `.env` to the timeline service (`env_file`), and the e2e compose runs on defaults;
+every new setting has one (`FEED_BACKFILL_SIZE` 50, the topic and DLT names, 3 DLT partitions). The new variables are
+in `.env.example`.
+
+## Frontend plan step 16 - the concurrency suite calls the services directly
+
+`FeedBackfillConcurrencyIntegrationTest` releases 6 parallel back-fills (and a fan-out, or an unfollow event) from one
+latch and asserts only the final state. Follow, unfollow, follow again within seconds is the plan's accepted gap and is
+not asserted: the unfollow's delete may run after the second back-fill, so posts can go missing.
+
+## Frontend plan step 24 - only a 200 with `{"following": true|false}` is an answer to the follow check
+
+Replaces the step 16 entry above (audit finding 1). The gateway answers a missing or wrong secret, and a build
+without the route, with a bare `404`, so reading `404` as "not following" made a misconfiguration delete every
+back-fill with no error. The gateway now answers `200` with `{"following": true|false}`; `FollowLookupServiceImpl`
+reads it with `retrieve()` and `FollowCheckClientDTO`, and everything else is "unavailable": any error status, a `204`,
+a `200` without the field or without a body. That is retried and then dead-lettered, so the symptom is visible.

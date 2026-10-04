@@ -74,6 +74,12 @@ public class InternalUserServiceImpl implements InternalUserService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isFollowing(UUID followerId, UUID followeeId) {
+        return followRepository.existsByFollowerIdAndFollowingId(followerId, followeeId);
+    }
+
     private void validateSize(int size) {
         if (size < MIN_FOLLOWER_PAGE_SIZE || size > MAX_FOLLOWER_PAGE_SIZE) {
             throw new InvalidPageSizeException(MIN_FOLLOWER_PAGE_SIZE, MAX_FOLLOWER_PAGE_SIZE);

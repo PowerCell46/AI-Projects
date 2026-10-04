@@ -1,7 +1,7 @@
 import type { TweetItem } from '../../../../api/tweetPage';
 import { stripBidiControls } from '../../../../utils/bidi';
 import { formatPostTime } from '../../../../utils/relativeTime';
-import Avatar from './Avatar/Avatar';
+import Avatar from '../../Avatar/Avatar';
 import PostActions from './PostActions/PostActions';
 import PostImages from './PostImages/PostImages';
 import './PostCell.css';

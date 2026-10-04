@@ -4,6 +4,8 @@ import type { TweetItem } from '../../../api/tweetPage';
 
 export interface ShellContext {
     ownPosts: TweetItem[];
+    followChangeCount: number;
+    onFollowChanged: () => void;
 }
 
 export function useShellContext(): ShellContext {

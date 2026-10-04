@@ -9,3 +9,10 @@
     margin: 0 auto;
     padding: 1.25rem 1.5rem 8.75rem;
 }
+
+/* The header and the tab row stick to the top of the page as one block. */
+.shell-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}

@@ -6,7 +6,7 @@ import { fetchFeed } from '../../../api/feed';
 import { ApiError } from '../../../api/http';
 import { fetchSavedTweets } from '../../../api/savedTweets';
 import { publishTweet } from '../../../api/tweets';
-import { fetchUserProfile } from '../../../api/users';
+import { fetchPeople, fetchUserProfile } from '../../../api/users';
 import { ROUTES } from '../../../routes';
 import { reachListBottom } from '../../../test/postListHelpers';
 import { renderApp } from '../../../test/renderApp';
@@ -39,6 +39,9 @@ vi.mock('../../../api/likes', () => ({
 
 vi.mock('../../../api/users', () => ({
     fetchUserProfile: vi.fn(),
+    fetchPeople: vi.fn(),
+    followUser: vi.fn(),
+    unfollowUser: vi.fn(),
 }));
 
 const SIGNED_IN_USER = {
@@ -62,6 +65,9 @@ beforeEach(() => {
         .mockReset()
         .mockResolvedValue(EMPTY_PAGE);
     vi.mocked(fetchSavedTweets)
+        .mockReset()
+        .mockResolvedValue(EMPTY_PAGE);
+    vi.mocked(fetchPeople)
         .mockReset()
         .mockResolvedValue(EMPTY_PAGE);
     vi.mocked(fetchUserProfile)
@@ -104,6 +110,47 @@ describe('the shell', () => {
 
         expect(window.location.pathname).toBe(ROUTES.login);
         expect(screen.queryByRole('banner')).toBeNull();
+    });
+});
+
+describe('the tab row', () => {
+    it.each([ROUTES.feed, ROUTES.people])('should_show_the_tab_row_under_the_header_on_%s', async (path) => {
+        await renderApp(path);
+
+        expect(screen.getByRole('tablist')).toBeTruthy();
+    });
+
+    it('should_show_no_tab_row_on_the_saved_page', async () => {
+        await renderApp(ROUTES.saved);
+
+        expect(screen.queryByRole('tablist')).toBeNull();
+    });
+
+    it('should_keep_the_header_and_the_tab_row_in_one_block_so_they_stick_together', async () => {
+        await renderApp(ROUTES.feed);
+
+        const stickyBlock = screen.getByRole('banner').parentElement;
+
+        expect(stickyBlock?.contains(screen.getByRole('tablist'))).toBe(true);
+        expect(stickyBlock?.contains(screen.getByRole('main'))).toBe(false);
+    });
+
+    it('should_keep_the_header_in_place_when_the_user_switches_tabs', async () => {
+        await renderApp(ROUTES.feed);
+        const header = screen.getByRole('banner');
+
+        await user.click(screen.getByRole('tab', { name: 'PEOPLE' }));
+
+        expect(screen.getByRole('banner')).toBe(header);
+    });
+
+    it('should_keep_the_tab_row_in_place_when_the_user_switches_tabs', async () => {
+        await renderApp(ROUTES.feed);
+        const tablist = screen.getByRole('tablist');
+
+        await user.click(screen.getByRole('tab', { name: 'PEOPLE' }));
+
+        expect(screen.getByRole('tablist')).toBe(tablist);
     });
 });
 
@@ -302,12 +349,12 @@ describe('composing', () => {
             nextCursor: null,
         });
         await renderApp(ROUTES.feed);
-        expect(screen.getByText('NOTHING HERE YET')).toBeTruthy();
+        expect(screen.getByText('NOTHING HERE YET — FOLLOW SOMEONE TO SEE THEIR POSTS')).toBeTruthy();
         await openCompose();
 
         await publish('my brand new post');
 
-        expect(screen.queryByText('NOTHING HERE YET')).toBeNull();
+        expect(screen.queryByText('NOTHING HERE YET — FOLLOW SOMEONE TO SEE THEIR POSTS')).toBeNull();
         expect(screen.getByText('END OF FEED')).toBeTruthy();
     });
 

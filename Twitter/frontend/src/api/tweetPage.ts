@@ -1,4 +1,5 @@
 import { readJson } from './http';
+import type { Page } from './paging';
 import { toPictureUrl } from './pictureUrl';
 
 
@@ -25,15 +26,7 @@ export interface TweetItem {
     images: TweetImage[];
 }
 
-export interface TweetPage {
-    items: TweetItem[];
-    nextCursor: string | null;
-}
-
-export interface PageRequest {
-    cursor: string | null;
-    size: number;
-}
+export type TweetPage = Page<TweetItem>;
 
 function withPictureUrl(tweet: TweetItem): TweetItem {
     return {
@@ -43,16 +36,6 @@ function withPictureUrl(tweet: TweetItem): TweetItem {
             profilePictureUrl: toPictureUrl(tweet.author.profilePictureUrl),
         },
     };
-}
-
-export function pageUrl(listUrl: string, request: PageRequest): string {
-    const params = new URLSearchParams({ size: String(request.size) });
-
-    if (request.cursor) {
-        params.set('cursor', request.cursor);
-    }
-
-    return `${listUrl}?${params.toString()}`;
 }
 
 export async function readTweetPage(response: Response): Promise<TweetPage> {

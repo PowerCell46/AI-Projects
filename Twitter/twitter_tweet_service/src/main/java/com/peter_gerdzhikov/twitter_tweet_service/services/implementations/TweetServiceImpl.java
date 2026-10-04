@@ -21,6 +21,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetCreatedEventDT
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetDeletedEventDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
@@ -30,6 +31,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImage
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ObjectStorageService;
@@ -49,6 +51,8 @@ public class TweetServiceImpl implements TweetService {
     private static final int MAX_DELETE_ATTEMPTS = 3;
 
     private static final int MAX_IDS_PER_READ = 100;
+
+    private static final int MAX_TWEETS_PER_AUTHOR_READ = 100;
 
     private static final int WRITE_CONFLICT_CODE = 112;
 
@@ -172,6 +176,19 @@ public class TweetServiceImpl implements TweetService {
                 .findAllById(new LinkedHashSet<>(ids))
                 .stream()
                 .map(TweetMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<TweetSummaryResponseDTO> findNewestByAuthor(UUID authorId, Instant since, int limit) {
+        if (limit < 1 || limit > MAX_TWEETS_PER_AUTHOR_READ) {
+            throw new TweetLimitOutOfRangeException(MAX_TWEETS_PER_AUTHOR_READ);
+        }
+
+        return tweetRepository
+                .findNewestByAuthorSince(authorId, since, limit)
+                .stream()
+                .map(TweetMapper::toSummary)
                 .toList();
     }
 

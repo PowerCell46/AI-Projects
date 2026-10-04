@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_tweet_service.services.interfaces;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -7,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
 
 public interface TweetService {
 
@@ -41,6 +43,14 @@ public interface TweetService {
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException
      */
     List<TweetResponseDTO> findByIds(List<UUID> ids);
+
+    /**
+     * Reads the id and creation time of the author's tweets created at or after {@code since}, newest first.
+     *
+     * @param limit between 1 and 100
+     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException
+     */
+    List<TweetSummaryResponseDTO> findNewestByAuthor(UUID authorId, Instant since, int limit);
 
     /**
      * Doesn't count a view.

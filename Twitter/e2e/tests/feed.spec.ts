@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { deleteTweet, follow, postTweet, test, type Account } from './fixtures';
+import { deleteTweet, follow, postTweet, test, unfollow, type Account } from './fixtures';
 
 
 interface FeedAuthor {
@@ -23,12 +23,6 @@ const TEST_TIMEOUT_MS = 120_000;
 const FEED_POLL_TIMEOUT_MS = 30_000;
 
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
-
-async function unfollow(follower: Account, followee: Account) {
-    const response = await follower.api.delete(`/api/v1/users/${followee.user.username}/follow`);
-
-    expect(response.status()).toBe(204);
-}
 
 async function readFeed(reader: Account): Promise<FeedPage> {
     const response = await reader.api.get('/api/v1/feed');
@@ -90,7 +84,7 @@ test('should_remove_the_tweet_from_the_followers_feed_when_the_author_deletes_it
     await expectFeedToBeEmpty(ana);
 });
 
-test('should_drop_the_authors_tweets_on_unfollow_and_show_only_his_next_tweet_after_a_refollow', async ({ createAccount }) => {
+test('should_drop_the_authors_tweets_on_unfollow_and_bring_them_back_with_the_next_tweet_after_a_refollow', async ({ createAccount }) => {
     const ana = await createAccount();
     const bob = await createAccount();
     await follow(ana, bob);
@@ -104,6 +98,8 @@ test('should_drop_the_authors_tweets_on_unfollow_and_show_only_his_next_tweet_af
     await follow(ana, bob);
     const tweetAfterRefollow = await postTweet(bob, `after the refollow ${bob.user.username}`);
 
-    await expectFeedToContain(ana, tweetAfterRefollow);
-    expect(await feedTweetIds(ana)).toEqual([tweetAfterRefollow]);
+    // The refollow back-fills Bob's older tweet; the new one arrives through the fan-out.
+    await expect
+        .poll(() => feedTweetIds(ana), { timeout: FEED_POLL_TIMEOUT_MS })
+        .toEqual([tweetAfterRefollow, tweetBeforeUnfollow]);
 });

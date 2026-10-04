@@ -28,8 +28,7 @@ public class MailDispatchServiceImpl implements MailDispatchService {
 
         switch (mailInboxService.claim(mail.getKey(), token)) {
             case ALREADY_SENT -> log.info("The {} was already sent; skipping.", mail.getLogLabel());
-            case HELD -> throw new MailClaimHeldException(
-                    "The mail inbox claim for key '" + mail.getKey() + "' is held.");
+            case HELD -> throw new MailClaimHeldException("The mail inbox claim for key '" + mail.getKey() + "' is held.");
             case CLAIMED -> sendAndMark(mail, token);
         }
     }

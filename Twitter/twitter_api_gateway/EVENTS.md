@@ -38,6 +38,7 @@ payload.
 - **Topic:** `user.followed` (`app.kafka.user-followed.name`), 3 partitions.
 - **Key:** `followeeId` (UUID string), the user being followed and the mail recipient. All events for one recipient land on one partition, in order.
 - **Emitted:** when a follow row is newly inserted. A repeated follow and an unfollow emit nothing.
+- **Consumers:** the mail service (the "ana followed you" email, dead letters to `user.followed-dlt`) and the timeline service (back-fills the follower's feed with the followee's recent tweets, group `twitter-timeline-service`, dead letters to `user.followed-timeline-dlt`). The timeline service reads only the four ids and the time: `eventId`, `followerId`, `followeeId`, `occurredAt`.
 
 ```json
 {

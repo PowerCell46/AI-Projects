@@ -11,6 +11,7 @@ import org.wiremock.integrations.testcontainers.WireMockContainer;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedBackfillService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedEntryCleanupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.FeedFanOutService;
 
@@ -39,6 +40,9 @@ public abstract class AbstractDownstreamIntegrationTest extends AbstractKafkaInt
 
     @MockitoSpyBean
     protected FeedFanOutService feedFanOutService;
+
+    @MockitoSpyBean
+    protected FeedBackfillService feedBackfillService;
 
     @MockitoSpyBean
     protected FeedEntryCleanupService feedEntryCleanupService;

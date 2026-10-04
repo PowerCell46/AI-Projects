@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.FollowCheckResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.FollowerIdsResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.InternalUserResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.internal.InternalUserService;
@@ -40,5 +41,13 @@ public class InternalUserController {
     @GetMapping
     public List<InternalUserResponseDTO> getUsers(@RequestParam List<UUID> ids) {
         return internalUserService.getUsers(ids);
+    }
+
+    @GetMapping("/{followerId}/follows/{followeeId}")
+    public FollowCheckResponseDTO checkFollow(@PathVariable UUID followerId, @PathVariable UUID followeeId) {
+        return FollowCheckResponseDTO
+                .builder()
+                .following(internalUserService.isFollowing(followerId, followeeId))
+                .build();
     }
 }

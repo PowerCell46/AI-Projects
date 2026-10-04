@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.twitter_tweet_service.utilities;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 
@@ -23,6 +24,14 @@ public final class TweetMapper {
                         .stream()
                         .map(TweetMapper::toResponse)
                         .toList())
+                .build();
+    }
+
+    public static TweetSummaryResponseDTO toSummary(Tweet tweet) {
+        return TweetSummaryResponseDTO
+                .builder()
+                .id(tweet.getId())
+                .createdAt(tweet.getCreatedAt())
                 .build();
     }
 

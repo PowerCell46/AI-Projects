@@ -3,13 +3,17 @@ running and testing this app.
 
 ## What this is
 
-The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`) and the feed
-(`/feed`, `/saved`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain co-located CSS. Plans and design
-decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md` (auth), `feed-design.md` (feed).
+The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`), the feed
+(`/feed`, `/saved`) and the People list (`/users`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
+co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md`
+(auth), `feed-design.md` (feed, in git history), `feed-design-addition.md` (tab row, People).
 
-`/feed` and `/saved` sit behind `ProtectedRoute` in one layout route, `Shell` (header, compose modal, `<Outlet>`).
-Both render `PostList` with a different `fetchPage`. The shell hands the posts you published this session to the feed
-through outlet context (`useShellContext().ownPosts`).
+`/feed`, `/users` and `/saved` sit behind `ProtectedRoute` in one layout route, `Shell` (header, tab row, compose modal,
+`<Outlet>`). `/feed` (TWEETS) and `/users` (PEOPLE) share one more layout route, `TabPanels`, which renders both pages as
+`role="tabpanel"` sections; `/saved` has no tab row. `/feed` and `/saved` render `PostList` with a different `fetchPage`;
+`/users` renders `PeopleList`. Both lists page through `usePagedList` (`src/hooks`). The shell hands the page what is
+shared through outlet context (`useShellContext()`): the posts you published this session (`ownPosts`) and the follow
+signal (`onFollowChanged`, `followChangeCount`).
 
 ## Running it
 
@@ -34,7 +38,9 @@ through outlet context (`useShellContext().ownPosts`).
   `window.scrollTo`. List helpers: `src/test/postListHelpers.ts`; a stubbed `fetch`: `src/test/fetchStub.ts`.
 - Names are `should_..._when_...`. Test the DOM, ARIA and `data-*` state, not pixels.
 - End-to-end: `../e2e` (Playwright against a Docker stack with the real gateway). `npm test` there builds and starts
-  the stack, runs the suite and tears it down; `npm run test:fast` skips the image build.
+  the stack, runs the suite and tears it down; `npm run test:fast` skips the image build. The UI specs for People are
+  `tests/people-ui.spec.ts`: a card is found by scrolling PEOPLE until the username shows, because the database is
+  shared with the specs running in parallel.
 
 ## Things that are easy to break
 
@@ -54,5 +60,23 @@ through outlet context (`useShellContext().ownPosts`).
   post loads at `0` and a reload forgets your like. Replace the UI's starting state when a likes service exists.
 - Views: `ViewReporter` (`src/utils/viewReporter.ts`) is a module-level singleton that queues post ids (once per page
   load, after 1 s at half visible) and posts them every 5 s and on hide. Tests reset it.
-- `--header-height` in `src/index.css` is shared by the header and the sticky `NEW POSTS` button; the compose modal
-  locks scrolling with `data-scroll-locked` on `<html>`.
+- `--header-height` and `--tab-row-height` in `src/index.css` are shared by the header, the tab row and the sticky
+  `NEW POSTS` button (its offset is both plus a gap); the header and the tab row stick as one block, `.shell-top`. The
+  compose modal locks scrolling with `data-scroll-locked` on `<html>`.
+- Tabs: the tab is read from the address (`useActiveTab`), and a tab click pushes a history entry. A panel's page mounts
+  the first time its tab opens and stays mounted (hidden) until the layout unmounts, so the feed keeps its list and its
+  60 s `NEW POSTS` check while PEOPLE is open. The indicator is measured (`offsetLeft`, `offsetWidth`) on a tab change,
+  on `resize` and after `document.fonts.ready`. Scroll positions are kept per
+  tab in memory from `scroll` events, because by the time of the switch the leaving panel is already hidden.
+- The follow button holds two 3 s looks, `armed` (`UNFOLLOW?`, a second tap unfollows; blur and Escape disarm) and
+  `failed` (`TRY AGAIN`): `PHASE_HOLD_MS` in `useFollowPhase.ts`. A person card's count is the server's
+  `followersCount` plus your own change, so a revert restores it. Following goes through `useOptimisticToggle` (one
+  request at a time, the last click wins) like likes and saves, but with a failure callback.
+- A follow change reaches the feed through `Shell` (`followChangeCount`): `FeedPage` passes it, as it was the last time
+  TWEETS was shown, to `PostList` as `reloadEmptyKey`, and an empty feed reads again when the tab comes back. Back-fill
+  lands 3–5 s after a follow (the gateway outbox polls every 3 s), so a very quick return still finds it empty until
+  the next `NEW POSTS` check.
+- Signing out sinks the cards of both lists: `person-list-leave` (`PeopleList.css`) and `post-list-leave`
+  (`PostList.css`) must stay inside `SIGN_OUT_LEAVE_MS`.
+- Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatFollowers`.
+  Cards are not links and show no `@handle`.

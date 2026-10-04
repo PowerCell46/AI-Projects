@@ -152,6 +152,36 @@ class InternalUserServiceImplTest {
     }
 
     @Nested
+    class IsFollowing {
+
+        @Test
+        void should_return_true_when_the_follower_follows_the_followee() {
+            UUID followeeId = UUID.randomUUID();
+            when(followRepository.existsByFollowerIdAndFollowingId(USER_ID, followeeId)).thenReturn(true);
+
+            assertThat(internalUserService.isFollowing(USER_ID, followeeId)).isTrue();
+        }
+
+        @Test
+        void should_return_false_when_the_follower_does_not_follow_the_followee() {
+            UUID followeeId = UUID.randomUUID();
+            when(followRepository.existsByFollowerIdAndFollowingId(USER_ID, followeeId)).thenReturn(false);
+
+            assertThat(internalUserService.isFollowing(USER_ID, followeeId)).isFalse();
+        }
+
+        @Test
+        void should_ask_for_the_follower_and_the_followee_in_that_order() {
+            UUID followeeId = UUID.randomUUID();
+
+            internalUserService.isFollowing(USER_ID, followeeId);
+
+            verify(followRepository).existsByFollowerIdAndFollowingId(USER_ID, followeeId);
+            verifyNoInteractions(userRepository);
+        }
+    }
+
+    @Nested
     class GetUsers {
 
         @Test

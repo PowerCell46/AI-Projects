@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { me } from '../../api/auth';
 import { fetchFeed } from '../../api/feed';
-import { fetchUserProfile } from '../../api/users';
+import { fetchPeople, fetchUserProfile } from '../../api/users';
 import { reportViews } from '../../api/views';
 import { ROUTES } from '../../routes';
 import { intersect } from '../../test/intersectionObserver';
@@ -23,6 +23,9 @@ vi.mock('../../api/feed', () => ({
 
 vi.mock('../../api/users', () => ({
     fetchUserProfile: vi.fn(),
+    fetchPeople: vi.fn(),
+    followUser: vi.fn(),
+    unfollowUser: vi.fn(),
 }));
 
 vi.mock('../../api/views', () => ({
@@ -69,6 +72,12 @@ beforeEach(() => {
         profilePictureUrl: null,
     });
     vi.mocked(fetchFeed).mockReset();
+    vi.mocked(fetchPeople)
+        .mockReset()
+        .mockResolvedValue({
+            items: [],
+            nextCursor: null,
+        });
     vi.mocked(reportViews)
         .mockReset()
         .mockResolvedValue(undefined);
@@ -117,7 +126,7 @@ describe('the feed page', () => {
         expect(screen.getByText('END OF FEED')).toBeTruthy();
     });
 
-    it('should_say_nothing_here_yet_when_the_feed_is_empty', async () => {
+    it('should_tell_a_reader_with_an_empty_feed_to_follow_someone', async () => {
         vi.mocked(fetchFeed).mockResolvedValue({
             items: [],
             nextCursor: null,
@@ -125,7 +134,7 @@ describe('the feed page', () => {
 
         await renderApp(ROUTES.feed);
 
-        expect(screen.getByText('NOTHING HERE YET')).toBeTruthy();
+        expect(screen.getByText('NOTHING HERE YET — FOLLOW SOMEONE TO SEE THEIR POSTS')).toBeTruthy();
     });
 
     it('should_say_signal_lost_with_a_try_again_button_when_the_feed_cannot_be_read', async () => {
@@ -146,6 +155,43 @@ describe('the feed page', () => {
         await renderApp(ROUTES.feed);
 
         expect(screen.getByRole('button', { name: /^save/i }).getAttribute('aria-pressed')).toBe('true');
+    });
+});
+
+describe('find people from an empty feed', () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    beforeEach(() => {
+        vi.mocked(fetchFeed).mockResolvedValue({
+            items: [],
+            nextCursor: null,
+        });
+    });
+
+    it('should_offer_a_find_people_button_when_the_feed_is_empty', async () => {
+        await renderApp(ROUTES.feed);
+
+        expect(screen.getByRole('button', { name: 'FIND PEOPLE' })).toBeTruthy();
+    });
+
+    it('should_open_the_people_tab_and_the_people_address_when_find_people_is_pressed', async () => {
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByRole('button', { name: 'FIND PEOPLE' }));
+
+        expect(window.location.pathname).toBe(ROUTES.people);
+        expect(screen.getByRole('tab', { name: 'PEOPLE' }).getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('should_not_offer_find_people_when_the_feed_has_posts', async () => {
+        vi.mocked(fetchFeed).mockResolvedValue({
+            items: [POST],
+            nextCursor: null,
+        });
+
+        await renderApp(ROUTES.feed);
+
+        expect(screen.queryByRole('button', { name: 'FIND PEOPLE' })).toBeNull();
     });
 });
 

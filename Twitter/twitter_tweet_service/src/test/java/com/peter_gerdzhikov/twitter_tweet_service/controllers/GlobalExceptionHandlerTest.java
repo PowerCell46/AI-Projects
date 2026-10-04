@@ -33,6 +33,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImage
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
 
 class GlobalExceptionHandlerTest {
@@ -80,6 +81,15 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().getMessages()).containsExactly("Provide between 1 and 100 tweet ids.");
+    }
+
+    @Test
+    void should_return_400_for_a_limit_outside_the_allowed_range() {
+        ResponseEntity<ErrorResponseDTO> response =
+                exceptionHandler.handleTweetLimitOutOfRange(new TweetLimitOutOfRangeException(100));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly("Provide a limit between 1 and 100.");
     }
 
     @Test

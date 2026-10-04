@@ -9,6 +9,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Instant;
 import java.util.List;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.github.tomakehurst.wiremock.http.Fault;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
@@ -30,9 +32,17 @@ import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 class TweetLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTest {
 
+    private static final int LIMIT = 50;
+
+    private static final UUID AUTHOR_ID = TestIds.userId();
+
     private static final String TWEETS_PATH = "/internal/v1/tweets";
 
     private static final int DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS = 3000;
+
+    private static final String BY_AUTHOR_PATH = "/internal/v1/tweets/by-author/";
+
+    private static final Instant SINCE = Instant.parse("2026-01-01T00:00:00.123456Z");
 
     @Autowired
     private TweetLookupService tweetLookupService;
@@ -113,6 +123,89 @@ class TweetLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTes
     }
 
     @Nested
+    class FindNewestByAuthor {
+
+        @Test
+        void should_return_the_ids_and_times_in_the_order_the_tweet_service_sent_them() {
+            UUID newer = TestIds.tweetId();
+            UUID older = TestIds.tweetId();
+            stubByAuthor("[{\"id\":\"" + newer + "\",\"createdAt\":\"2026-01-02T00:00:00.123456Z\"},"
+                    + "{\"id\":\"" + older + "\",\"createdAt\":\"2026-01-01T00:00:00Z\"}]");
+
+            List<TweetSummaryClientDTO> tweets = tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT);
+
+            assertThat(tweets)
+                    .extracting(TweetSummaryClientDTO::getId, TweetSummaryClientDTO::getCreatedAt)
+                    .containsExactly(
+                            tuple(newer, Instant.parse("2026-01-02T00:00:00.123456Z")),
+                            tuple(older, Instant.parse("2026-01-01T00:00:00Z")));
+        }
+
+        @Test
+        void should_return_an_empty_list_when_the_author_has_no_tweets() {
+            stubByAuthor("[]");
+
+            assertThat(tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT)).isEmpty();
+        }
+
+        @Test
+        void should_ignore_any_field_it_does_not_know() {
+            stubByAuthor("[{\"id\":\"" + TestIds.tweetId() + "\",\"createdAt\":\"2026-01-01T00:00:00Z\","
+                    + "\"content\":\"hello\",\"surprise\":true}]");
+
+            assertThat(tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT)).hasSize(1);
+        }
+
+        @Test
+        void should_send_the_author_in_the_path_and_the_since_and_the_limit_as_parameters() {
+            stubByAuthor("[]");
+
+            tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT);
+
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(urlPathEqualTo(BY_AUTHOR_PATH + AUTHOR_ID))
+                    .withQueryParam("since", equalTo("2026-01-01T00:00:00.123456Z"))
+                    .withQueryParam("limit", equalTo("50")));
+        }
+
+        @Test
+        void should_never_send_the_gateways_internal_secret_to_the_tweet_service() {
+            stubByAuthor("[]");
+
+            tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT);
+
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(urlPathEqualTo(BY_AUTHOR_PATH + AUTHOR_ID))
+                    .withoutHeader("X-Internal-Secret"));
+        }
+
+        @Test
+        void should_throw_unavailable_when_the_tweet_service_answers_5xx() {
+            TWEET_SERVICE_STUB.register(get(urlPathEqualTo(BY_AUTHOR_PATH + AUTHOR_ID))
+                    .willReturn(aResponse().withStatus(500).withBody("secret downstream detail")));
+
+            assertThatThrownBy(() -> tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT))
+                    .isInstanceOf(UpstreamUnavailableException.class)
+                    .hasMessage("Upstream service unavailable.");
+        }
+
+        @Test
+        void should_throw_unavailable_when_the_answer_is_not_a_json_array() {
+            stubByAuthor("{\"unexpected\":true}");
+
+            assertThatThrownBy(() -> tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT))
+                    .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
+        void should_throw_timeout_when_the_tweet_service_is_slower_than_the_read_timeout() {
+            TWEET_SERVICE_STUB.register(get(urlPathEqualTo(BY_AUTHOR_PATH + AUTHOR_ID))
+                    .willReturn(aResponse().withStatus(200).withFixedDelay(DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS)));
+
+            assertThatThrownBy(() -> tweetLookupService.findNewestByAuthor(AUTHOR_ID, SINCE, LIMIT))
+                    .isInstanceOf(UpstreamTimeoutException.class);
+        }
+    }
+
+    @Nested
     class Failures {
 
         @Test
@@ -159,6 +252,14 @@ class TweetLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTes
                     .isInstanceOf(UpstreamTimeoutException.class)
                     .hasMessage("Upstream service timed out.");
         }
+    }
+
+    private void stubByAuthor(String body) {
+        TWEET_SERVICE_STUB.register(get(urlPathEqualTo(BY_AUTHOR_PATH + AUTHOR_ID))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(body)));
     }
 
     private void stubTweets(String body) {

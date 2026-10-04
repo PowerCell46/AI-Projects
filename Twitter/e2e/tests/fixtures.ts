@@ -244,6 +244,12 @@ export async function follow(follower: Account, followee: Account) {
     expect(response.status()).toBe(204);
 }
 
+export async function unfollow(follower: Account, followee: Account) {
+    const response = await follower.api.delete(`/api/v1/users/${followee.user.username}/follow`);
+
+    expect(response.status()).toBe(204);
+}
+
 export async function feedTweetIds(reader: Account, size = FIRST_PAGE_SIZE): Promise<string[]> {
     const response = await reader.api.get(`/api/v1/feed?size=${size}`);
 

@@ -1,7 +1,10 @@
 package com.peter_gerdzhikov.twitter_tweet_service.repositories;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+
+import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 
 public interface TweetRepositoryCustom {
 
@@ -18,4 +21,10 @@ public interface TweetRepositoryCustom {
      * @return whether a tweet was deleted
      */
     boolean deleteIfAuthor(UUID id, UUID authorId);
+
+    /**
+     * Reads the author's tweets created at or after {@code since}, newest first (ties by id, descending). Only
+     * {@code id} and {@code createdAt} are loaded; every other field of the returned tweets is empty.
+     */
+    List<Tweet> findNewestByAuthorSince(UUID authorId, Instant since, int limit);
 }

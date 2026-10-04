@@ -19,6 +19,7 @@ import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEventDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
 
 /**
@@ -77,6 +78,23 @@ public class KafkaConsumerConfiguration {
             CommonErrorHandler userUnfollowedErrorHandler
     ) {
         return listenerContainerFactory(concurrency, userUnfollowedConsumerFactory, userUnfollowedErrorHandler);
+    }
+
+    @Bean
+    public ConsumerFactory<String, UserFollowedEventDTO> userFollowedConsumerFactory(
+            KafkaProperties kafkaProperties,
+            KafkaConnectionDetails connectionDetails
+    ) {
+        return consumerFactory(UserFollowedEventDTO.class, kafkaProperties, connectionDetails);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserFollowedEventDTO> userFollowedListenerContainerFactory(
+            @Value("${spring.kafka.listener.concurrency}") int concurrency,
+            ConsumerFactory<String, UserFollowedEventDTO> userFollowedConsumerFactory,
+            CommonErrorHandler userFollowedErrorHandler
+    ) {
+        return listenerContainerFactory(concurrency, userFollowedConsumerFactory, userFollowedErrorHandler);
     }
 
     /**

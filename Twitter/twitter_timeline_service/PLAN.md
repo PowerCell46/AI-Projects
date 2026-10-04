@@ -147,8 +147,8 @@ Twitter/
   follower pages (1,000 each), one transaction per page; any failure retries from the top and the duplicates skip.
 - **`tweet.deleted`:** delete by `tweet_id`, idempotent; a delete before the create leaves orphans that reads skip
   and retention removes.
-- **`user.unfollowed` (Q9):** delete the follower's entries by that author up to `occurredAt`; no back-fill on
-  follow.
+- **`user.unfollowed` (Q9):** delete the follower's entries by that author up to `occurredAt`. A follow back-fills
+  the feed through `user.followed` (frontend plan step 16).
 - **Kafka:** `ErrorHandlingDeserializer` + JSON per topic, exponential backoff then `<topic>-dlt`, concurrency 3,
   one shared application context in tests so consumers don't split partitions.
 - **`GET /api/v1/feed?cursor=&size=`:** keyset page (`size` 1–100, default 20), base64url `(micros, tweetId)` cursor
@@ -273,7 +273,7 @@ under the same key. The approved `@Disabled` catalog comes first each phase. A p
 
 ## Out of scope
 
-Liked tweets; the frontend feed, saved and views UI (handoff above); a tweet details page; back-fill on follow;
+Liked tweets; the frontend feed, saved and views UI (handoff above); a tweet details page; back-fill beyond 50 tweets / 7 days;
 "tweets by author" / profile timelines; ranking or an algorithmic feed; replies, retweets, quotes; notifications;
 account deletion; a Redis cache; a DLT replay tool.
 
@@ -287,8 +287,6 @@ account deletion; a Redis cache; a DLT replay tool.
 - **Fan-out on write for big accounts.** A tweet from an account with N followers is N/1,000 gateway calls and N
   rows, holding a partition meanwhile. **Trigger:** fan-out lag, or an account past ~10k followers → fetch big
   accounts' tweets at read time instead (hybrid).
-- **No back-fill on follow (Q9).** **Trigger:** "following someone feels like nothing happened", or the profile
-  page that needs "tweets by author" anyway.
 - **Unfollow race (Q9):** a tweet fanned out at the moment of an unfollow can still land; it drops off within 7
   days.
 - **Fan-out uses followers at processing time.** A tweet whose event was delayed (retries, DLT) goes to whoever
@@ -310,8 +308,9 @@ account deletion; a Redis cache; a DLT replay tool.
 - **No cap on saved tweets.** **Trigger:** abuse or table size.
 - **Start order:** a listener started before the producer auto-creates its topic with 1 partition (same as the
   mail service's open item 2). **Trigger:** that item's decision applies here too.
-- **DLT names are `<topic>-dlt`.** **Trigger:** a second service consumes the same topic → service-specific DLT
-  names.
+- **DLT names are `<topic>-dlt`,** except `user.followed-timeline-dlt`: the mail service already owns
+  `user.followed-dlt`. **Trigger:** a second service consumes another of these topics → a service-specific DLT
+  name for that one.
 - **No DLT replay tool.** **Trigger:** the first dead-lettered record someone wants processed.
 - **Scheduled retention runs on every instance.** **Trigger:** a second instance → ShedLock.
 - **`ddl-auto=update`, no migrations.** **Trigger:** a second environment or the first destructive change → Flyway.

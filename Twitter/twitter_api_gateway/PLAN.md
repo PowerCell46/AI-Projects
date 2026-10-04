@@ -223,8 +223,6 @@ hiding people the caller already follows, and any frontend step for it (phase 5,
 - **The three follow-list queries still use the `OR` cursor predicate** (audit finding 1, note): a page reads the rows
   newer than the cursor within one account's follows. **Trigger:** an account with six-figure follows or a slow list →
   the row-value form the people list uses.
-- **No frontend caller yet** (phase 5): `frontend/PLAN.md` has no people view; only `people.spec.ts` calls the
-  endpoint. **Trigger:** the frontend plan picks up `GET /api/v1/users` (see the handoff in phase 5).
 - **No search or filter on the people list** (phase 5). **Trigger:** the first request to find someone by name →
   a `q` parameter on the same endpoint.
 

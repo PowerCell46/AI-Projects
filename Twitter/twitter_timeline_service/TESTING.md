@@ -112,6 +112,34 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 
 - An invalid event goes to `user.unfollowed-dlt` (`should_dead_letter_the_record_when_the_event_is_invalid`)
 
+### `user.followed`
+
+`UserFollowedListenerIntegrationTest`. Enabled (frontend plan step 16). WireMock stands in for the tweet service's by-author read and the gateway's follow check; the sentinel event carries the same key (the followee).
+
+`Backfill`
+
+- The followee's tweets are inserted into the follower's feed, newest first (`should_insert_the_followees_recent_tweets_into_the_followers_feed_newest_first_when_the_user_follows`)
+- Each entry stores the author and the tweet time (`should_store_the_author_and_the_tweet_time_in_each_entry_when_the_user_follows`)
+- The tweet service is asked for the newest 50 since 7 days before `occurredAt` (`should_ask_for_the_newest_fifty_tweets_since_seven_days_before_the_follow`)
+- Other users' feeds are untouched (`should_leave_other_users_feeds_alone_when_a_user_follows`)
+- A redelivered event adds nothing (`should_add_nothing_when_the_same_event_is_redelivered`)
+- A followee with no recent tweets: no follow check is made (`should_skip_the_follow_check_when_the_followee_has_no_recent_tweets`)
+
+`UnfollowedMeanwhile`
+
+- The follow is gone at the check: none of the followee's entries are left (`should_leave_none_of_the_followees_entries_when_the_follow_is_gone_at_the_check`)
+- Other authors' entries stay (`should_keep_other_authors_entries_when_the_follow_is_gone_at_the_check`)
+
+`Retries`
+
+- The check fails once, then recovers: the event is retried from the top and ends with the entries once (`should_retry_from_the_top_and_end_with_the_entries_once_when_the_follow_check_fails_then_recovers`)
+- The tweet service stays down: retried, then `user.followed-timeline-dlt` (`should_dead_letter_the_record_when_the_tweet_service_stays_down_past_the_retries`)
+- The gateway stays down: retried, then `user.followed-timeline-dlt` (`should_dead_letter_the_record_when_the_gateway_stays_down_past_the_retries`)
+
+`InvalidEvents`
+
+- An invalid event goes to `user.followed-timeline-dlt` without retries or a downstream call (`should_dead_letter_without_retry_or_a_downstream_call_when_the_event_is_invalid`)
+
 ### Retention
 
 `FeedRetentionIntegrationTest` - the job is disabled in the test profile and invoked directly; time comes from the test clock, and the batch size is 5 in the test profile so a few entries span several batches. Enabled in step 10.

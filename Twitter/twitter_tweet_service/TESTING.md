@@ -113,6 +113,25 @@ Added in step 5:
 - A missing `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_missing`)
 - A non-UUID id returns 400 (`should_return_400_when_an_id_is_not_a_uuid`)
 
+## `GET /internal/v1/tweets/by-author/{authorId}?since=&limit=`
+
+`TweetControllerIntegrationTest.InternalByAuthor` - service-to-service read for the timeline service's back-fill on follow; needs no `X-User-Id`.
+
+- Returns 200 with `id` and `createdAt` only, nothing else (`should_return_200_with_only_the_id_and_created_at_when_the_author_has_a_tweet`)
+- Tweets come newest first (`should_return_the_tweets_newest_first_when_the_author_has_several`)
+- A tweet created exactly at `since` is included, an older one is left out (`should_include_a_tweet_created_exactly_at_since_and_leave_out_an_older_one`)
+- `limit` keeps only the newest tweets (`should_return_only_the_newest_tweets_when_there_are_more_than_the_limit`)
+- Other authors' tweets are left out (`should_leave_out_the_tweets_of_other_authors`)
+- An author with no tweets returns 200 with an empty list (`should_return_an_empty_list_when_the_author_has_no_tweets`)
+- Works without `X-User-Id`; reading leaves the documents unchanged (`should_not_require_the_user_id_header_and_leave_the_documents_unchanged`)
+- A `limit` of 1 and of 100 return 200 (parameterized) (`should_return_200_when_the_limit_is_at_the_edge_of_the_range`)
+- A `limit` of 0, -1 or 101 returns 400 "Provide a limit between 1 and 100." (parameterized) (`should_return_400_when_the_limit_is_outside_1_to_100`)
+- A `limit` that is not a number returns 400 (`should_return_400_when_the_limit_is_not_a_number`)
+- A missing `limit` returns 400 (`should_return_400_when_the_limit_is_missing`)
+- A missing `since` returns 400 (`should_return_400_when_since_is_missing`)
+- A `since` that is not an ISO-8601 instant (`yesterday`, a bare date, epoch millis, empty) returns 400 (parameterized) (`should_return_400_when_since_is_not_an_iso_8601_instant`)
+- A non-UUID `authorId` returns 400 (`should_return_400_when_the_author_id_is_not_a_uuid`)
+
 ## Concurrency
 
 `TweetConcurrencyIntegrationTest` - through MockMvc, every scenario releases its threads from one latch and asserts only the final state.

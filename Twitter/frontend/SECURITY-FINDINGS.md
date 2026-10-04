@@ -84,3 +84,99 @@ second fault elsewhere.
   (`bidi.ts`, `avatar.ts`, `validation.ts`) are linear.
 - **Account enumeration** (409 on register, 403 on unconfirmed login) is unchanged from the 2026-10-01 report and
   not repeated here.
+
+## Audit — 2026-10-04 (phase 3: tab row, People, follow)
+
+**Scope:** the tab row and panels (`components/shared/TabPanels`, `Shell/TabRow`, `hooks/useActiveTab.ts`,
+`utils/tabs.ts`, route handling in `App.tsx` and `routes.ts`), the People list (`pages/PeoplePage/**`: `PeopleList`,
+`PersonCard`, `FollowButton`, `usePersonFollow`, `useFollowPhase`), `api/users.ts` (`fetchPeople`, `followUser`,
+`unfollowUser`), `api/endpoints.ts`, `api/paging.ts`, `api/pictureUrl.ts`, `utils/bio.ts`, `utils/followers.ts`,
+`utils/bidi.ts`, `hooks/usePagedList.ts`, `useOptimisticToggle.ts`, `useBottomSentinel.ts`, `components/shared/Avatar`,
+the empty-feed `FIND PEOPLE` action and reload logic (`FeedPage`, `PostList`, `useReloadEmptyList`), and the Shell
+outlet context. The gateway's `UserController`/`FollowController`/`UserListServiceImpl`/`FollowCursorCodec`/
+`ProfileMapper`, `RegisterRequestDTO` and `UpdateProfileRequestDTO` were read to confirm what the SPA can rely on;
+they have their own audits. `npm audit`: found 0 vulnerabilities (the registry was reachable). `npm test`: 866 passed.
+
+No Critical, High or Medium findings. One Low and zero Informational findings are new; the picture-URL and
+path-segment hardening already recorded as finding 3 is still open and is extended below.
+
+### 5. Low — `usePagedList` follows a cursor with no progress check, so a stuck or malformed page response loops forever
+- **Location:** `src/hooks/usePagedList.ts:44` (`while (!hasAddedItems && !isEndRef.current)`) and `:57`
+  (`isEndRef.current = page.nextCursor === null`). Used by the People list, the feed and saved posts.
+- **Mechanism:** the rule "an empty or all-duplicate page with a cursor is followed at once" has no limit and no
+  check that the cursor moved. Requests run back to back, one per round trip, with no delay, until the component
+  unmounts or the response finally adds an item. Two ways to trigger it: (a) a response with `items: []` (or only ids
+  already loaded) and a non-null `nextCursor` that does not advance; (b) a response that omits `nextCursor`.
+  `undefined === null` is false, so the list does not end, `pageUrl` sends no `cursor`, and the first page is asked
+  for again, forever. Both panels stay mounted while hidden (`TabPanels`), so the loop keeps running on the other
+  tab and each iteration also re-renders the list state. It is client-side only and needs a faulty backend or a
+  proxy that rewrites the JSON: the gateway as written emits `nextCursor: null` explicitly (no `NON_NULL` inclusion
+  in the project) and its keyset cursors always advance (`UserListServiceImpl`, `FeedServiceImpl`). So this is
+  missing defence in depth, not a hole today, but a backend bug here turns every open tab into a request flood
+  against the authenticated endpoints and pins one CPU core.
+- **Demonstration:** a throwaway vitest file (outside `src/`, deleted afterwards) rendered the hook with a fetcher
+  that waits one timer tick per call and, to stop the run, returns `nextCursor: null` after the 300th call.
+  Case (a), `{items: [], nextCursor: 'same'}`: 300 requests during one mount with no user action. Case (b),
+  `{items: [{id: 'a'}], nextCursor: undefined}`: one request on mount, then 300 after a single `loadMore()`. With the
+  fetcher answering immediately (no timer tick) and never stopping, the vitest worker aborted with SIGABRT (memory
+  exhaustion), which is the same loop without a network between the iterations.
+- **Suggested fix (not applied):** cap the follow-up loop (for example 5 consecutive pages that add nothing, then
+  show the failed state with TRY AGAIN) and stop when the new cursor equals the one just sent; treat a missing
+  `nextCursor` as `null` (`page.nextCursor ?? null`), or reject a response whose `nextCursor` is not a string or null.
+
+### Update to finding 3 (still open): picture URLs and path segments in the new People code
+- `fetchPeople` and `fetchUserProfile` run every server-supplied `profilePictureUrl` through `toPictureUrl`, which is
+  `BASE_URL + path` with no check, and `Avatar` puts the result in `<img src>`. Another user's value reaches the
+  card, so the exposure is wider than before, but the gateway builds it from a file id (`ProfileMapper.urlOf`,
+  `/api/v1/files/` + UUID) and a user cannot set the string, so it is still not exploitable. Checked in a vitest
+  scratch file: `toPictureUrl('//evil.example/p.png')` returns `//evil.example/p.png` and
+  `toPictureUrl('https://evil.example/p.png')` returns `https://evil.example/p.png` when `VITE_BASE_API_URL` is empty
+  (the default). A `javascript:` value in `img src` does not run script in current browsers.
+- `ENDPOINTS.follow` and `ENDPOINTS.user` do use `encodeURIComponent`: `ENDPOINTS.follow('a/b?c#d')` gives
+  `/api/v1/users/a%2Fb%3Fc%23d/follow`. It leaves `.` and `..` alone (`ENDPOINTS.follow('..')` is
+  `/api/v1/users/../follow`, which the browser collapses to `/api/v1/follow`), but a username that short or made of
+  dots cannot exist: `RegisterRequestDTO` allows only `^[A-Za-z0-9_]{3,15}$`, and `matches()` semantics reject a
+  trailing newline. Same fix as finding 3: have `backendPath` accept only a single leading `/`.
+
+## Considered, clean or not applicable (phase 3)
+- **Stored XSS through bio or username:** `bio` is attacker-controlled free text (`UpdateProfileRequestDTO`, up to 160
+  characters, any content) and is the only new field of that kind. It reaches the DOM once, as the React text child of
+  `<p className="person-card-bio">` (`PersonCard.tsx`), after `truncateBio`. Usernames render as text children and in
+  `aria-label` / aria-live strings (`Follow ${username}`, `Couldn't follow ${username}`, `Press again to unfollow ...`),
+  which are plain strings. No `dangerouslySetInnerHTML`, `innerHTML`, `href`, `target` or `style` built from server
+  data anywhere in `src/` (grep). The only inline `style` is the tab indicator, from measured pixel numbers.
+- **Bidi and RTL spoofing:** `truncateBio` strips U+202A-202E and U+2066-2069 before truncating, and the bio sits in its
+  own block with `dir="auto"`, so an RTL bio flips only that paragraph and cannot reorder the username, follower count
+  or button next to it. Not stripped, by design: LRM/RLM (U+200E/F), U+061C (Arabic letter mark) and zero-width
+  characters. In a scratch run `truncateBio('؜abc‮def‏x y')` kept U+061C and U+200F and dropped
+  U+202E; those characters only reorder neighbouring neutrals and digits inside the bio itself. Usernames are not
+  stripped because the server restricts them to `[A-Za-z0-9_]`. A bio of 60 combining marks is cut at 50 code points
+  and `.person-card-bio` wraps with `overflow-wrap: anywhere`.
+- **Follower counts:** rendered through `formatFollowers` as text; always floors, so a count never reads higher than the
+  server's. A non-number from a faulty server would show as `NaN`, not as markup. The optimistic +1/-1 is display only.
+- **Opaque paging cursor:** never parsed or rendered. It goes through `URLSearchParams` (`pageUrl`), so a cursor of
+  `a&size=100#x=1 /../` is sent as `cursor=a%26size%3D100%23x%3D1+%2F..%2F` and cannot add parameters or change the
+  path. The gateway re-encodes and compares the cursor (`FollowCursorCodec.decode`) and caps `size` at 100.
+- **Request amplification from the follow button:** `useOptimisticToggle` keeps one request in flight, sends the latest
+  wanted value only if it differs from the last confirmed one, and on any failure reverts and stops (no retry loop).
+  Unfollow needs two taps (`armed` phase, 3 s), and `TRY AGAIN` repeats one request per tap. Rapid clicking cannot
+  produce more than one request at a time per card. The empty-feed reload runs once per follow-count change and only
+  when the feed is empty and ended (`useReloadEmptyList`), so it is bounded by user actions; `reload()` bumps a
+  generation counter so a late response from before the reload is dropped.
+- **Unbounded memory:** `loadedItems` is never trimmed, but it grows only by pages the user scrolls to (the sentinel
+  rearms per page, 20 items) and is released on sign-out when `Shell` unmounts. Not a finding.
+- **Sign-out race:** a `fetchPeople` or follow response that lands after sign-out is dropped (`isActiveRef` false
+  after unmount) or only bumps a counter in an unmounted `Shell`. State is per mount, so a second user signing in on
+  the same tab starts with empty lists and no previous `followedByMe`. During the 1.2 s leave animation the shell has
+  `pointer-events: none`; a keyboard-triggered follow then would carry the already cleared cookie, get a 401, and the
+  handler would end the session slightly early. No data is changed.
+- **401 handler:** `sendAuthenticated` signs the UI out on a 401 from follow, unfollow and the People list, as for the
+  other data calls. It does not retry the request and does not read any redirect target from the response.
+- **History and URL tampering:** the active tab comes from `matchPath` on the pathname only (`tabOfPath`); there is no
+  query or hash input, and an unknown path falls to `SessionRedirect`, which navigates to a `ROUTES` constant. The tab
+  row and `FIND PEOPLE` navigate to `ROUTES` constants. `/users` (client route) and `/api/v1/users` (API) do not
+  collide because only `/api` is proxied.
+- **Information leaks:** the list excludes the caller (`UserRepository` list query) and shows only
+  `followedByMe`/`followersCount`, which any logged-in user can already see; no email, birthdate or location reaches
+  the list DTO. Nothing from the responses is written to storage, the URL or router state.
+- **Dependencies:** `npm audit` reports 0 vulnerabilities (registry reachable).

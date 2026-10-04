@@ -32,6 +32,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImage
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +65,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(TweetIdsOutOfRangeException.class)
     public ResponseEntity<ErrorResponseDTO> handleTweetIdsOutOfRange(TweetIdsOutOfRangeException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(TweetLimitOutOfRangeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTweetLimitOutOfRange(TweetLimitOutOfRangeException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 

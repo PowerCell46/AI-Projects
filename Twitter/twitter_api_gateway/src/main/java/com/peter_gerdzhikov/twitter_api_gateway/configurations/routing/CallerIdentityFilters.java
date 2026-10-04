@@ -37,7 +37,8 @@ public final class CallerIdentityFilters {
 
     private static Function<ServerRequest, ServerRequest> removeHeadersWithPrefix(String prefix) {
         return request -> ServerRequest.from(request)
-                .headers(httpHeaders -> namesStartingWith(httpHeaders, prefix).forEach(httpHeaders::remove))
+                .headers(httpHeaders -> namesStartingWith(httpHeaders, prefix)
+                        .forEach(httpHeaders::remove))
                 .build();
     }
 

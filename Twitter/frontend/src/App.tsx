@@ -3,8 +3,8 @@ import GuestRoute from './components/shared/GuestRoute/GuestRoute';
 import ProtectedRoute from './components/shared/ProtectedRoute/ProtectedRoute';
 import SessionRedirect from './components/shared/SessionRedirect/SessionRedirect';
 import Shell from './components/shared/Shell/Shell';
+import TabPanels from './components/shared/TabPanels/TabPanels';
 import ConfirmPage from './pages/ConfirmPage/ConfirmPage';
-import FeedPage from './pages/FeedPage/FeedPage';
 import LoginPage from './pages/LoginPage/LoginPage';
 import RegisterPage from './pages/RegisterPage/RegisterPage';
 import ResendPage from './pages/ResendPage/ResendPage';
@@ -23,7 +23,10 @@ function App() {
             <Route path={ROUTES.resend} element={<ResendPage />} />
             <Route element={<ProtectedRoute />}>
                 <Route element={<Shell />}>
-                    <Route path={ROUTES.feed} element={<FeedPage />} />
+                    <Route element={<TabPanels />}>
+                        <Route path={ROUTES.feed} />
+                        <Route path={ROUTES.people} />
+                    </Route>
                     <Route path={ROUTES.saved} element={<SavedPage />} />
                 </Route>
             </Route>

@@ -157,3 +157,134 @@ as a prop, so the one-minute tick of step 7 re-renders the times without the cel
   the auth screens' `720px`; the compose textarea has `outline: 0` because the glow rule is its focus indicator.
 - Still over 120 columns: the SVG path in `FillIcon.tsx`, and test titles in `e2e/tests/feed.spec.ts` and `views.spec.ts`
   (older specs, not part of this phase).
+
+## Frontend plan step 17 - back-fill journeys
+
+- Scenarios 1 and 3 are in `e2e/tests/backfill.spec.ts`; scenario 2 replaced the re-follow assertion in
+  `feed.spec.ts` (renamed `should_drop_the_authors_tweets_on_unfollow_and_bring_them_back_with_the_next_tweet_after_a_refollow`).
+  `unfollow` moved from `feed.spec.ts` to `fixtures.ts`, since both specs use it.
+- Specs changed because a follow now brings older tweets: only that re-follow test. Every other spec follows before
+  the author posts, or reads nothing the back-fill adds; the whole suite (32 tests) passed unchanged.
+- Scenario 3 relies on Kafka's per-key order: Ana's and Cy's `user.followed` events share the key (Bob), so Cy's
+  back-fill showing up means Ana's has run, and by then the unfollow has committed, so her check undid it.
+- Run 3× in a row with `npm test` (images rebuilt each time): 32 passed, 32 passed, 32 passed.
+
+## Frontend plan step 18 - shared paging hook
+
+- `usePagedList<T extends Identified>(fetchPage, describeAppend)` lives in `src/hooks/usePagedList.ts` with `PAGE_SIZE`
+  and `LoadStatus`; it returns everything `usePostList` returned except the merged `items`. `usePostList` is now a thin
+  wrapper that merges the reader's own posts in. `describeAppend` is a parameter so the people list can say "people".
+- `src/api/paging.ts` holds `Identified`, `Page<T>`, `PageRequest` and `pageUrl`; `TweetPage` is `Page<TweetItem>`.
+- `appendUnique` and `prependUnique` are generic but stay in `utils/tweetList.ts`, so `tweetList.test.ts` is unchanged.
+  Move them to their own module when the people list needs them and the name starts to mislead.
+- The only test edit: `PostList.test.tsx` imports `PageRequest` from `api/paging` instead of `api/tweetPage` (one import
+  line, no re-export kept just for a test).
+
+## Frontend plan step 19 - API and helpers
+
+- `truncateBio(bio: string | null): string | null` (`utils/bio.ts`) returns `null` for "no bio", which the card turns into
+  `data-empty`. The cut follows the plan literally: take the first 50 code points, back up to the last space inside them,
+  add `…`. A bio whose 51st character is a space therefore loses its last word too; a smarter edge rule was not invented.
+- `formatFollowers(count)` (`utils/followers.ts`) uses integer tenths, so rounding down never meets a floating-point
+  surprise. The `FOLLOWER` / `FOLLOWERS` word stays with the card (step 21).
+- `fetchPeople` returns `Page<Person>` with the picture URL on the API origin and `bio` passed through (`null` allowed);
+  `followUser` / `unfollowUser` resolve with nothing on `204`. All three use `sendAuthenticated`, so a `401` signs out.
+- `ENDPOINTS.users` and `ENDPOINTS.follow(username)` (encoded like `ENDPOINTS.user`).
+
+## Frontend plan step 20 - tab row and panels
+
+- `TabPanels` (`components/shared/TabPanels`) is the layout route of `/feed` and `/users`; its two child routes have no
+  element, because it reads the tab from the address (`useActiveTab`) and renders the pages itself. Both panel wrappers
+  are always in the DOM, since the tabs' `aria-controls` point at them; only the page inside mounts lazily, on the
+  tab's first visit, and stays mounted until the layout unmounts. `PeoplePage` is only its hidden `People` heading until
+  step 21.
+- `Shell` owns the tab row and the navigation (`navigate(path)`, a pushed entry); `TabRow` is presentational
+  (`activeTab`, `onSelect`). Clicking the active tab does not call `onSelect`; an arrow moves focus and selects at once,
+  wrapping.
+- The indicator renders only after its first measurement, so that first placement has nothing to transition from; later
+  changes (tab, resize, `document.fonts.ready`) animate. Its offset and width are inline styles, being measured values.
+- Scroll memory tracks `window.scrollY` on `scroll` events instead of reading it at the switch: by then the leaving panel
+  is hidden and the browser has already pulled the page up to the shorter content.
+- `data-entering` is `true` on the active panel once the tab has changed at least once, `false` before, so the entrance
+  does not play on the first render; a panel going from `hidden` to shown restarts the CSS animation by itself.
+- Header: `position: sticky; top; z-index` moved to `.shell-top`, as planned. The header itself became
+  `position: relative; z-index: 1`, which the plan did not name: its `::after` rule line needs a positioned parent, and
+  the account menu must open over the tab row, which is later in the DOM.
+- The tab labels and the indicator fade in with the header's content and out with it on sign-out (own `tab-row-*`
+  keyframes, the same 900 ms / 700 ms), so the row does not pop in beside a fading header. The plan only named the
+  sign-out half. Revisit at the visual check.
+- `--pale-bio` is not added yet; it arrives with the card in step 21.
+
+## Frontend plan step 21 - people list, card and follow button
+
+- Moved to shared places, posts unchanged: `Avatar` → `components/shared/Avatar` (new `size`: `small` | `large`, as
+  `data-size`; large is 44 px, 40 px at ≤ 600 px), `PostListStatus` → `components/shared/PostListStatus`,
+  `useBottomSentinel` and `useOptimisticToggle` → `src/hooks`. The foot-of-list rule (`bottomStateOf`) left `PostList`
+  for `utils/bottomState.ts`, so both lists share it.
+- `useOptimisticToggle(initial, send, onFailure?)`: `onFailure` gets the value that could not be set. Without it the
+  revert stays silent, as likes and saves have it.
+- `PeoplePage` → `PeopleList` (paging through `usePagedList`, the sentinel, `PostListStatus`, a live region) →
+  `PersonCard` (`<li>`, not an article: the card is not a post) → `FollowButton`. The list's live region says
+  `n more people loaded`, with `1 more person loaded` for one, as posts do.
+- Follow button state lives in `usePersonFollow` (the toggle, the count, the announcements) and `useFollowPhase` (the
+  3 s `armed` / `failed` looks). The count is the server's `followersCount` ± 1, by how the reader's follow now
+  differs from `followedByMe`, so a revert restores it with no extra bookkeeping.
+- Looks the plan left open: `UNFOLLOW?` drops the panel and uses `--pale` text, so a hovered, followed button stops
+  looking followed while it asks; `TRY AGAIN` uses `--alarm` for text and border. A tap on `TRY AGAIN` repeats the failed
+  change as it was: a failed unfollow is sent again at once, without arming. Blur and Escape disarm only an armed
+  button; they leave `TRY AGAIN` alone.
+- Each card carries its own polite live region next to the button, in `.person-card-action`, the element that also
+  moves the button to its own row below 600 px (the card's CSS does not reach into the button's class).
+- A successful follow or unfollow calls `onFollowChanged`. `Shell` owns a `followChangeCount` and puts both on the
+  outlet context (`ShellContext`), because the feed already reads `ownPosts` from there; `PeoplePage` hands the callback
+  down. Nothing reads the count yet: step 22 does.
+- Sign-out: the cards play the posts' leave (own `person-list-leave` keyframes in `PeopleList.css`, same 700 ms and
+  delays). They have no entrance of their own; the panel's entrance covers it.
+- `--pale-bio` (.62) added. Tests that open `/users` (`Shell.test.tsx`, `TabPanels.test.tsx`) now mock `fetchPeople`;
+  the step 20 test "only the hidden heading until step 21" became "the heading and the people".
+
+## Frontend plan step 22 - TWEETS after following
+
+- `PostListStatus` takes an optional `emptyAction` (`label`, `onClick`); only the empty state shows it, so `/saved` is
+  unchanged. Its button class is now `post-list-status-button` (it was `-retry`), since `TRY AGAIN` and `FIND PEOPLE`
+  share the look. The status wraps and centres its text, because the empty line with a button is long on a phone.
+- `PostList` takes `emptyAction` and `reloadEmptyKey`. When the key changes (never on the first render) and the list is
+  empty (`isEnd` with no items, own posts counted), the first page is read again (`useReloadEmptyList`). A list with
+  posts keeps its place; one still loading or failed is left alone, since it already has a read of its own.
+- The key is the follow count as of the last time the tab was shown (`useFollowCountWhenShown`, in `FeedPage`): the
+  feed is hidden when a follow happens, so the value stays behind and catches up in the render that shows the tab.
+  That makes the reload happen on coming back, a few seconds after the follow, when the back-fill has had time to land,
+  and only once per follow change. A feed that mounts after a follow (first opening of TWEETS) reads once, as it
+  always did. The count is `Shell`'s `followChangeCount` from step 21.
+- `FIND PEOPLE` calls `navigate(ROUTES.people)`, a pushed entry like a tab click, so Back returns to TWEETS.
+- The text is `NOTHING HERE YET — FOLLOW SOMEONE TO SEE THEIR POSTS`; the tests of `FeedPage` and `Shell` that named
+  the old `NOTHING HERE YET` follow it.
+
+## Frontend plan step 23 - e2e UI journeys
+
+- Scenarios 4–11 are in `e2e/tests/people-ui.spec.ts`, one test each (scenario 9 holds the arrow keys, Back and the
+  reload in one test, since they share a page and a session). Cards are found by scrolling PEOPLE until the username
+  shows (`findPersonCard`), as the plan said, because the database is shared with the parallel specs.
+- Scenario 6 starts on `/feed` and uses `FIND PEOPLE`, so the feed is already mounted and empty when the follow
+  happens; that is what exercises the reload on coming back (a feed first opened after the follow would just read).
+- Scenario 8 answers only the follow request with `500` (`page.route`) and expects `TRY AGAIN`, the count back at `0`,
+  then `FOLLOW` after the 3 s hold, with no clock control: the default expect timeout of 10 s covers it.
+- Scenario 10 waits until all 25 of Bob's posts are in Ana's feed through the API before it scrolls, so the page is tall
+  enough and the back-fill is not still arriving.
+- No existing spec changed: `getByText('NOTHING HERE YET')` in `feed-ui.spec.ts` matches the longer empty text as a
+  substring.
+
+## Frontend plan step 24 - style review, audit, docs
+
+- Style review (read-only agent against `frontend-code-style`): fixed the rule violations (helper above the props in
+  `TabRow.tsx`, base animation rule before the state rules in `TabRow.css`, `outletContext` next to the return in
+  `Shell.tsx`, the effect before the handlers in `useFollowPhase.ts`, crammed test lines) and the cheap guideline misses
+  (`isEmpty` in `PostList`, the `bio.ts` comment). The rest is under "Left open" in `PLAN.md`.
+- Security audit (four read-only agents: frontend, gateway, tweet service, timeline): no Critical or High. Two Mediums
+  were fixed here (the by-author index, and the follow check's answer, `200 {"following": ...}`, which changed the
+  planned `204`/`404` contract; recorded in the gateway's and timeline service's `DECISIONS.md`). The Lows are under
+  "Left open". The frontend's own part is `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)".
+- Closed phase 2's gap "A new user can't follow anyone" and the gateway's "No frontend caller yet" (deleted from their
+  gap lists). `CLAUDE.md` now describes the tabs, the follow button and the follow signal.
+- Exit run: build, lint (0 findings), 866 frontend tests; `mvn verify` 3× green in the tweet service (267 tests), the
+  gateway (844) and the timeline service (496); Playwright 40/40 three times in a row from a fresh stack.

@@ -507,3 +507,33 @@ usernames, so the shared database and parallel specs don't matter.
   publisher call takes only the first `app.outbox.batch-size` pending rows, so its own row fell outside the batch.
   That test is left as it is; other suites that add many outbox rows will hit the same limit.
 
+
+## Frontend plan step 15 - the follow check
+
+`GET /internal/v1/users/{followerId}/follows/{followeeId}` answers `204` when the follow exists and `404`
+otherwise, for the timeline service's back-fill (it asks after inserting, to undo a back-fill whose follow was
+already removed). Calls made while building it:
+
+- **It lives in `InternalUserController` / `InternalUserService`** (`isFollowing`) next to the other reads under
+  `/internal/v1/users`, and calls the existing `existsByFollowerIdAndFollowingId`: one lookup by the pair's
+  unique key, no user rows, no new query.
+- **Unknown ids and a self pair answer `404`, like "not following".** No follow row can exist for them (the
+  check constraint forbids self follows), so the service doesn't branch on them; a caller can't use the endpoint
+  to learn whether a user exists.
+- **Both answers have no body.** The `404` is not the app's error shape, so it can't be told apart by body from
+  "not following"; the guard's own `404` for a missing or wrong secret is the shape of an unknown path, which
+  the tests check with an existing follow, so a `204` never leaks through a bad secret.
+- **Not added to the `Secret` group's `endpoints()`.** That group asserts `200` with the right secret; this
+  endpoint answers `204`/`404`, so its secret cases are in the `Follows` group.
+- **Malformed ids answer `400`** through the existing type-mismatch handler, as `follower-ids` does.
+
+## Frontend plan step 24 - the follow check answers 200 with a body (audit finding 1 of the timeline report)
+
+The follow check answered `204` for a follow and a bare `404` for none. The guard answers a missing or wrong secret
+with the same bare `404` (on purpose, so internal routes look absent), and so does a gateway build without the route,
+so the timeline service could not tell "not following" from a misconfiguration and deleted the back-fill in each case.
+It now answers `200` with `{"following": true|false}` (`FollowCheckResponseDTO`) for every well-formed pair, unknown
+ids and a self pair included (`false`). A `404` can only mean a wrong secret or a missing route; the timeline service
+treats anything but a `200` as an error to retry. Malformed ids still answer `400`. The step 15 entry above is
+superseded on the status codes and the "both answers have no body" point; its other calls stand. The endpoint is now
+in the `Secret` group's `endpoints()`, since it answers `200`.

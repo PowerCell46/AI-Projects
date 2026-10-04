@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_tweet_service.services.implementations;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -31,6 +32,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -45,6 +48,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetCreatedEventDT
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetDeletedEventDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
@@ -54,6 +58,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetEx
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
@@ -597,6 +602,53 @@ class TweetServiceImplTest {
                     .generate(UUID::randomUUID)
                     .limit(count)
                     .toList();
+        }
+    }
+
+    @Nested
+    class FindNewestByAuthor {
+
+        private static final Instant SINCE = Instant.parse("2026-03-01T00:00:00Z");
+
+        @Test
+        void should_return_the_id_and_created_at_of_each_tweet_in_the_order_the_repository_gave() {
+            Tweet newer = TestDocuments.tweet();
+            newer.setCreatedAt(Instant.parse("2026-03-03T00:00:00Z"));
+            Tweet older = TestDocuments.tweet();
+            older.setCreatedAt(Instant.parse("2026-03-02T00:00:00Z"));
+            when(tweetRepository.findNewestByAuthorSince(AUTHOR_ID, SINCE, 50)).thenReturn(List.of(newer, older));
+
+            List<TweetSummaryResponseDTO> response = tweetService.findNewestByAuthor(AUTHOR_ID, SINCE, 50);
+
+            assertThat(response)
+                    .extracting(TweetSummaryResponseDTO::getId, TweetSummaryResponseDTO::getCreatedAt)
+                    .containsExactly(
+                            tuple(newer.getId(), newer.getCreatedAt()),
+                            tuple(older.getId(), older.getCreatedAt()));
+        }
+
+        @Test
+        void should_return_an_empty_list_when_the_repository_found_nothing() {
+            when(tweetRepository.findNewestByAuthorSince(AUTHOR_ID, SINCE, 50)).thenReturn(List.of());
+
+            assertThat(tweetService.findNewestByAuthor(AUTHOR_ID, SINCE, 50)).isEmpty();
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {1, 100})
+        void should_accept_the_limits_at_the_edges_of_the_range(int limit) {
+            when(tweetRepository.findNewestByAuthorSince(AUTHOR_ID, SINCE, limit)).thenReturn(List.of());
+
+            assertThatCode(() -> tweetService.findNewestByAuthor(AUTHOR_ID, SINCE, limit)).doesNotThrowAnyException();
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {Integer.MIN_VALUE, -1, 0, 101, Integer.MAX_VALUE})
+        void should_throw_out_of_range_and_not_query_when_the_limit_is_outside_1_to_100(int limit) {
+            assertThatThrownBy(() -> tweetService.findNewestByAuthor(AUTHOR_ID, SINCE, limit))
+                    .isInstanceOf(TweetLimitOutOfRangeException.class)
+                    .hasMessage("Provide a limit between 1 and 100.");
+            verifyNoInteractions(tweetRepository);
         }
     }
 

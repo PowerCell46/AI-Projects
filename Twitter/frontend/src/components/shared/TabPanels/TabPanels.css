@@ -1,0 +1,16 @@
+/* The incoming panel plays this on every switch, not on the first render. */
+.tab-panel[data-entering='true'] {
+    animation: tab-panel-enter 400ms var(--e);
+}
+
+@keyframes tab-panel-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

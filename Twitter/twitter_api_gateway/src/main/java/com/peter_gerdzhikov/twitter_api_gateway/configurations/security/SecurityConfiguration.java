@@ -137,8 +137,8 @@ public class SecurityConfiguration {
                 new JwtClaimValidator<String>("sub", this::isUserId),
                 new JwtClaimValidator<String>("username", Objects::nonNull),
                 new JwtClaimValidator<String>("email", Objects::nonNull),
-                new JwtClaimValidator<>("exp", Objects::nonNull))
-        );
+                new JwtClaimValidator<>("exp", Objects::nonNull)
+        ));
     }
 
     /**

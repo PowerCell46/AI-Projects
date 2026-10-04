@@ -1,9 +1,9 @@
 /* The side padding keeps the brand on the left edge of the post cells: the column is 41.25rem wide with 1.5rem
-   padding. */
+   padding. The stick-to-the-top lives on the shell's wrapper, which also holds the tab row; the header keeps its own
+   stacking level so the account menu opens over the tab row. */
 .header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;

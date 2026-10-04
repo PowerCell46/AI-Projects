@@ -193,3 +193,24 @@ which would hide the cause; the `TransientTransactionError` label stays unhandle
 `GET /tweets/{id}` is a plain `findById` that writes nothing. Existing development documents still carry a
 `views` field: Spring Data ignores an unknown field on read, nothing writes the whole document back (edits are a
 conditional `$set`), so it is never read or changed again. No `$unset` script: development data only.
+
+
+## Frontend plan step 14 - the by-author read
+
+`GET /internal/v1/tweets/by-author/{authorId}?since=&limit=` answers `[{id, createdAt}]`, newest first
+(`createdAt DESC, id DESC`), for the timeline service's back-fill on follow. Calls made while building it:
+
+- **Both parameters are required.** `since` is parsed with `@DateTimeFormat(iso = DATE_TIME)`: without it Spring's
+  default `Instant` conversion also accepts epoch milliseconds, which the contract calls a bad value. `limit` has no
+  default, so the caller always says how many it wants; a missing, non-numeric or out-of-range one answers 400.
+- **The limit range is checked in the service** (`TweetLimitOutOfRangeException`, "Provide a limit between 1 and 100."),
+  like the `ids` read's range, so the controller stays thin and the unit test covers the edges.
+- **The repository loads only `id` and `createdAt`** (a projection in `findNewestByAuthorSince`); the returned
+  `Tweet`s are partial and never leave the service, which maps them to `TweetSummaryResponseDTO`.
+- **The index is `ix_tweets_author_created_id {authorId: 1, createdAt: -1, _id: -1}`** (the plan said
+  `ix_tweets_author_created` without `_id`; changed after the frontend phase 3 audit, finding 1). With `_id` left out,
+  the planner could not use the index for the `createdAt, _id` sort: it read every tweet of the author since `since` and
+  sorted them in memory (300,000 keys and documents for 100 rows). With `_id` in the index the read stops at `limit`.
+  The new name avoids a conflict with an existing index of the old name, which a dev database keeps until it is dropped.
+- **A tie on `createdAt` orders by `_id` descending**, which for binary UUIDs is byte order; the test compares the
+  ids as lower-case strings, not with `UUID.compareTo` (signed longs).

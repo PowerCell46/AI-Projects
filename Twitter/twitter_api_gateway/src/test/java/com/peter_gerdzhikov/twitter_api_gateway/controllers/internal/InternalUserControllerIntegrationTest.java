@@ -396,10 +396,120 @@ class InternalUserControllerIntegrationTest extends AbstractMinioIntegrationTest
         }
     }
 
+    @Nested
+    class Follows {
+
+        @Test
+        void should_return_200_with_following_true_when_the_follower_follows_the_followee() throws Exception {
+            User follower = confirmedUser();
+            User followee = confirmedUser();
+            follow(follower, followee);
+
+            assertThat(isFollowing(follower.getId(), followee.getId())).isTrue();
+        }
+
+        @Test
+        void should_return_200_with_following_false_when_the_follower_does_not_follow_the_followee() throws Exception {
+            assertThat(isFollowing(confirmedUser().getId(), confirmedUser().getId())).isFalse();
+        }
+
+        @Test
+        void should_return_200_with_following_false_when_the_follow_runs_the_other_way() throws Exception {
+            User follower = confirmedUser();
+            User followee = confirmedUser();
+            follow(follower, followee);
+
+            assertThat(isFollowing(followee.getId(), follower.getId())).isFalse();
+        }
+
+        @Test
+        void should_return_200_with_following_false_when_the_follow_was_removed() throws Exception {
+            User follower = confirmedUser();
+            User followee = confirmedUser();
+            follow(follower, followee);
+            followRepository.deleteByPair(follower.getId(), followee.getId());
+
+            assertThat(isFollowing(follower.getId(), followee.getId())).isFalse();
+        }
+
+        @Test
+        void should_return_200_with_following_false_when_the_ids_are_unknown() throws Exception {
+            assertThat(isFollowing(UUID.randomUUID(), UUID.randomUUID())).isFalse();
+        }
+
+        @Test
+        void should_return_200_with_following_false_when_both_ids_are_the_same_user() throws Exception {
+            UUID userId = confirmedUser().getId();
+
+            assertThat(isFollowing(userId, userId)).isFalse();
+        }
+
+        @Test
+        void should_return_404_with_the_error_shape_of_an_unknown_path_when_the_secret_is_missing() throws Exception {
+            User follower = confirmedUser();
+            User followee = confirmedUser();
+            follow(follower, followee);
+
+            MvcResult result = mockMvc
+                    .perform(get(followPath(follower.getId(), followee.getId())))
+                    .andExpect(status().isNotFound())
+                    .andReturn();
+
+            assertThat(json(result).get("messages").get(0).asString()).isEqualTo("No resource found for this path.");
+        }
+
+        @Test
+        void should_return_404_when_the_secret_is_wrong_even_though_the_follow_exists() throws Exception {
+            User follower = confirmedUser();
+            User followee = confirmedUser();
+            follow(follower, followee);
+
+            MvcResult result = mockMvc
+                    .perform(get(followPath(follower.getId(), followee.getId()))
+                            .header(InternalApiSecretFilter.SECRET_HEADER, "y".repeat(secret.length())))
+                    .andExpect(status().isNotFound())
+                    .andReturn();
+
+            assertThat(json(result).get("messages").get(0).asString()).isEqualTo("No resource found for this path.");
+        }
+
+        @Test
+        void should_return_400_when_the_follower_id_is_not_a_uuid() throws Exception {
+            mockMvc
+                    .perform(internalGet(USERS_PATH + "/not-a-uuid/follows/" + UUID.randomUUID()))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_the_followee_id_is_not_a_uuid() throws Exception {
+            mockMvc
+                    .perform(internalGet(USERS_PATH + "/" + UUID.randomUUID() + "/follows/not-a-uuid"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        private boolean isFollowing(UUID followerId, UUID followeeId) throws Exception {
+            MvcResult result = mockMvc
+                    .perform(internalGet(followPath(followerId, followeeId)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            return json(result).get("following").asBoolean();
+        }
+
+        private void follow(User follower, User followee) {
+            followRepository.insertIfAbsent(UUID.randomUUID(), follower.getId(), followee.getId(), CREATED_AT);
+        }
+
+        private String followPath(UUID followerId, UUID followeeId) {
+            return USERS_PATH + "/" + followerId + "/follows/" + followeeId;
+        }
+    }
+
     static Stream<String> endpoints() {
         return Stream.of(
                 USERS_PATH + "/" + UUID.randomUUID() + "/follower-ids",
-                USERS_PATH + "?ids=" + UUID.randomUUID()
+                USERS_PATH + "?ids=" + UUID.randomUUID(),
+                USERS_PATH + "/" + UUID.randomUUID() + "/follows/" + UUID.randomUUID()
         );
     }
 

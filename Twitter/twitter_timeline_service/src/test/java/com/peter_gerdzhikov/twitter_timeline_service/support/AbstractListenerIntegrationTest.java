@@ -32,6 +32,8 @@ import org.springframework.data.domain.PageRequest;
 
 import tools.jackson.databind.json.JsonMapper;
 
+import lombok.Value;
+
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 
@@ -61,6 +63,10 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
     protected static final String USER_UNFOLLOWED_TOPIC = "user.unfollowed";
 
     protected static final String USER_UNFOLLOWED_DLT_TOPIC = "user.unfollowed-dlt";
+
+    protected static final String USER_FOLLOWED_TOPIC = "user.followed";
+
+    protected static final String USER_FOLLOWED_DLT_TOPIC = "user.followed-timeline-dlt";
 
     protected static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(20);
 
@@ -115,6 +121,20 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
                 "followerId", followerId,
                 "followeeId", followeeId,
                 "occurredAt", occurredAt.toString()));
+    }
+
+    /**
+     * The event as the gateway writes it, with the followee's email and the usernames this service must ignore.
+     */
+    protected static String userFollowedJson(UUID followerId, UUID followeeId, Instant occurredAt) {
+        return JSON.writeValueAsString(Map.of(
+                "eventId", UUID.randomUUID(),
+                "followerId", followerId,
+                "followeeId", followeeId,
+                "occurredAt", occurredAt.toString(),
+                "followeeEmail", "bob@example.com",
+                "followerUsername", "ana",
+                "followeeUsername", "bob"));
     }
 
     protected static void publish(String topic, String key, String value) {
@@ -179,6 +199,46 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
                 .withStatus(200)
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"ids\":[" + idList + "],\"nextCursor\":" + cursor + "}");
+    }
+
+    protected static UrlPathPattern tweetsByAuthorPath(UUID authorId) {
+        return urlPathEqualTo("/internal/v1/tweets/by-author/" + authorId);
+    }
+
+    protected static UrlPathPattern followCheckPath(UUID followerId, UUID followeeId) {
+        return urlPathEqualTo("/internal/v1/users/" + followerId + "/follows/" + followeeId);
+    }
+
+    /**
+     * Stubs the tweet service's by-author read with the tweets as given, so the caller lists them newest first.
+     */
+    protected static void stubTweetsByAuthor(UUID authorId, List<AuthorTweet> tweets) {
+        String items = String.join(",", tweets
+                .stream()
+                .map(tweet -> "{\"id\":\"" + tweet.getId() + "\",\"createdAt\":\"" + tweet.getCreatedAt() + "\"}")
+                .toList());
+
+        TWEET_SERVICE_STUB.register(get(tweetsByAuthorPath(authorId))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("[" + items + "]")));
+    }
+
+    protected static void stubFollowExists(UUID followerId, UUID followeeId) {
+        stubFollowCheck(followerId, followeeId, true);
+    }
+
+    protected static void stubFollowMissing(UUID followerId, UUID followeeId) {
+        stubFollowCheck(followerId, followeeId, false);
+    }
+
+    private static void stubFollowCheck(UUID followerId, UUID followeeId, boolean isFollowing) {
+        GATEWAY_STUB.register(get(followCheckPath(followerId, followeeId))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"following\":" + isFollowing + "}")));
     }
 
     protected static List<UUID> newUsers(int count) {
@@ -270,5 +330,13 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
                     assertThat(viewersOf(tweetId)).isEmpty();
                     assertThat(tweetViewCountRepository.existsById(tweetId)).isFalse();
                 });
+    }
+
+    @Value
+    protected static class AuthorTweet {
+
+        private final UUID id;
+
+        private final Instant createdAt;
     }
 }

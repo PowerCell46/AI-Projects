@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ENDPOINTS } from './endpoints';
-import { fetchUserProfile } from './users';
+import { setUnauthorizedHandler } from './http';
+import { fetchPeople, fetchUserProfile, followUser, unfollowUser } from './users';
 import { fetchMock, installFetchStub, respondWith } from '../test/fetchStub';
 
 
@@ -69,5 +70,216 @@ describe('fetchUserProfile', () => {
         );
 
         await expect(fetchUserProfile('ghost')).rejects.toMatchObject({ status: 404 });
+    });
+});
+
+describe('fetchPeople', () => {
+    it('should_get_the_people_list_with_the_size_and_the_cursor', async () => {
+        respondWith(
+            200,
+            {
+                items: [],
+                nextCursor: null,
+            },
+        );
+
+        await fetchPeople({
+            cursor: 'abc',
+            size: 20,
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            `${ENDPOINTS.users}?size=20&cursor=abc`,
+            {
+                method: 'GET',
+                credentials: 'include',
+            },
+        );
+    });
+
+    it('should_leave_the_cursor_out_of_the_url_when_it_is_the_first_page', async () => {
+        respondWith(
+            200,
+            {
+                items: [],
+                nextCursor: null,
+            },
+        );
+
+        await fetchPeople({
+            cursor: null,
+            size: 20,
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(`${ENDPOINTS.users}?size=20`, expect.anything());
+    });
+
+    it('should_return_the_people_and_the_next_cursor_with_the_picture_on_the_api_origin', async () => {
+        respondWith(
+            200,
+            {
+                items: [{
+                    id: 'user-1',
+                    username: 'bob',
+                    bio: 'Builds boats.',
+                    followersCount: 1240,
+                    followedByMe: true,
+                    profilePictureUrl: '/api/v1/files/pic-7',
+                }],
+                nextCursor: 'next',
+            },
+        );
+
+        const page = await fetchPeople({
+            cursor: null,
+            size: 20,
+        });
+
+        expect(page.nextCursor).toBe('next');
+        expect(page.items).toEqual([{
+            id: 'user-1',
+            username: 'bob',
+            bio: 'Builds boats.',
+            followersCount: 1240,
+            followedByMe: true,
+            profilePictureUrl: ENDPOINTS.backendPath('/api/v1/files/pic-7'),
+        }]);
+    });
+
+    it('should_keep_a_null_picture_and_a_null_bio_when_the_person_has_neither', async () => {
+        respondWith(
+            200,
+            {
+                items: [{
+                    id: 'user-2',
+                    username: 'cy',
+                    bio: null,
+                    followersCount: 0,
+                    followedByMe: false,
+                    profilePictureUrl: null,
+                }],
+                nextCursor: null,
+            },
+        );
+
+        const page = await fetchPeople({
+            cursor: null,
+            size: 20,
+        });
+
+        expect(page.items[0].profilePictureUrl).toBeNull();
+        expect(page.items[0].bio).toBeNull();
+    });
+
+    it('should_reject_with_the_status_when_the_request_fails', async () => {
+        respondWith(
+            500,
+            { messages: ['Something went wrong.'] },
+        );
+
+        await expect(fetchPeople({
+            cursor: null,
+            size: 20,
+        })).rejects.toMatchObject({ status: 500 });
+    });
+});
+
+describe('followUser', () => {
+    afterEach(() => {
+        setUnauthorizedHandler(null);
+    });
+
+    it('should_put_to_the_follow_url_of_the_username', async () => {
+        respondWith(204);
+
+        await followUser('bob');
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            ENDPOINTS.follow('bob'),
+            {
+                method: 'PUT',
+                credentials: 'include',
+            },
+        );
+    });
+
+    it('should_resolve_with_nothing_when_the_answer_is_204', async () => {
+        respondWith(204);
+
+        await expect(followUser('bob')).resolves.toBeUndefined();
+    });
+
+    it('should_encode_the_username_in_the_follow_url', () => {
+        expect(ENDPOINTS.follow('a b/c')).toMatch(/\/users\/a%20b%2Fc\/follow$/);
+    });
+
+    it('should_reject_with_the_status_when_the_user_is_unknown', async () => {
+        respondWith(
+            404,
+            { messages: ['User not found.'] },
+        );
+
+        await expect(followUser('ghost')).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('should_reject_with_status_0_when_the_network_fails', async () => {
+        fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+        await expect(followUser('bob')).rejects.toMatchObject({ status: 0 });
+    });
+
+    it('should_call_the_unauthorized_handler_when_the_session_has_expired', async () => {
+        const onUnauthorized = vi.fn();
+        setUnauthorizedHandler(onUnauthorized);
+        respondWith(401);
+
+        await expect(followUser('bob')).rejects.toMatchObject({ status: 401 });
+
+        expect(onUnauthorized).toHaveBeenCalledOnce();
+    });
+});
+
+describe('unfollowUser', () => {
+    afterEach(() => {
+        setUnauthorizedHandler(null);
+    });
+
+    it('should_delete_the_follow_url_of_the_username', async () => {
+        respondWith(204);
+
+        await unfollowUser('bob');
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            ENDPOINTS.follow('bob'),
+            {
+                method: 'DELETE',
+                credentials: 'include',
+            },
+        );
+    });
+
+    it('should_resolve_with_nothing_when_the_answer_is_204', async () => {
+        respondWith(204);
+
+        await expect(unfollowUser('bob')).resolves.toBeUndefined();
+    });
+
+    it('should_reject_with_the_status_when_the_user_is_unknown', async () => {
+        respondWith(
+            404,
+            { messages: ['User not found.'] },
+        );
+
+        await expect(unfollowUser('ghost')).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('should_call_the_unauthorized_handler_when_the_session_has_expired', async () => {
+        const onUnauthorized = vi.fn();
+        setUnauthorizedHandler(onUnauthorized);
+        respondWith(401);
+
+        await expect(unfollowUser('bob')).rejects.toMatchObject({ status: 401 });
+
+        expect(onUnauthorized).toHaveBeenCalledOnce();
     });
 });

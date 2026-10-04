@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { avatarTintOf } from '../../../../../utils/avatar';
+import { avatarTintOf } from '../../../utils/avatar';
 import Avatar from './Avatar';
 
 
@@ -56,5 +56,28 @@ describe('Avatar', () => {
         render(<Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />);
 
         expect(screen.getByText('PE').getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('should_be_the_small_size_when_no_size_is_given', () => {
+        render(<Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />);
+
+        expect(screen.getByText('PE').getAttribute('data-size')).toBe('small');
+    });
+
+    it('should_carry_the_large_size_on_the_initials_and_on_the_picture', () => {
+        const { container } = render(
+            <>
+                <Avatar userId={USER_ID} username="peter_g" pictureUrl={null} size="large" />
+                <Avatar
+                    userId={USER_ID}
+                    username="peter_g"
+                    pictureUrl="http://localhost/api/v1/files/pic-1"
+                    size="large"
+                />
+            </>,
+        );
+
+        expect(screen.getByText('PE').getAttribute('data-size')).toBe('large');
+        expect(container.querySelector('img')?.getAttribute('data-size')).toBe('large');
     });
 });

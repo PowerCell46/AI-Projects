@@ -27,4 +27,10 @@ public interface InternalUserService {
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRangeException
      */
     List<InternalUserResponseDTO> getUsers(List<UUID> ids);
+
+    /**
+     * Whether {@code followerId} follows {@code followeeId} right now, by one lookup of the pair. Unknown ids and
+     * a user paired with themselves have no follow row, so they answer {@code false} rather than an error.
+     */
+    boolean isFollowing(UUID followerId, UUID followeeId);
 }

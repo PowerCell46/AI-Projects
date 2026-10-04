@@ -151,4 +151,41 @@ describe('useOptimisticToggle', () => {
         expect(sendChange).toHaveBeenLastCalledWith(true);
         expect(result.current.isOn).toBe(true);
     });
+
+    describe('failure callback', () => {
+        it('should_tell_the_callback_which_value_failed_when_a_request_fails', async () => {
+            const { sendChange, pendingRequests } = createSender();
+            const onFailure = vi.fn();
+            const { result } = renderHook(() => useOptimisticToggle(false, sendChange, onFailure));
+            act(() => result.current.toggle());
+
+            await settle(pendingRequests[0], 'reject');
+
+            expect(onFailure).toHaveBeenCalledExactlyOnceWith(true);
+        });
+
+        it('should_tell_the_callback_the_value_of_the_later_request_when_that_one_fails', async () => {
+            const { sendChange, pendingRequests } = createSender();
+            const onFailure = vi.fn();
+            const { result } = renderHook(() => useOptimisticToggle(false, sendChange, onFailure));
+            act(() => result.current.toggle());
+            act(() => result.current.toggle());
+            await settle(pendingRequests[0], 'resolve');
+
+            await settle(pendingRequests[1], 'reject');
+
+            expect(onFailure).toHaveBeenCalledExactlyOnceWith(false);
+        });
+
+        it('should_not_call_the_callback_when_the_request_succeeds', async () => {
+            const { sendChange, pendingRequests } = createSender();
+            const onFailure = vi.fn();
+            const { result } = renderHook(() => useOptimisticToggle(false, sendChange, onFailure));
+            act(() => result.current.toggle());
+
+            await settle(pendingRequests[0], 'resolve');
+
+            expect(onFailure).not.toHaveBeenCalled();
+        });
+    });
 });

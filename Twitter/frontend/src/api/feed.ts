@@ -1,7 +1,9 @@
 import { ENDPOINTS } from './endpoints';
 import { sendAuthenticated } from './http';
-import { pageUrl, readTweetPage } from './tweetPage';
-import type { PageRequest, TweetPage } from './tweetPage';
+import { pageUrl } from './paging';
+import type { PageRequest } from './paging';
+import { readTweetPage } from './tweetPage';
+import type { TweetPage } from './tweetPage';
 
 
 export async function fetchFeed(request: PageRequest): Promise<TweetPage> {

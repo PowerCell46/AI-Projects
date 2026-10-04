@@ -1,0 +1,41 @@
+.person-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Signing out sinks the cards like the posts, the lowest first; the 1200ms matches the header rule's retract. */
+[data-signing-out='true'] .person-list > li {
+    animation: person-list-leave 700ms var(--e) forwards;
+}
+
+[data-signing-out='true'] .person-list > li:nth-child(4) {
+    animation-delay: 100ms;
+}
+
+[data-signing-out='true'] .person-list > li:nth-child(3) {
+    animation-delay: 200ms;
+}
+
+[data-signing-out='true'] .person-list > li:nth-child(2) {
+    animation-delay: 300ms;
+}
+
+[data-signing-out='true'] .person-list > li:nth-child(1) {
+    animation-delay: 400ms;
+}
+
+@keyframes person-list-leave {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+}

@@ -40,6 +40,14 @@ public class KafkaTopicConfiguration {
         return deadLetterTopic(dltName, partitions);
     }
 
+    @Bean
+    public NewTopic userFollowedDeadLetterTopic(
+            @Value("${app.kafka.user-followed.dlt-name}") String dltName,
+            @Value("${app.kafka.user-followed.dlt-partitions}") int partitions
+    ) {
+        return deadLetterTopic(dltName, partitions);
+    }
+
     private NewTopic deadLetterTopic(String name, int partitions) {
         return TopicBuilder
                 .name(name)

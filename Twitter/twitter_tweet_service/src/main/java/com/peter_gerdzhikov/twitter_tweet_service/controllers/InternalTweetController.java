@@ -1,14 +1,18 @@
 package com.peter_gerdzhikov.twitter_tweet_service.controllers;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 
 import lombok.RequiredArgsConstructor;
@@ -27,5 +31,14 @@ public class InternalTweetController {
     @GetMapping
     public List<TweetResponseDTO> findByIds(@RequestParam List<UUID> ids) {
         return tweetService.findByIds(ids);
+    }
+
+    @GetMapping("/by-author/{authorId}")
+    public List<TweetSummaryResponseDTO> findNewestByAuthor(
+            @PathVariable UUID authorId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant since,
+            @RequestParam int limit
+    ) {
+        return tweetService.findNewestByAuthor(authorId, since, limit);
     }
 }

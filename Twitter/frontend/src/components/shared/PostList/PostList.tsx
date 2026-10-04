@@ -1,13 +1,15 @@
-import type { PageRequest, TweetItem, TweetPage } from '../../../api/tweetPage';
+import type { PageRequest } from '../../../api/paging';
+import type { TweetItem, TweetPage } from '../../../api/tweetPage';
+import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
+import { bottomStateOf } from '../../../utils/bottomState';
+import PostListStatus from '../PostListStatus/PostListStatus';
+import type { EmptyAction } from '../PostListStatus/PostListStatus';
 import NewPostsButton from './NewPostsButton/NewPostsButton';
 import PostCell from './PostCell/PostCell';
-import PostListStatus from './PostListStatus/PostListStatus';
-import type { BottomState } from './PostListStatus/PostListStatus';
-import { useBottomSentinel } from './useBottomSentinel';
 import { useMinuteClock } from './useMinuteClock';
 import { useNewPosts } from './useNewPosts';
 import { usePostList } from './usePostList';
-import type { PostListState } from './usePostList';
+import { useReloadEmptyList } from './useReloadEmptyList';
 import { useViewTracking } from './useViewTracking';
 import './PostList.css';
 
@@ -15,24 +17,14 @@ import './PostList.css';
 // A fixed empty list, so the default does not look like a new value on every render.
 const NO_OWN_POSTS: TweetItem[] = [];
 
-function bottomStateOf({ status, isEnd, items }: PostListState): BottomState | null {
-    if (status === 'loading' || status === 'failed') {
-        return status;
-    }
-
-    if (isEnd) {
-        return items.length === 0 ? 'empty' : 'end';
-    }
-
-    return null;
-}
-
 interface PostListProps {
     fetchPage: (request: PageRequest) => Promise<TweetPage>;
     endText: string;
     emptyText: string;
     ownPosts?: TweetItem[];
     shouldCheckForNewPosts?: boolean;
+    emptyAction?: EmptyAction;
+    reloadEmptyKey?: number;
 }
 
 function PostList({
@@ -41,6 +33,8 @@ function PostList({
     emptyText,
     ownPosts = NO_OWN_POSTS,
     shouldCheckForNewPosts = false,
+    emptyAction,
+    reloadEmptyKey,
 }: PostListProps) {
     const list = usePostList(fetchPage, ownPosts);
     const now = useMinuteClock();
@@ -48,7 +42,11 @@ function PostList({
     const sentinelRef = useBottomSentinel(list.loadMore, `${list.items.length}-${list.status}`);
     const hasLoadedFirstPage = list.items.length > 0 || list.isEnd;
     const incoming = useNewPosts(fetchPage, list.loadedItems, list.items, shouldCheckForNewPosts && hasLoadedFirstPage);
-    const bottomState = bottomStateOf(list);
+    const bottomState = bottomStateOf(list.status, list.isEnd, list.items.length);
+
+    const isEmpty = list.items.length === 0 && list.isEnd;
+
+    useReloadEmptyList(isEmpty, list.reload, reloadEmptyKey);
 
     function handleShowNewPosts() {
         if (incoming.isWholePageNew) {
@@ -73,7 +71,13 @@ function PostList({
                 ))}
             </ul>
             {bottomState && (
-                <PostListStatus state={bottomState} endText={endText} emptyText={emptyText} onRetry={list.retry} />
+                <PostListStatus
+                    state={bottomState}
+                    endText={endText}
+                    emptyText={emptyText}
+                    emptyAction={emptyAction}
+                    onRetry={list.retry}
+                />
             )}
             <div ref={sentinelRef} />
             <p className="sr-only" aria-live="polite">{list.announcement}</p>

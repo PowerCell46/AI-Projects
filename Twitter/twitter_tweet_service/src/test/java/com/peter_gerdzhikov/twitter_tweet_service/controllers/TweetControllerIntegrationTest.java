@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -806,6 +807,144 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
     }
 
+    @Nested
+    class InternalByAuthor {
+
+        private static final Instant SINCE = Instant.parse("2026-03-01T00:00:00Z");
+
+        @AfterEach
+        void resetClock() {
+            mutableClock.reset();
+        }
+
+        @Test
+        void should_return_200_with_only_the_id_and_created_at_when_the_author_has_a_tweet() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            mutableClock.setInstant(SINCE.plusSeconds(10));
+            JsonNode created = create(authorId, "summary", image("a.png", TestImages.png()));
+
+            JsonNode body = findByAuthor(authorId, SINCE.toString(), "50", status().isOk());
+
+            assertThat(body).hasSize(1);
+            assertThat(body.get(0).propertyNames()).containsExactlyInAnyOrder("id", "createdAt");
+            assertThat(body.get(0).get("id").asString()).isEqualTo(created.get("id").asString());
+            assertThat(Instant.parse(body.get(0).get("createdAt").asString())).isEqualTo(SINCE.plusSeconds(10));
+        }
+
+        @Test
+        void should_return_the_tweets_newest_first_when_the_author_has_several() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            String oldest = createAt(authorId, SINCE.plusSeconds(10));
+            String newest = createAt(authorId, SINCE.plusSeconds(30));
+            String middle = createAt(authorId, SINCE.plusSeconds(20));
+
+            JsonNode body = findByAuthor(authorId, SINCE.toString(), "50", status().isOk());
+
+            assertThat(idsIn(body)).containsExactly(newest, middle, oldest);
+        }
+
+        @Test
+        void should_include_a_tweet_created_exactly_at_since_and_leave_out_an_older_one() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            createAt(authorId, SINCE.minusMillis(1));
+            String atSince = createAt(authorId, SINCE);
+
+            JsonNode body = findByAuthor(authorId, SINCE.toString(), "50", status().isOk());
+
+            assertThat(idsIn(body)).containsExactly(atSince);
+        }
+
+        @Test
+        void should_return_only_the_newest_tweets_when_there_are_more_than_the_limit() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            createAt(authorId, SINCE.plusSeconds(10));
+            String newest = createAt(authorId, SINCE.plusSeconds(30));
+            String middle = createAt(authorId, SINCE.plusSeconds(20));
+
+            JsonNode body = findByAuthor(authorId, SINCE.toString(), "2", status().isOk());
+
+            assertThat(idsIn(body)).containsExactly(newest, middle);
+        }
+
+        @Test
+        void should_leave_out_the_tweets_of_other_authors() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            String own = createAt(authorId, SINCE.plusSeconds(10));
+            createAt(UUID.randomUUID(), SINCE.plusSeconds(20));
+
+            JsonNode body = findByAuthor(authorId, SINCE.toString(), "50", status().isOk());
+
+            assertThat(idsIn(body)).containsExactly(own);
+        }
+
+        @Test
+        void should_return_an_empty_list_when_the_author_has_no_tweets() throws Exception {
+            JsonNode body = findByAuthor(UUID.randomUUID(), SINCE.toString(), "50", status().isOk());
+
+            assertThat(body).isEmpty();
+        }
+
+        @Test
+        void should_not_require_the_user_id_header_and_leave_the_documents_unchanged() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            mutableClock.setInstant(SINCE.plusSeconds(10));
+            JsonNode created = create(authorId, "unchanged");
+            Tweet before = storedTweet(created);
+
+            findByAuthor(authorId, SINCE.toString(), "50", status().isOk());
+
+            assertThat(storedTweet(created)).usingRecursiveComparison().isEqualTo(before);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"1", "100"})
+        void should_return_200_when_the_limit_is_at_the_edge_of_the_range(String limit) throws Exception {
+            findByAuthor(UUID.randomUUID(), SINCE.toString(), limit, status().isOk());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"0", "-1", "101"})
+        void should_return_400_when_the_limit_is_outside_1_to_100(String limit) throws Exception {
+            JsonNode body = findByAuthor(UUID.randomUUID(), SINCE.toString(), limit, status().isBadRequest());
+
+            assertThat(body.get("messages").get(0).asString()).isEqualTo("Provide a limit between 1 and 100.");
+        }
+
+        @Test
+        void should_return_400_when_the_limit_is_not_a_number() throws Exception {
+            findByAuthor(UUID.randomUUID(), SINCE.toString(), "many", status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_the_limit_is_missing() throws Exception {
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH + "/by-author/" + UUID.randomUUID()).param("since", SINCE.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_since_is_missing() throws Exception {
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH + "/by-author/" + UUID.randomUUID()).param("limit", "50"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"yesterday", "2026-03-01", "1772323200000", ""})
+        void should_return_400_when_since_is_not_an_iso_8601_instant(String since) throws Exception {
+            findByAuthor(UUID.randomUUID(), since, "50", status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_the_author_id_is_not_a_uuid() throws Exception {
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH + "/by-author/not-a-uuid")
+                            .param("since", SINCE.toString())
+                            .param("limit", "50"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
     static Stream<String> endpoints() {
         return Stream.of(
                 "POST /api/v1/tweets",
@@ -866,6 +1005,22 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
                 .perform(get(INTERNAL_TWEETS_PATH).param("ids", ids.toArray(String[]::new)))
                 .andExpect(expected)
                 .andReturn());
+    }
+
+    private JsonNode findByAuthor(UUID authorId, String since, String limit, ResultMatcher expected)
+            throws Exception {
+        return json(mockMvc
+                .perform(get(INTERNAL_TWEETS_PATH + "/by-author/" + authorId)
+                        .param("since", since)
+                        .param("limit", limit))
+                .andExpect(expected)
+                .andReturn());
+    }
+
+    private String createAt(UUID authorId, Instant createdAt) throws Exception {
+        mutableClock.setInstant(createdAt);
+
+        return create(authorId, "tweet").get("id").asString();
     }
 
     private List<String> idsIn(JsonNode tweets) {

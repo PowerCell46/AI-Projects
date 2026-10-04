@@ -450,6 +450,21 @@ Added in frontend plan step 1. The gateway answers these itself and stores nothi
 - A missing `ids` returns 400 (`should_return_400_when_the_ids_parameter_is_missing`)
 - A non-UUID id returns 400 (`should_return_400_when_an_id_is_not_a_uuid`)
 
+`Follows` - `GET /internal/v1/users/{followerId}/follows/{followeeId}` - the timeline service's back-fill asks whether the follow still exists; 200 with `{"following": true|false}`, so that a 404 can only mean a wrong secret or a missing route
+
+- The follower follows the followee: 200, `following` true (`should_return_200_with_following_true_when_the_follower_follows_the_followee`)
+- No follow: 200, `following` false (`should_return_200_with_following_false_when_the_follower_does_not_follow_the_followee`)
+- The follow runs the other way: 200, false (`should_return_200_with_following_false_when_the_follow_runs_the_other_way`)
+- The follow was removed: 200, false (`should_return_200_with_following_false_when_the_follow_was_removed`)
+- Unknown ids: 200, false (`should_return_200_with_following_false_when_the_ids_are_unknown`)
+- The same id twice (self): 200, false (`should_return_200_with_following_false_when_both_ids_are_the_same_user`)
+- A missing secret on an existing follow returns 404 "No resource found for this path." (`should_return_404_with_the_error_shape_of_an_unknown_path_when_the_secret_is_missing`)
+- A wrong secret on an existing follow returns 404 "No resource found for this path." (`should_return_404_when_the_secret_is_wrong_even_though_the_follow_exists`)
+- A non-UUID follower id returns 400 (`should_return_400_when_the_follower_id_is_not_a_uuid`)
+- A non-UUID followee id returns 400 (`should_return_400_when_the_followee_id_is_not_a_uuid`)
+
+It is also in the `Secret` group's parameterized `endpoints()`, since it now answers 200 with the right secret.
+
 ## Cross-service contract
 
 `TweetServiceContractIntegrationTest` — enabled. Real server; the tweet service is built from `../twitter_tweet_service/Dockerfile` on a Docker network with its own Mongo, MinIO and Kafka. Users come from `TestJwts`. The first run builds the image and takes minutes.

@@ -1,7 +1,7 @@
 import { likeTweet, unlikeTweet } from '../../../../../api/likes';
 import { saveTweet, unsaveTweet } from '../../../../../api/savedTweets';
+import { useOptimisticToggle } from '../../../../../hooks/useOptimisticToggle';
 import FillIcon from './FillIcon/FillIcon';
-import { useOptimisticToggle } from './useOptimisticToggle';
 import './PostActions.css';
 
 

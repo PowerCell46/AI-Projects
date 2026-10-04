@@ -4,5 +4,6 @@ export const ROUTES = {
     confirm: '/confirm',
     resend: '/resend',
     feed: '/feed',
+    people: '/users',
     saved: '/saved',
 } as const;

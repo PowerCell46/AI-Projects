@@ -34,6 +34,8 @@
     --pale-cell-border: rgb(220 230 250 / 0.16);
     --pale-cell-rule: rgb(220 230 250 / 0.12);
     --pale-header-rule: rgb(220 230 250 / 0.1);
+    --pale-tab-hover: rgb(220 230 250 / 0.8);
+    --pale-bio: rgb(220 230 250 / 0.62);
 
     /* Placeholders behind the initials of an author without a picture; one is picked per user id. */
     --avatar-tint-0: rgb(78 139 255 / 0.18);
@@ -52,6 +54,7 @@
     --glow-border: rgb(78 139 255 / 0.55);
 
     --header-height: 3.75rem;
+    --tab-row-height: 2.875rem;
     --ruler-width: 4.875rem;
     --content-pad: clamp(1.625rem, 6vw, 5.5rem);
 

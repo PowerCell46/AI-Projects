@@ -12,6 +12,12 @@
     object-fit: cover;
 }
 
+.avatar[data-size='large'] {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 0.75rem;
+}
+
 .avatar[data-tint='0'] {
     background: var(--avatar-tint-0);
 }
@@ -42,4 +48,11 @@
 
 .avatar[data-tint='7'] {
     background: var(--avatar-tint-7);
+}
+
+@media (max-width: 600px) {
+    .avatar[data-size='large'] {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
 }

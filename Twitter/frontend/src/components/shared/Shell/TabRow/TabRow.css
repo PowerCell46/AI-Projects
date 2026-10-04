@@ -1,0 +1,90 @@
+/* The side padding is the header's: the first label lines up with the left edge of the cards below. */
+.tab-row {
+    position: relative;
+    display: flex;
+    height: var(--tab-row-height);
+    padding: 0 max(1.5rem, calc((100% - 41.25rem) / 2 + 1.5rem));
+    background: var(--deep);
+    border-bottom: 1px solid var(--pale-header-rule);
+}
+
+.tab-row-tab {
+    height: 100%;
+    min-width: 2.75rem;
+    padding: 0 1.25rem;
+    background: none;
+    border: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--pale-secondary);
+    cursor: pointer;
+    transition: color 300ms;
+}
+
+/* The labels arrive with the header's content, and leave with it when signing out. */
+.tab-row-tab,
+.tab-row-indicator {
+    animation: tab-row-fade 900ms var(--e) 400ms backwards;
+}
+
+.tab-row-tab:first-of-type {
+    padding-left: 0;
+}
+
+.tab-row-tab:hover {
+    color: var(--pale-tab-hover);
+}
+
+.tab-row-tab[aria-selected='true'] {
+    color: var(--glow);
+}
+
+.tab-row-tab:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: -0.25rem;
+}
+
+/* Overlaps the row's bottom border. Its offset and width are measured from the active tab, so it shrinks and grows as
+   it travels between the two labels. */
+.tab-row-indicator {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    height: 0.125rem;
+    background: var(--glow);
+    transition: transform 520ms var(--e), width 520ms var(--e);
+}
+
+[data-signing-out='true'] .tab-row-tab,
+[data-signing-out='true'] .tab-row-indicator {
+    animation: tab-row-leave 700ms var(--e) both;
+}
+
+@media (max-width: 600px) {
+    .tab-row-tab {
+        padding: 0 0.875rem;
+        font-size: 0.59375rem;
+        letter-spacing: 0.12em;
+    }
+}
+
+@keyframes tab-row-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes tab-row-leave {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
