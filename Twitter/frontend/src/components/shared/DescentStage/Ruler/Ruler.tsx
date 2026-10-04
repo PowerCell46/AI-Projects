@@ -7,7 +7,10 @@ import {
 import './Ruler.css';
 
 
-const TICK_INDEXES = Array.from({ length: TICK_INTERVALS + 1 }, (_, tickIndex) => tickIndex);
+const TICK_INDEXES = Array.from(
+    { length: TICK_INTERVALS + 1 },
+    (_, tickIndex) => tickIndex,
+);
 
 function Ruler() {
     return (

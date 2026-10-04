@@ -73,7 +73,7 @@ public class SavedTweetServiceImpl implements SavedTweetService {
 
         return SavedTweetsResponseDTO
                 .builder()
-                .items(tweetItemAssemblyService.assemble(pageRows, SavedTweet::getTweetId, SavedTweet::getAuthorId))
+                .items(tweetItemAssemblyService.assemble(userId, pageRows, SavedTweet::getTweetId, SavedTweet::getAuthorId))
                 .nextCursor(hasNext ? cursorAfter(pageRows.getLast()) : null)
                 .build();
     }

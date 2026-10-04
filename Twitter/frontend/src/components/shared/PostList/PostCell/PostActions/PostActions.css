@@ -1,0 +1,64 @@
+.post-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.375rem;
+    padding: 0 1.375rem;
+    border-top: 1px solid var(--pale-cell-rule);
+}
+
+.post-actions-button {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0.8125rem 0;
+    border: 0;
+    background: none;
+    color: var(--pale-action-icon);
+    cursor: pointer;
+    transition: color 340ms;
+}
+
+.post-actions-icon {
+    display: block;
+    transition: transform 460ms var(--e);
+}
+
+.post-actions-count {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+    color: var(--pale-secondary);
+    transition: color 340ms;
+}
+
+.post-actions-button[data-action='save'] {
+    justify-content: flex-end;
+}
+
+.post-actions-button:hover {
+    color: var(--pale);
+}
+
+.post-actions-button:active .post-actions-icon {
+    transform: scale(0.82);
+    transition-duration: 90ms;
+}
+
+.post-actions-button:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.post-actions-button[data-action='like'][data-active='true'] .post-actions-count {
+    color: var(--like);
+}
+
+@media (max-width: 600px) {
+    .post-actions {
+        margin-top: 1.125rem;
+        padding: 0 1.125rem;
+    }
+}

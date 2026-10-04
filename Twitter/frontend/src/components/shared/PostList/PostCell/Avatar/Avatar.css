@@ -1,0 +1,45 @@
+.avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    border: 1px solid var(--pale-author-avatar-border);
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    color: var(--pale-avatar-initials);
+    object-fit: cover;
+}
+
+.avatar[data-tint='0'] {
+    background: var(--avatar-tint-0);
+}
+
+.avatar[data-tint='1'] {
+    background: var(--avatar-tint-1);
+}
+
+.avatar[data-tint='2'] {
+    background: var(--avatar-tint-2);
+}
+
+.avatar[data-tint='3'] {
+    background: var(--avatar-tint-3);
+}
+
+.avatar[data-tint='4'] {
+    background: var(--avatar-tint-4);
+}
+
+.avatar[data-tint='5'] {
+    background: var(--avatar-tint-5);
+}
+
+.avatar[data-tint='6'] {
+    background: var(--avatar-tint-6);
+}
+
+.avatar[data-tint='7'] {
+    background: var(--avatar-tint-7);
+}

@@ -160,14 +160,14 @@ class SavedTweetServiceImplTest {
             SavedTweetsResponseDTO page = savedTweetService.getSavedTweets(USER, null, 2);
 
             assertThat(page.getNextCursor()).isEqualTo(TimelineCursorCodec.encode(second.getSavedAt(), second.getTweetId()));
-            verify(tweetItemAssemblyService).assemble(eq(List.of(first, second)), any(), any());
+            verify(tweetItemAssemblyService).assemble(eq(USER), eq(List.of(first, second)), any(), any());
         }
 
         @Test
         void should_return_the_assembled_items() {
             List<TweetItemResponseDTO> items = List.of(TweetItemResponseDTO.builder().id(TestIds.tweetId()).build());
             when(savedTweetRepository.findFirstPage(eq(USER), any())).thenReturn(List.of(saved(SAVED_AT)));
-            when(tweetItemAssemblyService.assemble(any(), any(), any())).thenReturn(items);
+            when(tweetItemAssemblyService.assemble(eq(USER), any(), any(), any())).thenReturn(items);
 
             assertThat(savedTweetService.getSavedTweets(USER, null, 20).getItems()).isSameAs(items);
         }

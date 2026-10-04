@@ -6,7 +6,10 @@ import { DEPTH_COUNT_DURATION_MS, useDepthCount } from './useDepthCount';
 const FRAME_MS = 16;
 
 function stubReducedMotion(isReduced: boolean): void {
-    vi.stubGlobal('matchMedia', () => ({ matches: isReduced }));
+    vi.stubGlobal(
+        'matchMedia',
+        () => ({ matches: isReduced }),
+    );
 }
 
 function advance(milliseconds: number): void {

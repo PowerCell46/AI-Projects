@@ -47,7 +47,10 @@ export function useStepTransition(requestedStepIndex: number): StepTransition {
             return;
         }
 
-        const releaseTimerId = window.setTimeout(() => setIsEntering(false), ENTER_RELEASE_MS);
+        const releaseTimerId = window.setTimeout(
+            () => setIsEntering(false),
+            ENTER_RELEASE_MS,
+        );
 
         return () => window.clearTimeout(releaseTimerId);
     }, [isEntering]);

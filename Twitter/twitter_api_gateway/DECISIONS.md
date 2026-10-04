@@ -450,3 +450,12 @@ Views (step 25) will add its own constant the same way.
 filters and timeouts apply. It is exact (no `/**`): `POST` reports and `GET` reads on the bare path, nothing below it.
 The contract test with the real tweet service stops asserting `views`; it checks the posted content instead, so the
 read still proves the body came through.
+
+## Frontend plan step 1 - the like stub is a controller with no service
+
+`PUT` and `DELETE /api/v1/likes/{tweetId}` answer `204` from `LikeController` and store nothing; there is no
+`LikeService`, because there is no logic to delegate. Both are idempotent by construction. A non-UUID id is a type
+mismatch, so the existing handler answers `400` "Malformed request parameter." and the JWT chain answers `401`
+without a cookie. The controller sits in `controllers/likes`: `controllers` already holds five files, so a sixth
+needs a subpackage; the existing controllers were not moved. When a likes service lands, replace the stub with a
+route like the timeline one or a real service behind the same paths.

@@ -221,6 +221,43 @@ class SavedTweetRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
     }
 
     @Nested
+    class FindSavedTweetIds {
+
+        @Test
+        void should_return_only_the_requested_tweets_the_user_saved() {
+            UUID userId = TestIds.userId();
+            UUID saved = save(userId, TestIds.tweetId(), SAVED_AT);
+            UUID notRequested = save(userId, TestIds.tweetId(), SAVED_AT);
+            UUID notSaved = TestIds.tweetId();
+
+            List<UUID> found = savedTweetRepository.findSavedTweetIds(userId, List.of(saved, notSaved));
+
+            assertThat(found).containsExactly(saved).doesNotContain(notRequested);
+        }
+
+        @Test
+        void should_not_return_a_tweet_only_other_users_saved() {
+            UUID tweetId = save(TestIds.userId(), TestIds.tweetId(), SAVED_AT);
+
+            assertThat(savedTweetRepository.findSavedTweetIds(TestIds.userId(), List.of(tweetId))).isEmpty();
+        }
+
+        @Test
+        void should_return_each_tweet_once_when_other_users_saved_it_too() {
+            UUID userId = TestIds.userId();
+            UUID tweetId = save(userId, TestIds.tweetId(), SAVED_AT);
+            save(TestIds.userId(), tweetId, SAVED_AT);
+
+            assertThat(savedTweetRepository.findSavedTweetIds(userId, List.of(tweetId))).containsExactly(tweetId);
+        }
+
+        @Test
+        void should_return_nothing_when_the_user_saved_none_of_the_tweets() {
+            assertThat(savedTweetRepository.findSavedTweetIds(TestIds.userId(), List.of(TestIds.tweetId()))).isEmpty();
+        }
+    }
+
+    @Nested
     class DeleteByUserAndTweet {
 
         @Test

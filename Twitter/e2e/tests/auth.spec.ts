@@ -30,7 +30,7 @@ test('should_register_confirm_by_the_emailed_link_log_in_by_email_and_reach_the_
     await typeStep(page, 'password', user.password)
 
     await expect(page).toHaveURL(/\/feed$/)
-    await expect(page.getByRole('heading', { name: `@${user.username}` })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Account menu' })).toBeVisible()
 })
 
 test('should_log_in_by_username_keep_the_session_on_reload_and_log_out', async ({ page, request }) => {
@@ -40,9 +40,10 @@ test('should_log_in_by_username_keep_the_session_on_reload_and_log_out', async (
     await logInAndWaitForFeed(page, user)
     await page.reload()
 
-    await expect(page.getByRole('heading', { name: `@${user.username}` })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Account menu' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'LOG OUT' }).click()
+    await page.getByRole('button', { name: 'Account menu' }).click()
+    await page.getByRole('menuitem', { name: 'LOG OUT' }).click()
 
     await expect(page).toHaveURL(/\/login$/)
 })

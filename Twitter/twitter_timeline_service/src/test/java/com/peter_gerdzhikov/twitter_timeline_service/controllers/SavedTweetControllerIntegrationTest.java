@@ -342,7 +342,7 @@ class SavedTweetControllerIntegrationTest extends AbstractListenerIntegrationTes
 
             JsonNode item = list(owner, "", status().isOk()).get("items").get(0);
 
-            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "content", "createdAt", "updatedAt", "images", "author");
+            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "savedByMe", "content", "createdAt", "updatedAt", "images", "author");
             assertThat(item.get("id").asString()).isEqualTo(tweetId.toString());
             assertThat(item.get("content").asString()).isEqualTo("tweet " + tweetId);
             assertThat(item.get("images")).hasSize(1);
@@ -749,6 +749,39 @@ class SavedTweetControllerIntegrationTest extends AbstractListenerIntegrationTes
         }
     }
 
+    @Nested
+    class SavedByMe {
+
+        @Test
+        void should_mark_every_item_saved_when_the_caller_lists_their_saved_tweets() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            savedTweet(owner, author, SAVED_AT);
+            savedTweet(owner, author, SAVED_AT.plusSeconds(1));
+            savedTweet(owner, author, SAVED_AT.plusSeconds(2));
+            stubDownstreams();
+
+            JsonNode body = list(owner, "", status().isOk());
+
+            assertThat(body.get("items")).hasSize(3);
+            assertThat(itemSavedByMe(body).values()).containsOnly(true);
+        }
+
+        @Test
+        void should_make_no_extra_downstream_call_when_the_saved_state_is_added_to_the_page() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            savedTweet(owner, author, SAVED_AT);
+            savedTweet(owner, author, SAVED_AT.plusSeconds(1));
+            stubDownstreams();
+
+            list(owner, "", status().isOk());
+
+            assertThat(TWEET_SERVICE_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+            assertThat(GATEWAY_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+        }
+    }
+
     private MvcResult save(UUID userId, UUID tweetId, ResultMatcher expected) throws Exception {
         return mockMvc
                 .perform(put(SAVED_TWEETS_PATH + "/" + tweetId).header(USER_ID_HEADER, userId.toString()))
@@ -794,6 +827,15 @@ class SavedTweetControllerIntegrationTest extends AbstractListenerIntegrationTes
                 .forEach(item -> views.put(item.get("id").asString(), item.get("views").asLong()));
 
         return views;
+    }
+
+    private Map<String, Boolean> itemSavedByMe(JsonNode page) {
+        Map<String, Boolean> savedByMe = new LinkedHashMap<>();
+        page
+                .get("items")
+                .forEach(item -> savedByMe.put(item.get("id").asString(), item.get("savedByMe").asBoolean()));
+
+        return savedByMe;
     }
 
     private long viewsEndpointCountOf(UUID userId, UUID tweetId) throws Exception {

@@ -30,7 +30,7 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 - An empty feed returns 200, `items: []`, `nextCursor: null` (`should_return_an_empty_page_when_the_feed_is_empty`)
 - Entries come newest first (`should_return_the_newest_entries_first_when_the_feed_has_several`)
 - Entries with the same tweet time are ordered by tweet id (`should_break_ties_on_the_tweet_time_by_tweet_id_when_entries_share_a_timestamp`)
-- Each item carries the tweet and the author from the stubs (`should_return_the_tweet_and_the_author_from_the_stubs_when_an_entry_exists`)
+- Each item carries the tweet and the author from the stubs; the item's exact key set is `id, views, savedByMe, content, createdAt, updatedAt, images, author` (`should_return_the_tweet_and_the_author_from_the_stubs_when_an_entry_exists`)
 - An author without a picture has `profilePictureUrl: null`; added in step 9 (`should_return_a_null_picture_url_when_the_author_has_no_picture`)
 - Only the caller's entries appear (`should_return_only_the_callers_entries_when_other_users_have_entries`)
 
@@ -197,6 +197,23 @@ Written `@Disabled` in step 14 and approved. Enabled in step 16: the saved-tweet
 - Gateway slower than the read timeout returns 504 (`should_return_504_when_the_gateway_is_slower_than_the_read_timeout_on_a_read`)
 - A `5xx` from either returns 502 (`should_return_502_when_a_downstream_answers_5xx_on_a_read`, parameterized over the two)
 - Neither leaks the downstream body (`should_not_leak_the_downstream_body_when_a_downstream_fails_on_a_read`, parameterized over the two)
+
+### `savedByMe` on items
+
+Frontend plan step 2. New group `SavedByMe` in `FeedControllerIntegrationTest` and in `SavedTweetControllerIntegrationTest`; the exact-key-set scenario of each `Read` group gained `savedByMe` (saved list: `should_return_the_tweet_and_the_author_from_the_stubs_when_a_tweet_is_saved`). One query on `saved_tweets` per page, no downstream call.
+
+`FeedControllerIntegrationTest.SavedByMe`
+
+- An item is `true` only when the caller saved its tweet, `false` otherwise (`should_mark_each_item_saved_only_when_the_caller_saved_its_tweet`)
+- Every item is `false` when the caller saved nothing (`should_mark_no_item_saved_when_the_caller_saved_nothing`)
+- Another user's save does not count (`should_not_mark_an_item_saved_when_only_another_user_saved_its_tweet`)
+- Unsaving through `DELETE /saved-tweets/{id}` flips the next read to `false` (`should_mark_the_item_not_saved_when_the_caller_unsaves_its_tweet`)
+- Still one tweet call and one user call per page (`should_make_no_extra_downstream_call_when_the_saved_state_is_added_to_the_page`)
+
+`SavedTweetControllerIntegrationTest.SavedByMe`
+
+- Every item of the saved list is `true` (`should_mark_every_item_saved_when_the_caller_lists_their_saved_tweets`)
+- Still one tweet call and one user call per page (`should_make_no_extra_downstream_call_when_the_saved_state_is_added_to_the_page`)
 
 ### `tweet.deleted` additions
 

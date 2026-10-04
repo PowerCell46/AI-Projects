@@ -1,0 +1,39 @@
+/* The side padding keeps the brand on the left edge of the post cells: the column is 41.25rem wide with 1.5rem
+   padding. */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--header-height);
+    padding: 0 max(1.5rem, calc((100% - 41.25rem) / 2 + 1.5rem));
+    background: var(--deep);
+    border-bottom: 1px solid var(--pale-header-rule);
+}
+
+.header-brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    font-size: 0.65625rem;
+    letter-spacing: 0.42em;
+    text-decoration: none;
+    color: var(--pale-brand);
+}
+
+.header-brand:hover {
+    color: var(--pale);
+}
+
+.header-brand:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}

@@ -12,12 +12,13 @@ if (!rootElement) {
     throw new Error('Root element #root is missing from index.html.');
 }
 
-createRoot(rootElement).render(
-    <StrictMode>
-        <AuthProvider>
-            <BrowserRouter>
-                <App />
-            </BrowserRouter>
-        </AuthProvider>
-    </StrictMode>,
-);
+createRoot(rootElement)
+    .render(
+        <StrictMode>
+            <AuthProvider>
+                <BrowserRouter>
+                    <App />
+                </BrowserRouter>
+            </AuthProvider>
+        </StrictMode>,
+    );

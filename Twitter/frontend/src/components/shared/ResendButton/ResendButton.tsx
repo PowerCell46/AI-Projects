@@ -34,7 +34,10 @@ function ResendButton({ email, startsInCooldown = false }: ResendButtonProps) {
             return;
         }
 
-        const cooldownTimerId = window.setTimeout(() => setStatus('idle'), RESEND_COOLDOWN_MS);
+        const cooldownTimerId = window.setTimeout(
+            () => setStatus('idle'),
+            RESEND_COOLDOWN_MS,
+        );
 
         return () => window.clearTimeout(cooldownTimerId);
     }, [status]);

@@ -306,3 +306,19 @@ exact. Removing the `ORDER BY` from the counter upsert did **not** make it fail 
 overlap), so the scenario guards against a deadlock only if one shows up; the ascending order stays as a defence
 against the hazard Postgres documents for `INSERT ... ON CONFLICT DO UPDATE`, covered by the repository test of the
 returned order.
+
+## Frontend plan step 2 - `savedByMe` is read for both lists, in the assembly service
+
+`TweetItemAssemblyService.assemble` takes the viewer id first and asks `SavedTweetRepository.findSavedTweetIds` once
+per page, with the page's distinct tweet ids, right after the view counts. Both lists use the same path, so the
+saved list's items are `true` because their rows are in that query's result, not because of a special case. The
+assembly service reads the repository itself: going through `SavedTweetService` would be a cycle (it already depends
+on the assembly service). `savedByMe` sits after `views` in `TweetItemResponseDTO`; the new constructor argument goes
+last, so the existing positional constructions only gain one argument.
+
+## Frontend plan step 2 - a gate run lost to a Kafka image crash was restarted, not retried in place
+
+The second `mvn verify` after the change failed with 14 errors, all at context load: the `apache/kafka-native:4.3.1`
+test container crashed on startup with a segfault inside the image (before any test ran), and the Docker daemon also
+reported a missing container snapshot. No test assertion failed. The 3x-in-a-row count started over and all three
+runs were green (446 tests each). No test or code changed between the runs.

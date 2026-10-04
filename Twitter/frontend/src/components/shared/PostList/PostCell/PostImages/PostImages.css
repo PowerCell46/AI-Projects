@@ -1,0 +1,48 @@
+.post-images {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.1875rem;
+    margin: 1.25rem 1.375rem 0;
+    padding: 0;
+    list-style: none;
+}
+
+.post-images[data-count='2'],
+.post-images[data-count='3'],
+.post-images[data-count='4'] {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Each item is a sized box and the picture fills it, so a picture's own proportions never set the row height. */
+.post-images-item {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+}
+
+.post-images[data-count='2'] .post-images-item {
+    aspect-ratio: 1 / 1;
+}
+
+.post-images[data-count='4'] .post-images-item {
+    aspect-ratio: 4 / 3;
+}
+
+.post-images[data-count='3'] .post-images-item:first-child {
+    grid-row: span 2;
+    aspect-ratio: auto;
+}
+
+.post-images-picture {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (max-width: 600px) {
+    .post-images {
+        margin: 1rem 1.125rem 0;
+    }
+}

@@ -808,6 +808,8 @@ class AuthControllerIntegrationTest extends AbstractMinioIntegrationTest {
         @CsvSource({
                 "GET,/api/v1/users/someone",
                 "POST,/api/v1/tweets",
+                "PUT,/api/v1/likes/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
+                "DELETE,/api/v1/likes/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
                 "DELETE,/api/v1/anything"
         })
         void should_return_401_when_an_authenticated_route_is_called_without_a_cookie(String method, String path) {

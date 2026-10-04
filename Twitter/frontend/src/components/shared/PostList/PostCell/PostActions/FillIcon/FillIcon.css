@@ -1,0 +1,42 @@
+.fill-icon {
+    display: block;
+    width: 1.1875rem;
+    height: 1.1875rem;
+    overflow: visible;
+}
+
+.fill-icon[data-shape='heart'] {
+    --fill-icon-active: var(--like);
+}
+
+.fill-icon[data-shape='bookmark'] {
+    --fill-icon-active: var(--glow);
+}
+
+.fill-icon-outline {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: stroke 340ms;
+}
+
+.fill-icon-solid {
+    fill: var(--fill-icon-active);
+}
+
+/* The clip rect rests one icon-height below the shape, so activating it raises the fill from the bottom. */
+.fill-icon-level {
+    transform-box: fill-box;
+    transform: translateY(100%);
+    transition: transform 620ms var(--e);
+}
+
+.fill-icon[data-active='true'] .fill-icon-level {
+    transform: translateY(0);
+}
+
+.fill-icon[data-active='true'] .fill-icon-outline {
+    stroke: var(--fill-icon-active);
+}

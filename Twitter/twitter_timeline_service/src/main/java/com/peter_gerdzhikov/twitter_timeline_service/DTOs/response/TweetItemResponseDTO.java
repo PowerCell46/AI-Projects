@@ -8,7 +8,8 @@ import lombok.Builder;
 import lombok.Value;
 
 /**
- * One tweet in a list: the tweet as the tweet service holds it, its author and the number of unique viewers. The
+ * One tweet in a list: the tweet as the tweet service holds it, its author, the number of unique viewers and whether the
+ * caller saved it. The
  * image bytes stay at the tweet service's own route; only their ids and types are listed here.
  */
 @Value
@@ -18,6 +19,8 @@ public class TweetItemResponseDTO {
     private final UUID id;
 
     private final long views;
+
+    private final boolean savedByMe;
 
     private final String content;
 

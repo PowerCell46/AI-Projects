@@ -1,0 +1,206 @@
+.compose-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    overflow-y: auto;
+    background: var(--deep);
+    animation: compose-modal-fade 340ms;
+}
+
+.compose-modal-content {
+    width: 100%;
+    max-width: 41.25rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 3rem;
+    animation: compose-modal-rise 580ms var(--s);
+}
+
+.compose-modal-eyebrow {
+    margin-bottom: 1rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.2em;
+    color: var(--glow);
+}
+
+.compose-modal-headline {
+    max-width: 16ch;
+    margin: 0 0 2rem;
+    font-family: var(--font-headline);
+    font-size: clamp(1.5rem, 4.6vw, 2.5rem);
+    font-weight: 400;
+    line-height: 1.04;
+    letter-spacing: -0.032em;
+}
+
+.compose-modal-text {
+    display: block;
+    width: 100%;
+    min-height: 8rem;
+    padding: 0 0 0.75rem;
+    resize: none;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    font-family: var(--font-headline);
+    font-size: clamp(1.0625rem, 2.6vw, 1.375rem);
+    line-height: 1.5;
+    color: var(--input-text);
+}
+
+.compose-modal-text::placeholder {
+    color: var(--pale-placeholder);
+}
+
+.compose-modal-rule {
+    position: relative;
+    height: 1px;
+    background: var(--pale-textarea-rule);
+}
+
+/* The rule fills from the left while the textarea has focus, the same treatment as the sign-in field. */
+.compose-modal-rule::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 720ms var(--e);
+}
+
+.compose-modal-text:focus + .compose-modal-rule::after {
+    transform: scaleX(1);
+}
+
+.compose-modal-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.compose-modal-attach {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    font-size: 0.59375rem;
+    letter-spacing: 0.14em;
+    color: var(--pale-secondary);
+    cursor: pointer;
+    transition: color 300ms;
+}
+
+.compose-modal-attach:hover {
+    color: var(--pale);
+}
+
+.compose-modal-attach:focus-within {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.compose-modal-counter {
+    font-size: 0.59375rem;
+    letter-spacing: 0.14em;
+    font-variant-numeric: tabular-nums;
+    color: var(--pale-secondary);
+}
+
+.compose-modal-counter[data-over-limit='true'] {
+    color: var(--alarm);
+}
+
+.compose-modal-error {
+    min-height: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.13em;
+    overflow-wrap: anywhere;
+    color: var(--alarm);
+}
+
+.compose-modal-error:not(:empty) {
+    margin-top: 0.5rem;
+}
+
+.compose-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.compose-modal-publish {
+    min-height: 2.75rem;
+    padding: 0 1.75rem;
+    background: var(--glow);
+    border: 0;
+    font-size: 0.78125rem;
+    letter-spacing: 0.14em;
+    color: var(--deep);
+    cursor: pointer;
+    transition: background-color 300ms;
+}
+
+.compose-modal-publish:not([aria-disabled='true']):hover {
+    background: var(--glow-hover);
+}
+
+.compose-modal-publish[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.compose-modal-cancel,
+.compose-modal-discard {
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    background: none;
+    border: 0;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    color: var(--pale-secondary);
+    cursor: pointer;
+    transition: color 300ms;
+}
+
+.compose-modal-cancel:hover {
+    color: var(--pale);
+}
+
+.compose-modal-discard {
+    padding: 0 1rem;
+    border: 1px solid var(--alarm-hairline);
+    color: var(--alarm);
+}
+
+.compose-modal-discard:hover {
+    background: var(--alarm-wash);
+}
+
+.compose-modal-question {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    color: var(--pale);
+}
+
+.compose-modal-publish:focus-visible,
+.compose-modal-cancel:focus-visible,
+.compose-modal-discard:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+@keyframes compose-modal-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes compose-modal-rise {
+    from {
+        transform: translateY(1.875rem);
+    }
+}

@@ -38,7 +38,7 @@ public class FeedServiceImpl implements FeedService {
 
         return FeedResponseDTO
                 .builder()
-                .items(tweetItemAssemblyService.assemble(pageRows, FeedEntry::getTweetId, FeedEntry::getAuthorId))
+                .items(tweetItemAssemblyService.assemble(userId, pageRows, FeedEntry::getTweetId, FeedEntry::getAuthorId))
                 .nextCursor(hasNext ? cursorAfter(pageRows.getLast()) : null)
                 .build();
     }

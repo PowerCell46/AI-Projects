@@ -2,7 +2,8 @@ import { act, render, screen } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthApiError, confirm } from '../../api/auth';
+import { confirm } from '../../api/auth';
+import { ApiError } from '../../api/http';
 import { ROUTES } from '../../routes';
 import { expectedTransform, horizonTransform } from '../../test/stepFlowHelpers';
 import ConfirmPage from './ConfirmPage';
@@ -67,7 +68,7 @@ describe('a valid link', () => {
 
 describe('a rejected link', () => {
     it('should_show_the_expired_alarm_with_a_resend_link_when_the_server_answers_400', async () => {
-        vi.mocked(confirm).mockRejectedValue(new AuthApiError(400, ['Invalid or expired token.']));
+        vi.mocked(confirm).mockRejectedValue(new ApiError(400, ['Invalid or expired token.']));
 
         await renderConfirm('?token=abc123');
 
@@ -87,7 +88,7 @@ describe('a rejected link', () => {
 
 describe('a failed request', () => {
     it('should_show_signal_lost_and_confirm_again_when_try_again_is_clicked', async () => {
-        vi.mocked(confirm).mockRejectedValueOnce(new AuthApiError(0, []));
+        vi.mocked(confirm).mockRejectedValueOnce(new ApiError(0, []));
         await renderConfirm('?token=abc123');
         vi.mocked(confirm).mockResolvedValue(undefined);
 

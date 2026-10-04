@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.twitter_timeline_service.repositories;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,6 +58,12 @@ public interface SavedTweetRepository extends JpaRepository<SavedTweet, SavedTwe
             @Param("tweetId") UUID tweetId,
             Pageable limit
     );
+
+    /**
+     * The ids among {@code tweetIds} that the user has saved, in no particular order.
+     */
+    @Query("SELECT s.tweetId FROM SavedTweet s WHERE s.ownerId = :userId AND s.tweetId IN :tweetIds")
+    List<UUID> findSavedTweetIds(@Param("userId") UUID userId, @Param("tweetIds") Collection<UUID> tweetIds);
 
     /**
      * Removes the tweet from the user's saved list. Idempotent. Returns the number of rows removed.

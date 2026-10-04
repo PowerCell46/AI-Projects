@@ -107,7 +107,7 @@ Phase 3 catalog (follows, at the bottom): written `@Disabled` in step 19 and app
 
 `AuthControllerIntegrationTest.Security` — enabled
 
-- Any other route without a cookie returns 401 (`should_return_401_when_an_authenticated_route_is_called_without_a_cookie`, parameterized over GET, POST and DELETE paths)
+- Any other route without a cookie returns 401 (`should_return_401_when_an_authenticated_route_is_called_without_a_cookie`, parameterized over GET, POST, PUT and DELETE paths, including `PUT` and `DELETE /api/v1/likes/{tweetId}`)
 - `GET /actuator/health` returns 200 without a cookie (`should_return_200_when_the_health_endpoint_is_called_without_a_cookie`)
 
 ## Concurrency
@@ -384,6 +384,22 @@ Added in timeline step 11 (feed), step 17 (saved tweets) and step 25 (views). `T
 - Timeline service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_timeline_service_is_down`)
 
 The auth, profile, file and follow suites are the "Unaffected" group: they must stay green unchanged.
+
+## `PUT|DELETE /api/v1/likes/{tweetId}` (stub)
+
+Added in frontend plan step 1. The gateway answers these itself and stores nothing, until a likes service exists. `LikeControllerIntegrationTest` (`controllers/likes`). The no-cookie `401` is covered by the `Security` group above.
+
+`LikeControllerIntegrationTest.Like` - enabled
+
+- A UUID tweet id returns 204 (`should_return_204_when_the_tweet_id_is_a_uuid`)
+- Liking again returns 204 (`should_return_204_when_the_tweet_is_liked_again`)
+- A non-UUID tweet id returns 400 (`should_return_400_when_the_tweet_id_is_not_a_uuid`)
+
+`LikeControllerIntegrationTest.Unlike` - enabled
+
+- A UUID tweet id returns 204 (`should_return_204_when_the_tweet_id_is_a_uuid`)
+- Unliking again returns 204 (`should_return_204_when_the_tweet_is_unliked_again`)
+- A non-UUID tweet id returns 400 (`should_return_400_when_the_tweet_id_is_not_a_uuid`)
 
 ## `/internal/v1/**` (service-to-service)
 

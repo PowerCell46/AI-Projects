@@ -1,7 +1,8 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthApiError, me, register, resendConfirmation } from '../../api/auth';
+import { me, register, resendConfirmation } from '../../api/auth';
+import { ApiError } from '../../api/http';
 import { RESEND_COOLDOWN_MS } from '../../components/shared/ResendButton/ResendButton';
 import { ROUTES } from '../../routes';
 import { renderApp } from '../../test/renderApp';
@@ -24,14 +25,24 @@ vi.mock('../../api/auth', async (importOriginal) => ({
 
 const SEAFLOOR_DEPTH_METRES = 10910;
 
-const REGISTERED_USER = { id: 'user-1', username: 'peter_g', email: 'peter@example.com' };
+const REGISTERED_USER = {
+    id: 'user-1',
+    username: 'peter_g',
+    email: 'peter@example.com',
+};
 
 let user: ReturnType<typeof userEvent.setup>;
 
 async function submitRegistration() {
-    await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+    await user.type(
+        screen.getByRole('textbox', { name: 'email address' }),
+        'peter@example.com{Enter}',
+    );
     await settleTransition();
-    await user.type(screen.getByRole('textbox', { name: 'username' }), 'peter_g{Enter}');
+    await user.type(
+        screen.getByRole('textbox', { name: 'username' }),
+        'peter_g{Enter}',
+    );
     await settleTransition();
     await user.type(screen.getByLabelText('password'), 'Secret123{Enter}');
     await advance(1);
@@ -45,7 +56,7 @@ async function settleAfterJumpBack() {
 beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
     user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    vi.mocked(me).mockRejectedValue(new AuthApiError(401, []));
+    vi.mocked(me).mockRejectedValue(new ApiError(401, []));
     vi.mocked(register).mockReset();
     vi.mocked(resendConfirmation).mockReset();
 
@@ -58,7 +69,7 @@ afterEach(() => {
 
 describe('conflicts', () => {
     it('should_travel_back_to_the_email_step_when_the_email_is_already_registered', async () => {
-        vi.mocked(register).mockRejectedValue(new AuthApiError(409, ['Email already registered.']));
+        vi.mocked(register).mockRejectedValue(new ApiError(409, ['Email already registered.']));
 
         await submitRegistration();
         await settleAfterJumpBack();
@@ -69,7 +80,7 @@ describe('conflicts', () => {
     });
 
     it('should_travel_back_to_the_username_step_when_the_username_is_taken', async () => {
-        vi.mocked(register).mockRejectedValue(new AuthApiError(409, ['Username already taken.']));
+        vi.mocked(register).mockRejectedValue(new ApiError(409, ['Username already taken.']));
 
         await submitRegistration();
         await settleAfterJumpBack();
@@ -80,7 +91,7 @@ describe('conflicts', () => {
     });
 
     it('should_keep_every_typed_value_after_jumping_back', async () => {
-        vi.mocked(register).mockRejectedValue(new AuthApiError(409, ['Email already registered.']));
+        vi.mocked(register).mockRejectedValue(new ApiError(409, ['Email already registered.']));
 
         await submitRegistration();
         await settleAfterJumpBack();
@@ -93,7 +104,7 @@ describe('conflicts', () => {
 
 describe('validation failures from the server', () => {
     it('should_travel_to_the_earliest_failing_field_when_the_server_answers_400', async () => {
-        vi.mocked(register).mockRejectedValue(new AuthApiError(400, [
+        vi.mocked(register).mockRejectedValue(new ApiError(400, [
             'password must contain a lowercase letter, an uppercase letter and a digit',
             'email must be a valid email address',
         ]));
@@ -106,7 +117,7 @@ describe('validation failures from the server', () => {
     });
 
     it('should_stay_on_the_password_step_when_only_the_password_fails', async () => {
-        vi.mocked(register).mockRejectedValue(new AuthApiError(400, ['password must be 8 to 72 characters']));
+        vi.mocked(register).mockRejectedValue(new ApiError(400, ['password must be 8 to 72 characters']));
 
         await submitRegistration();
         await settleTransition();
@@ -118,7 +129,7 @@ describe('validation failures from the server', () => {
 
 describe('signal lost', () => {
     it('should_hold_at_the_password_step_when_the_server_answers_500', async () => {
-        vi.mocked(register).mockRejectedValue(new AuthApiError(500, []));
+        vi.mocked(register).mockRejectedValue(new ApiError(500, []));
 
         await submitRegistration();
 
@@ -194,7 +205,7 @@ describe('resend', () => {
 
     it('should_show_signal_lost_on_the_button_and_allow_a_retry_when_the_send_fails', async () => {
         vi.mocked(register).mockResolvedValue(REGISTERED_USER);
-        vi.mocked(resendConfirmation).mockRejectedValue(new AuthApiError(0, []));
+        vi.mocked(resendConfirmation).mockRejectedValue(new ApiError(0, []));
         await submitRegistration();
 
         await user.click(screen.getByRole('button', { name: 'RESEND' }));

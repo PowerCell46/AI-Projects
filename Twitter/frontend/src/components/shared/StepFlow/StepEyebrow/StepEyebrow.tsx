@@ -8,7 +8,10 @@ interface StepEyebrowProps {
 }
 
 function StepEyebrow({ label, stepIndex, stepCount }: StepEyebrowProps) {
-    const barIndexes = Array.from({ length: stepCount }, (_, barIndex) => barIndex);
+    const barIndexes = Array.from(
+        { length: stepCount },
+        (_, barIndex) => barIndex,
+    );
 
     return (
         <p className="step-eyebrow">

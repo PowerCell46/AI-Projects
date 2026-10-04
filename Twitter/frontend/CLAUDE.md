@@ -3,9 +3,13 @@ running and testing this app.
 
 ## What this is
 
-The Twitter SPA, so far the "Hadal Descent" auth flow: `/login`, `/register`, `/confirm`, `/resend` and a
-placeholder `/feed`. Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain co-located CSS. Plans and design
-decisions: `PLAN.md`; the visual brief: `AuthenticationViewsDesigns.md`.
+The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`) and the feed
+(`/feed`, `/saved`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain co-located CSS. Plans and design
+decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md` (auth), `feed-design.md` (feed).
+
+`/feed` and `/saved` sit behind `ProtectedRoute` in one layout route, `Shell` (header, compose modal, `<Outlet>`).
+Both render `PostList` with a different `fetchPage`. The shell hands the posts you published this session to the feed
+through outlet context (`useShellContext().ownPosts`).
 
 ## Running it
 
@@ -22,9 +26,12 @@ decisions: `PLAN.md`; the visual brief: `AuthenticationViewsDesigns.md`.
 ## Checks
 
 - `npm run build` (typecheck plus bundle), `npm run lint` (oxlint), `npm test` (Vitest).
-- Component tests run with jsdom, Testing Library and fake timers, and stub `src/api/auth` with `vi.mock`. Never
+- Component tests run with jsdom, Testing Library and fake timers, and stub `src/api/*` modules with `vi.mock`. Never
   wait in real time. Under fake timers, advance the clock in stages (`src/test/stepFlowHelpers.ts`); `src/test/setup.ts`
   carries the `jest` global shim that user-event needs.
+- jsdom has no `IntersectionObserver`: `src/test/setup.ts` installs a controllable double (`src/test/intersectionObserver.ts`)
+  that tests drive by hand to show a sentinel or a post. It also stubs `URL.createObjectURL`, `URL.revokeObjectURL` and
+  `window.scrollTo`. List helpers: `src/test/postListHelpers.ts`; a stubbed `fetch`: `src/test/fetchStub.ts`.
 - Names are `should_..._when_...`. Test the DOM, ARIA and `data-*` state, not pixels.
 - End-to-end: `../e2e` (Playwright against a Docker stack with the real gateway). `npm test` there builds and starts
   the stack, runs the suite and tears it down; `npm run test:fast` skips the image build.
@@ -37,3 +44,11 @@ decisions: `PLAN.md`; the visual brief: `AuthenticationViewsDesigns.md`.
   must match the arrival rule's 150 ms + 1300 ms in `Arrival.css`.
 - The form ignores Enter while a step is sliding in, so e2e helpers wait for `data-slide="idle"`.
 - Validation rules mirror the gateway's `RegisterRequestDTO`; change both sides together.
+- Every request goes through `src/api/http.ts`. A `401` from a non-auth endpoint calls the handler `AuthProvider`
+  registers, which signs out and lands on `/login`; auth endpoints keep their own `401` meaning.
+- Likes are a **stub**: the gateway's `PUT`/`DELETE /api/v1/likes/{tweetId}` answer `204` and store nothing, so every
+  post loads at `0` and a reload forgets your like. Replace the UI's starting state when a likes service exists.
+- Views: `ViewReporter` (`src/utils/viewReporter.ts`) is a module-level singleton that queues post ids (once per page
+  load, after 1 s at half visible) and posts them every 5 s and on hide. Tests reset it.
+- `--header-height` in `src/index.css` is shared by the header and the sticky `NEW POSTS` button; the compose modal
+  locks scrolling with `data-scroll-locked` on `<html>`.

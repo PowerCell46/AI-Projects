@@ -1,7 +1,8 @@
 import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthApiError, login, me } from '../../api/auth';
+import { login, me } from '../../api/auth';
+import { ApiError } from '../../api/http';
 import { renderApp } from '../../test/renderApp';
 import {
     advance,
@@ -30,12 +31,19 @@ const PASSWORD_STEP_DEPTH_METRES = 3860;
 
 const SEAFLOOR_DEPTH_METRES = 4900;
 
-const SIGNED_IN_USER = { id: 'user-1', username: 'peter_g', email: 'peter@example.com' };
+const SIGNED_IN_USER = {
+    id: 'user-1',
+    username: 'peter_g',
+    email: 'peter@example.com',
+};
 
 let user: ReturnType<typeof userEvent.setup>;
 
 async function submitCredentials(identifier: string, password: string) {
-    await user.type(screen.getByRole('textbox', { name: 'email or username' }), `${identifier}{Enter}`);
+    await user.type(
+        screen.getByRole('textbox', { name: 'email or username' }),
+        `${identifier}{Enter}`,
+    );
     await settleTransition();
     await user.type(screen.getByLabelText('password'), `${password}{Enter}`);
     await advance(1);
@@ -48,7 +56,7 @@ function isAlarmShown(): boolean {
 beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
     user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    vi.mocked(me).mockRejectedValue(new AuthApiError(401, []));
+    vi.mocked(me).mockRejectedValue(new ApiError(401, []));
     vi.mocked(login).mockReset();
 
     await renderApp(ROUTES.login);
@@ -60,7 +68,7 @@ afterEach(() => {
 
 describe('rejected credentials', () => {
     it('should_rise_420_metres_in_alarm_colours_when_the_server_answers_401', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(401, ['Invalid credentials.']));
+        vi.mocked(login).mockRejectedValue(new ApiError(401, ['Invalid credentials.']));
 
         await submitCredentials('peter_g', 'wrong');
 
@@ -72,7 +80,7 @@ describe('rejected credentials', () => {
     });
 
     it('should_return_to_the_true_depth_and_normal_colours_when_a_key_is_typed_after_a_401', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(401, []));
+        vi.mocked(login).mockRejectedValue(new ApiError(401, []));
         await submitCredentials('peter_g', 'wrong');
 
         await user.type(screen.getByLabelText('password'), 'x');
@@ -83,7 +91,7 @@ describe('rejected credentials', () => {
     });
 
     it('should_keep_what_was_typed_when_the_server_answers_401', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(401, []));
+        vi.mocked(login).mockRejectedValue(new ApiError(401, []));
 
         await submitCredentials('peter_g', 'wrong');
 
@@ -93,7 +101,7 @@ describe('rejected credentials', () => {
 
 describe('unconfirmed account', () => {
     it('should_hold_the_gauge_and_offer_a_resend_link_when_the_server_answers_403', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(403, ['Email is not confirmed.']));
+        vi.mocked(login).mockRejectedValue(new ApiError(403, ['Email is not confirmed.']));
 
         await submitCredentials('peter@example.com', 'secret');
 
@@ -104,7 +112,7 @@ describe('unconfirmed account', () => {
     });
 
     it('should_pass_the_email_to_the_resend_page_when_the_identifier_is_an_email', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(403, []));
+        vi.mocked(login).mockRejectedValue(new ApiError(403, []));
         await submitCredentials('peter@example.com', 'secret');
 
         await user.click(screen.getByRole('link', { name: 'RESEND LINK' }));
@@ -114,7 +122,7 @@ describe('unconfirmed account', () => {
     });
 
     it('should_pass_no_email_to_the_resend_page_when_the_identifier_is_a_username', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(403, []));
+        vi.mocked(login).mockRejectedValue(new ApiError(403, []));
         await submitCredentials('peter_g', 'secret');
 
         await user.click(screen.getByRole('link', { name: 'RESEND LINK' }));
@@ -125,7 +133,7 @@ describe('unconfirmed account', () => {
 
 describe('signal lost', () => {
     it('should_hold_at_the_password_step_when_the_server_answers_500', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(500, []));
+        vi.mocked(login).mockRejectedValue(new ApiError(500, []));
 
         await submitCredentials('peter_g', 'secret');
 
@@ -135,7 +143,7 @@ describe('signal lost', () => {
     });
 
     it('should_hold_at_the_password_step_when_the_network_fails', async () => {
-        vi.mocked(login).mockRejectedValue(new AuthApiError(0, []));
+        vi.mocked(login).mockRejectedValue(new ApiError(0, []));
 
         await submitCredentials('peter_g', 'secret');
 
@@ -143,7 +151,7 @@ describe('signal lost', () => {
     });
 
     it('should_try_again_when_enter_is_pressed_after_signal_lost', async () => {
-        vi.mocked(login).mockRejectedValueOnce(new AuthApiError(500, []));
+        vi.mocked(login).mockRejectedValueOnce(new ApiError(500, []));
         await submitCredentials('peter_g', 'secret');
         vi.mocked(login).mockResolvedValue(SIGNED_IN_USER);
 
@@ -161,7 +169,10 @@ describe('arrival', () => {
 
         await submitCredentials('peter_g', 'secret');
 
-        expect(login).toHaveBeenCalledWith({ identifier: 'peter_g', password: 'secret' });
+        expect(login).toHaveBeenCalledWith({
+            identifier: 'peter_g',
+            password: 'secret',
+        });
         expect(screen.getByRole('heading', { name: /Seafloor reached/ })).toBeTruthy();
         expect(screen.getByText('IDENTITY CONFIRMED')).toBeTruthy();
         expect(window.location.pathname).toBe(ROUTES.login);
@@ -191,7 +202,10 @@ describe('footer', () => {
 describe('double submission', () => {
     it('should_send_one_request_when_enter_is_pressed_twice_while_waiting', async () => {
         vi.mocked(login).mockReturnValue(new Promise(() => {}));
-        await user.type(screen.getByRole('textbox', { name: 'email or username' }), 'peter_g{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email or username' }),
+            'peter_g{Enter}',
+        );
         await settleTransition();
 
         await act(async () => {

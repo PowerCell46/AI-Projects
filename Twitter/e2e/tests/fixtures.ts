@@ -18,6 +18,16 @@ interface CreatedTweet {
     id: string;
 }
 
+export interface UploadedImage {
+    name: string;
+    mimeType: string;
+    buffer: Buffer;
+}
+
+interface FeedPageIds {
+    items: CreatedTweet[];
+}
+
 interface AccountFixtures {
     createAccount: () => Promise<Account>;
 }
@@ -35,6 +45,24 @@ interface MailpitMessage {
 }
 
 const MAILPIT_URL = 'http://127.0.0.1:8125';
+
+export const FEED_POLL_TIMEOUT_MS = 30_000;
+
+// The feed endpoint's default page size: the number of posts the first page holds.
+export const FIRST_PAGE_SIZE = 20;
+
+// The feed endpoint refuses a page size above this.
+export const MAX_PAGE_SIZE = 100;
+
+// A real 1x1 PNG, because the tweet service checks the magic bytes and not only the declared type.
+export const TINY_PNG: UploadedImage = {
+    name: 'dot.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+    ),
+};
 
 // The first email waits for the outbox poll, the Kafka hop and the consumer's first group join.
 const EMAIL_POLL_TIMEOUT_MS = 20_000;
@@ -100,7 +128,10 @@ export async function confirmationEmailCount(email: string): Promise<number> {
 }
 
 export async function registerViaApi(request: APIRequestContext, user: TestUser) {
-    const response = await request.post('/api/v1/auth/register', { data: user });
+    const response = await request.post(
+        '/api/v1/auth/register',
+        { data: user },
+    );
 
     expect(response.ok()).toBe(true);
 }
@@ -110,7 +141,10 @@ export async function registerAndConfirmViaApi(request: APIRequestContext, user:
 
     const confirmationUrl = new URL(await latestConfirmationUrl(user.email));
     const token = confirmationUrl.searchParams.get('token');
-    const response = await request.post('/api/v1/auth/confirm', { data: { token } });
+    const response = await request.post(
+        '/api/v1/auth/confirm',
+        { data: { token } },
+    );
 
     expect(response.ok()).toBe(true);
 }
@@ -166,15 +200,27 @@ export const test = base.extend<AccountFixtures>({
             await registerAndConfirmViaApi(api, user);
             await logInViaApi(api, user);
 
-            return { user, api };
+            return {
+                user,
+                api,
+            };
         });
 
         await Promise.all(clients.map((client) => client.dispose()));
     },
 });
 
-export async function postTweet(author: Account, content: string): Promise<string> {
-    const response = await author.api.post('/api/v1/tweets', { multipart: { content } });
+export async function postTweet(author: Account, content: string, image?: UploadedImage): Promise<string> {
+    const multipart: Record<string, string | UploadedImage> = { content };
+
+    if (image) {
+        multipart.images = image;
+    }
+
+    const response = await author.api.post(
+        '/api/v1/tweets',
+        { multipart },
+    );
 
     expect(response.status()).toBe(201);
 
@@ -193,4 +239,34 @@ export async function follow(follower: Account, followee: Account) {
     const response = await follower.api.put(`/api/v1/users/${followee.user.username}/follow`);
 
     expect(response.status()).toBe(204);
+}
+
+export async function feedTweetIds(reader: Account, size = FIRST_PAGE_SIZE): Promise<string[]> {
+    const response = await reader.api.get(`/api/v1/feed?size=${size}`);
+
+    expect(response.ok()).toBe(true);
+
+    const feed: FeedPageIds = await response.json();
+
+    return feed.items.map((tweet) => tweet.id);
+}
+
+// The feed is filled through Kafka and the outbox, so a test waits for the entry before it looks at the page.
+export async function expectFeedToContain(reader: Account, tweetId: string) {
+    await expect
+        .poll(
+            () => feedTweetIds(reader),
+            { timeout: FEED_POLL_TIMEOUT_MS },
+        )
+        .toContain(tweetId);
+}
+
+// Hands the account's session cookie to the browser, so a UI test does not type the login each time.
+export async function openAs(page: Page, account: Account, path: string) {
+    const { cookies } = await account.api.storageState();
+
+    await page
+        .context()
+        .addCookies(cookies);
+    await page.goto(path);
 }

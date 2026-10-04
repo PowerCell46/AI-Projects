@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { me } from '../api/auth';
 import type { AuthUser } from '../api/auth';
+import { setUnauthorizedHandler } from '../api/http';
 
 
 export type SessionStatus = 'loading' | 'authenticated' | 'anonymous';
@@ -20,9 +21,22 @@ interface AuthProviderProps {
     children: ReactNode;
 }
 
-const LOADING_SESSION: Session = { status: 'loading', user: null };
+const LOADING_SESSION: Session = {
+    status: 'loading',
+    user: null,
+};
 
-const ANONYMOUS_SESSION: Session = { status: 'anonymous', user: null };
+const ANONYMOUS_SESSION: Session = {
+    status: 'anonymous',
+    user: null,
+};
+
+function authenticatedSession(authUser: AuthUser): Session {
+    return {
+        status: 'authenticated',
+        user: authUser,
+    };
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -39,7 +53,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         me()
-            .then((authUser) => showSession({ status: 'authenticated', user: authUser }))
+            .then((authUser) => showSession(authenticatedSession(authUser)))
             .catch(() => showSession(ANONYMOUS_SESSION));
 
         return () => {
@@ -47,16 +61,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
         };
     }, []);
 
+    // An expired session on any non-auth call ends the session; ProtectedRoute then sends the user to the login page.
+    useEffect(() => {
+        setUnauthorizedHandler(() => setSession(ANONYMOUS_SESSION));
+
+        return () => setUnauthorizedHandler(null);
+    }, []);
+
     function signIn(authUser: AuthUser) {
-        setSession({ status: 'authenticated', user: authUser });
+        setSession(authenticatedSession(authUser));
     }
 
     function signOut() {
         setSession(ANONYMOUS_SESSION);
     }
 
+    const value: AuthContextValue = {
+        ...session,
+        signIn,
+        signOut,
+    };
+
     return (
-        <AuthContext.Provider value={{ ...session, signIn, signOut }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

@@ -9,8 +9,10 @@ Each service owns its own backlog:
   `tweet.created` / `tweet.deleted` via an outbox. Designed via `/grill-me` 2026-09-30. Built 2026-09-30 (steps 1–10 done); gateway
   phase 4 may start.
 - **`frontend/PLAN.md`**: the SPA, starting with the "Hadal Descent" auth flow (login, register, `/confirm`,
-  `/resend`, placeholder `/feed`) from `frontend/AuthenticationViewsDesigns.md`. Designed via `/grill-me`
-  2026-10-01; built 2026-10-01 (all 12 steps done: unit, component and Playwright e2e tests green).
+  `/resend`) from `frontend/AuthenticationViewsDesigns.md`. Designed via `/grill-me`
+  2026-10-01; built 2026-10-01 (all 12 steps done: unit, component and Playwright e2e tests green). Phase 2, the feed
+  (`/feed`, `/saved`, compose, views, `NEW POSTS`; `frontend/feed-design.md`), designed via `/grill-me` and built
+  2026-10-04 (13 steps, with a like stub in the gateway and `savedByMe` in the timeline service).
 - **`twitter_mail_service/PLAN.md`**: sends the emails over SMTP from Kafka, deduped in Redis. Designed via
   `/grill-me` 2026-10-01. Phase 1 (the confirmation email, `user.confirmation-requested`; steps 1–9) built
   2026-10-01, including the Playwright e2e that reads the link from the real email. Phase 2 (the follow email,

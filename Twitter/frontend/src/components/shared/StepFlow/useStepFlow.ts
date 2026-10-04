@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AuthApiError } from '../../../api/auth';
+import { ApiError } from '../../../api/http';
 import { FLOWS } from '../../../flows';
 import type { Flow, FlowField, FlowName, FlowStep } from '../../../flows';
 import { describeAuthError, RISE_METRES } from '../../../utils/authErrors';
@@ -65,7 +65,7 @@ function readRequestedStepIndex(locationState: unknown, stepCount: number): numb
 }
 
 function describeFailure(flowName: FlowName, stepIndex: number, failure: unknown): AuthErrorScreen {
-    if (failure instanceof AuthApiError) {
+    if (failure instanceof ApiError) {
         return describeAuthError(flowName, stepIndex, failure.status, failure.messages);
     }
 
@@ -82,7 +82,10 @@ export function useStepFlow(
     const flow = FLOWS[flowName];
     const requestedStepIndex = readRequestedStepIndex(location.state, flow.steps.length);
     const { stepIndex, slide, direction } = useStepTransition(requestedStepIndex);
-    const [values, setValues] = useState<StepValues>({ ...EMPTY_VALUES, ...initialValues });
+    const [values, setValues] = useState<StepValues>({
+        ...EMPTY_VALUES,
+        ...initialValues,
+    });
     const [stepError, setStepError] = useState<AuthErrorScreen | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const activeInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +93,13 @@ export function useStepFlow(
     // A reload keeps the history entry's step but not the typed values, so it restarts at step 1.
     useEffect(() => {
         if (requestedStepIndex !== 0) {
-            navigate(location.pathname, { replace: true, state: null });
+            navigate(
+                location.pathname,
+                {
+                    replace: true,
+                    state: null,
+                },
+            );
         }
     // Mount only: re-running on every step change would reset each step the user advances to.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -111,7 +120,10 @@ export function useStepFlow(
     const isRising = visibleError?.gauge === 'rise';
 
     function setValue(field: FlowField, value: string) {
-        setValues((currentValues) => ({ ...currentValues, [field]: value }));
+        setValues((currentValues) => ({
+            ...currentValues,
+            [field]: value,
+        }));
         setStepError(null);
     }
 
@@ -163,7 +175,10 @@ export function useStepFlow(
         } else {
             const nextLocationState: StepLocationState = { stepIndex: stepIndex + 1 };
 
-            navigate(location.pathname, { state: nextLocationState });
+            navigate(
+                location.pathname,
+                { state: nextLocationState },
+            );
         }
     }
 

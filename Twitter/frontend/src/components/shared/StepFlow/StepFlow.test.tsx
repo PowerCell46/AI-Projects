@@ -77,7 +77,10 @@ describe('advancing', () => {
     it('should_advance_when_enter_is_pressed_and_swap_the_content_after_the_exit', async () => {
         renderFlow('register');
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com{Enter}',
+        );
         await advance(STEP_SWAP_MS - 1);
 
         expect(screen.getByRole('heading', { name: 'Where do we reach you?' })).toBeTruthy();
@@ -91,7 +94,10 @@ describe('advancing', () => {
     it('should_advance_when_the_primary_button_is_clicked', async () => {
         renderFlow('register');
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com',
+        );
         await user.click(screen.getByRole('button', { name: 'CONTINUE' }));
         await settleTransition();
 
@@ -102,7 +108,10 @@ describe('advancing', () => {
         renderFlow('register');
         const restingTransform = expectedTransform(140, 10910);
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com{Enter}',
+        );
         await advance(STEP_SWAP_MS - 1);
 
         expect(horizonTransform()).toBe(restingTransform);
@@ -115,7 +124,10 @@ describe('advancing', () => {
     it('should_focus_the_new_field_60ms_after_the_swap', async () => {
         renderFlow('register');
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com{Enter}',
+        );
         await advance(STEP_SWAP_MS);
         await advance(59);
 
@@ -132,7 +144,10 @@ describe('advancing', () => {
 
         expect(liveRegion?.textContent).toBe('Step 1 of 3, Identity.');
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com{Enter}',
+        );
         await settleTransition();
 
         expect(liveRegion?.textContent).toBe('Step 2 of 3, Handle.');
@@ -142,7 +157,10 @@ describe('advancing', () => {
         const onComplete = vi.fn();
         renderFlow('login', onComplete);
 
-        await user.type(screen.getByRole('textbox', { name: 'email or username' }), 'peter_g{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email or username' }),
+            'peter_g{Enter}',
+        );
         await settleTransition();
         await user.type(screen.getByLabelText('password'), 'secret{Enter}');
 
@@ -157,7 +175,10 @@ describe('advancing', () => {
 
 describe('going back', () => {
     async function advanceToUsernameStep() {
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com{Enter}',
+        );
         await settleTransition();
     }
 
@@ -189,7 +210,15 @@ describe('going back', () => {
     });
 
     it('should_restart_at_the_first_step_when_the_page_is_reloaded_on_a_later_step', async () => {
-        window.history.replaceState({ usr: { stepIndex: 2 }, key: 'reload', idx: 0 }, '', '/');
+        window.history.replaceState(
+            {
+                usr: { stepIndex: 2 },
+                key: 'reload',
+                idx: 0,
+            },
+            '',
+            '/',
+        );
 
         renderFlow('register');
         await settleTransition();
@@ -213,10 +242,16 @@ describe('errors', () => {
 
     it('should_hold_at_the_username_step_with_the_username_message_when_the_username_is_too_short', async () => {
         renderFlow('register');
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'peter@example.com{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'peter@example.com{Enter}',
+        );
         await settleTransition();
 
-        await user.type(screen.getByRole('textbox', { name: 'username' }), 'al{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'username' }),
+            'al{Enter}',
+        );
         await settleTransition();
 
         expect(screen.getByRole('alert').textContent).toBe(USERNAME_MESSAGE);
@@ -228,7 +263,10 @@ describe('errors', () => {
         renderFlow('register');
         await user.click(screen.getByRole('button', { name: 'CONTINUE' }));
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'p');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'p',
+        );
 
         expect(screen.getByRole('alert').textContent).toBe('');
         expect(screen.getByRole('textbox', { name: 'email address' }).getAttribute('aria-invalid')).toBe('false');
@@ -238,7 +276,10 @@ describe('errors', () => {
 describe('inputs', () => {
     it('should_keep_the_identifier_input_mounted_with_autocomplete_username_on_the_password_step', async () => {
         renderFlow('login');
-        await user.type(screen.getByRole('textbox', { name: 'email or username' }), 'peter_g{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email or username' }),
+            'peter_g{Enter}',
+        );
         await settleTransition();
 
         const identifierInput = document.querySelector('input[name="identifier"]');

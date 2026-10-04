@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { AuthApiError, confirm } from '../../api/auth';
+import { confirm } from '../../api/auth';
+import { ApiError } from '../../api/http';
 
 
 export type ConfirmationStatus = 'pending' | 'confirmed' | 'expired' | 'failed';
@@ -18,7 +19,7 @@ async function requestConfirmation(token: string, onStatus: (status: Confirmatio
         onStatus('confirmed');
 
     } catch (failure) {
-        const isRejected = failure instanceof AuthApiError && failure.status === STATUS_BAD_REQUEST;
+        const isRejected = failure instanceof ApiError && failure.status === STATUS_BAD_REQUEST;
 
         onStatus(isRejected ? 'expired' : 'failed');
     }
@@ -46,5 +47,8 @@ export function useConfirmation(token: string | null): Confirmation {
         }
     }
 
-    return { status, retry };
+    return {
+        status,
+        retry,
+    };
 }

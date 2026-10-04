@@ -40,6 +40,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeE
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.ViewService;
@@ -69,11 +70,14 @@ class FeedServiceImplTest {
     @Mock
     private FeedEntryRepository feedEntryRepository;
 
+    @Mock
+    private SavedTweetRepository savedTweetRepository;
+
     @BeforeEach
     void setUp() {
         feedService = new FeedServiceImpl(
                 feedEntryRepository,
-                new TweetItemAssemblyServiceImpl(viewService, executor, userLookupService, tweetLookupService));
+                new TweetItemAssemblyServiceImpl(viewService, executor, userLookupService, tweetLookupService, savedTweetRepository));
     }
 
     @AfterEach
@@ -158,7 +162,7 @@ class FeedServiceImplTest {
 
             assertThat(page.getItems()).isEmpty();
             assertThat(page.getNextCursor()).isNull();
-            verifyNoInteractions(tweetLookupService, userLookupService);
+            verifyNoInteractions(tweetLookupService, userLookupService, savedTweetRepository);
         }
 
         @Test
@@ -202,6 +206,35 @@ class FeedServiceImplTest {
 
             ArgumentCaptor<Collection<UUID>> tweetIds = ArgumentCaptor.captor();
             verify(viewService).countViews(tweetIds.capture());
+            assertThat(tweetIds.getValue()).containsExactly(first.getTweetId(), second.getTweetId());
+        }
+
+        @Test
+        void should_mark_each_item_saved_only_when_the_viewer_saved_its_tweet() {
+            FeedEntry saved = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry unsaved = entry(CREATED_AT);
+            givenRows(saved, unsaved);
+            givenEverythingExists(saved, unsaved);
+            when(savedTweetRepository.findSavedTweetIds(eq(OWNER), any())).thenReturn(List.of(saved.getTweetId()));
+
+            FeedResponseDTO page = feedService.getFeed(OWNER, null, 20);
+
+            assertThat(page.getItems())
+                    .extracting(item -> item.isSavedByMe())
+                    .containsExactly(true, false);
+        }
+
+        @Test
+        void should_look_up_the_saved_tweets_of_the_viewer_once_for_the_tweets_of_the_page() {
+            FeedEntry first = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry second = entry(CREATED_AT);
+            givenRows(first, second);
+            givenEverythingExists(first, second);
+
+            feedService.getFeed(OWNER, null, 20);
+
+            ArgumentCaptor<Collection<UUID>> tweetIds = ArgumentCaptor.captor();
+            verify(savedTweetRepository).findSavedTweetIds(eq(OWNER), tweetIds.capture());
             assertThat(tweetIds.getValue()).containsExactly(first.getTweetId(), second.getTweetId());
         }
 

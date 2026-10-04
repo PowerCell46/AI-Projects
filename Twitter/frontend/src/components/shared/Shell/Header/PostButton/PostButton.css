@@ -1,0 +1,84 @@
+.post-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    overflow: hidden;
+    background: none;
+    border: 1px solid var(--glow-border);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.17em;
+    color: var(--glow);
+    cursor: pointer;
+    transition: color 360ms var(--e);
+}
+
+/* The panel rises from the bottom, the same direction as the action icons fill. */
+.post-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 420ms var(--e);
+}
+
+.post-button:hover {
+    color: var(--deep);
+}
+
+.post-button:hover::before {
+    transform: scaleY(1);
+}
+
+.post-button:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.post-button-plus,
+.post-button-label {
+    position: relative;
+}
+
+.post-button-plus {
+    width: 0.5625rem;
+    height: 0.5625rem;
+}
+
+.post-button-plus::before,
+.post-button-plus::after {
+    content: '';
+    position: absolute;
+    background: currentColor;
+}
+
+.post-button-plus::before {
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+}
+
+.post-button-plus::after {
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+}
+
+@media (max-width: 600px) {
+    .post-button {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .post-button-label {
+        display: none;
+    }
+}

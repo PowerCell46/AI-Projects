@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.UserLookupService;
@@ -35,8 +36,15 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
 
     private final TweetLookupService tweetLookupService;
 
+    private final SavedTweetRepository savedTweetRepository;
+
     @Override
-    public <T> List<TweetItemResponseDTO> assemble(List<T> rows, Function<T, UUID> tweetIdOf, Function<T, UUID> authorIdOf) {
+    public <T> List<TweetItemResponseDTO> assemble(
+            UUID viewerId,
+            List<T> rows,
+            Function<T, UUID> tweetIdOf,
+            Function<T, UUID> authorIdOf
+    ) {
         if (rows.isEmpty()) {
             return List.of();
         }
@@ -55,6 +63,7 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
         Map<UUID, TweetClientDTO> tweetsById = await(tweetsRequest);
         Map<UUID, UserClientDTO> authorsById = await(authorsRequest);
         Map<UUID, Long> viewsByTweetId = viewService.countViews(tweetIds);
+        Set<UUID> savedTweetIds = Set.copyOf(savedTweetRepository.findSavedTweetIds(viewerId, tweetIds));
 
         return rows
                 .stream()
@@ -62,7 +71,8 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
                 .map(row -> TweetItemMapper.toItem(
                         tweetsById.get(tweetIdOf.apply(row)),
                         authorsById.get(authorIdOf.apply(row)),
-                        viewsByTweetId.getOrDefault(tweetIdOf.apply(row), 0L)))
+                        viewsByTweetId.getOrDefault(tweetIdOf.apply(row), 0L),
+                        savedTweetIds.contains(tweetIdOf.apply(row))))
                 .toList();
     }
 

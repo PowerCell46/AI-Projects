@@ -15,7 +15,11 @@ import { readPrefilledEmail } from '../../utils/resendPrefill';
 function ResendPage() {
     const location = useLocation();
     const [dispatchedEmail, setDispatchedEmail] = useState<string | null>(null);
-    const stepFlow = useStepFlow('resend', handleComplete, { email: readPrefilledEmail(location.state) });
+    const stepFlow = useStepFlow(
+        'resend',
+        handleComplete,
+        { email: readPrefilledEmail(location.state) },
+    );
 
     // The gateway answers 202 whether or not the account exists, so arrival never reveals which.
     async function handleComplete(values: StepValues) {

@@ -24,7 +24,10 @@ describe('tickLabelMetres', () => {
 
 describe('isMajorTick', () => {
     it('should_mark_seven_of_the_27_ticks_as_major', () => {
-        const ticks = Array.from({ length: 27 }, (_, tickIndex) => tickIndex);
+        const ticks = Array.from(
+            { length: 27 },
+            (_, tickIndex) => tickIndex,
+        );
 
         expect(ticks.filter(isMajorTick)).toEqual([0, 4, 8, 12, 16, 20, 24]);
     });

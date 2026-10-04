@@ -12,11 +12,12 @@ public final class TweetItemMapper {
     private TweetItemMapper() {
     }
 
-    public static TweetItemResponseDTO toItem(TweetClientDTO tweet, UserClientDTO author, long views) {
+    public static TweetItemResponseDTO toItem(TweetClientDTO tweet, UserClientDTO author, long views, boolean savedByMe) {
         return TweetItemResponseDTO
                 .builder()
                 .id(tweet.getId())
                 .views(views)
+                .savedByMe(savedByMe)
                 .content(tweet.getContent())
                 .createdAt(tweet.getCreatedAt())
                 .updatedAt(tweet.getUpdatedAt())

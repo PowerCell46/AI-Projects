@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthApiError, me } from './api/auth';
+import { me } from './api/auth';
+import { ApiError } from './api/http';
 import { ROUTES } from './routes';
 import { renderApp } from './test/renderApp';
 
@@ -10,7 +11,11 @@ vi.mock('./api/auth', async (importOriginal) => ({
     me: vi.fn(),
 }));
 
-const SIGNED_IN_USER = { id: 'user-1', username: 'peter_g', email: 'peter@example.com' };
+const SIGNED_IN_USER = {
+    id: 'user-1',
+    username: 'peter_g',
+    email: 'peter@example.com',
+};
 
 beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
@@ -22,7 +27,7 @@ afterEach(() => {
 
 describe('a logged-out visitor', () => {
     beforeEach(() => {
-        vi.mocked(me).mockRejectedValue(new AuthApiError(401, []));
+        vi.mocked(me).mockRejectedValue(new ApiError(401, []));
     });
 
     it('should_see_the_login_question_when_the_path_is_login', async () => {

@@ -26,11 +26,12 @@ class TweetItemMapperTest {
         TweetClientDTO tweet = tweet(authorId, List.of(new TweetImageClientDTO(imageId, 1234, "image/png")));
         UserClientDTO author = new UserClientDTO(authorId, "ana", "/api/v1/files/pic");
 
-        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet, author, 42);
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet, author, 42, true);
 
         assertThat(item.getId()).isEqualTo(tweet.getId());
         assertThat(item.getContent()).isEqualTo("hello");
         assertThat(item.getViews()).isEqualTo(42);
+        assertThat(item.isSavedByMe()).isTrue();
         assertThat(item.getCreatedAt()).isEqualTo(CREATED_AT);
         assertThat(item.getUpdatedAt()).isEqualTo(UPDATED_AT);
         assertThat(item.getImages()).hasSize(1);
@@ -46,10 +47,19 @@ class TweetItemMapperTest {
     void toItem_returnsNoImagesAndANullPictureUrlWhenThereAreNone() {
         UUID authorId = UUID.randomUUID();
 
-        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0);
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false);
 
         assertThat(item.getImages()).isEmpty();
         assertThat(item.getAuthor().getProfilePictureUrl()).isNull();
+    }
+
+    @Test
+    void toItem_marksTheItemNotSavedWhenTheViewerDidNotSaveIt() {
+        UUID authorId = UUID.randomUUID();
+
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false);
+
+        assertThat(item.isSavedByMe()).isFalse();
     }
 
     private TweetClientDTO tweet(UUID authorId, List<TweetImageClientDTO> images) {

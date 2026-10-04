@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthApiError, confirm, login, logout, me, register, resendConfirmation } from './auth';
+import { confirm, login, logout, me, register, resendConfirmation } from './auth';
+import { ApiError } from './http';
 import { ENDPOINTS } from './endpoints';
 
 
@@ -12,20 +13,23 @@ const USER = {
 const fetchMock = vi.fn<typeof fetch>();
 
 function respondWith(status: number, body?: object): void {
-    fetchMock.mockResolvedValueOnce(new Response(body ? JSON.stringify(body) : null, { status }));
+    fetchMock.mockResolvedValueOnce(new Response(
+        body ? JSON.stringify(body) : null,
+        { status },
+    ));
 }
 
-async function catchAuthError(call: () => Promise<unknown>): Promise<AuthApiError> {
+async function catchAuthError(call: () => Promise<unknown>): Promise<ApiError> {
     try {
         await call();
 
     } catch (error) {
-        if (error instanceof AuthApiError) {
+        if (error instanceof ApiError) {
             return error;
         }
     }
 
-    throw new Error('Expected the call to reject with an AuthApiError.');
+    throw new Error('Expected the call to reject with an ApiError.');
 }
 
 beforeEach(() => {
@@ -60,13 +64,19 @@ describe('successful calls', () => {
     it('should_post_the_identifier_and_password_and_return_the_user_when_logging_in', async () => {
         respondWith(200, USER);
 
-        const user = await login({ identifier: 'peter_g', password: 'Abcdefg1' });
+        const user = await login({
+            identifier: 'peter_g',
+            password: 'Abcdefg1',
+        });
 
         expect(user).toEqual(USER);
         expect(fetchMock).toHaveBeenCalledWith(
             ENDPOINTS.auth.login,
             expect.objectContaining({
-                body: JSON.stringify({ identifier: 'peter_g', password: 'Abcdefg1' }),
+                body: JSON.stringify({
+                    identifier: 'peter_g',
+                    password: 'Abcdefg1',
+                }),
                 credentials: 'include',
             }),
         );
@@ -79,7 +89,10 @@ describe('successful calls', () => {
 
         expect(fetchMock).toHaveBeenCalledWith(
             ENDPOINTS.auth.logout,
-            { method: 'POST', credentials: 'include' },
+            {
+                method: 'POST',
+                credentials: 'include',
+            },
         );
     });
 
@@ -91,7 +104,10 @@ describe('successful calls', () => {
         expect(user).toEqual(USER);
         expect(fetchMock).toHaveBeenCalledWith(
             ENDPOINTS.auth.me,
-            { method: 'GET', credentials: 'include' },
+            {
+                method: 'GET',
+                credentials: 'include',
+            },
         );
     });
 
@@ -126,14 +142,20 @@ describe('failed calls', () => {
             timestamp: 1,
         });
 
-        const error = await catchAuthError(() => login({ identifier: 'x', password: 'y' }));
+        const error = await catchAuthError(() => login({
+            identifier: 'x',
+            password: 'y',
+        }));
 
         expect(error.status).toBe(409);
         expect(error.messages).toEqual(['Email already registered.']);
     });
 
     it('should_carry_an_empty_message_list_when_the_error_body_is_not_json', async () => {
-        fetchMock.mockResolvedValueOnce(new Response('<html>Bad Gateway</html>', { status: 502 }));
+        fetchMock.mockResolvedValueOnce(new Response(
+            '<html>Bad Gateway</html>',
+            { status: 502 },
+        ));
 
         const error = await catchAuthError(me);
 
@@ -142,7 +164,10 @@ describe('failed calls', () => {
     });
 
     it('should_ignore_messages_that_are_not_strings', async () => {
-        respondWith(400, { messages: ['username must be valid', 7, null] });
+        respondWith(
+            400,
+            { messages: ['username must be valid', 7, null] },
+        );
 
         const error = await catchAuthError(me);
 

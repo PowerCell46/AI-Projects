@@ -4,7 +4,11 @@
     --pale: #dce6fa;
     --alarm: #ff7a5c;
     --input-text: #ffffff;
+    --display-name: var(--input-text);
     --glow-hover: #9cc0ff;
+    --cell: #07142c;
+    --menu-surface: #071634;
+    --like: #ff3b5c;
 
     /* Text alphas on --pale. The brief's .34/.40/.50 fail 4.5:1 on --deep, so all three sit at .52 (4.7:1). */
     --pale-brand: rgb(220 230 250 / 0.52);
@@ -18,10 +22,36 @@
     --pale-placeholder: rgb(220 230 250 / 0.17);
     --pale-tick-minor: rgb(220 230 250 / 0.12);
     --pale-ruler-border: rgb(220 230 250 / 0.1);
+
+    /* The feed's alphas on --pale. Text that the brief put under .52 is raised to it (4.7:1 on --deep and --cell). */
+    --pale-post-body: rgb(220 230 250 / 0.94);
+    --pale-avatar-initials: rgb(220 230 250 / 0.85);
+    --pale-menu-item: rgb(220 230 250 / 0.75);
+    --pale-action-icon: rgb(220 230 250 / 0.42);
+    --pale-user-avatar-border: rgb(220 230 250 / 0.3);
+    --pale-author-avatar-border: rgb(220 230 250 / 0.24);
+    --pale-textarea-rule: rgb(220 230 250 / 0.18);
+    --pale-cell-border: rgb(220 230 250 / 0.16);
+    --pale-cell-rule: rgb(220 230 250 / 0.12);
+    --pale-header-rule: rgb(220 230 250 / 0.1);
+
+    /* Placeholders behind the initials of an author without a picture; one is picked per user id. */
+    --avatar-tint-0: rgb(78 139 255 / 0.18);
+    --avatar-tint-1: rgb(127 212 193 / 0.16);
+    --avatar-tint-2: rgb(232 196 138 / 0.16);
+    --avatar-tint-3: rgb(255 155 176 / 0.16);
+    --avatar-tint-4: rgb(156 192 255 / 0.18);
+    --avatar-tint-5: rgb(198 166 245 / 0.16);
+    --avatar-tint-6: rgb(111 227 176 / 0.16);
+    --avatar-tint-7: rgb(245 185 138 / 0.16);
     --glow-underline: rgb(78 139 255 / 0.45);
     --glow-hairline: rgb(78 139 255 / 0.14);
     --alarm-hairline: rgb(255 122 92 / 0.18);
+    --alarm-wash: rgb(255 122 92 / 0.1);
+    --glow-wash: rgb(78 139 255 / 0.1);
+    --glow-border: rgb(78 139 255 / 0.55);
 
+    --header-height: 3.75rem;
     --ruler-width: 4.875rem;
     --content-pad: clamp(1.625rem, 6vw, 5.5rem);
 
@@ -65,6 +95,10 @@ h1,
 h2,
 p {
     margin: 0;
+}
+
+html[data-scroll-locked='true'] {
+    overflow: hidden;
 }
 
 button,

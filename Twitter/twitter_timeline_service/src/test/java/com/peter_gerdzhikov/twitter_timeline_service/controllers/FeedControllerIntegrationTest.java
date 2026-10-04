@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +51,8 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
     private static final String USER_ID_HEADER = "X-User-Id";
 
     private static final String VIEWS_PATH = "/api/v1/views";
+
+    private static final String SAVED_TWEETS_PATH = "/api/v1/saved-tweets";
 
     private static final String USERS_PATH = "/internal/v1/users";
 
@@ -142,7 +145,7 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
 
             JsonNode item = feed(owner, "", status().isOk()).get("items").get(0);
 
-            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "content", "createdAt", "updatedAt", "images", "author");
+            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "savedByMe", "content", "createdAt", "updatedAt", "images", "author");
             assertThat(item.get("id").asString()).isEqualTo(tweetId.toString());
             assertThat(item.get("content").asString()).isEqualTo("tweet " + tweetId);
             assertThat(item.get("createdAt").asString()).isEqualTo(TWEET_CREATED_AT.toString());
@@ -554,6 +557,76 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
         }
     }
 
+    @Nested
+    class SavedByMe {
+
+        @Test
+        void should_mark_each_item_saved_only_when_the_caller_saved_its_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID saved = entry(owner, author, TWEET_CREATED_AT.plusSeconds(1));
+            UUID unsaved = entry(owner, author, TWEET_CREATED_AT);
+            seedSavedTweet(owner, saved, author, TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemSavedByMe(body)).containsEntry(saved.toString(), true).containsEntry(unsaved.toString(), false);
+        }
+
+        @Test
+        void should_mark_no_item_saved_when_the_caller_saved_nothing() throws Exception {
+            UUID owner = TestIds.userId();
+            entry(owner, knownAuthor("ana"), TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemSavedByMe(body).values()).containsOnly(false);
+        }
+
+        @Test
+        void should_not_mark_an_item_saved_when_only_another_user_saved_its_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID tweetId = entry(owner, author, TWEET_CREATED_AT);
+            seedSavedTweet(TestIds.userId(), tweetId, author, TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemSavedByMe(body)).containsEntry(tweetId.toString(), false);
+        }
+
+        @Test
+        void should_mark_the_item_not_saved_when_the_caller_unsaves_its_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID tweetId = entry(owner, author, TWEET_CREATED_AT);
+            seedSavedTweet(owner, tweetId, author, TWEET_CREATED_AT);
+            stubDownstreams();
+            assertThat(itemSavedByMe(feed(owner, "", status().isOk()))).containsEntry(tweetId.toString(), true);
+
+            unsave(owner, tweetId);
+
+            assertThat(itemSavedByMe(feed(owner, "", status().isOk()))).containsEntry(tweetId.toString(), false);
+        }
+
+        @Test
+        void should_make_no_extra_downstream_call_when_the_saved_state_is_added_to_the_page() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            seedSavedTweet(owner, entry(owner, author, TWEET_CREATED_AT), author, TWEET_CREATED_AT);
+            entry(owner, author, TWEET_CREATED_AT.plusSeconds(1));
+            stubDownstreams();
+
+            feed(owner, "", status().isOk());
+
+            assertThat(TWEET_SERVICE_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+            assertThat(GATEWAY_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+        }
+    }
+
     private MockHttpServletRequestBuilder feedRequest(UUID userId, String query) {
         return get(FEED_PATH + query).header(USER_ID_HEADER, userId.toString());
     }
@@ -582,6 +655,21 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
                 .forEach(item -> views.put(item.get("id").asString(), item.get("views").asLong()));
 
         return views;
+    }
+
+    private Map<String, Boolean> itemSavedByMe(JsonNode page) {
+        Map<String, Boolean> savedByMe = new LinkedHashMap<>();
+        page
+                .get("items")
+                .forEach(item -> savedByMe.put(item.get("id").asString(), item.get("savedByMe").asBoolean()));
+
+        return savedByMe;
+    }
+
+    private void unsave(UUID userId, UUID tweetId) throws Exception {
+        mockMvc
+                .perform(delete(SAVED_TWEETS_PATH + "/" + tweetId).header(USER_ID_HEADER, userId.toString()))
+                .andExpect(status().isNoContent());
     }
 
     private long viewsEndpointCountOf(UUID userId, UUID tweetId) throws Exception {

@@ -1,7 +1,8 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthApiError, me, resendConfirmation } from '../../api/auth';
+import { me, resendConfirmation } from '../../api/auth';
+import { ApiError } from '../../api/http';
 import { RESEND_COOLDOWN_MS } from '../../components/shared/ResendButton/ResendButton';
 import { ROUTES } from '../../routes';
 import { renderApp } from '../../test/renderApp';
@@ -25,7 +26,7 @@ async function renderResend(locationState: object | null = null) {
 beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
     user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    vi.mocked(me).mockRejectedValue(new AuthApiError(401, []));
+    vi.mocked(me).mockRejectedValue(new ApiError(401, []));
     vi.mocked(resendConfirmation).mockReset();
 });
 
@@ -60,7 +61,10 @@ describe('the form', () => {
     it('should_hold_with_the_email_message_when_the_format_is_wrong', async () => {
         await renderResend();
 
-        await user.type(screen.getByRole('textbox', { name: 'email address' }), 'not-an-email{Enter}');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email address' }),
+            'not-an-email{Enter}',
+        );
 
         expect(screen.getByRole('alert').textContent).toBe(EMAIL_MESSAGE);
         expect(resendConfirmation).not.toHaveBeenCalled();
@@ -94,7 +98,7 @@ describe('sending', () => {
     });
 
     it('should_show_signal_lost_and_stay_on_the_form_when_the_network_fails', async () => {
-        vi.mocked(resendConfirmation).mockRejectedValue(new AuthApiError(0, []));
+        vi.mocked(resendConfirmation).mockRejectedValue(new ApiError(0, []));
         await renderResend({ email: 'peter@example.com' });
 
         await user.click(screen.getByRole('button', { name: 'SEND LINK' }));
