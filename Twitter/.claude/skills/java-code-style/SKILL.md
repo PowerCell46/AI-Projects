@@ -349,7 +349,11 @@ DTOs/request/SubscribeRequestDTO.java
 
 - **Once a package holds more than 5 `.java` files** (subpackages don't count), group its contents into subpackages by
   domain or feature, for example `response/auth`, `response/feed`, `exceptions/subscriptions`, `configurations/kafka`.
-  This applies to every package, including `services/interfaces` and `services/implementations`.
+  This applies to every package, including `services/interfaces`, `services/implementations`, `entities` and
+  `utilities`, and to the mirrored test packages.
+- **Count before you add.** Before creating or moving a `.java` file, count the `*.java` files directly in the target
+  package (`ls <package> | wc -l`). If the new file would make it more than 5, group the package first, then add the
+  file to its subpackage. Interfaces, implementations and tests use the same subpackage names.
 - Subpackage names are lowercase, plural where the domain is a noun, with words run together
   (`interesttopics`, `subscriptions`).
 - A class used across every domain (`ErrorResponseDTO`, `RequestBodyTooLargeException`) stays at the package root
@@ -433,6 +437,17 @@ entities, DTOs or utilities.
 - Never log secrets: passwords, JWTs, API keys, cookie values.
 - Write log and exception messages as full sentences ending in terminal punctuation. A message that ends with a
   concatenated value (`"Permanent mail delivery failure: " + reason`) is fine as it is.
+- **Exception: Bean Validation constraint messages** (`message = "..."` on `@Pattern`, `@Size`, custom constraints in
+  `/DTOs/request`). `GlobalExceptionHandler` prefixes the field name (`"password must contain ..."`), so these are
+  sentence fragments: start lowercase, no terminal punctuation.
+
+```java
+// flag
+@Pattern(regexp = "^[A-Za-z0-9_-]{43}$", message = "Must be a 43-character confirmation token.")
+
+// prefer
+@Pattern(regexp = "^[A-Za-z0-9_-]{43}$", message = "must be a 43-character confirmation token")
+```
 
 ---
 
@@ -449,6 +464,8 @@ When judging existing code, check in this order:
    a statement follows. A blank line between enum constants.
 6. Declared types are interfaces. No hand-rolled JDK/library one-liners. No unnamed magic numbers.
 7. Names are self-explanatory. JavaDoc only where the name can't say it. No `.md` references in comments.
-8. DTO package and suffix. Subpackages once a package has more than 5 files. Entity enums in `entities/enums`.
+8. DTO package and suffix. Entity enums in `entities/enums`. Count the `*.java` files in every package you touched (and
+   the package of every file you add): more than 5 means group into subpackages.
 9. `@Column` nullability is explicit. `@Transactional` only where it's needed. Builder instead of 2+ setter calls.
-10. Log levels, `{}` placeholders, no secrets, sentence punctuation.
+10. Log levels, `{}` placeholders, no secrets, sentence punctuation (log/exception messages) and lowercase, unpunctuated
+    fragments (validation constraint messages).
