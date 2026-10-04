@@ -1,26 +1,18 @@
-import { avatarTintOf, initialsOf } from '../../../utils/avatar';
+import { useProfilePictureSource } from '../../../hooks/useProfilePictureSource';
 import './Avatar.css';
 
 
 export type AvatarSize = 'small' | 'large';
 
 interface AvatarProps {
-    userId: string;
-    username: string;
     pictureUrl: string | null;
     size?: AvatarSize;
 }
 
-function Avatar({ userId, username, pictureUrl, size = 'small' }: AvatarProps) {
-    if (pictureUrl) {
-        return <img className="avatar" data-size={size} src={pictureUrl} alt="" />;
-    }
+function Avatar({ pictureUrl, size = 'small' }: AvatarProps) {
+    const picture = useProfilePictureSource(pictureUrl);
 
-    return (
-        <span className="avatar" data-size={size} data-tint={avatarTintOf(userId)} aria-hidden="true">
-            {initialsOf(username)}
-        </span>
-    );
+    return <img className="avatar" data-size={size} src={picture.src} onError={picture.onError} alt="" />;
 }
 
 export default Avatar;

@@ -13,6 +13,8 @@ export const ENDPOINTS = {
     users: `${API_V1}/users`,
     user: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}`,
     follow: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}/follow`,
+    // Served from the frontend's own public folder, not by the API.
+    defaultProfilePicture: '/Default-Profile-Picture.png',
     // The backend hands out paths like /api/v1/files/{id}; the browser needs them on the API's own origin.
     backendPath: (path: string) => `${BASE_URL}${path}`,
     auth: {

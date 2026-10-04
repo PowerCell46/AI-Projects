@@ -92,10 +92,13 @@ describe('person card', () => {
         expect(screen.queryByText('@ana')).toBeNull();
     });
 
-    it('should_show_the_initials_in_the_large_avatar_when_there_is_no_picture', () => {
+    it('should_show_the_default_picture_in_the_large_avatar_when_there_is_no_picture', () => {
         renderCard();
 
-        expect(screen.getByText('AN').getAttribute('data-size')).toBe('large');
+        const avatar = cardOf().querySelector('img.avatar');
+
+        expect(avatar?.getAttribute('src')).toBe('/Default-Profile-Picture.png');
+        expect(avatar?.getAttribute('data-size')).toBe('large');
     });
 
     it('should_show_the_bio_as_it_is_when_it_fits', () => {

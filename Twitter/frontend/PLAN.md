@@ -20,7 +20,7 @@ touching any `.ts`/`.tsx`/`.css`.
 | Phase | Scope | Done | Audit |
 |---|---|---|---|
 | 2 | Feed (steps 1–13) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04" |
-| 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `exploit-report-2026-10-04-frontend-phase3.md` in the gateway, tweet and timeline services |
+| 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
 
 ## Phase 3 — Tab row, People, back-fill on follow ✅ **Done** (2026-10-04)
 
@@ -70,8 +70,8 @@ steps 18–23 build the UI on top.
   8 UI journeys, Q38); `mvn verify` green 3× in the tweet service (267), the gateway (844) and the timeline service
   (496). Scenario lists: the backend `TESTING.md` files; the frontend and e2e specs.
 - **Audit:** no Critical or High; two Mediums found and fixed, the Lows are under Left open
-  (`SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)", and `exploit-report-2026-10-04-frontend-phase3.md` in the
-  gateway, tweet and timeline services). Closed: phase 2's "A new user can't follow anyone" and the gateway's "No
+  (`SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)", and `SECURITY-AUDITS.md` in the
+  gateway, and the audit reports in the tweet and timeline services). Closed: phase 2's "A new user can't follow anyone" and the gateway's "No
   frontend caller yet".
 - **Waived:** step 24's visual check (see Left open).
 
@@ -240,7 +240,7 @@ No question needed re-asking.
     retried ~4 minutes each; a far-past `occurredAt` skips the 7-day window; a forged self-follow event deletes the
     user's own tweets from their feed; a malformed event's text reaches the error log; the poison-event tests cover
     only a missing `occurredAt`.
-  - **Gateway:** nothing found on the follow check (`exploit-report-2026-10-04-frontend-phase3.md`).
+  - **Gateway:** nothing found on the follow check (`twitter_api_gateway/SECURITY-AUDITS.md`).
 - **Phase 3 style leftovers:** the sign-out leave animation is copied in `PeopleList.css` and `PostList.css`, and
   `tab-row-fade` / `tab-row-leave` repeat `header-content-fade` / `-leave`; `TabPanels` (shared) imports the two pages;
   `utils/bottomState.ts` imports a type from a component; the `merged.push(... ++ ...)` ternary in `utils/tweetList.ts`;

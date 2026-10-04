@@ -1,10 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../../../../contexts/AuthContext';
+import { useProfilePictureSource } from '../../../../../hooks/useProfilePictureSource';
 import { ROUTES } from '../../../../../routes';
 import { SIGNAL_LOST_MESSAGE } from '../../../../../utils/authErrors';
-import { initialsOf } from '../../../../../utils/avatar';
 import { useLogout } from './useLogout';
 import './UserMenu.css';
 
@@ -24,8 +23,8 @@ interface UserMenuProps {
 }
 
 function UserMenu({ pictureUrl }: UserMenuProps) {
-    const { user } = useAuth();
     const { isLoggingOut, hasFailed, logOut } = useLogout();
+    const picture = useProfilePictureSource(pictureUrl);
     const [isOpen, setIsOpen] = useState(false);
     const menuId = useId();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -117,9 +116,7 @@ function UserMenu({ pictureUrl }: UserMenuProps) {
                 onKeyDown={handleTriggerKeyDown}
             >
                 <span className="user-menu-avatar">
-                    {pictureUrl
-                        ? <img className="user-menu-picture" src={pictureUrl} alt="" />
-                        : initialsOf(user?.username ?? '')}
+                    <img className="user-menu-picture" src={picture.src} onError={picture.onError} alt="" />
                 </span>
             </button>
             {isOpen && (

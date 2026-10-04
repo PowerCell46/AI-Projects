@@ -1,83 +1,77 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { avatarTintOf } from '../../../utils/avatar';
 import Avatar from './Avatar';
 
 
-const USER_ID = '6f1c2a3e-0000-4000-8000-000000000001';
+const PICTURE_URL = 'http://localhost/api/v1/files/pic-1';
+
+const DEFAULT_PICTURE_URL = '/Default-Profile-Picture.png';
+
+function avatarOf(container: HTMLElement): HTMLImageElement {
+    const avatar = container.querySelector('img.avatar');
+
+    if (!(avatar instanceof HTMLImageElement)) {
+        throw new Error('The avatar image is missing.');
+    }
+
+    return avatar;
+}
 
 describe('Avatar', () => {
-    it('should_show_the_first_two_letters_in_capitals_when_there_is_no_picture', () => {
-        render(<Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />);
+    it('should_show_the_default_picture_when_there_is_no_picture', () => {
+        const { container } = render(<Avatar pictureUrl={null} />);
 
-        expect(screen.getByText('PE')).toBeTruthy();
+        expect(avatarOf(container).getAttribute('src')).toBe(DEFAULT_PICTURE_URL);
     });
 
-    it('should_pick_the_tint_from_the_user_id_when_there_is_no_picture', () => {
-        render(<Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />);
+    it('should_show_the_picture_when_there_is_a_picture', () => {
+        const { container } = render(<Avatar pictureUrl={PICTURE_URL} />);
 
-        expect(screen.getByText('PE').getAttribute('data-tint')).toBe(String(avatarTintOf(USER_ID)));
+        expect(avatarOf(container).getAttribute('src')).toBe(PICTURE_URL);
     });
 
-    it('should_give_the_same_tint_to_one_user_in_every_post', () => {
-        const { container } = render(
-            <>
-                <Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />
-                <Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />
-            </>,
-        );
+    it('should_fall_back_to_the_default_picture_when_the_picture_fails_to_load', () => {
+        const { container } = render(<Avatar pictureUrl={PICTURE_URL} />);
 
-        const tints = Array.from(
-            container.querySelectorAll('.avatar'),
-            (avatar) => avatar.getAttribute('data-tint'),
-        );
+        fireEvent.error(avatarOf(container));
 
-        expect(tints[0]).toBe(tints[1]);
+        expect(avatarOf(container).getAttribute('src')).toBe(DEFAULT_PICTURE_URL);
     });
 
-    it('should_show_the_picture_and_no_letters_when_there_is_a_picture', () => {
-        const { container } = render(
-            <Avatar userId={USER_ID} username="peter_g" pictureUrl="http://localhost/api/v1/files/pic-1" />,
-        );
+    it('should_try_a_new_picture_after_an_earlier_one_failed', () => {
+        const { container, rerender } = render(<Avatar pictureUrl={PICTURE_URL} />);
+        fireEvent.error(avatarOf(container));
 
-        expect(container.querySelector('img')?.getAttribute('src')).toBe('http://localhost/api/v1/files/pic-1');
-        expect(screen.queryByText('PE')).toBeNull();
+        rerender(<Avatar pictureUrl="http://localhost/api/v1/files/pic-2" />);
+
+        expect(avatarOf(container).getAttribute('src')).toBe('http://localhost/api/v1/files/pic-2');
     });
 
     it('should_leave_the_picture_without_alt_text_because_the_username_is_beside_it', () => {
-        const { container } = render(
-            <Avatar userId={USER_ID} username="peter_g" pictureUrl="http://localhost/api/v1/files/pic-1" />,
-        );
+        const { container } = render(<Avatar pictureUrl={PICTURE_URL} />);
 
-        expect(container.querySelector('img')?.getAttribute('alt')).toBe('');
-    });
-
-    it('should_hide_the_letters_from_assistive_technology', () => {
-        render(<Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />);
-
-        expect(screen.getByText('PE').getAttribute('aria-hidden')).toBe('true');
+        expect(avatarOf(container).getAttribute('alt')).toBe('');
     });
 
     it('should_be_the_small_size_when_no_size_is_given', () => {
-        render(<Avatar userId={USER_ID} username="peter_g" pictureUrl={null} />);
+        const { container } = render(<Avatar pictureUrl={null} />);
 
-        expect(screen.getByText('PE').getAttribute('data-size')).toBe('small');
+        expect(avatarOf(container).getAttribute('data-size')).toBe('small');
     });
 
-    it('should_carry_the_large_size_on_the_initials_and_on_the_picture', () => {
+    it('should_carry_the_large_size_on_the_default_picture_and_on_a_picture', () => {
         const { container } = render(
             <>
-                <Avatar userId={USER_ID} username="peter_g" pictureUrl={null} size="large" />
-                <Avatar
-                    userId={USER_ID}
-                    username="peter_g"
-                    pictureUrl="http://localhost/api/v1/files/pic-1"
-                    size="large"
-                />
+                <Avatar pictureUrl={null} size="large" />
+                <Avatar pictureUrl={PICTURE_URL} size="large" />
             </>,
         );
 
-        expect(screen.getByText('PE').getAttribute('data-size')).toBe('large');
-        expect(container.querySelector('img')?.getAttribute('data-size')).toBe('large');
+        const sizes = Array.from(
+            container.querySelectorAll('img.avatar'),
+            (avatar) => avatar.getAttribute('data-size'),
+        );
+
+        expect(sizes).toEqual(['large', 'large']);
     });
 });

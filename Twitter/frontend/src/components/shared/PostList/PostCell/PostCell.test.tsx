@@ -52,10 +52,10 @@ describe('author row', () => {
         expect(time?.getAttribute('datetime')).toBe(POST.createdAt);
     });
 
-    it('should_show_the_initials_when_the_author_has_no_picture', () => {
-        renderPost();
+    it('should_show_the_default_picture_when_the_author_has_no_picture', () => {
+        const { container } = renderPost();
 
-        expect(screen.getByText('PE')).toBeTruthy();
+        expect(container.querySelector('img.avatar')?.getAttribute('src')).toBe('/Default-Profile-Picture.png');
     });
 
     it('should_show_the_picture_when_the_author_has_one', () => {

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logout, me } from '../../../../../api/auth';
@@ -75,6 +75,16 @@ function trigger(): HTMLElement {
     return screen.getByRole('button', { name: 'Account menu' });
 }
 
+function triggerPicture(): HTMLImageElement {
+    const picture = trigger().querySelector('img');
+
+    if (!picture) {
+        throw new Error('The account menu picture is missing.');
+    }
+
+    return picture;
+}
+
 async function openMenu() {
     await user.click(trigger());
 }
@@ -86,10 +96,10 @@ function menuItemNames(): string[] {
 }
 
 describe('the avatar', () => {
-    it('should_show_the_initials_of_the_username_while_there_is_no_picture', async () => {
+    it('should_show_the_default_picture_while_there_is_no_picture', async () => {
         await renderApp(ROUTES.feed);
 
-        expect(trigger().textContent).toBe('PE');
+        expect(trigger().querySelector('img')?.getAttribute('src')).toBe('/Default-Profile-Picture.png');
     });
 
     it('should_read_the_profile_of_the_signed_in_user_once', async () => {
@@ -98,7 +108,7 @@ describe('the avatar', () => {
         expect(fetchUserProfile).toHaveBeenCalledExactlyOnceWith('peter_g');
     });
 
-    it('should_show_the_picture_instead_of_the_initials_when_the_profile_has_one', async () => {
+    it('should_show_the_picture_instead_of_the_default_when_the_profile_has_one', async () => {
         vi.mocked(fetchUserProfile).mockResolvedValue({
             ...PROFILE_WITHOUT_PICTURE,
             profilePictureUrl: 'http://localhost/api/v1/files/pic-1',
@@ -107,15 +117,26 @@ describe('the avatar', () => {
         await renderApp(ROUTES.feed);
 
         expect(trigger().querySelector('img')?.getAttribute('src')).toBe('http://localhost/api/v1/files/pic-1');
-        expect(trigger().textContent).toBe('');
     });
 
-    it('should_keep_the_initials_when_the_profile_cannot_be_read', async () => {
+    it('should_keep_the_default_picture_when_the_profile_cannot_be_read', async () => {
         vi.mocked(fetchUserProfile).mockRejectedValue(new ApiError(502, []));
 
         await renderApp(ROUTES.feed);
 
-        expect(trigger().textContent).toBe('PE');
+        expect(trigger().querySelector('img')?.getAttribute('src')).toBe('/Default-Profile-Picture.png');
+    });
+
+    it('should_fall_back_to_the_default_picture_when_the_profile_picture_fails_to_load', async () => {
+        vi.mocked(fetchUserProfile).mockResolvedValue({
+            ...PROFILE_WITHOUT_PICTURE,
+            profilePictureUrl: 'http://localhost/api/v1/files/pic-1',
+        });
+        await renderApp(ROUTES.feed);
+
+        fireEvent.error(triggerPicture());
+
+        expect(trigger().querySelector('img')?.getAttribute('src')).toBe('/Default-Profile-Picture.png');
     });
 
     it('should_not_read_the_profile_again_when_the_user_moves_between_pages', async () => {

@@ -19,7 +19,7 @@ function PostCell({ post, now }: PostCellProps) {
     return (
         <article className="post-cell" aria-label={`Post by ${author.username}`}>
             <header className="post-cell-author">
-                <Avatar userId={author.id} username={author.username} pictureUrl={author.profilePictureUrl} />
+                <Avatar pictureUrl={author.profilePictureUrl} />
                 <span className="post-cell-name">{author.username}</span>
                 <time className="post-cell-time" dateTime={post.createdAt}>
                     {formatPostTime(post.createdAt, now)}

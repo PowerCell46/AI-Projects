@@ -23,10 +23,6 @@
     height: 2rem;
     background: var(--glow-wash);
     border: 1px solid var(--pale-user-avatar-border);
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
-    letter-spacing: 0.06em;
-    color: var(--pale-avatar-initials);
     transition: border-color 300ms;
 }
 

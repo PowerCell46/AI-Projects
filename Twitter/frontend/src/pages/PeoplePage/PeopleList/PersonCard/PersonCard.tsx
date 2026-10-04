@@ -22,12 +22,7 @@ function PersonCard({ person, onFollowChanged }: PersonCardProps) {
 
     return (
         <li className="person-card">
-            <Avatar
-                userId={person.id}
-                username={person.username}
-                pictureUrl={person.profilePictureUrl}
-                size="large"
-            />
+            <Avatar pictureUrl={person.profilePictureUrl} size="large" />
             <div className="person-card-body">
                 <p className="person-card-name">{person.username}</p>
                 <p className="person-card-bio" dir="auto" data-empty={bio === null}>{bio}</p>

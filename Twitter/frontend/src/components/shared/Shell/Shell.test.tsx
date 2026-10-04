@@ -312,7 +312,7 @@ describe('composing', () => {
         ]);
     });
 
-    it('should_show_the_new_post_with_my_username_my_initials_and_no_saved_bookmark', async () => {
+    it('should_show_the_new_post_with_my_username_the_default_picture_and_no_saved_bookmark', async () => {
         vi.mocked(fetchFeed).mockResolvedValue({
             items: [],
             nextCursor: null,
@@ -324,7 +324,8 @@ describe('composing', () => {
 
         const article = within(screen.getByRole('article'));
         expect(article.getByText('peter_g')).toBeTruthy();
-        expect(article.getByText('PE')).toBeTruthy();
+        expect(screen.getByRole('article').querySelector('img.avatar')?.getAttribute('src'))
+            .toBe('/Default-Profile-Picture.png');
         expect(article.getByRole('button', { name: /^save/i }).getAttribute('aria-pressed')).toBe('false');
     });
 

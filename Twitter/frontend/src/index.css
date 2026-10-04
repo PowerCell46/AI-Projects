@@ -25,7 +25,6 @@
 
     /* The feed's alphas on --pale. Text that the brief put under .52 is raised to it (4.7:1 on --deep and --cell). */
     --pale-post-body: rgb(220 230 250 / 0.94);
-    --pale-avatar-initials: rgb(220 230 250 / 0.85);
     --pale-menu-item: rgb(220 230 250 / 0.75);
     --pale-action-icon: rgb(220 230 250 / 0.42);
     --pale-user-avatar-border: rgb(220 230 250 / 0.3);
@@ -37,15 +36,6 @@
     --pale-tab-hover: rgb(220 230 250 / 0.8);
     --pale-bio: rgb(220 230 250 / 0.62);
 
-    /* Placeholders behind the initials of an author without a picture; one is picked per user id. */
-    --avatar-tint-0: rgb(78 139 255 / 0.18);
-    --avatar-tint-1: rgb(127 212 193 / 0.16);
-    --avatar-tint-2: rgb(232 196 138 / 0.16);
-    --avatar-tint-3: rgb(255 155 176 / 0.16);
-    --avatar-tint-4: rgb(156 192 255 / 0.18);
-    --avatar-tint-5: rgb(198 166 245 / 0.16);
-    --avatar-tint-6: rgb(111 227 176 / 0.16);
-    --avatar-tint-7: rgb(245 185 138 / 0.16);
     --glow-underline: rgb(78 139 255 / 0.45);
     --glow-hairline: rgb(78 139 255 / 0.14);
     --alarm-hairline: rgb(255 122 92 / 0.18);
