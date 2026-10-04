@@ -1,14 +1,14 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery;
 
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.MailClaimHeldException;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailDeliveryService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailDispatchService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailInboxService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.OutgoingMail;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDispatchService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.OutgoingMail;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

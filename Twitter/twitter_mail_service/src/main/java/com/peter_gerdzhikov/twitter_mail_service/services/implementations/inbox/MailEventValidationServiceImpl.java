@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,7 +9,7 @@ import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.InvalidMailEventException;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailEventValidationService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailEventValidationService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

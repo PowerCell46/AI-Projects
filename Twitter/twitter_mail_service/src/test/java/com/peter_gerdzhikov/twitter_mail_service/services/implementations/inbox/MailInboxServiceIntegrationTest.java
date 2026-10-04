@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -12,8 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailInboxService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 import com.peter_gerdzhikov.twitter_mail_service.support.AbstractRedisIntegrationTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

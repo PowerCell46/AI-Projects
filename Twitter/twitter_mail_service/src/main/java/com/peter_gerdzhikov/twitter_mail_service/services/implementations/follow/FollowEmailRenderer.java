@@ -1,5 +1,7 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follow;
 
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.EmailTemplate;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 import java.util.Map;
 import java.util.Set;
 

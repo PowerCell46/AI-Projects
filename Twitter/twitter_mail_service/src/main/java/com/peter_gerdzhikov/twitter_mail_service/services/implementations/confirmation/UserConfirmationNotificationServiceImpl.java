@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.confirmation;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -7,10 +7,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserConfirmationRequestedEventDTO;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailDispatchService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailEventValidationService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.OutgoingMail;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.UserConfirmationNotificationService;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDispatchService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailEventValidationService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.OutgoingMail;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.confirmation.UserConfirmationNotificationService;
 
 import lombok.extern.slf4j.Slf4j;
 

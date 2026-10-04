@@ -1,5 +1,6 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follow;
 
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

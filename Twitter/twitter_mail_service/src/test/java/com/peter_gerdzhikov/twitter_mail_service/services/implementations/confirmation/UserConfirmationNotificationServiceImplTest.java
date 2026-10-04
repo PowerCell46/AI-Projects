@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.confirmation;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -27,9 +27,11 @@ import com.peter_gerdzhikov.twitter_mail_service.exceptions.InvalidMailEventExce
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.MailClaimHeldException;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.TransientMailDeliveryException;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailDeliveryService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailInboxService;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery.MailDispatchServiceImpl;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox.MailEventValidationServiceImpl;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;

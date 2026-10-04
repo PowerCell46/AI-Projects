@@ -1,5 +1,6 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.confirmation;
 
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 import java.time.Instant;
 
 import org.junit.jupiter.api.Test;

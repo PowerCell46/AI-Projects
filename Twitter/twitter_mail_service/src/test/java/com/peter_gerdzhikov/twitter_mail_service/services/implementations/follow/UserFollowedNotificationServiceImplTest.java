@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follow;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,9 +20,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.InvalidMailEventException;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailDeliveryService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailInboxService;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery.MailDispatchServiceImpl;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox.MailEventValidationServiceImpl;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;

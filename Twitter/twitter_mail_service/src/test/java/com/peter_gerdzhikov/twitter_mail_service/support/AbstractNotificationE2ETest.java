@@ -19,8 +19,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserConfirmationRequestedEventDTO;
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.UserConfirmationNotificationService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.UserFollowedNotificationService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.confirmation.UserConfirmationNotificationService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.follow.UserFollowedNotificationService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

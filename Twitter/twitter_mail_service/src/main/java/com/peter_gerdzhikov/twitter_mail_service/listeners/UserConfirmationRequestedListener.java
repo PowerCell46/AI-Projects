@@ -4,7 +4,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserConfirmationRequestedEventDTO;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.UserConfirmationNotificationService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.confirmation.UserConfirmationNotificationService;
 
 import lombok.RequiredArgsConstructor;
 

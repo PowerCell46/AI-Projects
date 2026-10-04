@@ -79,11 +79,11 @@ test's own key; TTLs are read with Redis `TTL`. `TESTING.md` lists every e2e sce
 | 6 | Confirmation pipeline | 2026-10-01 |
 | 7 | Failures and DLT | 2026-10-01 |
 | 8 | Playwright e2e on real emails (Q10, Q12) | 2026-10-01 |
-| 9 | Phase 1 hardening (`exploit-report-2026-10-01.md`) | 2026-10-01 |
+| 9 | Phase 1 hardening (`SECURITY-AUDITS.md`) | 2026-10-01 |
 | 10 | Follow test catalog | 2026-10-02 |
 | 11 | Follow template and `FollowEmailRenderer` | 2026-10-02 |
 | 12 | Follow pipeline and Kafka (the Mailpit look check was waived) | 2026-10-02 |
-| 13 | Phase 2 hardening (`exploit-report-2026-10-02-phase2.md`) | 2026-10-02 |
+| 13 | Phase 2 hardening (`SECURITY-AUDITS.md`) | 2026-10-02 |
 
 ---
 
@@ -112,11 +112,7 @@ Not plan steps; things the build left behind. Each needs a decision or a small j
    gateway's `user.followed` change is committed (`85019be`).
 6. **`APP_BASE_URL` with a trailing slash gives `//feed`.** `.env.example` says not to end it with a slash;
    nothing enforces it. Decide: strip it in `FollowEmailRenderer`, or leave it documented.
-7. **`CONFIRMATION_MAIL_SENT_TTL` is not checked.** The follow window now fails startup when zero or negative (exploit
-   finding 4); the confirmation TTL has the same hole.
-8. **The `services` packages are flat past the style rule.** `services/interfaces` has 8 files and
-   `services/implementations` has 10; `java-code-style` groups a package into subpackages above 5. Left as phase 1 had
-   it. Decide: regroup, or accept.
+7. **`CONFIRMATION_MAIL_SENT_TTL` is not checked.** The follow window now fails startup when zero or negative (`SECURITY-AUDITS.md`); the confirmation TTL has the same hole.
 
 ## Out of scope
 
@@ -131,22 +127,22 @@ Not plan steps; things the build left behind. Each needs a decision or a small j
 - **Blocking retries hold a partition** for up to about 4 minutes while SMTP is down. **Trigger:** latency
   complaints → `@RetryableTopic`, with a schedule that covers outages. One recipient can cause it, not only an
   outage: an account on a domain that always answers `4xx` holds the partition its `followeeId` hashes to for about
-  242s per follow event (exploit report 2026-10-02, finding 3).
+  242s per follow event (`SECURITY-AUDITS.md`, phase 2).
 - **Redis AOF is `everysec`**, so a crash can lose about 1s of dedupe keys, which can only cause duplicates.
   **Permanent.**
 - **No DLT replay tool (Q8).** Dead-lettered records are only logged. **Trigger:** the first dead-lettered record
   someone wants delivered → port SignalFlow's `dlt-replay` profile.
 - **`confirmationUrl`, `followeeEmail` and both usernames are trusted as sent (Q7).** A writer to Kafka could make
   the account send any link or email any address, and can read the follow graph and recipient addresses from
-  `user.followed` and its DLT (finding 5). **Trigger:** Kafka reachable beyond a private network → a prefix check
+  `user.followed` and its DLT (`SECURITY-AUDITS.md`). **Trigger:** Kafka reachable beyond a private network → a prefix check
   against `CONFIRMATION_LINK_BASE_URL`, plus Kafka TLS/SASL (the gateway's existing gap).
 - **Gmail sending quota** (about 500 recipients a day), shared by both emails. **Trigger:** it is hit → SignalFlow's
   quota pause-and-resume, including the `5.4.5`-is-transient fix.
 - **No volume cap on follow emails.** The 24h window stops repeats for one pair, not fan-out: one account that
-  follows N users, or N accounts that follow one user, send N emails (finding 1). The cap belongs on the gateway's
+  follows N users, or N accounts that follow one user, send N emails (`SECURITY-AUDITS.md`). The cap belongs on the gateway's
   follow endpoint (its "no rate limiting" gap). **Trigger:** abuse, or the Gmail quota is hit.
 - **A failed send leaves no window.** A recipient whose mailbox bounces is retried on every new follow event, so a
-  follow/unfollow loop costs one SMTP attempt, one bounce and one DLT record each (finding 2). **Trigger:** bounce
+  follow/unfollow loop costs one SMTP attempt, one bounce and one DLT record each (`SECURITY-AUDITS.md`). **Trigger:** bounce
   complaints or a sender-reputation hit → a short negative window after a permanent failure.
 - **No unsubscribe or opt-out for follow emails**, and no `List-Unsubscribe`. **Trigger:** a complaint, or
   approaching the bulk-sender thresholds → a notification setting in the gateway plus a signed one-click link.
@@ -156,5 +152,9 @@ Not plan steps; things the build left behind. Each needs a decision or a small j
 - **The follow email links to `/feed`, not to the follower's profile (Q4).** **Trigger:** the SPA gets a profile page.
 - **A fully dark HTML email can be inverted or flattened** by some clients' dark mode (Outlook, the Gmail app).
   **Trigger:** rendering complaints → a light variant.
-- **Dev compose has fixed credentials and plaintext SMTP to Mailpit** (bound to `127.0.0.1`). **Trigger:** any shared
-  environment.
+- **Dev compose has fixed credentials and plaintext SMTP to Mailpit** (bound to `127.0.0.1`), the `Dockerfile` uses
+  floating `eclipse-temurin` tags, and the e2e Postgres is published on every interface. **Trigger:** any shared
+  environment → generated secrets, pinned digests, no published e2e Postgres port.
+- **`/actuator/health` shows details** (`show-details=always`: working directory, free disk, Redis version) on port
+  8082, which no compose file publishes. **Trigger:** reachable from outside the internal network →
+  `when-authorized` with a security starter, or bind the management port to loopback.

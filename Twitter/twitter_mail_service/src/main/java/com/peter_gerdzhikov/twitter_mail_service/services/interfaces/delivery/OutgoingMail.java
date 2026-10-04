@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.interfaces;
+package com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery;
 
 import java.time.Duration;
 

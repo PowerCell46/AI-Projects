@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.interfaces;
+package com.peter_gerdzhikov.twitter_mail_service.services.interfaces.follow;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.InvalidMailEventException;

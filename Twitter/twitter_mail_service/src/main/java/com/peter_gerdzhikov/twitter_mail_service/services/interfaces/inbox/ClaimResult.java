@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.interfaces;
+package com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox;
 
 /**
  * Outcome of {@link MailInboxService#claim}. {@code HELD} covers both a genuinely live claim held by

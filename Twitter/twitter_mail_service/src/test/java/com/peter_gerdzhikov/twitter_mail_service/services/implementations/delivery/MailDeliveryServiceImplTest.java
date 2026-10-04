@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery;
 
 import java.net.SocketTimeoutException;
 import java.util.Map;
@@ -124,7 +124,7 @@ class MailDeliveryServiceImplTest {
     class Classify {
 
         @ParameterizedTest
-        @MethodSource("com.peter_gerdzhikov.twitter_mail_service.services.implementations.MailDeliveryServiceImplTest#smtpReturnCodes")
+        @MethodSource("com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery.MailDeliveryServiceImplTest#smtpReturnCodes")
         void should_classify_an_smtp_address_failure_by_its_return_code(int returnCode, boolean expectedPermanent) throws Exception {
             when(mailSender.createMimeMessage()).thenReturn(message);
             SMTPAddressFailedException smtpException = new SMTPAddressFailedException(
@@ -139,7 +139,7 @@ class MailDeliveryServiceImplTest {
         }
 
         @ParameterizedTest
-        @MethodSource("com.peter_gerdzhikov.twitter_mail_service.services.implementations.MailDeliveryServiceImplTest#smtpReturnCodes")
+        @MethodSource("com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery.MailDeliveryServiceImplTest#smtpReturnCodes")
         void should_classify_an_smtp_send_failure_by_its_return_code(int returnCode, boolean expectedPermanent) {
             when(mailSender.createMimeMessage()).thenReturn(message);
             SMTPSendFailedException smtpException = new SMTPSendFailedException(

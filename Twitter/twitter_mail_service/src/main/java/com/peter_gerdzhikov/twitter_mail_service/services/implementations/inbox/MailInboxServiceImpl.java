@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox;
 
 import java.time.Duration;
 import java.util.List;
@@ -8,8 +8,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailInboxService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 
 import lombok.extern.slf4j.Slf4j;
 

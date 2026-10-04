@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_mail_service.services.implementations;
+package com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery;
 
 import java.util.function.Function;
 
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.TransientMailDeliveryException;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
 
 @Service
 public class MailDeliveryServiceImpl implements MailDeliveryService {
