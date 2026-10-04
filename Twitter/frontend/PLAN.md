@@ -232,9 +232,9 @@ No question needed re-asking.
   - **Frontend (`SECURITY-FINDINGS.md` #5):** `usePagedList` follows a cursor with no progress check, so a server that
     returns empty pages with a cursor that never advances, or no `nextCursor`, makes it refetch forever. Not reachable
     against the real gateway.
-  - **Tweet service** (`exploit-report-2026-10-04-frontend-phase3.md` #2): a `since` outside `java.util.Date`'s range
+  - **Tweet service** (`twitter_tweet_service/SECURITY-AUDITS.md`): a `since` outside `java.util.Date`'s range
     answers `500` and logs a stack trace.
-  - **Timeline** (`exploit-report-2026-10-04-frontend-phase3.md` #2–#9): a retry after an unfollow re-inserts rows and a
+  - **Timeline** (`twitter_timeline_service/SECURITY-AUDITS.md`): a retry after an unfollow re-inserts rows and a
     dead-lettered event leaves them; no per-pair dampening of follow toggling (2 internal calls + 50 commits per
     event); `FEED_BACKFILL_SIZE` above 100 starts and then dead-letters every follow; events that can never succeed are
     retried ~4 minutes each; a far-past `occurredAt` skips the 7-day window; a forged self-follow event deletes the

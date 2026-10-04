@@ -5,7 +5,7 @@
 **Scope:** `Twitter/frontend/src` (auth flow, feed, saved posts, compose modal with image upload, likes, view
 reporting), `index.html`, `vite.config.ts`, `npm audit`. Where the SPA trusts the backend (picture URLs, image
 content types, cookie flags, CSRF posture, views endpoint) the gateway, tweet service and timeline service code was
-read to confirm the contract; those services have their own audits. Builds on `exploit-report-2026-10-01.md`, which
+read to confirm the contract; those services have their own audits. Builds on `twitter_mail_service/SECURITY-AUDITS.md`, which
 predates the feed, compose, likes, saved and views code; that code is the new ground here.
 
 No Critical, High or Medium findings. Two Low and two Informational. Nothing here is exploitable today without a
