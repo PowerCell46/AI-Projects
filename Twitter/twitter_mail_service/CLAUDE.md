@@ -13,9 +13,9 @@ gates. Read it before starting a task. Calls made *during* implementation go in 
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
-`../docker-compose.yml` (the Twitter root, one level up) runs this service's infra: `kafka`, `redis` and
+`../docker-compose.infra.yml` (the Twitter root, one level up) runs this service's infra: `kafka`, `redis` and
 `mailpit`. For local dev: copy `../.env.example` to `../.env` (`REDIS_PASSWORD` and `MAIL_FROM` are required),
-run `docker compose up -d kafka redis mailpit` from the Twitter root, export the env
+run `docker compose -f docker-compose.infra.yml up -d kafka redis mailpit` from the Twitter root, export the env
 (`set -a; . ../.env; set +a`), then `./mvnw spring-boot:run` serves the app on **:8082**. SMTP defaults to
 Gmail; to send to Mailpit instead (UI on `localhost:8025`) set
 `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, so nothing real gets sent.

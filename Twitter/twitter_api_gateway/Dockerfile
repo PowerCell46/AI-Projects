@@ -46,4 +46,4 @@ ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
 
 # docker build -t twitter-api-gateway .
 
-# docker run -d --name twitter-api-gateway -p 8080:8080 -e DATASOURCE_URL=___ -e DATASOURCE_USERNAME=___ -e DATASOURCE_PASSWORD=___ -e JWT_SECRET=___ twitter-api-gateway
+# docker run -d --name twitter-api-gateway -p 8080:8080 -e API_GATEWAY_DATASOURCE_URL=___ -e API_GATEWAY_DATASOURCE_USERNAME=___ -e API_GATEWAY_DATASOURCE_PASSWORD=___ -e JWT_SECRET=___ twitter-api-gateway

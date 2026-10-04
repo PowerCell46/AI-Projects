@@ -1,5 +1,5 @@
 services:
-  postgres:
+  postgres-api-gateway:
     image: postgres:18
     ports:
       - "5452:5432"
@@ -141,9 +141,9 @@ services:
     ports:
       - "8180:8080"
     environment:
-      DATASOURCE_URL: jdbc:postgresql://postgres:5432/twitter_e2e
-      DATASOURCE_USERNAME: twitter_e2e
-      DATASOURCE_PASSWORD: twitter_e2e
+      API_GATEWAY_DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/twitter_e2e
+      API_GATEWAY_DATASOURCE_USERNAME: twitter_e2e
+      API_GATEWAY_DATASOURCE_PASSWORD: twitter_e2e
       JWT_SECRET: e2e-test-only-jwt-secret-not-for-any-real-use-0123456789abcdef
       INTERNAL_API_SECRET: e2e-test-only-internal-secret-not-for-any-real-use-0123456789
       COOKIE_SECURE: "false"
@@ -174,7 +174,7 @@ services:
       retries: 5
       start_period: 40s
     depends_on:
-      postgres:
+      postgres-api-gateway:
         condition: service_healthy
       kafka:
         condition: service_healthy

@@ -11,8 +11,8 @@ documented in `EVENTS.md` (written in step 9).
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
-`../docker-compose.yml` (the Twitter root, one level up) runs Mongo (a single-node replica set), Kafka and
-MinIO. For local dev: copy `../.env.example` to `../.env`, run `docker compose up -d` from the Twitter root,
+`../docker-compose.infra.yml` (the Twitter root, one level up) runs Mongo (a single-node replica set), Kafka and
+MinIO. For local dev: copy `../.env.example` to `../.env`, run `docker compose -f docker-compose.infra.yml up -d` from the Twitter root,
 export the env (`set -a; . ../.env; set +a`), then `./mvnw spring-boot:run` serves the app on **:8081**.
 Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`.
 

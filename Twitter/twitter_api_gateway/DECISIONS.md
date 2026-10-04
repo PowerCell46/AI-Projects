@@ -20,8 +20,8 @@ final rule.
 The plan puts `.env.example` at the Twitter root, so it holds the compose variables and the app variables
 together. Postgres publishes the default 5432 and Kafka 9094, same as SignalFlow, so the app's property
 defaults (`localhost:5432`, `localhost:9094`) work with no env. The catch: SignalFlow's compose and this
-one can't run at the same time. Changing a host port means also setting `DATASOURCE_URL` /
-`KAFKA_BOOTSTRAP_SERVERS`. Optional `DATASOURCE_*` lines are commented out in `.env.example` because an
+one can't run at the same time. Changing a host port means also setting `API_GATEWAY_DATASOURCE_URL` /
+`KAFKA_BOOTSTRAP_SERVERS`. Optional `API_GATEWAY_DATASOURCE_*` lines are commented out in `.env.example` because an
 exported empty value would override the property default with an empty string.
 
 ## Step 1 — the test clock stands still

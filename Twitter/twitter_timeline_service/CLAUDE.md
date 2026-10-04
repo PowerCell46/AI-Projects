@@ -12,9 +12,9 @@ steps with gates. Read it before starting a task. Calls made *during* implementa
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
-`../docker-compose.yml` (the Twitter root, one level up) runs this service's own Postgres (`postgres-timeline`,
+`../docker-compose.infra.yml` (the Twitter root, one level up) runs this service's own Postgres (`postgres-timeline`,
 host port **5433**) next to Kafka and the rest. For local dev: copy `../.env.example` to `../.env`, run
-`docker compose up -d` from the Twitter root, export the env (`set -a; . ../.env; set +a`), then
+`docker compose -f docker-compose.infra.yml up -d` from the Twitter root, export the env (`set -a; . ../.env; set +a`), then
 `./mvnw spring-boot:run` serves the app on **:8083**. Other goals: `./mvnw clean install`, `./mvnw test`,
 `./mvnw verify`.
 

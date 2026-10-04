@@ -1,170 +1,135 @@
+# The full stack: the infra from docker-compose.infra.yml plus the four services, built from their Dockerfiles.
+# For local development with the services run from the IDE, start only the infra:
+#   docker compose -f docker-compose.infra.yml up -d
+include:
+  - docker-compose.infra.yml
+
+x-service: &service
+  restart: unless-stopped
+  # The shared secrets and tunables. The environment block of each service wins over this file, so the hosts
+  # and ports below point at the compose network even when .env holds the localhost values for running on the host
+  env_file: .env
+
 services:
-  postgres:
-    image: postgres:18
-    restart: unless-stopped
+  gateway:
+    <<: *service
+    build: ./twitter_api_gateway
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:8080:8080"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${POSTGRES_DB:-twitter_api_gateway_db}
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 512M
-    volumes:
-      - postgres_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-twitter_api_gateway_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  postgres-timeline:
-    image: postgres:18
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:5433:5432"
-    environment:
-      POSTGRES_USER: ${TIMELINE_POSTGRES_USER:?TIMELINE_POSTGRES_USER must be set}
-      POSTGRES_PASSWORD: ${TIMELINE_POSTGRES_PASSWORD:?TIMELINE_POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${TIMELINE_POSTGRES_DB:-twitter_timeline_service_db}
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 512M
-    volumes:
-      - postgres_timeline_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${TIMELINE_POSTGRES_USER} -d ${TIMELINE_POSTGRES_DB:-twitter_timeline_service_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  kafka:
-    image: apache/kafka:4.3.1
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9094:9094"
-    environment:
-      CLUSTER_ID: 3nqZ0hYmS5uGx1c8Bv7KtA
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      SERVER_PORT: 8080
+      API_GATEWAY_DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/${POSTGRES_DB:-twitter_api_gateway_db}
+      API_GATEWAY_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      API_GATEWAY_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MINIO_URL: http://minio:9000
+      TWEET_SERVICE_URL: http://tweet-service:8081
+      TIMELINE_SERVICE_URL: http://timeline-service:8083
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: 1024M
-    volumes:
-      - kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9094"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 40s
+    depends_on:
+      postgres-api-gateway:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
-  minio:
-    image: alpine/minio:RELEASE.2025-10-15T17-29-55Z
-    restart: unless-stopped
-    user: "0:0"
-    command: server /data --console-address ":9001"
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+  tweet-service:
+    <<: *service
+    build: ./twitter_tweet_service
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY must be set}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY must be set}
+      SERVER_PORT: 8081
+      MONGODB_URI: mongodb://mongo:27017/twitter_tweet_service_db?directConnection=true
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MINIO_URL: http://minio:9000
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
-    volumes:
-      - minio_data:/data
+          memory: 768M
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 40s
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
-  mongo:
-    image: mongo:8.2
-    restart: unless-stopped
-    # A single-node replica set, because multi-document transactions need one
-    command: ["--replSet", "rs0", "--bind_ip_all"]
-    ports:
-      - "127.0.0.1:27017:27017"
+  timeline-service:
+    <<: *service
+    build: ./twitter_timeline_service
+    environment:
+      SERVER_PORT: 8083
+      TIMELINE_DATASOURCE_URL: jdbc:postgresql://postgres-timeline:5432/${TIMELINE_POSTGRES_DB:-twitter_timeline_service_db}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GATEWAY_INTERNAL_URL: http://gateway:8080
+      TWEET_SERVICE_URL: http://tweet-service:8081
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 1024M
-    volumes:
-      - mongo_data:/data/db
-    # Initiates the replica set on the first run, so `docker compose up -d` is enough. Healthy once rs.status().ok is 1
+          memory: 768M
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          mongosh --quiet --eval
-          "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]}).ok }"
-          | grep -q 1
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
-
-  redis:
-    image: redis:8.10.2
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set - redis-server treats an empty --requirepass as no password at all}"]
-    ports:
-      - "127.0.0.1:6379:6379"
-    environment:
-      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 128M
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8083/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 40s
+    depends_on:
+      postgres-timeline:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      tweet-service:
+        condition: service_healthy
 
-  mailpit:
-    image: axllent/mailpit:v1.31.2
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:1025:1025"
-      - "127.0.0.1:8025:8025"
+  mail-service:
+    <<: *service
+    build: ./twitter_mail_service
+    environment:
+      SERVER_PORT: 8082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      # Mail goes to Mailpit (http://localhost:8025), which takes it with no auth and no TLS
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 128M
-
-volumes:
-  postgres_data:
-  postgres_timeline_data:
-  kafka_data:
-  minio_data:
-  mongo_data:
-  redis_data:
+          cpus: "1.0"
+          memory: 768M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy

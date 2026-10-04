@@ -71,8 +71,8 @@ Twitter/
 ### Data (Q7, Q18)
 
 - **Own Postgres container** `postgres-timeline` (`postgres:18`, `127.0.0.1:5433`, volume
-  `postgres_timeline_data`, healthcheck and limits as `postgres`), database `twitter_timeline_service_db`, env
-  `TIMELINE_POSTGRES_USER/PASSWORD/DB`.
+  `postgres_timeline_data`, healthcheck and limits as `postgres-api-gateway`), database `twitter_timeline_service_db`, env
+  `TIMELINE_DATASOURCE_USERNAME/PASSWORD` (shared with the app) and `TIMELINE_POSTGRES_DB`.
 - **App env names are prefixed** because the root `.env` is shared: `TIMELINE_DATASOURCE_URL` (default
   `jdbc:postgresql://localhost:5433/twitter_timeline_service_db`), `TIMELINE_DATASOURCE_USERNAME`,
   `TIMELINE_DATASOURCE_PASSWORD`. `SERVER_PORT` stays out of `.env` (tweet service `DECISIONS.md`).
