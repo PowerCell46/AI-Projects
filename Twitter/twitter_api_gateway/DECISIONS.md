@@ -1,539 +1,158 @@
 # Decisions
 
-Non-obvious calls made *during* implementation — the ones that would be hard to re-derive from the
-code alone. Design settled up front lives in `PLAN.md`; conventions live in `CLAUDE.md`.
-
-One entry per decision: what was chosen, what it was chosen over, and why.
-
----
-
-## Step 1 — a minimal `SecurityConfiguration` ships before step 4
-
-Step 1's gate needs `GET /actuator/health` to answer `200`, but the real `SecurityConfiguration` (JWT
-resource server, cookie resolver, entry point) is step 4. Without any chain, Spring Security's default
-locks health behind a login. So step 1 ships a stub: CSRF off, stateless, health public, everything else
-`authenticated()`. Step 4 replaces it in place; the public/authenticated split already matches the plan's
-final rule.
-
-## Step 1 — one root `.env.example`, Postgres on 5432, Kafka on 9094
-
-The plan puts `.env.example` at the Twitter root, so it holds the compose variables and the app variables
-together. Postgres publishes the default 5432 and Kafka 9094, same as SignalFlow, so the app's property
-defaults (`localhost:5432`, `localhost:9094`) work with no env. The catch: SignalFlow's compose and this
-one can't run at the same time. Changing a host port means also setting `API_GATEWAY_DATASOURCE_URL` /
-`KAFKA_BOOTSTRAP_SERVERS`. Optional `API_GATEWAY_DATASOURCE_*` lines are commented out in `.env.example` because an
-exported empty value would override the property default with an empty string.
-
-## Step 1 — the test clock stands still
-
-`MutableClock` is frozen at the instant it was created (truncated to microseconds) and moves only through
-`advance`, `setInstant` and `reset`. A ticking clock would make the resend-cooldown and expiry tests depend
-on how long the test took; a frozen one makes "61 seconds later" exact. It is registered as a `@Primary`
-bean via `TestClockConfiguration`, imported once on `AbstractPostgresIntegrationTest`, so every integration
-test gets it. It is shared across a cached context, so a test that advances it calls `reset()` afterwards.
-
-## Step 1 — `TestUsers` returns plain credentials, not entities
-
-`User` and the register DTO don't exist until steps 3 and 5, so `TestUsers.unique()` returns a `TestUser`
-(username, email, password) from an `AtomicLong` sequence. Later steps add persistence helpers next to it.
-
-## Step 1 — skills copied as real directories
-
-SignalFlow keeps `java-code-style` as a relative symlink to a sibling folder; copied as-is it dangled.
-All four skills are plain directories under `Twitter/.claude/skills/`.
-
-## Step 3 — bulk repository deletes flush and clear the persistence context
-
-`deleteUnconfirmedCreatedBefore` and `deleteByUserId` are `@Modifying(flushAutomatically = true,
-clearAutomatically = true)` bulk JPQL. Bulk deletes bypass the persistence context, so without the clear a
-caller in the same transaction would still see deleted rows as managed entities. The user delete relies on
-the DB `ON DELETE CASCADE` (from `@OnDelete`) to remove tokens.
-
-## Step 3 — repository tests backdate rows with JDBC
-
-`createdAt` is `@CreationTimestamp` and not updatable, so tests that need old rows (cleanup cutoff, outbox
-ordering) `UPDATE ... SET created_at` through `JdbcTemplate` with fixed instants, then clear the persistence
-context. No wall-clock reads and no sleeps.
-
-## Step 3 — normalisation uses `Locale.ROOT`
-
-`email` and `usernameNormalized` are lowercased with `Locale.ROOT`, so a Turkish default locale can't turn
-`I` into a dotless `ı` and break uniqueness or lookups.
-
-## Step 4 — token `iat`/`exp` and error-body timestamps use the system clock
-
-`TokenServiceImpl` and `ErrorResponseWriter`/`GlobalExceptionHandler` call `Instant.now()` rather than the
-`Clock` bean. The decoder validates `exp` against the system clock, so a token minted from a moved test
-clock would come out already expired (the plan says JWT times stay on system time). An error body's
-`timestamp` compares against nothing, so it follows the same choice. This is a deliberate exception to
-CLAUDE.md's "never call `Instant.now()` in main code"; everything that *compares* against now still uses
-`Clock`.
-
-## Step 4 — a token grants no authorities
-
-`JwtAuthenticationConverter` returns an empty authority list. There are no roles, so "authenticated" is the
-only distinction the chain draws. The alternative, Spring's default converter, would derive `SCOPE_*`
-authorities from a `scope` claim we never set.
-
-## Step 4 — `AuthController` starts with logout and me only
-
-Steps 5–8 add register, confirm, resend and login to it. `me` builds its body from the JWT claims in the
-controller, since there is nothing to delegate to a service (no database read).
-
-## Step 4 — `TestJwts` tampers the first signature character
-
-Flipping the last base64url character of a 32-byte HS256 signature can leave the decoded bytes unchanged
-(it holds padding bits), which would make a "tampered" token still verify. The first character always
-changes the signature.
-
-## Step 5 — `ConfirmationRequestService` is shared by register and resend
-
-The plan lists `ConfirmationTokenService` (generate, hash) and `OutboxService.enqueue`, but "store a fresh
-token and queue the event" is one unit that register (step 5) and resend (step 7) both need. It lives in
-`ConfirmationRequestService.requestConfirmation(user)`, which joins the caller's transaction, so resend
-only adds its cooldown check and the delete of old tokens.
-
-## Step 5 — the token hash is SHA-256 over the UTF-8 bytes of the token string
-
-The plan says "over the raw token's bytes". The 43-character string is what arrives in the confirm request,
-so hashing it directly avoids a decode step and can't disagree with what the link carried.
-
-## Step 5 — constraint names are constants on `User`
-
-`User.EMAIL_CONSTRAINT` and `User.USERNAME_CONSTRAINT` feed both the `@UniqueConstraint` names and
-`AuthServiceImpl`'s mapping of a lost race to the right 409. A rename can't silently break the mapping. A
-violation of any other constraint is rethrown and falls to the generic 409 handler.
-
-## Step 5 — event JSON has no field order
-
-Jackson 3 sorts properties alphabetically by default, so the payload's key order isn't declaration order.
-The contract is the set of field names; tests assert them in any order.
-
-## Step 6 — the poll job's initial delay equals its poll delay
-
-`@Scheduled(fixedDelay)` fires once immediately at startup by default. The test profile sets the delay to 24h
-so the poller never drains rows mid-suite; without `initialDelay` it would still run once at context start.
-In production the first poll is 3s after startup, which is harmless.
-
-## Step 6 — `KafkaTopicConfiguration`, not `KafkaTopicConfig`
-
-The plan's name; renamed to match `ClockConfiguration` and `SecurityConfiguration`. `@EnableScheduling` lives on
-its own `SchedulingConfiguration` so `@DataJpaTest` slices don't pick it up.
-
-## Step 6 — a failed row doesn't stop the batch, and an interrupt counts as a failed attempt
-
-One bad row (or a timeout) records the failure and the loop moves on, so a poison row can't block newer ones.
-An `InterruptedException` restores the interrupt flag, counts as an attempt, and the loop still proceeds; the
-next send then fails fast.
-
-## Step 7 — confirm and resend live in `EmailConfirmationService`, not `AuthService`
-
-Keeps `AuthServiceImpl` (register, later login) free of the clock and cooldown dependencies. Resend reuses
-`ConfirmationRequestService` from step 5.
-
-## Step 7 — resend reads the user before locking it
-
-`findByEmail`, then `lockById`, then the cooldown check. A confirm that commits between the read and the lock
-can still cost one extra email to an already-confirmed user. That is harmless, and the cooldown still bounds it,
-so the lock stays as the plan says instead of a second read.
-
-## Step 7 — a token expiring exactly now is expired
-
-The check is `expiresAt.isAfter(now)`, so the boundary instant is rejected. The cooldown mirrors it: a token
-issued exactly one cooldown ago no longer throttles.
-
-## Step 8 — the unknown-identifier path hashes the submitted password
-
-`passwordEncoder.encode(password)` runs and is discarded, as the plan says, so the unknown path costs one bcrypt
-like a wrong password. `login` has no `@Transactional`: it only reads.
-
-## Step 8 — the controller mints the cookie, the service returns the user
-
-`AuthService.login` returns the `User`; `AuthController` calls `TokenService.mint` and `CookieFactory.issue`.
-The service stays free of HTTP and cookie concerns.
-
-## Step 8 — password capped at 72 characters on login
-
-`LoginRequestDTO.password` is `@Size(max = 72)`, matching register and bcrypt's input limit, so an oversized
-password is a 400 rather than a bcrypt error.
-
-## Step 9 — the job logs the count, the service only deletes
-
-`UnconfirmedUserCleanupJob` writes the INFO line (also when the count is 0, once a day); the service returns the
-count and stays log-free, like the outbox publisher pair. The cutoff comes from the injected `Clock`, so the
-integration test backdates rows relative to the same clock instead of sleeping.
-
-## Step 10 — the audit's password crash is fixed with a byte-size constraint
-
-`@Size(max = 72)` counts characters and bcrypt takes 72 bytes, so a multi-byte password gave a 500. A custom
-`@MaxUtf8Bytes(72)` sits beside `@Size` on register and login. `@Size` stays for the minimum and as a cheap
-character bound.
-
-## Step 10 — startup refuses a `JWT_SECRET` under 32 bytes
-
-Nimbus rejects shorter HS256 keys only when signing, which turns a misconfiguration into a 500 on every login.
-Failing at startup surfaces it before traffic does.
-
-## Step 10 — concurrency tests run over HTTP with a start latch
-
-`AuthConcurrencyIntegrationTest` releases 8 requests at once and asserts on status counts and row counts,
-never on timing, so it needs no sleeps. It sits in `TESTING.md` under "Concurrency".
-
-## Step 11 — MinIO runs from `alpine/minio`, pinned, as root
-
-`minio/minio` is no longer pullable from Docker Hub and no upstream tag could be verified, so compose and
-Testcontainers use `alpine/minio:RELEASE.2025-10-15T17-29-55Z` (declared a compatible substitute for
-`minio/minio`). That image runs as an unprivileged `minio` user that can't write `/data`, so both run it as
-root. The compose healthcheck is `wget` on `/minio/health/live` because the image has no `mc`.
-
-## Step 11 — `okhttp-jvm` is a direct dependency
-
-`io.minio:minio` pulls `okhttp` 5.x, whose `okhttp` artifact is an empty shell with `okhttp-jvm` at runtime
-scope only. `MinioClient.builder()` exposes `okhttp3` types, so main code failed to compile without it.
-
-## Step 11 — every full-context test extends `AbstractMinioIntegrationTest`
-
-The bucket initializer is an `ApplicationRunner` that fails startup when MinIO is unreachable, so every
-`@SpringBootTest` needs a MinIO container. `AbstractMinioIntegrationTest` extends the Kafka base and feeds
-`app.minio.*` through `@DynamicPropertySource`. `@DataJpaTest` slices don't run runners and stay on the
-Postgres base.
-
-## Step 13 — each picture slot is unique per file, and the FKs have no `ON DELETE` action
-
-`profilePicture` and `profileCoverPicture` are `@OneToOne`, so Hibernate makes each FK column unique: two users
-can't share one `DbFile` row. Deleting a `DbFile` a user still points at is rejected by the FK. The upload flow
-already repoints the user first and deletes the old row second, so neither rule bites it. The alternative,
-`ON DELETE SET NULL`, would hide a flow that deleted in the wrong order.
-
-## Step 13 — the `@DynamicUpdate` test writes the racing column over JDBC
-
-Two Hibernate sessions can't interleave inside one `@DataJpaTest` transaction. The test loads the user, changes
-`bio` with a JDBC `UPDATE` (the racing edit), then sets the picture on the still-managed entity and flushes. Without
-`@DynamicUpdate` the flush would write the stale `null` bio back.
-
-## Step 14 — `ProfileService` returns the response DTO, and a static `ProfileMapper` builds it
-
-`AuthService` returns the entity, but the profile's picture URLs read the lazy `DbFile` associations, which must
-happen inside the transaction. Building the DTO in the service keeps that read there. `ProfileMapper` is a
-static utility because upload and delete (step 16) return the same shape.
-
-## Step 14 — `GET /users/me` can't collide with a username
-
-`GET /api/v1/users/{username}` would answer `me` as a lookup, but usernames need 3+ characters, so no user
-is called `me` and the route just gives 404.
-
-## Step 14 — `@Past` on a birthdate uses the system clock
-
-Bean Validation's default clock provider, not the `Clock` bean, so `@Past` isn't moved by the test clock. The
-future-birthdate test uses a date a year ahead, which no clock drift can flip. Today's date is also rejected,
-since `@Past` excludes it.
-
-## Step 14 — the length checks run on the raw string, before trimming
-
-A bio of 160 characters plus surrounding spaces is a 400. Validating after the trim would mean a custom
-validator or an extra setter on the DTO; the case is a client bug, not one worth accepting.
-
-## Step 15 — the upload body cap matches `PUT` on the two exact picture paths only
-
-`RequestBodySizeLimitFilter` runs before security, so it matches on `getRequestURI()`. Any other method, path
-variant or trailing slash keeps the 8 KB cap; a mismatch fails small, never large. Spring's multipart
-`max-file-size` and `max-request-size` are derived from `app.upload.max-file-bytes` and
-`app.request.max-upload-body-bytes` by placeholder, and `UploadLimitsConfigurationTest` pins that.
-
-## Step 15 — `ObjectStorageService.get` fails with 502 for a missing object
-
-Every MinIO failure, `NoSuchKey` included, becomes `StorageUnavailableException`. The `DbFile` row is the
-source of truth for existence (404 comes from the DB lookup in step 17), so a row whose object is gone is a
-storage fault, not a client error. `delete` of a missing key is a no-op, since MinIO treats it as success.
-
-## Step 15 — `ImageSignatureValidator` is a static utility returning the content type
-
-It needs no Spring dependency, so it follows the utility rules: `detectContentType(byte[])` reads the first
-`HEADER_BYTES` (12) and throws `UnsupportedImageTypeException` (415) for anything else, including a truncated
-header. A WebP is `RIFF` at 0 and `WEBP` at 8; the size field between them is ignored.
-
-## Step 16 — the DB change runs in a `TransactionTemplate`, not `@Transactional`
-
-The new object must be stored before the transaction and the old one deleted after the commit, and a
-`@Transactional` method would put both storage calls inside it. `ProfilePictureServiceImpl` wraps only the
-repoint (and the clear on delete) in the template; unit tests use a real template over a mocked transaction manager.
-
-## Step 16 — the 5 MB limit is checked in the service as well as by Spring
-
-MockMvc never applies Spring's multipart limits, so the service compares `file.getSize()` with
-`app.upload.max-file-bytes` and throws `MaxUploadSizeExceededException`, which the same 413 handler answers.
-`PictureUploadLimitsIntegrationTest` proves the real limits over a real server; it builds the multipart body by
-hand so the request has a `Content-Length` (a streamed body goes out chunked, and the server's 413 mid-upload
-resets the connection under the client).
-
-## Step 16 — concurrent uploads to one slot are not serialised
-
-Probed in step 18: 8 parallel uploads to one slot all answered 200, but only one `DbFile` survived as the
-pointer; the other four rows added (and their objects) are orphans, because each transaction read the same
-old picture and the last pointer write won. Tracked as finding 1 in `exploit-report-2026-09-29-phase2.md`.
-
-## Step 16 — routes are four explicit mappings, not `/me/{slot}`
-
-`RequestBodySizeLimitFilter` matches the two upload paths exactly, and a path variable would accept any string.
-`PictureSlot` carries the slot's getter and setter so the service runs one flow for both.
-
-## Step 17 — file serving reads the row, then streams the object, with no transaction
-
-`FileServiceImpl.open` needs only the row's key, type and size, so it skips `@Transactional`: a transaction held
-open for the length of a download would pin a connection. A row whose object is missing answers 502 (see step 15).
-Any logged-in user can read any file id: ids are random UUIDs and the pictures are public on the profile anyway.
-
-
-## Step 20 — `Follow` stands alone, without `CommonEntity`
-
-A follow is only ever inserted or deleted, so it has no `updatedAt`. The id and `createdAt` are supplied by the
-native insert (`FollowRepository.insertIfAbsent`), so the id has no generator. Truncating `createdAt` to
-microseconds is the caller's job (step 21), because the list cursor is built from it.
-
-## Step 20 — counter statements take a delta, and the counter columns carry a DB default
-
-`UserRepository.addToFollowersCount` / `addToFollowingCount` are single `SET x = x + :delta` statements, called
-with `+1` or `-1`, instead of four increment/decrement methods. HQL updates the `updatable = false` columns
-fine. The columns use `columnDefinition = "bigint not null default 0"` so `ddl-auto=update` can add them to a
-`users` table that already has rows. The same `update` mode does not add the new table-level `@Check` to an
-existing `users` table, so only a fresh schema gets `ck_users_follow_counts_non_negative` (see the
-`ddl-auto` accepted gap in `PLAN.md`).
-
-## Step 20 — the keyset queries wait for step 23
-
-Step 20 covers the counter statements. The "keyset has no gaps and no duplicates at equal `createdAt`"
-repository scenario is written with the list query in step 23.
-
-## Step 21 — the fixed lock order uses `UUID.compareTo`, which is signed
-
-`FollowServiceImpl.adjustCounts` updates the smaller id's counter row first. `UUID.compareTo` compares the two
-halves as signed longs, so an id starting `ffff…` sorts *before* `0000…`. That is fine, since any total order
-works as long as every transaction uses the same one, but the unit test's "larger" id must be `7fff…`, not
-`ffff…`.
-
-## Step 21 — the self-follow check runs after the target lookup
-
-The request carries only a username, so the target is resolved first (one read), then its id is compared with
-the caller's. Nothing is written before the check. A missing or unconfirmed target answers 404 before the
-self check, which can't matter because the caller always exists and is confirmed.
-
-## Step 22 — `followedByMe` is false on every response about your own profile
-
-`PUT /users/me` and the picture upload/delete answers are always about the caller, so they return
-`followedByMe = false` without a query, like `GET` on your own username. Their counts are read from the same
-`User` row the request already loaded.
-
-## Step 23 — list endpoint calls
-
-- **Two exceptions, both 400:** `InvalidCursorException` ("Invalid cursor.") and `InvalidPageSizeException`
-  ("Page size must be between 1 and 100."), one handler method. Size is checked in the service, not with
-  `@Min`/`@Max`, so the message is ours and the rule is unit-testable. A non-numeric size falls to the existing
-  "Malformed request parameter." handler.
-- **Cursor is strict:** `decode` re-encodes what it parsed and must match the input, so padding, signs, leading
-  zeros and upper-case ids are rejected. `?cursor=` (empty) is therefore `400`, not a first page.
-- **Validation order:** size, then cursor, then the user lookup, so a bad parameter is `400` even for an unknown
-  user.
-- **Four repository queries, not one with a null cursor:** first page and after-cursor, for followers and for
-  following. The keyset is written as `createdAt < :c OR (createdAt = :c AND id < :id)`; the id tie-break runs in
-  Postgres, whose UUID order is unsigned bytes and differs from `UUID.compareTo`.
-- **`followedByMe` on list items:** one `IN` query per page, skipped for an empty page. Your own entry in a list is
-  `false`, as on your own profile.
-- **Own service and endpoints on `FollowController`:** `FollowListService` keeps `FollowServiceImpl` free of read
-  paths.
-
-## Step 25 — `spring.servlet.multipart.enabled=true` is set explicitly
-
-The gateway-mvc starter ships an `EnvironmentPostProcessor` that sets `spring.servlet.multipart.enabled=false`
-whenever the property is unset. Boot then registers no multipart config, and the profile-picture `PUT`s answered
-`500` ("Unable to process parts as no multi-part configuration has been provided") on a real server;
-`PictureUploadLimitsIntegrationTest` caught it. Setting the property to `true` restores Boot's setup and lets the
-starter's `GatewayMvcMultipartResolver` take over, which skips parsing for proxied requests. Step 27 still has to
-prove that a 21 MB tweet body passes through byte-identical under the 5.3 MB gateway multipart limits.
-
-## Step 27 — multipart pass-through needs no extra code; the body-cap tests run on a real server
-
-The `GatewayMvcMultipartResolver` from step 25's `spring.servlet.multipart.enabled=true` already keeps the
-gateway's 5.3 MB multipart limits out of a proxied request: a 21 MB multipart `POST /api/v1/tweets` reaches the
-downstream byte-identical. The only code is a third cap in `RequestBodySizeLimitFilter`, matching `POST` on the
-exact path `/api/v1/tweets` (any other method, sub-path or trailing slash keeps 8 KB). The body-cap scenarios live
-in their own `TweetBodyCapsIntegrationTest` on a real server, since MockMvc applies neither limit. That test's
-downstream is `RecordingHttpServer`, not WireMock: WireMock's client fails reading a recorded body over Jackson's
-20 MB string limit, so the stand-in compares a length and SHA-256 instead.
-
-## Step 29 — the contract test brings its own Mongo, MinIO and Kafka
-
-The containers the other suites share are not on a Docker network, so the real tweet service could not reach
-them by name. `TweetServiceContractIntegrationTest` starts a second Mongo (replica set, for the service's
-transactions), MinIO and Kafka on one network, reached by alias; the Kafka gets an extra `kafka:19092` listener
-for container-to-container traffic. The gateway under test still uses the shared Postgres and MinIO. The test
-lowers nothing in the service; it only raises the gateway's read timeout to 10s for its own context, because
-the test profile's 1s suits a stub, not a service doing Mongo and MinIO work. The image is built from
-`../twitter_tweet_service` with paths relative to the gateway module, so the test assumes that layout.
-
-## `user.followed` — emitted on a new follow only, keyed by the followee, email in the payload
-
-`FollowServiceImpl.follow` enqueues the event inside its transaction, only when `insertIfAbsent` returns 1, so a
-repeated follow (and any concurrent duplicate) sends no second mail and a rolled-back follow sends none. The key
-is the followee id: the mail goes to them, so per-recipient ordering is what matters. The payload carries the
-followee's email and both usernames so the mail service needs no call back to the gateway. The follower is
-loaded with one `findById` inside the insert branch only. `User` has no display name, so `username` stands in.
-Unfollow emits nothing.
-
-## Timeline plan step 2 - the internal API
-
-- **Filter path check.** `InternalApiSecretFilter` reads the path the way Spring MVC resolves it
-  (`UrlPathHelper.getPathWithinApplication`: decoded, `//` collapsed, `;` parameters dropped), so a raw variant
-  of an internal URL can't skip the prefix check. The secret is compared in constant time
-  (`MessageDigest.isEqual`) and the 404 body is the unknown-path message.
-- **`/internal/v1/**` joins `PUBLIC_MATCHERS`,** so one entry makes it `permitAll()` and makes
-  `CookieBearerTokenResolver` ignore it.
-- **Follower pages use a projection,** not the `Follow` entity: `FollowerEdge` (follow id, follower id,
-  timestamp) so a page of 1,000 loads no user rows. The cursor is the existing `FollowCursorCodec` over the
-  follow row, in the order of `ix_follows_following_created`. `InvalidPageSizeException` gained a
-  `(min, max)` constructor so the message says 1 to 1,000 here.
-- **User lookup leaves out unconfirmed accounts,** like the public profile read, and counts the 1-100 limit on
-  the ids as sent, before repeats collapse.
-- **New classes sit in `internal` subpackages** (controller, service, DTOs) because those packages already
-  hold more than five files; the existing classes were not moved.
-- **`INTERNAL_API_SECRET` is also set in `.env.example` and the e2e compose gateway now,** because the gateway
-  refuses to start without it. The plan had those in steps 4 and 12.
-
-
-## Timeline plan step 3 - `user.unfollowed`
-
-Enqueued in the unfollow transaction only when `deleteByPair` returns 1, keyed by `followerId`. `occurredAt` is
-`clock.instant()` as it is (not truncated), like `user.followed`. Two earlier tests asserted that an unfollow
-enqueues nothing; they now assert the new behaviour instead (`FollowServiceImplTest.Unfollow` and the
-`FollowControllerIntegrationTest.Unfollow` group, renamed to say a `user.followed` row is still not added).
-`.env.example` gets `USER_UNFOLLOWED_TOPIC_NAME` with the timeline section in step 4.
-
-## Timeline plan step 11 - the identity filters moved to `CallerIdentityFilters`
-
-`configurations/routing/CallerIdentityFilters.forwardAsTheAuthenticatedUser(route)` adds the four filters (drop
-`Cookie`, drop `Authorization`, drop every `X-User-*`, set `X-User-Id` from the JWT) to a route builder. Both
-`TweetRoutesConfiguration` and the new `TimelineRoutesConfiguration` call it. `USER_ID_HEADER` moved there from
-`TweetRoutesConfiguration` (nothing else read it). The "no JWT" error text no longer says "tweet route".
-The HTTP/1.1-only client customizer stays in `TweetRoutesConfiguration`: it is global, and moving it was outside
-the step.
-
-## Timeline plan step 11 - the feed route matches `/api/v1/feed` exactly
-
-Not `/api/v1/feed/**`: the timeline service has no sub-path today, and phase 2 and 3 add their own paths with
-their own route steps (17 and 25). A request to a sub-path is therefore not forwarded; it falls to the gateway's
-default rule (authenticated, then 404). `TIMELINE_SERVICE_URL` (default `http://localhost:8083`) maps to
-`app.timeline-service.url`; the existing upstream timeouts (`UPSTREAM_CONNECT_TIMEOUT`, `UPSTREAM_READ_TIMEOUT`)
-cover this route too.
-
-## Timeline plan step 11 - the stand-in's base class extends the tweet one
-
-`AbstractTimelineServiceIntegrationTest` extends `AbstractTweetServiceIntegrationTest` and adds a second WireMock.
-The route test is its own cached context (it sets `app.timeline-service.url`); the other contexts keep the
-default URL, which is only dialled when a request reaches the route.
-
-## Timeline plan step 11 - the test Postgres allows 300 connections
-
-The feed route tests add two cached Spring contexts (the route's own and the closed-port one). Each keeps a
-10-connection pool open until the JVM exits, which took the suite past Postgres's default of 100 ("too many
-clients already") and failed `TweetBodyCapsIntegrationTest` at context load. `AbstractPostgresIntegrationTest`
-now starts the container with `max_connections=300`. Test infrastructure only; no assertion changed.
-
-## Timeline plan step 17 - one route, two path patterns, `/api/v1/saved-tweets/**`
-
-`TimelineRoutesConfiguration` keeps its single `timeline-service` route and widens the predicate to
-`path(FEED_PATH, SAVED_TWEETS_PATH)`, so the same four identity filters and the same upstream timeouts apply. The
-saved-tweets pattern is `/**` (the list is the bare path, an item is `/{tweetId}`), unlike the feed's exact match.
-Views (step 25) will add its own constant the same way.
-
-## Timeline plan step 25 - `/api/v1/views` is an exact path on the same route
-
-`VIEWS_PATH` joins the feed and saved-tweets patterns on the one `timeline-service` route, so the same identity
-filters and timeouts apply. It is exact (no `/**`): `POST` reports and `GET` reads on the bare path, nothing below it.
-The contract test with the real tweet service stops asserting `views`; it checks the posted content instead, so the
-read still proves the body came through.
-
-## Frontend plan step 1 - the like stub is a controller with no service
-
-`PUT` and `DELETE /api/v1/likes/{tweetId}` answer `204` from `LikeController` and store nothing; there is no
-`LikeService`, because there is no logic to delegate. Both are idempotent by construction. A non-UUID id is a type
-mismatch, so the existing handler answers `400` "Malformed request parameter." and the JWT chain answers `401`
-without a cookie. The controller sits in `controllers/likes`: `controllers` already holds five files, so a sixth
-needs a subpackage; the existing controllers were not moved. When a likes service lands, replace the stub with a
-route like the timeline one or a real service behind the same paths.
-
-## Phase 5 step 31 - names chosen in the test catalog
-
-Names the plan left open, so the `@Disabled` catalog could compile: the shared page-size check is
-`utilities/paging/PageSizeValidator` (test `PageSizeValidatorTest`); the service method group is `ListUsers`; the
-repository groups are `UserListFirstPage`, `UserListPageAfterCursor` and `UserListIndex`. Step 32/33 may rename the
-production side; if so, rename the test groups with it.
-
-## Phase 5 step 32 - repository query names; picture fetch waits for step 33
-
-`UserRepository.findUserListFirstPage(callerId, limit)` and `findUserListAfter(callerId, createdAt, id, limit)`, named
-like the follow-list queries. They do not `LEFT JOIN FETCH` the picture yet: the plan puts that in step 33 with the
-2-statement test that proves it. Repository tests put their users at 2999-01-01 (or the epoch for "oldest") so rows
-other suites committed to the shared Postgres can't enter a page, and compare ids in `UUID.toString` order, which
-matches Postgres's bytewise uuid order (Java's `UUID.compareTo` is signed).
-
-## Phase 5 step 33 - list tests wipe `users`; repeated size; HEAD
-
-- `UserListControllerIntegrationTest` runs `DELETE FROM users` before every test (approved). The list covers every
-  confirmed user and the Postgres container is shared, so exact counts ("25 people", "caller alone") need an empty
-  table. No other suite wipes users; they create unique data and are unaffected because suites run one at a time.
-- Repeated `size=1&size=2` is `200` with the first value, not `400`: Spring converts the repeated `String[]` to an
-  `int` by taking the first element, and a repeated `cursor` is joined to `a,b` and fails as an invalid cursor. The
-  follow lists behave the same; the test pins it (approved).
-- The `HEAD` test asserts `200` only: MockMvc keeps the body that Tomcat drops (approved).
-- `SqlStatementCounter` (in `support/`) reads Hibernate's prepared-statement count before and after a call;
-  `hibernate.generate_statistics` is on in the test profile only.
-- `UserController` repeats the follow controller's `DEFAULT_PAGE_SIZE = "20"`; the two controllers don't share a
-  class, and a constant for one string wasn't worth a new one.
-
-## Phase 5 step 34 - `confirmViaApi` extracted in the e2e fixtures
-
-Journey 2 registers an account, looks, then confirms it, so the confirm half of `registerAndConfirmViaApi` is now
-its own exported `confirmViaApi` in `e2e/tests/fixtures.ts`; `registerAndConfirmViaApi` calls it. Behaviour of the
-existing specs is unchanged. Both journeys read the list through the account's API client and compare only their own
-usernames, so the shared database and parallel specs don't matter.
-
-## Phase 5 step 35 - audit outcome and outbox cleanup in the concurrency test
-
-- Audit finding 1 (Medium) fixed: the after-cursor query compares the row value `(created_at, id) < (:c, :id)`, which
-  Postgres can use as an index bound; the `OR` form read every row newer than the cursor. The follow-list queries keep
-  the `OR` form (bounded by one account's follows) and are logged as an accepted gap. Finding 2 (Low, time-based ids
-  carry the host IP) is an accepted gap with a trigger (approved).
-- `UserListConcurrencyIntegrationTest` deletes the outbox rows keyed by its users after each test. Its follow/unfollow
-  storm leaves ~200 PENDING rows, and with them `OutboxPublisherServiceKafkaIntegrationTest` failed 3 of 3 runs: its
-  publisher call takes only the first `app.outbox.batch-size` pending rows, so its own row fell outside the batch.
-  That test is left as it is; other suites that add many outbox rows will hit the same limit.
-
-
-## Frontend plan step 15 - the follow check
-
-`GET /internal/v1/users/{followerId}/follows/{followeeId}` answers `204` when the follow exists and `404`
-otherwise, for the timeline service's back-fill (it asks after inserting, to undo a back-fill whose follow was
-already removed). Calls made while building it:
-
-- **It lives in `InternalUserController` / `InternalUserService`** (`isFollowing`) next to the other reads under
-  `/internal/v1/users`, and calls the existing `existsByFollowerIdAndFollowingId`: one lookup by the pair's
-  unique key, no user rows, no new query.
-- **Unknown ids and a self pair answer `404`, like "not following".** No follow row can exist for them (the
-  check constraint forbids self follows), so the service doesn't branch on them; a caller can't use the endpoint
-  to learn whether a user exists.
-- **Both answers have no body.** The `404` is not the app's error shape, so it can't be told apart by body from
-  "not following"; the guard's own `404` for a missing or wrong secret is the shape of an unknown path, which
-  the tests check with an existing follow, so a `204` never leaks through a bad secret.
-- **Not added to the `Secret` group's `endpoints()`.** That group asserts `200` with the right secret; this
-  endpoint answers `204`/`404`, so its secret cases are in the `Follows` group.
-- **Malformed ids answer `400`** through the existing type-mismatch handler, as `follower-ids` does.
-
-## Frontend plan step 24 - the follow check answers 200 with a body (audit finding 1 of the timeline report)
-
-The follow check answered `204` for a follow and a bare `404` for none. The guard answers a missing or wrong secret
-with the same bare `404` (on purpose, so internal routes look absent), and so does a gateway build without the route,
-so the timeline service could not tell "not following" from a misconfiguration and deleted the back-fill in each case.
-It now answers `200` with `{"following": true|false}` (`FollowCheckResponseDTO`) for every well-formed pair, unknown
-ids and a self pair included (`false`). A `404` can only mean a wrong secret or a missing route; the timeline service
-treats anything but a `200` as an error to retry. Malformed ids still answer `400`. The step 15 entry above is
-superseded on the status codes and the "both answers have no body" point; its other calls stand. The endpoint is now
-in the `Secret` group's `endpoints()`, since it answers `200`.
+Non-obvious calls made *during* implementation, the ones hard to re-derive from the code. Design settled up front
+lives in `PLAN.md`; conventions live in `CLAUDE.md`.
+
+One bullet per decision: what was chosen and why, in a line or two. Group by topic and keep the plan step in
+parentheses so references from `PLAN.md`, `TESTING.md` and the exploit reports still resolve. Skip anything the
+code or its tests already say.
+
+## Setup and test infrastructure
+
+- **One root `.env.example`; Postgres on 5432, Kafka on 9094** (step 1). Same ports as SignalFlow, so the property
+  defaults work with no env, but the two composes can't run together. The optional `API_GATEWAY_DATASOURCE_*` lines
+  stay commented out: an exported empty value would override the default with an empty string.
+- **The test clock stands still** (step 1). `MutableClock` moves only through `advance`, `setInstant` and `reset`, so
+  "61 seconds later" is exact. It is shared across a cached context, so a test that advances it calls `reset()`.
+- **Every full-context test extends `AbstractMinioIntegrationTest`** (step 11). The bucket initializer is an
+  `ApplicationRunner` that fails startup without MinIO. `@DataJpaTest` slices run no runners and stay on the Postgres
+  base.
+- **MinIO runs from `alpine/minio`, pinned, as root** (step 11). `minio/minio` is no longer pullable, and the
+  alpine image's `minio` user can't write `/data`. The compose healthcheck is `wget`, since the image has no `mc`.
+- **`okhttp-jvm` is a direct dependency** (step 11). `io.minio:minio` pulls an `okhttp` 5.x shell, and
+  `MinioClient.builder()` exposes `okhttp3` types, so main code didn't compile without it.
+- **The test Postgres runs with `max_connections=300`** (timeline step 11). Each cached Spring context keeps a
+  10-connection pool until the JVM exits, and the extra route contexts pushed the suite past the default 100.
+- **`UserListControllerIntegrationTest` wipes `users` before each test** (phase 5 step 33). Exact counts need an
+  empty table on the shared Postgres. No other suite wipes users.
+- **`UserListConcurrencyIntegrationTest` deletes its outbox rows after each test** (phase 5 step 35). Its
+  follow/unfollow storm leaves ~200 PENDING rows, and the publisher only takes the first `app.outbox.batch-size`,
+  which made `OutboxPublisherServiceKafkaIntegrationTest` fail. Other suites adding many outbox rows will hit the
+  same limit.
+
+## Auth and tokens
+
+- **Token `iat`/`exp` and error-body timestamps use the system clock** (step 4). The decoder validates `exp`
+  against the system clock, so a token minted from a moved test clock would be born expired. A deliberate exception
+  to "never call `Instant.now()`"; everything that *compares* against now uses `Clock`.
+- **Normalisation uses `Locale.ROOT`** (step 3). A Turkish default locale would turn `I` into `ı` and break
+  uniqueness and lookups.
+- **The unknown-identifier login path hashes the submitted password** (step 8), so it costs one bcrypt like a wrong
+  password.
+- **Passwords are capped at 72 bytes, not characters** (step 10). `@Size(max = 72)` counts characters while bcrypt
+  takes 72 bytes, so a multi-byte password gave a 500. `@MaxUtf8Bytes(72)` sits beside `@Size` on register and login.
+- **Startup refuses a `JWT_SECRET` under 32 bytes** (step 10). Nimbus rejects it only when signing, which would
+  turn a misconfiguration into a 500 on every login.
+
+## Email confirmation and outbox
+
+- **`ConfirmationRequestService` is shared by register and resend** (step 5). "Store a fresh token and queue the
+  event" is one unit, joining the caller's transaction.
+- **Confirm and resend live in `EmailConfirmationService`** (step 7), keeping the clock and cooldown out of
+  `AuthServiceImpl`.
+- **The token hash is SHA-256 over the UTF-8 bytes of the 43-character string** (step 5), not a decoded form, so it
+  can't disagree with what the link carried.
+- **Resend reads the user before locking it** (step 7). A confirm committing in between can cost one extra email to
+  a confirmed user. That is harmless and bounded by the cooldown.
+- **A token expiring exactly now is expired** (step 7): `expiresAt.isAfter(now)`. The cooldown mirrors it.
+- **Event JSON has no field order** (step 5). Jackson 3 sorts alphabetically; the contract is the set of names.
+- **The poll job's `initialDelay` equals its delay** (step 6). `fixedDelay` otherwise fires once at startup, which
+  would drain rows mid-suite even with the test profile's 24h delay.
+- **A failed outbox row doesn't stop the batch** (step 6), so a poison row can't block newer ones. An
+  `InterruptedException` restores the flag and counts as a failed attempt.
+- **The cleanup job logs the count; the service only deletes** (step 9), like the outbox publisher pair.
+
+## Profiles and pictures
+
+- **Each picture slot is unique per file, and the FKs have no `ON DELETE` action** (step 13). Two users can't share
+  a `DbFile`, and deleting one a user still points at is rejected. The upload flow repoints first and deletes second,
+  and `SET NULL` would hide a flow that deleted in the wrong order.
+- **`ProfileService` returns the response DTO** (step 14), because the picture URLs read lazy `DbFile` associations
+  that must be read inside the transaction. `ProfileMapper` is static because upload and delete return the same shape.
+- **`@Past` on a birthdate uses Bean Validation's clock, not the `Clock` bean** (step 14), so the test clock doesn't
+  move it. Today's date is rejected too.
+- **Length checks run on the raw string, before trimming** (step 14). A 160-character bio plus spaces is a 400.
+- **The upload body cap matches `PUT` on the two exact picture paths only** (step 15). `RequestBodySizeLimitFilter`
+  runs before security, so any other method, path variant or trailing slash keeps the 8 KB cap. A mismatch fails
+  small, never large. `UploadLimitsConfigurationTest` pins the derived multipart limits.
+- **A missing object in storage is a 502** (step 15). The `DbFile` row is the source of truth for existence, so a
+  row without its object is a storage fault. Deleting a missing key is a no-op.
+- **The DB change runs in a `TransactionTemplate`, not `@Transactional`** (step 16). The new object must be stored
+  before the transaction and the old one deleted after the commit.
+- **The 5 MB limit is also checked in the service** (step 16), because MockMvc never applies Spring's multipart
+  limits. `PictureUploadLimitsIntegrationTest` proves the real limits on a real server, with a hand-built body so
+  the request has a `Content-Length`.
+- **Routes are four explicit mappings, not `/me/{slot}`** (step 16), so the filter's exact-path match holds.
+- **Concurrent uploads to one slot are serialised by a row lock** (step 16 audit fix). `loadLockedUser` takes
+  `UserRepository.lockById` first; without it parallel uploads left orphan rows and objects. The cost is that one
+  account's burst queues on the lock while holding pool connections (`SECURITY-AUDITS.md`, phase 2).
+- **File serving reads the row, then streams the object, with no transaction** (step 17), so a download doesn't pin
+  a connection. Any logged-in user can read any file id: ids are time-based UUIDs, not random, but the pictures are public anyway.
+- **`spring.servlet.multipart.enabled=true` is set explicitly** (step 25). The gateway-mvc starter otherwise sets
+  it to `false` when unset, and the picture `PUT`s answered 500 on a real server. With it on, the starter's
+  `GatewayMvcMultipartResolver` also skips parsing for proxied requests.
+
+## Follows
+
+- **`Follow` stands alone, without `CommonEntity`** (step 20). It is only inserted or deleted. The id and
+  `createdAt` come from the native `insertIfAbsent`, and the caller truncates `createdAt` to microseconds because
+  the list cursor is built from it.
+- **Counter statements take a delta** (step 20): one `SET x = x + :delta` per counter, called with `+1`/`-1`. The
+  columns carry `default 0` so `ddl-auto=update` can add them to a table with rows. `update` mode doesn't add the
+  `@Check`, so only a fresh schema gets `ck_users_follow_counts_non_negative` (see the `ddl-auto` gap in `PLAN.md`).
+- **The fixed lock order uses `UUID.compareTo`, which is signed** (step 21). Any total order works, but a unit
+  test's "larger" id must be `7fff…`, not `ffff…`.
+- **The self-follow check runs after the target lookup** (step 21), since the request carries only a username.
+  Nothing is written before the check.
+- **`followedByMe` is false on every response about your own profile** (step 22), without a query.
+- **List endpoints** (step 23):
+  - `InvalidCursorException` and `InvalidPageSizeException` are both 400. The size is checked in the service, not
+    with `@Min`/`@Max`, so the message is ours.
+  - The cursor is strict: `decode` re-encodes and must match, so `?cursor=` (empty) is a 400, not a first page.
+  - Validation order is size, cursor, then user lookup, so a bad parameter is a 400 even for an unknown user.
+  - Four repository queries, not one with a null cursor. Postgres breaks ties on unsigned UUID bytes, which differs
+    from `UUID.compareTo`, so tests compare ids in `UUID.toString` order.
+  - `followedByMe` on items is one `IN` query per page, skipped for an empty page.
+  - `FollowListService` keeps read paths out of `FollowServiceImpl`.
+- **Repeated `size=1&size=2` is a 200 with the first value** (phase 5 step 33), and a repeated `cursor` fails as
+  invalid. The follow lists behave the same, and the tests pin it.
+- **The user-list after-cursor query uses the row value `(created_at, id) < (:c, :id)`** (phase 5 step 35), which
+  Postgres can use as an index bound. The `OR` form read every row newer than the cursor. The follow-list queries
+  keep the `OR` form, since one account's follows bound it (accepted gap). Time-based ids carrying the host IP is
+  an accepted gap with a trigger.
+
+## Routing
+
+- **Both service routes share `CallerIdentityFilters`** (timeline step 11): drop `Cookie`, `Authorization` and every
+  `X-User-*`, then set `X-User-Id` from the JWT. The HTTP/1.1-only client customizer stays in
+  `TweetRoutesConfiguration` because it is global.
+- **One `timeline-service` route with exact or narrow patterns** (timeline steps 11, 17, 25): `/api/v1/feed` and
+  `/api/v1/views` are exact, `/api/v1/saved-tweets/**` covers the bare path and `/{tweetId}`. A sub-path of an exact
+  route isn't forwarded and falls to the default rule (authenticated, then 404).
+- **Multipart pass-through needs no extra code** (step 27). A 21 MB multipart `POST /api/v1/tweets` reaches the
+  downstream byte-identical. The only code is a third cap in `RequestBodySizeLimitFilter` for `POST` on the exact
+  path. The cap tests run on a real server, and the stand-in is `RecordingHttpServer`, not WireMock, whose client
+  fails on bodies over Jackson's 20 MB string limit.
+- **The contract test brings its own Mongo, MinIO and Kafka** (step 29). The shared containers aren't on a Docker
+  network, so the real tweet service couldn't reach them. The gateway read timeout is raised to 10s for that
+  context only, and the image is built from `../twitter_tweet_service`, so the test assumes that layout.
+- **The like stub is a controller with no service** (frontend step 1). `PUT`/`DELETE /api/v1/likes/{tweetId}`
+  answer 204 and store nothing. Replace it with a route like the timeline one when likes land.
+
+## Internal API and events
+
+- **`user.followed` is emitted on a new follow only.** It is enqueued in the follow
+  transaction when `insertIfAbsent` returns 1, so a repeat, a concurrent duplicate or a rollback sends nothing. The
+  key is the followee id because the mail goes to them, and the payload carries their email and both usernames so
+  the mail service needs no call back.
+- **`user.unfollowed` is enqueued only when `deleteByPair` returns 1**, keyed by `followerId`. `occurredAt` is
+  `clock.instant()` untruncated, like `user.followed`.
+- **`InternalApiSecretFilter` reads the path the way Spring MVC does** (timeline step 2), via
+  `UrlPathHelper.getPathWithinApplication`, so a raw variant can't skip the prefix check. The secret is compared in
+  constant time, and a missing or wrong secret gets the unknown-path 404. `/internal/v1/**` is in `PUBLIC_MATCHERS`.
+- **Follower pages use the `FollowerEdge` projection** (timeline step 2), so a page of 1,000 loads no user rows.
+  The user lookup leaves out unconfirmed accounts and counts the 1-100 limit on ids as sent, before repeats collapse.
+- **The follow check answers `200 {"following": true|false}`** (frontend steps 15 and 24), for every well-formed
+  pair, unknown ids and a self pair included (`false`). It first answered `204`/bare `404`, but the guard and a
+  gateway build without the route also answer a bare 404, so the timeline service couldn't tell "not following" from
+  a misconfiguration. A 404 now means a wrong secret or a missing route. Malformed ids are a 400.
