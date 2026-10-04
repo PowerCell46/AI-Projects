@@ -39,7 +39,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 /**
  * Runs the real tweet service, built from its Dockerfile, behind the gateway on a real server. The service

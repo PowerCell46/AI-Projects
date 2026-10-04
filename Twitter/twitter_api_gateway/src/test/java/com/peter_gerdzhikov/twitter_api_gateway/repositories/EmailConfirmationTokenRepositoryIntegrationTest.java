@@ -12,8 +12,8 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.EmailConfirmationToken;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.EmailConfirmationToken;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 

@@ -2,8 +2,8 @@ package com.peter_gerdzhikov.twitter_api_gateway.support;
 
 import java.util.UUID;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 
 /**
  * Builds entities for repository tests, each with credentials no other call has handed out.

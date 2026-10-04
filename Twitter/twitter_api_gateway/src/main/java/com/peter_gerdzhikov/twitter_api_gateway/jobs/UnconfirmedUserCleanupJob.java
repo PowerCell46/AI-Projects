@@ -3,7 +3,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.jobs;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.UnconfirmedUserCleanupService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.UnconfirmedUserCleanupService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

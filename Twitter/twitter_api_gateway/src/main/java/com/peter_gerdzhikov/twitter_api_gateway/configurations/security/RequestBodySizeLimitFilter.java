@@ -14,8 +14,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.RequestBodyTooLargeException;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.BodySizeLimitingRequestWrapper;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.ErrorResponseWriter;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.BodySizeLimitingRequestWrapper;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.ErrorResponseWriter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

@@ -21,9 +21,9 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.UpdateProfileReques
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.PictureSlot;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.ProfilePictureService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.ProfileService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.UserListService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.profiles.ProfilePictureService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.profiles.ProfileService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.profiles.UserListService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

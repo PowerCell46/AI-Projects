@@ -30,7 +30,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegration
 import com.peter_gerdzhikov.twitter_api_gateway.support.RecordingHttpServer;
 import com.peter_gerdzhikov.twitter_api_gateway.support.RecordingHttpServer.RecordedRequest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 /**
  * Runs against a real servlet container: MockMvc never applies the multipart size limits or the body-size

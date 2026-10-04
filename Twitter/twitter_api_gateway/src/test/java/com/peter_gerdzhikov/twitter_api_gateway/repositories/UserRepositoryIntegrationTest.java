@@ -22,8 +22,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 

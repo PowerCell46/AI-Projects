@@ -3,8 +3,8 @@ package com.peter_gerdzhikov.twitter_api_gateway.entities.enums;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 
 /**
  * The two picture pointers on a user, so upload and delete run one flow for both.

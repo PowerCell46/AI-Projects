@@ -30,14 +30,14 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_api_gateway.configurations.security.InternalApiSecretFilter;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 import jakarta.servlet.http.Cookie;
 

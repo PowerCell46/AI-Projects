@@ -1,0 +1,137 @@
+package com.peter_gerdzhikov.twitter_api_gateway.entities.users;
+
+import java.time.LocalDate;
+import java.util.Locale;
+
+import org.hibernate.annotations.Check;
+import org.hibernate.annotations.DynamicUpdate;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.Past;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import com.peter_gerdzhikov.twitter_api_gateway.entities.CommonEntity;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
+
+/**
+ * {@code @DynamicUpdate} writes only the changed columns, so a profile edit and a picture upload racing each
+ * other can't overwrite each other's columns. The follow counters are {@code updatable = false}: only the
+ * atomic statements in {@code UserRepository} change them, so a flush can never write back a stale value.
+ */
+@Getter
+@Setter
+@Entity
+@Builder
+@DynamicUpdate
+@NoArgsConstructor
+@AllArgsConstructor
+@Check(
+        name = User.FOLLOW_COUNTS_CONSTRAINT,
+        constraints = "followers_count >= 0 AND following_count >= 0"
+)
+@Table(
+        name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(name = User.EMAIL_CONSTRAINT, columnNames = "email"),
+                @UniqueConstraint(name = User.USERNAME_CONSTRAINT, columnNames = "username_normalized")
+        },
+        indexes = @Index(name = "ix_users_enabled_created", columnList = "enabled, created_at, id")
+)
+public class User extends CommonEntity {
+
+    public static final String EMAIL_CONSTRAINT = "uk_users_email";
+
+    public static final String USERNAME_CONSTRAINT = "uk_users_username_normalized";
+
+    public static final String FOLLOW_COUNTS_CONSTRAINT = "ck_users_follow_counts_non_negative";
+
+    @Column(nullable = true, length = 160)
+    private String bio;
+
+    @Column(nullable = false, length = 254)
+    private String email;
+
+    @Column(nullable = false, length = 15)
+    private String username;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = true, length = 30)
+    private String location;
+
+    @Past
+    @Column(nullable = true)
+    private LocalDate birthdate;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "profile_picture_id",
+            nullable = true,
+            foreignKey = @ForeignKey(name = "fk_users_profile_picture")
+    )
+    private DbFile profilePicture;
+
+    /**
+     * The single "confirmed" flag: false from registration until the confirmation token is used.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean enabled = false;
+
+    @Column(name = "username_normalized", nullable = false, length = 15)
+    private String usernameNormalized;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "profile_cover_picture_id",
+            nullable = true,
+            foreignKey = @ForeignKey(name = "fk_users_profile_cover_picture")
+    )
+    private DbFile profileCoverPicture;
+
+    @Builder.Default
+    @Column(
+            name = "followers_count",
+            nullable = false,
+            updatable = false,
+            columnDefinition = "bigint not null default 0"
+    )
+    private long followersCount = 0;
+
+    @Builder.Default
+    @Column(
+            name = "following_count",
+            nullable = false,
+            updatable = false,
+            columnDefinition = "bigint not null default 0"
+    )
+    private long followingCount = 0;
+
+    @PrePersist
+    @PreUpdate
+    private void normalize() {
+        if (email != null) {
+            email = email.toLowerCase(Locale.ROOT);
+        }
+
+        if (username != null) {
+            usernameNormalized = username.toLowerCase(Locale.ROOT);
+        }
+    }
+}

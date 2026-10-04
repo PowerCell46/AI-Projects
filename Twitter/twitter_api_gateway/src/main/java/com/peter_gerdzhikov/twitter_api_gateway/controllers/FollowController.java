@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.FollowListService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.FollowService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.follows.FollowListService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.follows.FollowService;
 
 import lombok.RequiredArgsConstructor;
 

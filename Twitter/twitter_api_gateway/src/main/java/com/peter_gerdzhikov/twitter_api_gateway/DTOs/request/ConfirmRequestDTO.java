@@ -15,6 +15,6 @@ import lombok.NoArgsConstructor;
 public class ConfirmRequestDTO {
 
     @NotBlank
-    @Pattern(regexp = "^[A-Za-z0-9_-]{43}$", message = "Must be a 43-character confirmation token.")
+    @Pattern(regexp = "^[A-Za-z0-9_-]{43}$", message = "must be a 43-character confirmation token")
     private String token;
 }

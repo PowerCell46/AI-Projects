@@ -14,7 +14,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.Outbox;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
 

@@ -8,7 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.OutboxPublisherService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.outbox.OutboxPublisherService;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxPublisherJobTest {

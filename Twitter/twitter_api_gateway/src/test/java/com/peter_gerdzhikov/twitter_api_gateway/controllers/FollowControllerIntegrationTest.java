@@ -34,19 +34,19 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.Outbox;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.MutableClock;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestUsers;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 @SpringBootTest
 @AutoConfigureMockMvc

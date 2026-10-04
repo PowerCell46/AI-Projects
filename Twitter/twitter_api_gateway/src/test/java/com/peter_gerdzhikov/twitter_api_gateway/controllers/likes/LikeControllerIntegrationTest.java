@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 @SpringBootTest
 @AutoConfigureMockMvc

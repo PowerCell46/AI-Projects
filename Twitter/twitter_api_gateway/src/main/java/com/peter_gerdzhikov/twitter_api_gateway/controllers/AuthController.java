@@ -19,11 +19,11 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.LoginRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.RegisterRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.ResendConfirmationRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.auth.UserResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.AuthService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.EmailConfirmationService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.AuthService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.EmailConfirmationService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenService;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

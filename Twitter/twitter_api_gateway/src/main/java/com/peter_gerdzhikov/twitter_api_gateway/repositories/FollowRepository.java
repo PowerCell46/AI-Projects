@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.Follow;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.follows.Follow;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.projections.FollowerEdge;
 
 public interface FollowRepository extends JpaRepository<Follow, UUID> {

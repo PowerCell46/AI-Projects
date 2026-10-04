@@ -16,15 +16,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.DbFile;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.ObjectStorageService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.storage.ObjectStorageService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 @SpringBootTest
 @AutoConfigureMockMvc

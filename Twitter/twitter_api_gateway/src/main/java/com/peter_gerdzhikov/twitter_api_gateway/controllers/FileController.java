@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.files.FileContentResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.FileService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.storage.FileService;
 
 import lombok.RequiredArgsConstructor;
 

@@ -29,12 +29,12 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.User;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.TokenService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieFactory;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 /**
  * Starts from an empty {@code users} table, like the HTTP suite: the list covers every confirmed user and the

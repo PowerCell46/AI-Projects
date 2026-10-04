@@ -8,7 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.UnconfirmedUserCleanupService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.UnconfirmedUserCleanupService;
 
 @ExtendWith(MockitoExtension.class)
 class UnconfirmedUserCleanupJobTest {

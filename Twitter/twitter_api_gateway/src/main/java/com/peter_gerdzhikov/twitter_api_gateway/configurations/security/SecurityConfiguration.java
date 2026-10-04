@@ -36,7 +36,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.CookieBearerTokenResolver;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieBearerTokenResolver;
 
 import lombok.RequiredArgsConstructor;
 

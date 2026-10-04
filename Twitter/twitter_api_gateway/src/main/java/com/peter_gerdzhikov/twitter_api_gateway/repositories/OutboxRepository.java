@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.Outbox;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 
 public interface OutboxRepository extends JpaRepository<Outbox, UUID> {
