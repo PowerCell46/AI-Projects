@@ -302,3 +302,58 @@ describe('inputs', () => {
         ]);
     });
 });
+
+describe('password toggle', () => {
+    async function goToPasswordStep() {
+        renderFlow('login');
+        await user.type(
+            screen.getByRole('textbox', { name: 'email or username' }),
+            'peter_g{Enter}',
+        );
+        await settleTransition();
+    }
+
+    it('should_offer_the_toggle_only_on_the_password_step', async () => {
+        renderFlow('login');
+
+        expect(screen.queryByRole('button', { name: 'Show password' })).toBeNull();
+
+        await user.type(
+            screen.getByRole('textbox', { name: 'email or username' }),
+            'peter_g{Enter}',
+        );
+        await settleTransition();
+
+        expect(screen.getByRole('button', { name: 'Show password' }).getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('should_show_the_password_as_text_when_the_toggle_is_pressed_and_hide_it_again_on_the_second_press', async () => {
+        await goToPasswordStep();
+        await user.type(screen.getByLabelText('password'), 'secret');
+
+        await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+        expect(screen.getByLabelText('password').getAttribute('type')).toBe('text');
+        expect(screen.getByDisplayValue('secret')).toBe(screen.getByLabelText('password'));
+        expect(screen.getByRole('button', { name: 'Hide password' }).getAttribute('aria-pressed')).toBe('true');
+
+        await user.click(screen.getByRole('button', { name: 'Hide password' }));
+
+        expect(screen.getByLabelText('password').getAttribute('type')).toBe('password');
+    });
+
+    it('should_not_submit_the_step_when_the_toggle_is_pressed', async () => {
+        const onComplete = vi.fn();
+        renderFlow('login', onComplete);
+        await user.type(
+            screen.getByRole('textbox', { name: 'email or username' }),
+            'peter_g{Enter}',
+        );
+        await settleTransition();
+        await user.type(screen.getByLabelText('password'), 'secret');
+
+        await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+        expect(onComplete).not.toHaveBeenCalled();
+    });
+});

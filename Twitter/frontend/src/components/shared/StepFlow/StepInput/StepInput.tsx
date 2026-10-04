@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
 import type { FlowField, FlowStep } from '../../../../flows';
+import PasswordToggle from './PasswordToggle/PasswordToggle';
 import './StepInput.css';
 
 
@@ -15,19 +17,26 @@ interface StepInputProps {
 
 function StepInput({ step, value, isActive, isInvalid, errorId, inputRef, onChange }: StepInputProps) {
     const inputId = `step-input-${step.field}`;
+    const [isRevealed, setIsRevealed] = useState(false);
+    const isPassword = step.inputType === 'password';
 
     function handleChange(event: ChangeEvent<HTMLInputElement>) {
         onChange(step.field, event.target.value);
     }
 
     return (
-        <div className="step-input" data-invalid={isInvalid} hidden={!isActive}>
+        <div
+            className="step-input"
+            data-invalid={isInvalid}
+            data-has-toggle={isPassword}
+            hidden={!isActive}
+        >
             <label className="sr-only" htmlFor={inputId}>{step.placeholder}</label>
             <input
                 ref={isActive ? inputRef : undefined}
                 id={inputId}
                 className="step-input-field"
-                type={step.inputType}
+                type={isRevealed ? 'text' : step.inputType}
                 name={step.field}
                 autoComplete={step.autoComplete}
                 placeholder={step.placeholder}
@@ -38,6 +47,12 @@ function StepInput({ step, value, isActive, isInvalid, errorId, inputRef, onChan
                 autoCapitalize="none"
                 onChange={handleChange}
             />
+            {isPassword && (
+                <PasswordToggle
+                    isRevealed={isRevealed}
+                    onToggle={() => setIsRevealed((wasRevealed) => !wasRevealed)}
+                />
+            )}
             <span className="step-input-rule" />
         </div>
     );

@@ -17,6 +17,15 @@
     color: var(--input-text);
 }
 
+.step-input[data-has-toggle='true'] .step-input-field {
+    padding-right: 3rem;
+}
+
+/* Edge draws its own reveal button in a password field; ours replaces it. */
+.step-input-field::-ms-reveal {
+    display: none;
+}
+
 .step-input-field::placeholder {
     color: var(--pale-placeholder);
 }
