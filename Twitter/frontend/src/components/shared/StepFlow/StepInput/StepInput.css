@@ -21,6 +21,14 @@
     color: var(--pale-placeholder);
 }
 
+/* Browsers paint an autofilled field with their own light background and dark text, and ignore `background`. The
+   oversized inset shadow covers that background with the stage colour, and the fill colour restores the text. */
+.step-input-field:autofill {
+    box-shadow: 0 0 0 100vmax var(--deep) inset;
+    -webkit-text-fill-color: var(--input-text);
+    caret-color: var(--input-text);
+}
+
 /* The rule filling in is the input's focus indicator; the input itself shows no outline. */
 .step-input-rule {
     position: absolute;
