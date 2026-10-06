@@ -808,6 +808,7 @@ class AuthControllerIntegrationTest extends AbstractMinioIntegrationTest {
         @CsvSource({
                 "GET,/api/v1/users/someone",
                 "POST,/api/v1/tweets",
+                "GET,/api/v1/likes",
                 "PUT,/api/v1/likes/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
                 "DELETE,/api/v1/likes/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
                 "DELETE,/api/v1/anything"

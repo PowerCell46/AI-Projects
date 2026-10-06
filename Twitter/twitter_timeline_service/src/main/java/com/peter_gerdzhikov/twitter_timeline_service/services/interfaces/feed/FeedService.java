@@ -2,7 +2,7 @@ package com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed;
 
 import java.util.UUID;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.FeedResponseDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.feed.FeedResponseDTO;
 
 public interface FeedService {
 

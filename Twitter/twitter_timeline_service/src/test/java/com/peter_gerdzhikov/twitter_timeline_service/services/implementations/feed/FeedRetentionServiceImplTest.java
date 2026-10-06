@@ -23,7 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
 
 @ExtendWith(MockitoExtension.class)
 class FeedRetentionServiceImplTest {

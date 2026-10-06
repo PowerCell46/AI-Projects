@@ -26,12 +26,14 @@ class TweetItemMapperTest {
         TweetClientDTO tweet = tweet(authorId, List.of(new TweetImageClientDTO(imageId, 1234, "image/png")));
         UserClientDTO author = new UserClientDTO(authorId, "ana", "/api/v1/files/pic");
 
-        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet, author, 42, true);
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet, author, 42, true, 17, true);
 
         assertThat(item.getId()).isEqualTo(tweet.getId());
         assertThat(item.getContent()).isEqualTo("hello");
         assertThat(item.getViews()).isEqualTo(42);
         assertThat(item.isSavedByMe()).isTrue();
+        assertThat(item.getLikes()).isEqualTo(17);
+        assertThat(item.isLikedByMe()).isTrue();
         assertThat(item.getCreatedAt()).isEqualTo(CREATED_AT);
         assertThat(item.getUpdatedAt()).isEqualTo(UPDATED_AT);
         assertThat(item.getImages()).hasSize(1);
@@ -47,7 +49,7 @@ class TweetItemMapperTest {
     void toItem_returnsNoImagesAndANullPictureUrlWhenThereAreNone() {
         UUID authorId = UUID.randomUUID();
 
-        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false);
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false, 0, false);
 
         assertThat(item.getImages()).isEmpty();
         assertThat(item.getAuthor().getProfilePictureUrl()).isNull();
@@ -57,9 +59,19 @@ class TweetItemMapperTest {
     void toItem_marksTheItemNotSavedWhenTheViewerDidNotSaveIt() {
         UUID authorId = UUID.randomUUID();
 
-        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false);
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false, 0, false);
 
         assertThat(item.isSavedByMe()).isFalse();
+    }
+
+    @Test
+    void toItem_marksTheItemNotLikedAndCountsZeroWhenNobodyLikedIt() {
+        UUID authorId = UUID.randomUUID();
+
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false, 0, false);
+
+        assertThat(item.getLikes()).isZero();
+        assertThat(item.isLikedByMe()).isFalse();
     }
 
     private TweetClientDTO tweet(UUID authorId, List<TweetImageClientDTO> images) {

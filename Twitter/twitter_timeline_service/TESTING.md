@@ -342,3 +342,96 @@ New group `Views` in `FeedControllerIntegrationTest` and in `SavedTweetControlle
 - Feed entries, saved rows and views of the tweet are all gone (`should_remove_the_feed_entries_the_saved_rows_and_the_views_together_when_a_tweet_is_deleted`)
 - A repeated delete of a viewed tweet is a no-op (`should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_had_views`)
 - A delete of a tweet with no views is a no-op (`should_do_nothing_when_the_tweet_had_no_views`)
+
+## Phase 4 - Likes
+
+Written `@Disabled` in step 28 and approved. All enabled: the like endpoints and `LikeServiceImpl` (step 30), the inline fields and the `tweet.deleted` additions (step 31). Repository, unit and concurrency tests (`LikeConcurrencyIntegrationTest`, step 34) are not listed here. The gateway side is in the gateway's `TESTING.md`, the API journeys in `e2e/tests/likes.spec.ts`.
+
+### `PUT` / `DELETE` / `GET /api/v1/likes`
+
+`LikeControllerIntegrationTest` - WireMock stands in for the gateway's internal API and the tweet service. A copy of the saved-tweets suite; "down" is a connection reset, as in the feed. Enabled (step 30), except the two `Read` scenarios marked step 31.
+
+`Identity`
+
+- A missing `X-User-Id` returns 400 "Missing or invalid caller identity." on like, unlike and list, nothing stored (`should_return_400_when_the_user_id_header_is_missing_on_like`, `..._on_unlike`, `..._on_list`)
+- A non-UUID, non-canonical or empty `X-User-Id` returns the same 400 on all three (`should_return_400_when_the_user_id_header_is_not_a_uuid`, parameterized over the three values)
+
+`Like` - `PUT /api/v1/likes/{tweetId}`
+
+- An existing tweet returns 204; one row with the stub's author and `liked_at` = the test clock; counter 1 (`should_return_204_and_store_the_like_with_its_author_when_the_tweet_exists`)
+- Liking again after the clock moves returns 204, keeps one row, the original `liked_at` and counter 1 (`should_keep_one_row_and_the_original_liked_at_when_the_tweet_is_liked_again`)
+- A second user's like makes the counter 2 (`should_count_both_likes_when_a_second_user_likes_the_tweet`)
+- The author liking their own tweet returns 204 and counts (Q21) (`should_return_204_and_count_the_like_when_the_author_likes_their_own_tweet`)
+- An unknown tweet returns 404 "Tweet not found.", no row, no counter row (`should_return_404_and_store_nothing_when_the_tweet_is_unknown`)
+- A malformed id (`abc`) returns 400 "Malformed request parameter.", no tweet call (`should_return_400_and_make_no_tweet_call_when_the_tweet_id_is_malformed`)
+- The upper-case form of an already liked id changes nothing: 204, one row, counter 1 (`should_keep_one_row_when_the_tweet_is_liked_again_with_an_upper_case_id`)
+- The short form `1-1-1-1-1` of an already liked `00000001-0001-0001-0001-000000000001` changes nothing (`should_keep_one_row_when_the_tweet_is_liked_again_with_the_short_form_of_its_id`)
+- A body such as `{"likes": 1000, "userId": "<someone else>"}` is ignored: 204, the row is the caller's, counter 1 (`should_ignore_the_body_when_a_like_carries_one`)
+- A body over 8 KB returns 413 "The request body is too large.", nothing stored (`should_return_413_and_store_nothing_when_the_body_is_over_8_kb`)
+- `POST /api/v1/likes/{id}` returns 405 "This method is not supported for this endpoint." (`should_return_405_when_the_like_path_is_posted_to`)
+
+`LikeCalls`
+
+- One tweet call carrying only that id, and no user call (`should_make_one_tweet_call_for_that_tweet_and_no_user_call_when_a_tweet_is_liked`)
+
+`LikeFailures`
+
+- Tweet service down returns 502 "Upstream service unavailable.", no row for the caller (`should_return_502_and_store_nothing_when_the_tweet_service_is_down`)
+- A `5xx`, a `4xx` or an unreadable body returns 502 (`should_return_502_and_store_nothing_when_the_tweet_service_answers_5xx_4xx_or_an_unreadable_body`, parameterized over 500, 404 and 200)
+- Slower than the read timeout returns 504 "Upstream service timed out." (`should_return_504_and_store_nothing_when_the_tweet_service_is_slower_than_the_read_timeout`)
+- A counter seeded at 1 by another user stays 1 in every failure (`should_leave_the_counter_untouched_when_the_like_fails`)
+- The downstream body is not leaked (`should_not_leak_the_downstream_body_when_the_like_fails`)
+
+`Unlike` - `DELETE /api/v1/likes/{tweetId}`
+
+- A liked tweet returns 204, the row is gone, counter 1 -> 0 (`should_return_204_and_remove_the_row_and_decrement_the_counter_when_the_tweet_is_liked`)
+- A tweet the caller did not like returns 204; another user's like keeps the counter at 1 (`should_return_204_and_keep_the_counter_when_the_caller_did_not_like_the_tweet`)
+- Unliking twice returns 204 both times, counter 0, never -1 (`should_return_204_and_keep_the_counter_at_zero_when_the_tweet_is_unliked_twice`)
+- Two likers, one unlikes: only that row goes, counter 1 (`should_remove_only_the_callers_row_when_two_users_liked_the_tweet`)
+- A like whose tweet the tweet service no longer knows (seeded orphan) is still removed, 204 (`should_return_204_and_remove_the_row_when_the_tweet_is_unknown_to_the_tweet_service`)
+- A malformed id returns 400 (`should_return_400_when_the_tweet_id_is_malformed`)
+- No tweet call and no user call (`should_make_no_downstream_call_when_a_tweet_is_unliked`)
+
+`Read` - `GET /api/v1/likes?cursor=&size=`
+
+- Nothing liked returns 200, `items: []`, `nextCursor: null`, no downstream call (`should_return_an_empty_page_when_nothing_is_liked`)
+- The most recently liked comes first (`should_return_the_most_recently_liked_first_when_several_are_liked`)
+- Likes with the same `liked_at` are ordered by tweet id (`should_break_ties_on_the_liked_time_by_tweet_id_when_likes_share_a_timestamp`)
+- Each item is in the feed's shape, exact key set `id, views, likes, likedByMe, savedByMe, content, createdAt, updatedAt, images, author`, `likedByMe: true` (`should_return_the_tweet_and_the_author_from_the_stubs_when_a_tweet_is_liked`; step 31)
+- An author without a picture has `profilePictureUrl: null` (`should_return_a_null_picture_url_when_the_author_has_no_picture`)
+- Only the caller's likes appear (Q20) (`should_return_only_the_callers_likes_when_other_users_have_likes`)
+- Liking again does not move a tweet up (`should_not_move_a_tweet_up_when_it_is_liked_again`)
+- Unlike then like again moves it to the top, new `liked_at` (`should_move_a_tweet_to_the_top_when_it_is_unliked_and_liked_again`)
+- An item's `likes` is the tweet's whole counter: Ana's list shows 2 when Bob liked it too (`should_return_the_whole_counter_as_likes_when_another_user_liked_the_tweet_too`; step 31)
+- `savedByMe` is `true` only when the caller also saved the tweet (`should_mark_saved_by_me_only_when_the_caller_also_saved_the_tweet`)
+
+`Paging`, `MissingData`, `Calls`, `Failures` - the saved list's groups, word for word (`should_..._liked_...` for `liked`, `like` for `save`, `..._on_a_read` for the failures), see "Phase 2 - Saved tweets"
+
+- No `size` returns 20 items; `size` 0, 101 and -1 return 400 "Page size must be between 1 and 100."; a non-numeric `size` returns 400
+- Walking the cursor visits every like once, also across a run of equal timestamps; a truncated, padded, upper-case-id or garbage cursor returns 400 "Invalid cursor."
+- A missing tweet or author is skipped and the cursor advances; an all-missing page returns `items: []` with a cursor that leads on
+- One tweet call and one user call per page, only that page's ids, each author once, the secret on the user call
+- Either downstream down or `5xx` returns 502, slow returns 504, no body leaked
+
+### `likes` and `likedByMe` on items
+
+New group `Likes` in `FeedControllerIntegrationTest` and in `SavedTweetControllerIntegrationTest`, the same five scenarios in each. Enabled (step 31). The exact-key-set scenario of each `Read` group gains `likes, likedByMe`. One count query and one liked-ids query per page, no downstream call.
+
+- `likes` is the tweet's counter, `0` when nobody liked it (`should_return_the_like_count_of_each_item_and_zero_when_nobody_liked_the_tweet`, `..._the_saved_tweet`)
+- `likedByMe` is `true` only for the caller's own like (`should_mark_an_item_liked_only_when_the_caller_liked_its_tweet`)
+- Another user's like does not count (`should_not_mark_an_item_liked_when_only_another_user_liked_its_tweet`)
+- An unlike through `DELETE /likes/{id}` makes the next read `false` with the count one lower (`should_mark_the_item_not_liked_and_lower_the_count_when_the_caller_unlikes_its_tweet`)
+- Still one tweet call and one user call per page (`should_make_no_extra_downstream_call_when_the_likes_are_added_to_the_page`)
+
+### `tweet.deleted` additions
+
+`TweetDeletedListenerIntegrationTest`, new group `Likes`. Enabled (step 31).
+
+`Likes`
+
+- Every like row of the tweet, across users, and its counter are removed (`should_remove_the_like_rows_and_the_counter_of_the_tweet_across_users_when_it_is_deleted`)
+- Other tweets' likes and counters stay (`should_leave_the_likes_and_the_counter_of_other_tweets_when_a_tweet_is_deleted`)
+- Feed entries, saved rows, views and likes of the tweet are all gone (`should_remove_the_feed_entries_the_saved_rows_the_views_and_the_likes_together_when_a_tweet_is_deleted`)
+- A repeated delete of a liked tweet is a no-op (`should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_had_likes`)
+- A delete of a tweet with no likes is a no-op (`should_do_nothing_when_the_tweet_had_no_likes`)
+- The likes delete failing once removes nothing of the tweet (feed, saved, views, likes all still there); the retry removes all four (`should_remove_nothing_of_the_tweet_and_all_of_it_on_the_retry_when_the_likes_delete_fails_once`)

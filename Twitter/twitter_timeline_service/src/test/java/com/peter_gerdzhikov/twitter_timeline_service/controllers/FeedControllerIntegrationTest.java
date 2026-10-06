@@ -54,6 +54,8 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
 
     private static final String SAVED_TWEETS_PATH = "/api/v1/saved-tweets";
 
+    private static final String LIKES_PATH = "/api/v1/likes";
+
     private static final String USERS_PATH = "/internal/v1/users";
 
     private static final String TWEETS_PATH = "/internal/v1/tweets";
@@ -145,7 +147,7 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
 
             JsonNode item = feed(owner, "", status().isOk()).get("items").get(0);
 
-            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "savedByMe", "content", "createdAt", "updatedAt", "images", "author");
+            assertThat(item.propertyNames()).containsExactlyInAnyOrder("id", "views", "savedByMe", "likes", "likedByMe", "content", "createdAt", "updatedAt", "images", "author");
             assertThat(item.get("id").asString()).isEqualTo(tweetId.toString());
             assertThat(item.get("content").asString()).isEqualTo("tweet " + tweetId);
             assertThat(item.get("createdAt").asString()).isEqualTo(TWEET_CREATED_AT.toString());
@@ -625,6 +627,110 @@ class FeedControllerIntegrationTest extends AbstractListenerIntegrationTest {
             assertThat(TWEET_SERVICE_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
             assertThat(GATEWAY_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
         }
+    }
+
+    @Nested
+    class Likes {
+
+        @Test
+        void should_return_the_like_count_of_each_item_and_zero_when_nobody_liked_the_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID liked = entry(owner, author, TWEET_CREATED_AT);
+            UUID unliked = entry(owner, author, TWEET_CREATED_AT.plusSeconds(1));
+            seedLike(TestIds.userId(), liked, author, TWEET_CREATED_AT);
+            seedLike(TestIds.userId(), liked, author, TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemLikes(body)).containsEntry(liked.toString(), 2L).containsEntry(unliked.toString(), 0L);
+        }
+
+        @Test
+        void should_mark_an_item_liked_only_when_the_caller_liked_its_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID liked = entry(owner, author, TWEET_CREATED_AT.plusSeconds(1));
+            UUID unliked = entry(owner, author, TWEET_CREATED_AT);
+            seedLike(owner, liked, author, TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemLikedByMe(body)).containsEntry(liked.toString(), true).containsEntry(unliked.toString(), false);
+        }
+
+        @Test
+        void should_not_mark_an_item_liked_when_only_another_user_liked_its_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID tweetId = entry(owner, author, TWEET_CREATED_AT);
+            seedLike(TestIds.userId(), tweetId, author, TWEET_CREATED_AT);
+            stubDownstreams();
+
+            JsonNode body = feed(owner, "", status().isOk());
+
+            assertThat(itemLikedByMe(body)).containsEntry(tweetId.toString(), false);
+            assertThat(itemLikes(body)).containsEntry(tweetId.toString(), 1L);
+        }
+
+        @Test
+        void should_mark_the_item_not_liked_and_lower_the_count_when_the_caller_unlikes_its_tweet() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            UUID tweetId = entry(owner, author, TWEET_CREATED_AT);
+            seedLike(owner, tweetId, author, TWEET_CREATED_AT);
+            seedLike(TestIds.userId(), tweetId, author, TWEET_CREATED_AT);
+            stubDownstreams();
+            JsonNode before = feed(owner, "", status().isOk());
+            assertThat(itemLikedByMe(before)).containsEntry(tweetId.toString(), true);
+            assertThat(itemLikes(before)).containsEntry(tweetId.toString(), 2L);
+
+            unlike(owner, tweetId);
+
+            JsonNode after = feed(owner, "", status().isOk());
+            assertThat(itemLikedByMe(after)).containsEntry(tweetId.toString(), false);
+            assertThat(itemLikes(after)).containsEntry(tweetId.toString(), 1L);
+        }
+
+        @Test
+        void should_make_no_extra_downstream_call_when_the_likes_are_added_to_the_page() throws Exception {
+            UUID owner = TestIds.userId();
+            UUID author = knownAuthor("ana");
+            seedLike(owner, entry(owner, author, TWEET_CREATED_AT), author, TWEET_CREATED_AT);
+            entry(owner, author, TWEET_CREATED_AT.plusSeconds(1));
+            stubDownstreams();
+
+            feed(owner, "", status().isOk());
+
+            assertThat(TWEET_SERVICE_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+            assertThat(GATEWAY_STUB.find(anyRequestedFor(anyUrl()))).hasSize(1);
+        }
+    }
+
+    private Map<String, Long> itemLikes(JsonNode page) {
+        Map<String, Long> likes = new LinkedHashMap<>();
+        page
+                .get("items")
+                .forEach(item -> likes.put(item.get("id").asString(), item.get("likes").asLong()));
+
+        return likes;
+    }
+
+    private Map<String, Boolean> itemLikedByMe(JsonNode page) {
+        Map<String, Boolean> likedByMe = new LinkedHashMap<>();
+        page
+                .get("items")
+                .forEach(item -> likedByMe.put(item.get("id").asString(), item.get("likedByMe").asBoolean()));
+
+        return likedByMe;
+    }
+
+    private void unlike(UUID userId, UUID tweetId) throws Exception {
+        mockMvc
+                .perform(delete(LIKES_PATH + "/" + tweetId).header(USER_ID_HEADER, userId.toString()))
+                .andExpect(status().isNoContent());
     }
 
     private MockHttpServletRequestBuilder feedRequest(UUID userId, String query) {

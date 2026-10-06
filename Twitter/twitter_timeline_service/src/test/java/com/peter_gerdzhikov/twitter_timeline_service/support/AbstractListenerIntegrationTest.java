@@ -38,13 +38,18 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 
 import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLike;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetView;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewCount;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.likes.LikeRecordingService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;
 
 /**
@@ -87,6 +92,15 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
 
     @Autowired
     protected TweetViewRepository tweetViewRepository;
+
+    @Autowired
+    protected TweetLikeRepository tweetLikeRepository;
+
+    @Autowired
+    protected TweetLikeCountRepository tweetLikeCountRepository;
+
+    @Autowired
+    protected LikeRecordingService likeRecordingService;
 
     @Autowired
     protected ViewRecordingService viewRecordingService;
@@ -329,6 +343,39 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
                 .untilAsserted(() -> {
                     assertThat(viewersOf(tweetId)).isEmpty();
                     assertThat(tweetViewCountRepository.existsById(tweetId)).isFalse();
+                });
+    }
+
+    /**
+     * A like recorded the way the endpoint records it, so the counter and the like rows agree.
+     */
+    protected void seedLike(UUID userId, UUID tweetId, UUID authorId, Instant likedAt) {
+        likeRecordingService.like(userId, tweetId, authorId, likedAt);
+    }
+
+    protected long likesOf(UUID tweetId) {
+        return tweetLikeCountRepository
+                .findById(tweetId)
+                .map(TweetLikeCount::getLikes)
+                .orElse(0L);
+    }
+
+    protected List<UUID> likersOf(UUID tweetId) {
+        return tweetLikeRepository
+                .findAll()
+                .stream()
+                .filter(like -> like.getTweetId().equals(tweetId))
+                .map(TweetLike::getOwnerId)
+                .toList();
+    }
+
+    protected void awaitLikesGone(UUID tweetId) {
+        Awaitility.await()
+                .atMost(AWAIT_TIMEOUT)
+                .pollInterval(Duration.ofMillis(100))
+                .untilAsserted(() -> {
+                    assertThat(likersOf(tweetId)).isEmpty();
+                    assertThat(tweetLikeCountRepository.existsById(tweetId)).isFalse();
                 });
     }
 

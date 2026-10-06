@@ -1,13 +1,16 @@
 # Twitter Timeline Service — plan
 
-Everything about one user's relationship to tweets they didn't write. Built in three ordered phases:
+Everything about one user's relationship to tweets they didn't write. Built in five ordered phases:
 
 1. **Feed.** Tweets from people you follow (and your own), newest first, kept 7 days.
 2. **Saved tweets.** Bookmark, unbookmark, list.
 3. **Views.** Unique viewers per tweet, reported by the browser; the counter moves here out of the tweet service.
+4. **Likes.** Like, unlike, your own liked list, a public count on every post; replaces the gateway's like stub.
+5. **Likes UI.** The frontend shows real counts and hearts, gains `/liked`, and drops what was left of the stub.
 
-Liked tweets are out of scope (a separate service later). Every design call below was settled in the `/grill-me`
-interview of 2026-10-03 (record at the bottom, Q-numbers in parentheses).
+Phases 1–3 were settled in the `/grill-me` interview of 2026-10-03 (Q1–Q18), phases 4–5 in the `/plan-backend`
+interview of 2026-10-05 (Q19–Q26, spec `../docs/likes-design.md`), which reverses Q1's "liked tweets later,
+elsewhere". Records at the bottom, Q-numbers in parentheses.
 
 Building it touched two other projects; their steps lived in this plan, marked **[gateway]** or **[tweet]**, and their
 own `PLAN.md` files only point here. Where things live now: calls made while building in `DECISIONS.md`, the test
@@ -20,6 +23,8 @@ catalog in `TESTING.md`, conventions and standing rules in `CLAUDE.md`, the secu
 | 1 | Feed (steps 1–13) | 2026-10-03 |
 | 2 | Saved tweets (steps 14–19) | 2026-10-03 |
 | 3 | Views (steps 20–27) | 2026-10-03 |
+| 4 | Likes (steps 28–34) | 2026-10-06 |
+| 5 | Likes UI (steps 35–42) | |
 
 Back-filling the feed on follow (`user.followed`) was added later by the frontend plan (step 16); see `DECISIONS.md`.
 
@@ -131,6 +136,146 @@ Back-filling the feed on follow (`user.followed`) was added later by the fronten
 
 ---
 
+## Phase 4 — Likes ✅ **Done** (2026-10-06)
+
+Spec: `../docs/likes-design.md`. A copy of saved tweets plus a public counter (a copy of the views counter); writes are
+synchronous HTTP, no Kafka, no new event, no new env var.
+
+- **`TweetLike` (`tweet_likes`)**, PK `(user_id, tweet_id)` plus `author_id` and `liked_at`, and **`TweetLikeCount`
+  (`tweet_like_counts`)** with `ck_tweet_like_counts_likes_non_negative`; every column `updatable = false`, only native
+  statements move the counter. Indexes `ix_tweet_likes_tweet` and `ix_tweet_likes_user_liked`.
+- **Invariant:** `likes` = the tweet's `tweet_likes` rows; the counter moves only in the transaction of a row actually
+  added or removed (`LikeRecordingService.like` / `unlike`, its own bean, as views).
+- **`PUT /api/v1/likes/{tweetId}` → 204**, idempotent: one tweet-service read outside any transaction (`404` unknown,
+  `502` / `504` on a downstream failure, nothing written), then insert plus upsert. Liking again keeps `liked_at`.
+  Your own post can be liked and counts; a new post starts at `0` (Q21).
+- **`DELETE /api/v1/likes/{tweetId}` → 204**, idempotent, no downstream call.
+- **`GET /api/v1/likes?cursor=&size=`** → `LikedTweetsResponseDTO`: your own likes only (Q20), newest like first, same
+  cursor, size and skip rules as the saved list, through `TweetItemAssemblyService`.
+- **`likes` and `likedByMe` inline** on every feed, saved and liked item (`TweetItemResponseDTO`, after `savedByMe`): one
+  count query and one `findLikedTweetIds` per page, no new HTTP call.
+- **`tweet.deleted`** also removes the tweet's likes and counter in its existing transaction.
+- **[gateway]** `/api/v1/likes/**` joins the timeline route; the like stub (`LikeController`, its test) is gone (Q26).
+- **Tests:** repository, unit, HTTP and `tweet.deleted` suites (catalog in `TESTING.md`), `LikeConcurrencyIntegrationTest`
+  (50 likers, one user 50×, like/unlike churn, 50 parallel unlikes), gateway `TimelineRoutesIntegrationTest.Likes`,
+  e2e `likes.spec.ts` (5 journeys, Q25).
+- **Audit (2026-10-06, `SECURITY-AUDITS.md`):** nothing Medium or above; 1 Low and 2 Info accepted with triggers
+  (accepted gaps below), 1 Info unconfirmed (Left open).
+- **Final gate:** timeline and gateway `./mvnw verify` green 3× in a row, e2e `npm test` green 3× from a fresh stack.
+
+---
+
+## Phase 5 — Likes UI
+
+Steps are tagged **[frontend]** and **[e2e]** and follow `../frontend/CLAUDE.md`: invoke `frontend-code-style` before
+any `.ts` / `.tsx` / `.css`, names `should_..._when_...`, component tests on jsdom with fake timers and `src/api/*`
+stubbed with `vi.mock`, never waiting in real time.
+
+**Hard rule:** no step starts on a red or missing test, each step ends green; nothing here starts before step 34's
+gate.
+
+### Design
+
+The UI was built against the like stub (frontend Q1, Q2). This phase connects it to phase 4 and removes everything the
+stub left behind (Q26).
+
+- **Data.** `TweetItem` (`src/api/tweetPage.ts`) gains `likes: number` and `likedByMe: boolean`. `src/api/likes.ts` gains
+  `fetchLikedTweets(request)`, as `fetchSavedTweets` (`pageUrl`, `readTweetPage`); `ENDPOINTS.likes` =
+  `${API_V1}/likes`, next to `like(tweetId)`. `toOwnPost` (`utils/ownPost.ts`, the post you just published, shown at
+  once) gains `likes: 0, likedByMe: false`: posting never likes it (Q21). Test fixtures that build a `TweetItem` gain
+  both fields.
+- **One count formatter (Q23).** `formatFollowers` (`utils/followers.ts`) becomes `formatCount` (`utils/count.ts`), the
+  same rule (rounded down, K / M, one decimal below 10); `PersonCard` keeps its `FOLLOWER` / `FOLLOWERS` word.
+- **A post opens with the server's state.** `PostCell` passes `isLikedInitially={post.likedByMe}` and
+  `likeCount={post.likes}`. `PostActions` starts the toggle at `isLikedInitially` and shows
+  `formatCount(max(0, likeCount − (isLikedInitially ? 1 : 0) + (like.isOn ? 1 : 0)))`. The `max` keeps a count read
+  mid-race (`likes: 0` with `likedByMe: true`) from ever showing `-1`. A failed request goes back silently, as today; a
+  `404` (the post was deleted meanwhile) is a failure like any other. The stub comment and `likeCount = like.isOn ? 1 :
+  0` are gone. Other people's likes on posts already on screen show after a reload; a `NEW POSTS` load brings only
+  new posts, each with its fresh count (gap below).
+- **`/liked` (Q20, Q22, Q24).** `ROUTES.liked = '/liked'`, a `Shell` child route next to `/saved`, no tab row.
+  `LikedPage`: title `LIKED TWEETS`, `PostList` with `fetchLikedTweets`, `END OF LIKED TWEETS`, `NO LIKED TWEETS YET`.
+  An unliked post stays, heart empty, count one lower, until a reload or leaving the page: the shared `PostList`, no
+  special case. Menu: `SAVED TWEETS`, `LIKED TWEETS`, `LOG OUT`.
+- **The stub gone everywhere (Q26).** Frontend `CLAUDE.md`: "Likes are a **stub** …" replaced by how likes work now
+  (server count and heart, the count rule, `/liked`). Frontend `PLAN.md`: the gap "Likes are a stub" closed with a
+  pointer to this phase, "the liked-tweets pages" leaves Out of scope, a pointer line in its Status. Frontend
+  `DECISIONS.md`: the count rule and the `max`. `PostCell.test.tsx`'s
+  `should_start_the_like_unpressed_at_zero_whatever_the_view_count_is` and `PostActions.test.tsx`'s zero-start
+  scenarios are replaced, not deleted, in the step that changes the behaviour. The root `PLAN.md` timeline line names
+  the likes, and its old scratch note ("Liked tweets … a consumer … topics like.tweet and unlike.tweet") is marked
+  superseded by the spec.
+- **Docs naming the formatter** (step 37): frontend `CLAUDE.md` ("`truncateBio` … and `formatFollowers`") names
+  `formatCount`; `DECISIONS.md` gets an entry for the rename. Phase history in the frontend `PLAN.md` stays as written.
+
+### Scenarios
+
+- **API (`likes.test.ts`, stubbed `fetch`):** `fetchLikedTweets` sends `GET` to `ENDPOINTS.likes` with `cursor` and
+  `size` and credentials; author pictures are mapped as in `readTweetPage`; an error status rejects with that status.
+  `likeTweet` / `unlikeTweet` keep their tests.
+- **`formatCount` (`count.test.ts`, the follower cases moved):** `0` → `0`, `999` → `999`, `1,000` → `1K`, `1,299` →
+  `1.2K`, `12,999` → `12K`, `999,999` → `999K`, `1,000,000` → `1M`, `2,340,000` → `2.3M`. The `PersonCard` tests stay
+  green unchanged.
+- **`PostActions`:** `likes: 3, likedByMe: false` → `3`, unpressed; `likes: 3, likedByMe: true` → `3`, pressed; like →
+  `4`, pressed; unlike a liked post → `2`; like then unlike → `3`; a failed like → `3`, unpressed, no alert; a failed
+  unlike of a liked post → `3`, pressed; `likes: 1299` → `1.2K`, liked → `1.3K`; `likes: 0, likedByMe: true` → `0`,
+  pressed, unliked → `0`, never `-1`. The last-click-wins and "a like doesn't hold the save back" tests stay.
+- **`PostCell`:** the like starts from the server's state (`should_start_the_like_from_the_server_state_when_the_post_loads`,
+  replacing the zero-start test).
+- **`LikedPage`** (as `SavedPage.test.tsx`): the title `LIKED TWEETS`; it reads the liked list and not the feed; the
+  first page listed; `END OF LIKED TWEETS` at the end; `NO LIKED TWEETS YET` when empty; an unliked post stays with an
+  empty heart and a count one lower; the menu item opens it from the feed; a post half visible for a second is reported
+  as viewed, once per page load; it never checks for new posts (the `NEW POSTS` check orders by `createdAt`, wrong for
+  a list ordered by `liked_at`).
+- **`UserMenu`:** three items in order; arrow keys move across all three and wrap; `LIKED TWEETS` goes to `/liked`,
+  closes the menu and returns focus, as `SAVED TWEETS`. Replaced, not deleted:
+  `should_open_with_the_two_items_when_the_avatar_is_clicked` (becomes three items) and both
+  `should_move_to_the_..._and_wrap_around_when_arrow_..._is_pressed` tests (now across three).
+- **`toOwnPost`:** `should_start_with_no_views_and_not_saved` becomes
+  `should_start_with_no_views_no_likes_and_not_saved_or_liked` (`likes: 0`, `likedByMe: false`).
+- **`App`:** `/liked` signed out → `/login`; signed in → `LikedPage`, no tab row.
+- **[e2e] `feed-ui.spec.ts`** (Q25), fresh users, `expect.poll` for fan-out:
+  1. Like → reload → the heart still filled, the count still `1`. A new test next to the existing "0 → 1" journey,
+     which stays as it is, so the catalog never disables a green test.
+  2. Bob likes Ana's post through the API → Ana opens `/feed`: `1`, empty heart; she taps → filled, `2`.
+  3. Menu `LIKED TWEETS` → `/liked` lists the post.
+  4. Unlike on `/liked` → the post stays with an empty heart and `0`; after a reload `NO LIKED TWEETS YET`.
+
+  The "cookie gone, tap the heart → `/login`" journey stays unchanged.
+- **Not applicable:** server-side races (none added; the button's one-request-at-a-time tests stay); user input (none
+  new); a garbage `likes` from the server (the gateway is the only source, as for `views` and `savedByMe` today).
+
+### Steps
+
+35. **Test catalog.** Every scenario above as `it.todo` (Vitest) and `test.fixme` (Playwright), under the names it will
+    have. **Gate:** `npm run build`, `npm run lint` and `npm test` clean in `frontend` (the todos listed);
+    `npx playwright test --list` in `e2e` shows the four; **and you have approved the catalog**.
+36. **[frontend] Like data in the API layer.** The two fields, `fetchLikedTweets`, `ENDPOINTS.likes`, `toOwnPost`, the
+    fixtures. **Gate:** `likes.test.ts` and `ownPost.test.ts` green; `npm run build` (type-checks every fixture) and
+    `npm test` green.
+37. **[frontend] One count formatter.** With its docs (design). **Gate:** `count.test.ts` and the `PersonCard` tests
+    green; `grep -rn formatFollowers src CLAUDE.md` in `frontend` empty.
+38. **[frontend] Posts open with the real like state.** `PostCell`, `PostActions`, the replaced zero-start tests.
+    **Gate:** the `PostActions` and `PostCell` scenarios green; `npm test` green.
+39. **[frontend] `/liked` and its menu item.** **Gate:** the `LikedPage`, `UserMenu` and `App` scenarios green;
+    `npm run build`, `npm run lint`, `npm test` clean.
+40. **[e2e] The UI over the real chain.** The four journeys enabled. **Gate:** `npm test` in `e2e` green 3× from a
+    fresh stack.
+41. **The stub gone everywhere.** The doc changes listed in the design. **Gate:** `grep -rnE "LikeController|likes
+    service yet|Likes are a \*\*stub|likeCount = like" twitter_api_gateway/src twitter_api_gateway/TESTING.md
+    frontend/src frontend/CLAUDE.md e2e/tests` (from the Twitter root) prints nothing, and the frontend `PLAN.md`
+    holds no open gap about the stub.
+42. **Hardening.** Stop and ask the user to run `/exploit-hunter` on the phase 5 surface (`/liked`, the count
+    rendering, the like button's new start state); report to `frontend/exploit-report-<YYYY-MM-DD>-phase5.md`, merged
+    into `SECURITY-FINDINGS.md` as before. Each finding fixed or an accepted gap with a trigger. Docs reconciled after
+    the fixes (frontend `CLAUDE.md`, `DECISIONS.md`, `PLAN.md`); the Status row and this heading marked ✅ **Done**
+    (date). **Manual:** you look
+    at `/liked` and at a post with `1.2K` likes at 1440 and 320 px (the action row doesn't wrap). **Gate:**
+    `npm run build`, `npm run lint`, `npm test` clean; `npm test` in `e2e` green **3× in a row** from a fresh stack;
+    the visual check signed off.
+
+---
+
 ## Left open
 
 - **The opposite-order concurrency scenario does not prove the counter upsert's lock order:** removing the `ORDER BY`
@@ -145,6 +290,11 @@ Back-filling the feed on follow (`user.followed`) was added later by the fronten
   (startup bound on the back-fill size, self-follow and `occurredAt` validation, a list cap) or accept them with
   triggers.
 
+- **Unconfirmed log forging (Info, audit 2026-10-06):** `GlobalExceptionHandler` logs `e.getResourcePath()` unescaped at
+  WARN; a decoded line feed in the path could forge a log line, only on direct access to :8083. Not run against a live
+  instance. **Decide:** `curl 'localhost:8083/%0aWARN%20forged'` once the stack is up, then escape the path or drop
+  the item.
+
 ## Test strategy
 
 Unit (Mockito) → repository (real Postgres) → client (WireMock) → listener (real Kafka + Postgres, WireMock
@@ -152,11 +302,17 @@ downstreams) → HTTP (`*ControllerIntegrationTest`) → concurrency (latch-rele
 API-level Playwright spec per phase in `../e2e` over the real chain. No embedded fakes; Docker is required. The
 deterministic-test and 3×-green rules are in `CLAUDE.md`.
 
+Phase 5 runs the frontend's layers instead: unit and component tests in Vitest (jsdom, fake timers advanced in stages,
+`src/api/*` stubbed with `vi.mock`, a stubbed `fetch` for the API modules), then Playwright UI journeys in `../e2e`
+(`reducedMotion: 'reduce'`, fresh users, `expect.poll` for fan-out, never a fixed wait). The approved catalog comes
+first in both phases; one flaky run is a failure to investigate, not to retry.
+
 ## Out of scope
 
-Liked tweets; the frontend feed, saved and views UI (handoff above); a tweet details page; "tweets by author" /
-profile timelines; ranking or an algorithmic feed; replies, retweets, quotes; notifications; account deletion; a Redis
-cache; a DLT replay tool.
+The frontend feed, saved and views UI (handoff above); a tweet details page; "tweets by author" / profile timelines;
+ranking or an algorithmic feed; replies, retweets, quotes; notifications; account deletion; a Redis cache; a DLT replay
+tool. From phases 4–5: other people's liked lists (Q20); a "who liked this" list; like notifications; likes feeding any
+ranking.
 
 ## Accepted gaps — revisit when the named trigger lands
 
@@ -204,6 +360,35 @@ cache; a DLT replay tool.
 - **Dev compose has fixed credentials** (bound to `127.0.0.1`). **Trigger:** any shared environment.
 - **Stale `views` field in existing dev tweet documents.** **Permanent** unless someone wants it gone.
 
+From phases 4–5 (likes):
+
+- **No `tweet.liked` event.** Nothing would consume it. **Trigger:** a consumer, e.g. a "X liked your post"
+  notification → an outbox in this service (a copy of the tweet service's) and the event.
+- **Only your own liked list (Q20).** **Trigger:** profile pages → `GET /api/v1/users/{id}/likes`, after deciding
+  whether likes are public.
+- **No "who liked this" list.** **Trigger:** a likers page → index `(tweet_id, liked_at, user_id)` and an endpoint.
+- **Self-likes count (Q21).** **Trigger:** a complaint about inflated counts → skip the author's like in the counter.
+- **Like orphans:** a like racing a tweet delete leaves a row and a counter for a dead tweet, hidden in lists, never
+  removed. Same trigger as the saved and view orphans above.
+- **No rate limiting on likes** (each one a tweet-service call and an INFO line), and **no cap on likes per user**.
+  **Trigger:** abuse, a second instance, or table size.
+- **Hot like counter** on a viral tweet. **Trigger:** like latency → buffered or sharded counters.
+- **`tweet.deleted` removes every like of the tweet in one transaction** (as its saved rows and views), so a tweet with
+  N likes is one N-row delete holding the listener. **Trigger:** a slow or timed-out `tweet.deleted` → delete in
+  batches, each its own transaction.
+- **`X-User-Id` trusted blindly** lets anyone who reaches port 8083 mint likes and read any user's private liked list
+  by naming their id (audit 2026-10-06, Low). Same trigger as that gap above: anything but the gateway able to reach
+  :8083 → Medium; the shared secret or mTLS then.
+- **A forged `tweet.deleted` also wipes the tweet's likes and counter,** which have no source to replay from (audit
+  2026-10-06, Info). Needs write access to the topic. **Trigger:** a second producer or a non-loopback broker → Kafka
+  ACLs, or the listener confirms the delete with the tweet service before acting.
+- **Counts on screen are a snapshot** plus your own change; other people's likes on posts already shown appear after a
+  reload (a `NEW POSTS` load adds only new posts). **Trigger:** complaints that counts look stale → re-read counts for
+  visible posts.
+- **Two reads per page are not one snapshot:** the count and `likedByMe` come from separate queries, so a like or
+  unlike landing between them can show `likes: 0, likedByMe: true` once; the UI never shows below `0`. **Permanent**
+  unless counts must be exact on screen.
+
 ---
 
 ## Interview record (`/grill-me`, 2026-10-03)
@@ -228,3 +413,19 @@ cache; a DLT replay tool.
 | 16 | Build order and where cross-project steps live? | Feed → saved → views; gateway and tweet steps in this plan |
 | 17 | Cross-service test? | One API-level Playwright spec per phase in `../e2e` over the real chain |
 | 18 | `CommonEntity` for the new tables? | No: the pair is the key |
+
+## Interview record (`/plan-backend`, 2026-10-05)
+
+Likes, from `../docs/likes-design.md`. Numbers continue from the `/grill-me` record above.
+
+| # | Question | Answer |
+|---|---|---|
+| 19 | Where do the likes steps go? | One plan: phase 4 (likes) and phase 5 (likes UI) here; the frontend and gateway plans get a pointer |
+| 20 | Whose liked tweets can you see? | Only your own (`GET /api/v1/likes`); anyone's is a gap until profile pages |
+| 21 | Can you like your own post? | Yes, and it counts, but only by tapping the heart: posting never likes it, a new post starts at `0` |
+| 22 | Unlike a post on `/liked`? | It stays, heart empty, count down; gone after a reload or leaving the page, as `/saved` (frontend Q5) |
+| 23 | Big like counts? | Shortened as follower counts (rounded down, K / M, one decimal below 10); one shared formatter |
+| 24 | Liked page texts and address | As proposed: menu `SAVED TWEETS`, `LIKED TWEETS`, `LOG OUT`; `/liked`; title `LIKED TWEETS`; `END OF LIKED TWEETS`; `NO LIKED TWEETS YET`; no tab row |
+| 25 | E2E journeys | As proposed: 5 API journeys in `likes.spec.ts` (incl. a forged `X-User-Id`), 4 UI journeys in `feed-ui.spec.ts` |
+| 26 | Phase cut; what "the mockup" is | Phase 4 likes (timeline, gateway route replaces the stub, API e2e), phase 5 likes UI (stub leftovers in the UI replaced, `/liked`, UI e2e); the mockup is the like stub, gone everywhere by the end of phase 5 |
+| — | `(my call)` | The like transaction in its own `LikeRecordingService` (as views); the assembly service reads the like repositories itself (a cycle otherwise); `likes`, `likedByMe` after `savedByMe`; path ids parsed leniently, as saved (upper-case = same id); a failed or `404` like reverts silently, as save; the shown count never below `0`; catalogs as `@Disabled`, `it.todo` and `test.fixme`; the stub's tests deleted in step 32, its UI tests replaced in step 38; a manual visual check of `/liked` and a `1.2K` count |

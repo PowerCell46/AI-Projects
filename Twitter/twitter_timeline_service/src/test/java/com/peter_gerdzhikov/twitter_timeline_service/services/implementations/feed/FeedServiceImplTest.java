@@ -33,14 +33,17 @@ import org.springframework.data.domain.Pageable;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.FeedResponseDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.feed.FeedResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.implementations.TweetItemAssemblyServiceImpl;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
@@ -74,11 +77,19 @@ class FeedServiceImplTest {
     @Mock
     private SavedTweetRepository savedTweetRepository;
 
+    @Mock
+    private TweetLikeRepository tweetLikeRepository;
+
+    @Mock
+    private TweetLikeCountRepository tweetLikeCountRepository;
+
     @BeforeEach
     void setUp() {
         feedService = new FeedServiceImpl(
                 feedEntryRepository,
-                new TweetItemAssemblyServiceImpl(viewService, executor, userLookupService, tweetLookupService, savedTweetRepository));
+                new TweetItemAssemblyServiceImpl(
+                        viewService, executor, userLookupService, tweetLookupService, savedTweetRepository,
+                        tweetLikeRepository, tweetLikeCountRepository));
     }
 
     @AfterEach
@@ -163,7 +174,8 @@ class FeedServiceImplTest {
 
             assertThat(page.getItems()).isEmpty();
             assertThat(page.getNextCursor()).isNull();
-            verifyNoInteractions(tweetLookupService, userLookupService, savedTweetRepository);
+            verifyNoInteractions(
+                    tweetLookupService, userLookupService, savedTweetRepository, tweetLikeRepository, tweetLikeCountRepository);
         }
 
         @Test
@@ -237,6 +249,54 @@ class FeedServiceImplTest {
             ArgumentCaptor<Collection<UUID>> tweetIds = ArgumentCaptor.captor();
             verify(savedTweetRepository).findSavedTweetIds(eq(OWNER), tweetIds.capture());
             assertThat(tweetIds.getValue()).containsExactly(first.getTweetId(), second.getTweetId());
+        }
+
+        @Test
+        void should_put_the_like_count_of_each_tweet_on_its_item_and_zero_when_it_has_no_counter() {
+            FeedEntry liked = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry unliked = entry(CREATED_AT);
+            givenRows(liked, unliked);
+            givenEverythingExists(liked, unliked);
+            when(tweetLikeCountRepository.findAllById(any()))
+                    .thenReturn(List.of(TweetLikeCount.builder().tweetId(liked.getTweetId()).likes(5L).build()));
+
+            FeedResponseDTO page = feedService.getFeed(OWNER, null, 20);
+
+            assertThat(page.getItems())
+                    .extracting(item -> item.getLikes())
+                    .containsExactly(5L, 0L);
+        }
+
+        @Test
+        void should_mark_each_item_liked_only_when_the_viewer_liked_its_tweet() {
+            FeedEntry liked = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry unliked = entry(CREATED_AT);
+            givenRows(liked, unliked);
+            givenEverythingExists(liked, unliked);
+            when(tweetLikeRepository.findLikedTweetIds(eq(OWNER), any())).thenReturn(List.of(liked.getTweetId()));
+
+            FeedResponseDTO page = feedService.getFeed(OWNER, null, 20);
+
+            assertThat(page.getItems())
+                    .extracting(item -> item.isLikedByMe())
+                    .containsExactly(true, false);
+        }
+
+        @Test
+        void should_count_and_look_up_the_likes_once_for_the_tweets_of_the_page() {
+            FeedEntry first = entry(CREATED_AT.plusSeconds(1));
+            FeedEntry second = entry(CREATED_AT);
+            givenRows(first, second);
+            givenEverythingExists(first, second);
+
+            feedService.getFeed(OWNER, null, 20);
+
+            ArgumentCaptor<Collection<UUID>> likedLookup = ArgumentCaptor.captor();
+            verify(tweetLikeRepository).findLikedTweetIds(eq(OWNER), likedLookup.capture());
+            ArgumentCaptor<Iterable<UUID>> countLookup = ArgumentCaptor.captor();
+            verify(tweetLikeCountRepository).findAllById(countLookup.capture());
+            assertThat(likedLookup.getValue()).containsExactly(first.getTweetId(), second.getTweetId());
+            assertThat(countLookup.getValue()).containsExactly(first.getTweetId(), second.getTweetId());
         }
 
         @Test

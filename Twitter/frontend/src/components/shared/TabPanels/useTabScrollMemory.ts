@@ -16,8 +16,17 @@ export function useTabScrollMemory(activeTab: TabId): void {
 
         handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
+        // A press that switches the tab can land before the browser has delivered the latest scroll event, which
+        // would save an older position. Reading in the capture phase runs ahead of the tab's own handler, while
+        // the leaving panel is still shown.
+        window.addEventListener('click', handleScroll, { capture: true });
+        window.addEventListener('keydown', handleScroll, { capture: true });
 
-        return () => window.removeEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('click', handleScroll, { capture: true });
+            window.removeEventListener('keydown', handleScroll, { capture: true });
+        };
     }, []);
 
     useLayoutEffect(() => {

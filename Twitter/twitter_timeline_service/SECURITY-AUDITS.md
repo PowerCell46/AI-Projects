@@ -10,6 +10,7 @@ left-open section, with a trigger. Dependencies were not scanned for CVEs in any
 | 2026-10-03 | Phase 2: saved tweets | 1 Low and 1 Info accepted |
 | 2026-10-03 | Phase 3: views | 2 Low and 2 Info accepted |
 | 2026-10-04 | Frontend phase 3: back-fill on follow | 1 Medium fixed, 7 Low and 1 Info open |
+| 2026-10-06 | Phase 4: likes | 1 Low and 2 Info accepted, 1 Info unconfirmed |
 
 ## Phase 1: feed (2026-10-03)
 
@@ -111,3 +112,25 @@ harness (no Kafka or Docker); the Testcontainers suites were not run.
   calls; the ordering of check, unfollow and delete is safe except follow, unfollow, follow across the two topics
   (accepted); deleted tweets are not returned; unknown fields are ignored and malformed UUIDs and timestamps are
   deserialization failures that go to the DLT.
+
+## Phase 4: likes (2026-10-06)
+
+Read from source only; nothing was executed. Scope: the three like endpoints, the inline `likes` / `likedByMe`
+fields, the like deletes in `tweet.deleted`, the gateway's `/api/v1/likes/**` route.
+
+- **Likes widen the unauthenticated-header gap (Low), accepted.** The caller is whatever `X-User-Id` says, so anyone who
+  reaches :8083 can mint likes (a fresh UUID is a new pair) and read any user's private liked list (Q20) by naming
+  them. Through the gateway the header is the JWT `sub` and the compose file publishes no port. Trigger: anything but
+  the gateway able to reach :8083 → Medium; a shared secret or mTLS between the gateway and this service.
+- **A forged `tweet.deleted` also wipes the tweet's likes and counter (Info), accepted.** Likes have no source to
+  replay from. Needs write access to the topic (PLAINTEXT, no ACLs, bound to loopback). Trigger: a second producer or a
+  non-loopback broker → Kafka ACLs, or confirm the delete with the tweet service first.
+- **A like racing a tweet delete leaves a row and a counter (Info), accepted.** Hidden in lists, never removed; joins the
+  saved and view orphans.
+- **`GlobalExceptionHandler` logs the resource path unescaped at WARN (Info), unconfirmed.** A decoded line feed could
+  forge a log line, only on direct access to :8083; not run against a live instance. Listed in `PLAN.md` "Left open".
+- **Clean:** every statement binds `uuid` / `timestamptz` parameters; downstream URLs come from configuration; like,
+  unlike and list are scoped to the caller and no endpoint lists who liked a tweet; `size` 1–100, strict cursors, 8 KB
+  bodies; error bodies are fixed strings; the row insert or delete decides whether the counter moves, so parallel
+  likes or unlikes by one user count once; Kafka values ignore type headers; the new `PUT` / `DELETE` routes are not
+  a CSRF path (cross-origin `fetch` needs a preflight the gateway does not grant).

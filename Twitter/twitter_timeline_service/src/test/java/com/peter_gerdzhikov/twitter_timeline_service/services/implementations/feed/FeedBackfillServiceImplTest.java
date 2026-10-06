@@ -30,7 +30,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryCli
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.events.InvalidEventException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;

@@ -9,13 +9,17 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
@@ -37,6 +41,10 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
     private final TweetLookupService tweetLookupService;
 
     private final SavedTweetRepository savedTweetRepository;
+
+    private final TweetLikeRepository tweetLikeRepository;
+
+    private final TweetLikeCountRepository tweetLikeCountRepository;
 
     @Override
     public <T> List<TweetItemResponseDTO> assemble(
@@ -64,6 +72,8 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
         Map<UUID, UserClientDTO> authorsById = await(authorsRequest);
         Map<UUID, Long> viewsByTweetId = viewService.countViews(tweetIds);
         Set<UUID> savedTweetIds = Set.copyOf(savedTweetRepository.findSavedTweetIds(viewerId, tweetIds));
+        Map<UUID, Long> likesByTweetId = countLikes(tweetIds);
+        Set<UUID> likedTweetIds = Set.copyOf(tweetLikeRepository.findLikedTweetIds(viewerId, tweetIds));
 
         return rows
                 .stream()
@@ -72,8 +82,17 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
                         tweetsById.get(tweetIdOf.apply(row)),
                         authorsById.get(authorIdOf.apply(row)),
                         viewsByTweetId.getOrDefault(tweetIdOf.apply(row), 0L),
-                        savedTweetIds.contains(tweetIdOf.apply(row))))
+                        savedTweetIds.contains(tweetIdOf.apply(row)),
+                        likesByTweetId.getOrDefault(tweetIdOf.apply(row), 0L),
+                        likedTweetIds.contains(tweetIdOf.apply(row))))
                 .toList();
+    }
+
+    private Map<UUID, Long> countLikes(Set<UUID> tweetIds) {
+        return tweetLikeCountRepository
+                .findAllById(tweetIds)
+                .stream()
+                .collect(Collectors.toMap(TweetLikeCount::getTweetId, TweetLikeCount::getLikes));
     }
 
     /**

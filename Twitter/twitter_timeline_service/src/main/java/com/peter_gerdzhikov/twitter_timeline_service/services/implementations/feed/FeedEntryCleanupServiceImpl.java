@@ -7,10 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedEntryCleanupService;
 
@@ -26,11 +28,15 @@ public class FeedEntryCleanupServiceImpl implements FeedEntryCleanupService {
 
     private final TweetViewRepository tweetViewRepository;
 
+    private final TweetLikeRepository tweetLikeRepository;
+
     private final SavedTweetRepository savedTweetRepository;
 
     private final EventValidationService eventValidationService;
 
     private final TweetViewCountRepository tweetViewCountRepository;
+
+    private final TweetLikeCountRepository tweetLikeCountRepository;
 
     @Override
     @Transactional
@@ -41,10 +47,12 @@ public class FeedEntryCleanupServiceImpl implements FeedEntryCleanupService {
         int removedFromSavedLists = savedTweetRepository.deleteByTweetId(event.getTweetId());
         int removedViews = tweetViewRepository.deleteByTweetId(event.getTweetId());
         tweetViewCountRepository.deleteByTweetId(event.getTweetId());
+        int removedLikes = tweetLikeRepository.deleteByTweetId(event.getTweetId());
+        tweetLikeCountRepository.deleteByTweetId(event.getTweetId());
 
         log.info(
-                "Removed tweet {} from {} feeds and {} saved lists, with its {} views.",
-                event.getTweetId(), removedFromFeeds, removedFromSavedLists, removedViews);
+                "Removed tweet {} from {} feeds and {} saved lists, with its {} views and {} likes.",
+                event.getTweetId(), removedFromFeeds, removedFromSavedLists, removedViews, removedLikes);
     }
 
     @Override

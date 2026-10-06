@@ -59,6 +59,10 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
 
     private static final String SAVED_TWEET_PATH = SAVED_TWEETS_PATH + "/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
 
+    private static final String LIKES_PATH = "/api/v1/likes";
+
+    private static final String LIKE_PATH = LIKES_PATH + "/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+
     private static final String VIEWS_PATH = "/api/v1/views";
 
     private static final String REPORT_BODY = "{\"tweetIds\":[\"6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b\"]}";
@@ -383,6 +387,91 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
             send(HttpMethod.GET, VIEWS_PATH + "/anything", cookieFor(UUID.randomUUID()));
 
             assertNothingWasForwarded();
+        }
+    }
+
+    @Nested
+    class Likes {
+
+        @ParameterizedTest
+        @ValueSource(strings = {"GET", "PUT", "DELETE"})
+        void should_return_401_and_forward_nothing_when_there_is_no_cookie(String method) {
+            send(HttpMethod.valueOf(method), LIKE_PATH, null)
+                    .expectStatus().isUnauthorized();
+
+            assertNothingWasForwarded();
+        }
+
+        @Test
+        void should_forward_a_put_with_the_path_and_status_unchanged_when_the_user_is_authenticated() {
+            stubEveryRequestWith(204, "");
+
+            send(HttpMethod.PUT, LIKE_PATH, cookieFor(UUID.randomUUID()))
+                    .expectStatus().isNoContent();
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("PUT", urlEqualTo(LIKE_PATH)));
+        }
+
+        @Test
+        void should_forward_a_delete_with_the_path_and_status_unchanged_when_the_user_is_authenticated() {
+            stubEveryRequestWith(204, "");
+
+            send(HttpMethod.DELETE, LIKE_PATH, cookieFor(UUID.randomUUID()))
+                    .expectStatus().isNoContent();
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("DELETE", urlEqualTo(LIKE_PATH)));
+        }
+
+        @Test
+        void should_forward_a_get_of_the_list_with_the_query_and_status_unchanged_when_the_user_is_authenticated() {
+            String pathAndQuery = LIKES_PATH + "?size=5&cursor=abc";
+
+            send(HttpMethod.GET, pathAndQuery, cookieFor(UUID.randomUUID()))
+                    .expectStatus().isOk()
+                    .expectBody(String.class).isEqualTo(DOWNSTREAM_BODY);
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("GET", urlEqualTo(pathAndQuery)));
+        }
+
+        @Test
+        void should_pass_the_downstream_404_and_body_through_unchanged_when_the_tweet_is_unknown() {
+            String errorBody = "{\"status\":404,\"messages\":[\"Tweet not found.\"]}";
+            stubEveryRequestWith(404, errorBody);
+
+            send(HttpMethod.PUT, LIKE_PATH, cookieFor(UUID.randomUUID()))
+                    .expectStatus().isNotFound()
+                    .expectBody(String.class).isEqualTo(errorBody);
+        }
+
+        @Test
+        void should_send_the_jwt_subject_as_x_user_id_and_drop_a_spoofed_one_when_a_put_is_forwarded() {
+            UUID userId = UUID.randomUUID();
+            stubEveryRequestWith(204, "");
+
+            restTestClient.put()
+                    .uri(LIKE_PATH)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(userId))
+                    .header(USER_ID_HEADER, UUID.randomUUID().toString())
+                    .exchange()
+                    .expectStatus().isNoContent();
+
+            assertThat(forwardedUserIds()).containsExactly(userId.toString());
+        }
+
+        @Test
+        void should_not_forward_the_cookie_or_the_authorization_header_when_a_put_is_forwarded() {
+            stubEveryRequestWith(204, "");
+
+            restTestClient.put()
+                    .uri(LIKE_PATH)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(UUID.randomUUID()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer should-never-leave-the-gateway")
+                    .exchange()
+                    .expectStatus().isNoContent();
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("PUT", urlEqualTo(LIKE_PATH))
+                    .withoutHeader(HttpHeaders.COOKIE)
+                    .withoutHeader(HttpHeaders.AUTHORIZATION));
         }
     }
 

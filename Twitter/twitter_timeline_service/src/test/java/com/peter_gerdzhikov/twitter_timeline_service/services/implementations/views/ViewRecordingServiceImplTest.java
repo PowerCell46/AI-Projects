@@ -15,8 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 @ExtendWith(MockitoExtension.class)

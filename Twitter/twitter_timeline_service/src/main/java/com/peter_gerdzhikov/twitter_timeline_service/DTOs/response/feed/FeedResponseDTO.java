@@ -1,6 +1,8 @@
-package com.peter_gerdzhikov.twitter_timeline_service.DTOs.response;
+package com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.feed;
 
 import java.util.List;
+
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 
 import lombok.Builder;
 import lombok.Value;

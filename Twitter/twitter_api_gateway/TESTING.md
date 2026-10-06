@@ -109,7 +109,7 @@ Phase 5 catalog (people to follow, `GET /api/v1/users`, after the cross-service 
 
 `AuthControllerIntegrationTest.Security` — enabled
 
-- Any other route without a cookie returns 401 (`should_return_401_when_an_authenticated_route_is_called_without_a_cookie`, parameterized over GET, POST, PUT and DELETE paths, including `PUT` and `DELETE /api/v1/likes/{tweetId}`)
+- Any other route without a cookie returns 401 (`should_return_401_when_an_authenticated_route_is_called_without_a_cookie`, parameterized over GET, POST, PUT and DELETE paths, including `GET /api/v1/likes` and `PUT` and `DELETE /api/v1/likes/{tweetId}`)
 - `GET /actuator/health` returns 200 without a cookie (`should_return_200_when_the_health_endpoint_is_called_without_a_cookie`)
 
 ## Concurrency
@@ -333,9 +333,9 @@ Written `@Disabled` in step 25 and approved; every group is now enabled (steps 2
 
 - Tweet service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_tweet_service_is_down`)
 
-## `/api/v1/feed`, `/api/v1/saved-tweets/**` and `/api/v1/views` (proxy to the timeline service)
+## `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views` and `/api/v1/likes/**` (proxy to the timeline service)
 
-Added in timeline step 11 (feed), step 17 (saved tweets) and step 25 (views). `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
+Added in timeline step 11 (feed), step 17 (saved tweets), step 25 (views) and step 32 (likes). `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
 
 `TimelineRoutesIntegrationTest.Authentication` - enabled
 
@@ -377,6 +377,16 @@ Added in timeline step 11 (feed), step 17 (saved tweets) and step 25 (views). `T
 - `Cookie` and `Authorization` are not forwarded on a POST (`should_not_forward_the_cookie_or_the_authorization_header_when_a_post_is_forwarded`)
 - A path below `/api/v1/views` is not forwarded (`should_not_forward_a_path_below_views`)
 
+`TimelineRoutesIntegrationTest.Likes` - enabled (timeline step 32). `/api/v1/likes/**` joined the timeline route and the stub was deleted. Same identity filters.
+
+- No cookie returns 401 on GET, PUT and DELETE and nothing is forwarded (`should_return_401_and_forward_nothing_when_there_is_no_cookie`, method)
+- A PUT arrives with its path, status 204 unchanged, and reaches the timeline service: the gateway no longer answers it itself (`should_forward_a_put_with_the_path_and_status_unchanged_when_the_user_is_authenticated`)
+- A DELETE arrives with its path, status 204 unchanged (`should_forward_a_delete_with_the_path_and_status_unchanged_when_the_user_is_authenticated`)
+- A GET of the list arrives with its query and status unchanged (`should_forward_a_get_of_the_list_with_the_query_and_status_unchanged_when_the_user_is_authenticated`)
+- A `404` with its body passes through (`should_pass_the_downstream_404_and_body_through_unchanged_when_the_tweet_is_unknown`)
+- The JWT `sub` is sent as `X-User-Id` and a spoofed one is replaced on a PUT (`should_send_the_jwt_subject_as_x_user_id_and_drop_a_spoofed_one_when_a_put_is_forwarded`)
+- `Cookie` and `Authorization` are not forwarded on a PUT (`should_not_forward_the_cookie_or_the_authorization_header_when_a_put_is_forwarded`)
+
 `TimelineRoutesIntegrationTest.Failures` - enabled
 
 - Timeline service slower than the read timeout returns 504, no exception text (`should_return_504_without_leaking_exception_text_when_the_timeline_service_is_slower_than_the_read_timeout`)
@@ -386,22 +396,6 @@ Added in timeline step 11 (feed), step 17 (saved tweets) and step 25 (views). `T
 - Timeline service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_timeline_service_is_down`)
 
 The auth, profile, file and follow suites are the "Unaffected" group: they must stay green unchanged.
-
-## `PUT|DELETE /api/v1/likes/{tweetId}` (stub)
-
-Added in frontend plan step 1. The gateway answers these itself and stores nothing, until a likes service exists. `LikeControllerIntegrationTest` (`controllers/likes`). The no-cookie `401` is covered by the `Security` group above.
-
-`LikeControllerIntegrationTest.Like` - enabled
-
-- A UUID tweet id returns 204 (`should_return_204_when_the_tweet_id_is_a_uuid`)
-- Liking again returns 204 (`should_return_204_when_the_tweet_is_liked_again`)
-- A non-UUID tweet id returns 400 (`should_return_400_when_the_tweet_id_is_not_a_uuid`)
-
-`LikeControllerIntegrationTest.Unlike` - enabled
-
-- A UUID tweet id returns 204 (`should_return_204_when_the_tweet_id_is_a_uuid`)
-- Unliking again returns 204 (`should_return_204_when_the_tweet_is_unliked_again`)
-- A non-UUID tweet id returns 400 (`should_return_400_when_the_tweet_id_is_not_a_uuid`)
 
 ## `/internal/v1/**` (service-to-service)
 

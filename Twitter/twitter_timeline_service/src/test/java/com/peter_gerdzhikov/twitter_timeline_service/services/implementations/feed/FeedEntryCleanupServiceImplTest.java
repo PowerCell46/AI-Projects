@@ -22,10 +22,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.events.InvalidEventException;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventValidationService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
@@ -49,10 +51,17 @@ class FeedEntryCleanupServiceImplTest {
     @Mock
     private TweetViewCountRepository tweetViewCountRepository;
 
+    @Mock
+    private TweetLikeRepository tweetLikeRepository;
+
+    @Mock
+    private TweetLikeCountRepository tweetLikeCountRepository;
+
     @BeforeEach
     void setUp() {
         feedEntryCleanupService = new FeedEntryCleanupServiceImpl(
-                feedEntryRepository, tweetViewRepository, savedTweetRepository, eventValidationService, tweetViewCountRepository);
+                feedEntryRepository, tweetViewRepository, tweetLikeRepository, savedTweetRepository, eventValidationService,
+                tweetViewCountRepository, tweetLikeCountRepository);
     }
 
     @Nested
@@ -93,13 +102,29 @@ class FeedEntryCleanupServiceImplTest {
         }
 
         @Test
+        void should_remove_the_likes_of_the_tweet() {
+            feedEntryCleanupService.onTweetDeleted(event);
+
+            verify(tweetLikeRepository).deleteByTweetId(event.getTweetId());
+        }
+
+        @Test
+        void should_remove_the_like_counter_of_the_tweet() {
+            feedEntryCleanupService.onTweetDeleted(event);
+
+            verify(tweetLikeCountRepository).deleteByTweetId(event.getTweetId());
+        }
+
+        @Test
         void should_validate_the_event_before_removing_anything() {
             InvalidEventException invalid = new InvalidEventException("Invalid tweet.deleted event.");
             doThrow(invalid).when(eventValidationService).validate(eq(event), any());
 
             assertThatThrownBy(() -> feedEntryCleanupService.onTweetDeleted(event)).isSameAs(invalid);
 
-            verifyNoInteractions(feedEntryRepository, savedTweetRepository, tweetViewRepository, tweetViewCountRepository);
+            verifyNoInteractions(
+                    feedEntryRepository, savedTweetRepository, tweetViewRepository, tweetViewCountRepository,
+                    tweetLikeRepository, tweetLikeCountRepository);
         }
     }
 

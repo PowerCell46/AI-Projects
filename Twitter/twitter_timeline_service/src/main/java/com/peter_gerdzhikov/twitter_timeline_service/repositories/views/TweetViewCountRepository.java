@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.repositories;
+package com.peter_gerdzhikov.twitter_timeline_service.repositories.views;
 
 import java.util.UUID;
 

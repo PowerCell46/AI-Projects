@@ -27,14 +27,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.SavedTweetsResponseDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.savedtweets.SavedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.SavedTweetRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;

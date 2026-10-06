@@ -205,6 +205,10 @@ as a prop, so the one-minute tick of step 7 re-renders the times without the cel
   changes (tab, resize, `document.fonts.ready`) animate. Its offset and width are inline styles, being measured values.
 - Scroll memory tracks `window.scrollY` on `scroll` events instead of reading it at the switch: by then the leaving panel
   is hidden and the browser has already pulled the page up to the shorter content.
+  A capture-phase `click` and `keydown` listener refreshes the same value first (timeline plan step 33): a press that
+  switches the tab can land before the browser has delivered the latest `scroll` event, and the stale position was
+  then saved. The e2e scroll test sends its tab presses as events, because Playwright's own click sometimes scrolls
+  the page first (the tab row is sticky), which moves the position the app rightly remembers.
 - `data-entering` is `true` on the active panel once the tab has changed at least once, `false` before, so the entrance
   does not play on the first render; a panel going from `hidden` to shown restarts the CSS animation by itself.
 - Header: `position: sticky; top; z-index` moved to `.shell-top`, as planned. The header itself became

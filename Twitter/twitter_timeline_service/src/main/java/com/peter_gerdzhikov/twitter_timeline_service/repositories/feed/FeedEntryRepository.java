@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.repositories;
+package com.peter_gerdzhikov.twitter_timeline_service.repositories.feed;
 
 import java.time.Instant;
 import java.util.List;

@@ -1,11 +1,12 @@
 ## What this is
 
 The timeline service of the Twitter clone: everything about one user's relationship to tweets they didn't write -
-the feed (phase 1), saved tweets (phase 2) and unique viewers per tweet (phase 3). It consumes `tweet.created`,
+the feed (phase 1), saved tweets (phase 2), unique viewers per tweet (phase 3) and likes (phase 4: like, unlike,
+your own liked list, a public count on every post). It consumes `tweet.created`,
 `tweet.deleted` (tweet service), `user.followed` and `user.unfollowed` (gateway), and reads tweets and authors
 from the tweet service and the gateway's `/internal/v1/**` over HTTP. It knows nothing about authentication: the gateway
-(`../twitter_api_gateway`) proxies `/api/v1/feed`, `/api/v1/saved-tweets/**` and `/api/v1/views` to it and tells it
-who is calling through the `X-User-Id` header. `PLAN.md` is the backlog and the design: three phases, numbered
+(`../twitter_api_gateway`) proxies `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views` and `/api/v1/likes/**` to it and tells it
+who is calling through the `X-User-Id` header. `PLAN.md` is the backlog and the design: five phases (4 and 5 are likes and their UI), numbered
 steps with gates. Read it before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
 
 ## Running the project

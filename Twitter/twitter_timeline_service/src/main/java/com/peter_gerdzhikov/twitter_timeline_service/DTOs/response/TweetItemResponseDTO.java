@@ -8,9 +8,9 @@ import lombok.Builder;
 import lombok.Value;
 
 /**
- * One tweet in a list: the tweet as the tweet service holds it, its author, the number of unique viewers and whether the
- * caller saved it. The
- * image bytes stay at the tweet service's own route; only their ids and types are listed here.
+ * One tweet in a list: the tweet as the tweet service holds it, its author, the number of unique viewers, whether the
+ * caller saved it, its public like count and whether the caller liked it. The image bytes stay at the tweet
+ * service's own route; only their ids and types are listed here.
  */
 @Value
 @Builder
@@ -21,6 +21,10 @@ public class TweetItemResponseDTO {
     private final long views;
 
     private final boolean savedByMe;
+
+    private final long likes;
+
+    private final boolean likedByMe;
 
     private final String content;
 

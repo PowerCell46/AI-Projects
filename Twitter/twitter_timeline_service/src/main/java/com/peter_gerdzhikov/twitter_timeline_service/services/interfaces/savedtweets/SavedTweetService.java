@@ -2,7 +2,7 @@ package com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.savedt
 
 import java.util.UUID;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.SavedTweetsResponseDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.savedtweets.SavedTweetsResponseDTO;
 
 public interface SavedTweetService {
 

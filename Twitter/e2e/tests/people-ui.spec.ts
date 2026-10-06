@@ -220,8 +220,11 @@ test('should_bring_the_tweets_tab_back_at_the_same_scroll_position_after_a_visit
     const scrollBefore = await currentScrollY(page);
     expect(scrollBefore).toBeGreaterThan(0);
 
-    await tab(page, 'PEOPLE').click();
-    await tab(page, 'TWEETS').click();
+    // Playwright's own click sometimes scrolls the page first, because the tab row is sticky, and the app then
+    // correctly remembers the moved position. The press is sent as an event so the position stays the one measured.
+    await tab(page, 'PEOPLE').dispatchEvent('click');
+    await expect(page).toHaveURL(/\/users$/);
+    await tab(page, 'TWEETS').dispatchEvent('click');
 
     await expect
         .poll(() => currentScrollY(page))

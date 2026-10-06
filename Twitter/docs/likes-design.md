@@ -1,7 +1,7 @@
 # Likes — design
 
-**Status:** approach approved 2026-10-04. Not broken into steps yet. Next: `/grill-me` on the open questions at the
-bottom, then a gated phase 4 in `twitter_timeline_service/PLAN.md`, with **[gateway]**, **[frontend]** and **[e2e]** steps.
+**Status:** approach approved 2026-10-04; broken into steps in `twitter_timeline_service/PLAN.md` (phase 4 backend,
+phase 5 UI). Open questions 1–4 are answered there (Q20, Q22, Q21, Q19).
 
 ## Decision
 
@@ -131,7 +131,9 @@ Per each project's standing rules (`java-junit`, `TESTING.md` in the same change
 - **`X-User-Id` is trusted blindly** on port 8083, so anyone who reaches it can mint likes. Same trigger as the existing
   timeline gap.
 
-## Open questions (`/grill-me`)
+## Open questions (`/grill-me`) — answered
+
+Answered in `twitter_timeline_service/PLAN.md`: 1 → Q20, 2 → Q22, 3 → Q21, 4 → Q19.
 
 1. Liked list: only your own (`GET /api/v1/likes`), or anyone's from their profile (`/api/v1/users/{id}/likes`)?
    X made likes private in 2024.

@@ -7,7 +7,7 @@ import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedRetentionService;
 
 @Service

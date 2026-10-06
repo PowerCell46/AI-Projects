@@ -67,7 +67,8 @@ signal (`onFollowChanged`, `followChangeCount`).
   the first time its tab opens and stays mounted (hidden) until the layout unmounts, so the feed keeps its list and its
   60 s `NEW POSTS` check while PEOPLE is open. The indicator is measured (`offsetLeft`, `offsetWidth`) on a tab change,
   on `resize` and after `document.fonts.ready`. Scroll positions are kept per
-  tab in memory from `scroll` events, because by the time of the switch the leaving panel is already hidden.
+  tab in memory from `scroll` events (refreshed on `click` and `keydown`, in the capture phase), because by the time of
+  the switch the leaving panel is already hidden.
 - The follow button holds two 3 s looks, `armed` (`UNFOLLOW?`, a second tap unfollows; blur and Escape disarm) and
   `failed` (`TRY AGAIN`): `PHASE_HOLD_MS` in `useFollowPhase.ts`. A person card's count is the server's
   `followersCount` plus your own change, so a revert restores it. Following goes through `useOptimisticToggle` (one

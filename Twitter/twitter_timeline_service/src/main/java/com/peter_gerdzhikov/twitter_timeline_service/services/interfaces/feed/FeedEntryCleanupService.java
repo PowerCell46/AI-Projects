@@ -6,8 +6,8 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEv
 public interface FeedEntryCleanupService {
 
     /**
-     * Removes the tweet from every feed and every saved list, and its viewers and view counter, in one
-     * transaction. Idempotent. If the delete arrives before the tweet's fan-out, the late fan-out leaves entries
+     * Removes the tweet from every feed and every saved list, and its viewers, view counter, likes and
+     * like counter, in one transaction. Idempotent. If the delete arrives before the tweet's fan-out, the late fan-out leaves entries
      * for a dead tweet; reads skip them because the tweet is missing, and retention removes them.
      *
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.events.InvalidEventException

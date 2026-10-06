@@ -126,9 +126,9 @@ code or its tests already say.
 - **Both service routes share `CallerIdentityFilters`** (timeline step 11): drop `Cookie`, `Authorization` and every
   `X-User-*`, then set `X-User-Id` from the JWT. The HTTP/1.1-only client customizer stays in
   `TweetRoutesConfiguration` because it is global.
-- **One `timeline-service` route with exact or narrow patterns** (timeline steps 11, 17, 25): `/api/v1/feed` and
-  `/api/v1/views` are exact, `/api/v1/saved-tweets/**` covers the bare path and `/{tweetId}`. A sub-path of an exact
-  route isn't forwarded and falls to the default rule (authenticated, then 404).
+- **One `timeline-service` route with exact or narrow patterns** (timeline steps 11, 17, 25, 32): `/api/v1/feed` and
+  `/api/v1/views` are exact, `/api/v1/saved-tweets/**` and `/api/v1/likes/**` cover the bare path (the list) and
+  `/{tweetId}`. A sub-path of an exact route isn't forwarded and falls to the default rule (authenticated, then 404).
 - **Multipart pass-through needs no extra code** (step 27). A 21 MB multipart `POST /api/v1/tweets` reaches the
   downstream byte-identical. The only code is a third cap in `RequestBodySizeLimitFilter` for `POST` on the exact
   path. The cap tests run on a real server, and the stand-in is `RecordingHttpServer`, not WireMock, whose client
@@ -137,7 +137,8 @@ code or its tests already say.
   network, so the real tweet service couldn't reach them. The gateway read timeout is raised to 10s for that
   context only, and the image is built from `../twitter_tweet_service`, so the test assumes that layout.
 - **The like stub is a controller with no service** (frontend step 1). `PUT`/`DELETE /api/v1/likes/{tweetId}`
-  answer 204 and store nothing. Replace it with a route like the timeline one when likes land.
+  answered 204 and stored nothing. Replaced by the timeline route in timeline step 32: `LikeController`, its test and
+  its `TESTING.md` section are deleted, and the three like paths are served by the timeline service.
 
 ## Internal API and events
 

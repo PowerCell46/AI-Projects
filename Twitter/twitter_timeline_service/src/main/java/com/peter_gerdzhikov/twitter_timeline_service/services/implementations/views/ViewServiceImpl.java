@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.TweetViewCountRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewCountRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewService;

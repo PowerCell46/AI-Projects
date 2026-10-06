@@ -21,7 +21,8 @@ until phase *n*'s final gate passes (`mvn verify` green 3× in a row).
 
 **Left:** the mail service's follow email (separate project), plus the accepted gaps below when their triggers land.
 The gateway steps of `../twitter_timeline_service/PLAN.md` (`/internal/v1/**` behind a shared secret, `user.unfollowed`,
-the feed, saved-tweets and views routes) are planned and tracked there, and are built.
+the feed, saved-tweets and views routes) are planned and tracked there, and are built. The likes route (`/api/v1/likes/**`, replacing the
+like stub) is timeline phase 4, step 32, and is built.
 
 ---
 

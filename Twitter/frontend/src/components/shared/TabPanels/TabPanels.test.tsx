@@ -104,11 +104,15 @@ function tab(name: 'TWEETS' | 'PEOPLE'): HTMLElement {
     return screen.getByRole('tab', { name });
 }
 
-function scrollTo(scrollY: number) {
+function setScrollY(scrollY: number) {
     Object.defineProperty(window, 'scrollY', {
         configurable: true,
         value: scrollY,
     });
+}
+
+function scrollTo(scrollY: number) {
+    setScrollY(scrollY);
 
     act(() => {
         window.dispatchEvent(new Event('scroll'));
@@ -492,6 +496,17 @@ describe('scroll memory', () => {
         await user.click(tab('PEOPLE'));
 
         expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 40 });
+    });
+
+    it('should_save_the_position_the_page_has_when_the_tab_is_pressed_before_the_scroll_event_arrives', async () => {
+        await renderApp(ROUTES.feed);
+        scrollTo(40);
+        setScrollY(300);
+        await user.click(tab('PEOPLE'));
+
+        await user.click(tab('TWEETS'));
+
+        expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 300 });
     });
 
     it('should_not_scroll_when_the_tab_does_not_change', async () => {

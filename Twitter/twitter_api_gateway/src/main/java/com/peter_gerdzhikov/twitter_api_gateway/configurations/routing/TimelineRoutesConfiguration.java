@@ -24,12 +24,14 @@ public class TimelineRoutesConfiguration {
 
     public static final String VIEWS_PATH = "/api/v1/views";
 
+    public static final String LIKES_PATH = "/api/v1/likes/**";
+
     @Bean
     public RouterFunction<ServerResponse> timelineServiceRoutes(
             @Value("${app.timeline-service.url}") String timelineServiceUrl
     ) {
         return CallerIdentityFilters.forwardAsTheAuthenticatedUser(route("timeline-service")
-                        .route(path(FEED_PATH, SAVED_TWEETS_PATH, VIEWS_PATH), http())
+                        .route(path(FEED_PATH, SAVED_TWEETS_PATH, VIEWS_PATH, LIKES_PATH), http())
                         .before(uri(timelineServiceUrl)))
                 .build();
     }

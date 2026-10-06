@@ -1,17 +1,32 @@
 package com.peter_gerdzhikov.twitter_timeline_service.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doAnswer;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @MockitoSpyBean
+    private TweetLikeRepository spiedTweetLikeRepository;
 
     @Nested
     class Deletes {
@@ -219,6 +234,129 @@ class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTes
 
             assertThat(viewsOf(tweetId)).isZero();
             assertThat(viewsOf(keptTweetId)).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    class Likes {
+
+        @Test
+        void should_remove_the_like_rows_and_the_counter_of_the_tweet_across_users_when_it_is_deleted() {
+            UUID tweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            newUsers(3).forEach(userId -> seedLike(userId, tweetId, authorId, TWEET_CREATED_AT));
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+
+            awaitLikesGone(tweetId);
+        }
+
+        @Test
+        void should_leave_the_likes_and_the_counter_of_other_tweets_when_a_tweet_is_deleted() {
+            UUID deletedTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            newUsers(2).forEach(userId -> seedLike(userId, deletedTweetId, authorId, TWEET_CREATED_AT));
+            newUsers(2).forEach(userId -> seedLike(userId, keptTweetId, authorId, TWEET_CREATED_AT));
+
+            publish(TWEET_DELETED_TOPIC, deletedTweetId.toString(), tweetDeletedJson(deletedTweetId, authorId));
+            awaitLikesGone(deletedTweetId);
+
+            assertThat(likersOf(keptTweetId)).hasSize(2);
+            assertThat(likesOf(keptTweetId)).isEqualTo(2);
+        }
+
+        @Test
+        void should_remove_the_feed_entries_the_saved_rows_the_views_and_the_likes_together_when_a_tweet_is_deleted() {
+            UUID tweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            UUID userId = TestIds.userId();
+            seedEntry(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedSavedTweet(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedViews(tweetId, 2);
+            seedLike(userId, tweetId, authorId, TWEET_CREATED_AT);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+
+            awaitFeedLacks(userId, tweetId);
+            awaitSavedLacks(userId, tweetId);
+            awaitViewsGone(tweetId);
+            awaitLikesGone(tweetId);
+        }
+
+        @Test
+        void should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_had_likes() {
+            UUID tweetId = TestIds.tweetId();
+            UUID sentinelTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            newUsers(2).forEach(userId -> seedLike(userId, tweetId, authorId, TWEET_CREATED_AT));
+            seedLike(TestIds.userId(), sentinelTweetId, authorId, TWEET_CREATED_AT);
+            newUsers(2).forEach(userId -> seedLike(userId, keptTweetId, authorId, TWEET_CREATED_AT));
+            String delete = tweetDeletedJson(tweetId, authorId);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), delete);
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), delete);
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(sentinelTweetId, authorId));
+            awaitLikesGone(sentinelTweetId);
+
+            awaitLikesGone(tweetId);
+            assertThat(likesOf(keptTweetId)).isEqualTo(2);
+        }
+
+        @Test
+        void should_do_nothing_when_the_tweet_had_no_likes() {
+            UUID tweetId = TestIds.tweetId();
+            UUID sentinelTweetId = TestIds.tweetId();
+            UUID keptTweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            seedLike(TestIds.userId(), sentinelTweetId, authorId, TWEET_CREATED_AT);
+            newUsers(2).forEach(userId -> seedLike(userId, keptTweetId, authorId, TWEET_CREATED_AT));
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(sentinelTweetId, authorId));
+            awaitLikesGone(sentinelTweetId);
+
+            assertThat(likesOf(tweetId)).isZero();
+            assertThat(likesOf(keptTweetId)).isEqualTo(2);
+        }
+
+        @Test
+        void should_remove_nothing_of_the_tweet_and_all_of_it_on_the_retry_when_the_likes_delete_fails_once() throws Exception {
+            UUID tweetId = TestIds.tweetId();
+            UUID authorId = TestIds.userId();
+            UUID userId = TestIds.userId();
+            seedEntry(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedSavedTweet(userId, tweetId, authorId, TWEET_CREATED_AT);
+            seedViews(tweetId, 2);
+            seedLike(userId, tweetId, authorId, TWEET_CREATED_AT);
+            AtomicInteger attempts = new AtomicInteger();
+            CountDownLatch firstAttemptFailed = new CountDownLatch(1);
+            CountDownLatch checkedBeforeTheRetry = new CountDownLatch(1);
+            doAnswer(invocation -> {
+                if (attempts.getAndIncrement() == 0) {
+                    firstAttemptFailed.countDown();
+                    throw new DataIntegrityViolationException("The likes delete failed once.");
+                }
+
+                checkedBeforeTheRetry.await(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+
+                // Mockito cannot call the real method of a repository proxy, so the retry deletes by hand in the same transaction.
+                return jdbcTemplate.update("DELETE FROM tweet_likes WHERE tweet_id = ?", tweetId);
+            }).when(spiedTweetLikeRepository).deleteByTweetId(tweetId);
+
+            publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
+            assertThat(firstAttemptFailed.await(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+
+            assertThat(tweetIdsInFeedOf(userId)).contains(tweetId);
+            assertThat(tweetIdsSavedBy(userId)).contains(tweetId);
+            assertThat(viewersOf(tweetId)).hasSize(2);
+            assertThat(likersOf(tweetId)).containsExactly(userId);
+            checkedBeforeTheRetry.countDown();
+            awaitFeedLacks(userId, tweetId);
+            awaitSavedLacks(userId, tweetId);
+            awaitViewsGone(tweetId);
+            awaitLikesGone(tweetId);
         }
     }
 }

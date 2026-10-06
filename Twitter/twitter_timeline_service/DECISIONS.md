@@ -98,6 +98,32 @@ One entry per decision: what was chosen, what it was chosen over, and why.
   are in the result, not by a special case. It reads the repository itself: going through `SavedTweetService` would
   be a cycle.
 
+## Likes (phase 4)
+
+- **Repositories grouped into `feed`, `savedtweets`, `views` and `likes`** (step 29). The two like repositories made
+  six files in `repositories`, past the five-file rule, so the package and its tests mirror the entity packages.
+  Only the packages and imports moved.
+- **`LikeRecordingService.like` and `unlike` return a `boolean`** (step 29): `true` when a row was added or removed.
+  The counter moves on exactly that, and the INFO line of step 30 (`new like: {}`) reads it, so no second query.
+- **`TweetLikeCountRepository.decrement` is an update by key, not an upsert** (step 29). A missing counter touches 0
+  rows, and a counter already at 0 is refused by `ck_tweet_like_counts_likes_non_negative`, so a broken invariant
+  fails loudly instead of showing a negative count.
+- **Response DTOs grouped into `feed`, `savedtweets` and `likes`** (step 30). `DTOs/response` already held six files, so
+  the page DTOs moved into subpackages; `ErrorResponseDTO` and the item, author and image DTOs, shared by every
+  list, stay at the root.
+- **`LikeService` is not transactional; `LikeRecordingService` is** (step 30). The tweet lookup comes first and holds no
+  connection, the recording opens the transaction, as for views.
+- **The like controller suite seeds likes through `LikeRecordingService`** (step 30), so a seeded row and its counter
+  agree, as view seeding does.
+- **The "likes delete fails once" test retries through `JdbcTemplate`** (step 31). Mockito cannot call the real method
+  of a spied Spring Data proxy (the retry then fails every time and dead-letters), so the spy throws on the first
+  call and on later calls runs `DELETE FROM tweet_likes` by hand, in the listener's transaction. The test is about
+  the earlier deletes rolling back, not about the like delete itself.
+- **The phase 4 audit's findings are accepted, not fixed** (step 34). The Low (forged `X-User-Id` reads a private
+  liked list and mints likes) and the Info (a forged `tweet.deleted` wipes likes) extend the existing "trusted header"
+  and "trusted topic" gaps and carry their triggers in `PLAN.md` and `SECURITY-AUDITS.md`. The raw report was condensed
+  into `SECURITY-AUDITS.md` and its file removed.
+
 ## Back-fill (frontend step 16)
 
 - **It is its own service.** `FeedBackfillService` (insert, check, undo) is called by `UserFollowedListener`; the

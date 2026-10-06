@@ -7,9 +7,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.FeedResponseDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.feed.FeedResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
-import com.peter_gerdzhikov.twitter_timeline_service.repositories.FeedEntryRepository;
+import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.PageSizeValidator;
