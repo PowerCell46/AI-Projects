@@ -53,11 +53,13 @@ describe('toOwnPost', () => {
         expect(JSON.stringify(post)).not.toContain('peter@example.com');
     });
 
-    it('should_start_with_no_views_and_not_saved', () => {
+    it('should_start_with_no_views_no_likes_and_not_saved_or_liked', () => {
         const post = toOwnPost(TWEET, AUTHOR, null);
 
         expect(post.views).toBe(0);
+        expect(post.likes).toBe(0);
         expect(post.savedByMe).toBe(false);
+        expect(post.likedByMe).toBe(false);
     });
 
     it('should_leave_the_picture_empty_when_the_profile_has_none_yet', () => {

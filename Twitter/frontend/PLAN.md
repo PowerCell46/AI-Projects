@@ -22,6 +22,8 @@ touching any `.ts`/`.tsx`/`.css`.
 | 2 | Feed (steps 1–13) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04" |
 | 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
 
+Likes UI (real counts, `/liked`, the stub removed): phase 5 of `../twitter_timeline_service/PLAN.md`.
+
 ## Phase 3 — Tab row, People, back-fill on follow ✅ **Done** (2026-10-04)
 
 Brief: `feed-design-addition.md` (§-numbers below). Inputs: the gateway's phase 5 handoff
@@ -191,8 +193,8 @@ No question needed re-asking.
 
 ## Accepted gaps — revisit when the named trigger lands
 
-- **Likes are a stub (Q1, Q2):** nothing stored, every post loads at `0`, a reload forgets your like.
-  **Trigger:** a likes service → a read for counts and `likedByMe`, the `LIKED TWEETS` menu item and page.
+- **Likes were a stub (Q1, Q2):** closed by phase 5 of `../twitter_timeline_service/PLAN.md` (real counts, `likedByMe`,
+  `/liked`).
 - **No display names (Q6).** **Trigger:** the backend gets one → bring the `@handle` back.
 - **Alt text is generic (Q10).** **Trigger:** the tweet service stores descriptions → a field in compose.
 - **No `EDIT ACCOUNT` (Q4).** **Trigger:** an account screen is designed (the backend already exists).
@@ -252,7 +254,7 @@ No question needed re-asking.
 ## Out of scope
 
 Everything in brief §9; edit and delete of your own posts; an image viewer; clickable links or mentions; profile
-pages, follow UI, search; the tweet-details page; the edit-account and liked-tweets pages; frontend containerisation.
+pages, follow UI, search; the tweet-details page; the edit-account page; frontend containerisation.
 
 ## Interview record (`/grill-me`, 2026-10-04)
 

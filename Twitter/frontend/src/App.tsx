@@ -5,6 +5,7 @@ import SessionRedirect from './components/shared/SessionRedirect/SessionRedirect
 import Shell from './components/shared/Shell/Shell';
 import TabPanels from './components/shared/TabPanels/TabPanels';
 import ConfirmPage from './pages/ConfirmPage/ConfirmPage';
+import LikedPage from './pages/LikedPage/LikedPage';
 import LoginPage from './pages/LoginPage/LoginPage';
 import RegisterPage from './pages/RegisterPage/RegisterPage';
 import ResendPage from './pages/ResendPage/ResendPage';
@@ -28,6 +29,7 @@ function App() {
                         <Route path={ROUTES.people} />
                     </Route>
                     <Route path={ROUTES.saved} element={<SavedPage />} />
+                    <Route path={ROUTES.liked} element={<LikedPage />} />
                 </Route>
             </Route>
             <Route path="*" element={<SessionRedirect />} />

@@ -6,4 +6,5 @@ export const ROUTES = {
     feed: '/feed',
     people: '/users',
     saved: '/saved',
+    liked: '/liked',
 } as const;

@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { likeTweet, unlikeTweet } from '../../../../../api/likes';
 import { saveTweet, unsaveTweet } from '../../../../../api/savedTweets';
@@ -33,6 +34,18 @@ beforeEach(() => {
         .mockResolvedValue(undefined);
 });
 
+function renderActions(props: Partial<ComponentProps<typeof PostActions>> = {}) {
+    return render(
+        <PostActions
+            tweetId={TWEET_ID}
+            isSavedInitially={false}
+            isLikedInitially={false}
+            likeCount={0}
+            {...props}
+        />,
+    );
+}
+
 function likeButton(): HTMLElement {
     return screen.getByRole('button', { name: /^like/i });
 }
@@ -42,15 +55,8 @@ function saveButton(): HTMLElement {
 }
 
 describe('like', () => {
-    it('should_show_a_zero_count_and_an_unpressed_button_when_the_post_loads', () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
-
-        expect(likeButton().getAttribute('aria-pressed')).toBe('false');
-        expect(likeButton().textContent).toContain('0');
-    });
-
     it('should_press_the_button_and_move_the_count_to_one_at_once_when_clicked', async () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
 
         await userEvent.click(likeButton());
 
@@ -60,7 +66,7 @@ describe('like', () => {
     });
 
     it('should_unpress_the_button_and_move_the_count_back_to_zero_when_clicked_again', async () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
         await userEvent.click(likeButton());
 
         await userEvent.click(likeButton());
@@ -72,7 +78,7 @@ describe('like', () => {
 
     it('should_put_the_like_back_without_a_message_when_the_request_fails', async () => {
         vi.mocked(likeTweet).mockRejectedValue(new Error('The request failed.'));
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
 
         await userEvent.click(likeButton());
 
@@ -84,19 +90,19 @@ describe('like', () => {
 
 describe('save', () => {
     it('should_start_unpressed_when_the_post_is_not_saved', () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
 
         expect(saveButton().getAttribute('aria-pressed')).toBe('false');
     });
 
     it('should_start_pressed_when_the_post_is_already_saved', () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially />);
+        renderActions({ isSavedInitially: true });
 
         expect(saveButton().getAttribute('aria-pressed')).toBe('true');
     });
 
     it('should_press_the_button_and_save_the_tweet_when_clicked', async () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
 
         await userEvent.click(saveButton());
 
@@ -105,7 +111,7 @@ describe('save', () => {
     });
 
     it('should_unpress_the_button_and_unsave_the_tweet_when_a_saved_post_is_clicked', async () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially />);
+        renderActions({ isSavedInitially: true });
 
         await userEvent.click(saveButton());
 
@@ -115,7 +121,7 @@ describe('save', () => {
 
     it('should_put_the_bookmark_back_when_the_request_fails', async () => {
         vi.mocked(saveTweet).mockRejectedValue(new Error('The request failed.'));
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
 
         await userEvent.click(saveButton());
 
@@ -123,7 +129,7 @@ describe('save', () => {
     });
 
     it('should_show_no_count_next_to_the_bookmark', () => {
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially />);
+        renderActions({ isSavedInitially: true });
 
         expect(saveButton().textContent).not.toMatch(/\d/);
     });
@@ -135,7 +141,7 @@ describe('last click wins', () => {
         vi.mocked(saveTweet).mockReturnValue(new Promise<void>((resolve) => {
             finishSaving = resolve;
         }));
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
         await userEvent.click(saveButton());
         await userEvent.click(saveButton());
 
@@ -151,11 +157,110 @@ describe('last click wins', () => {
 
     it('should_not_hold_the_save_back_when_a_like_is_in_flight', async () => {
         vi.mocked(likeTweet).mockReturnValue(new Promise<void>(() => {}));
-        render(<PostActions tweetId={TWEET_ID} isSavedInitially={false} />);
+        renderActions();
         await userEvent.click(likeButton());
 
         await userEvent.click(saveButton());
 
         expect(saveTweet).toHaveBeenCalledExactlyOnceWith(TWEET_ID);
+    });
+});
+
+describe('like from the server state', () => {
+    it('should_show_3_and_unpressed_when_the_post_has_3_likes_and_is_not_liked_by_me', () => {
+        renderActions({ likeCount: 3 });
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('false');
+        expect(likeButton().textContent).toContain('3');
+    });
+
+    it('should_show_3_and_pressed_when_the_post_has_3_likes_and_is_liked_by_me', () => {
+        renderActions({
+            likeCount: 3,
+            isLikedInitially: true,
+        });
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('true');
+        expect(likeButton().textContent).toContain('3');
+    });
+
+    it('should_show_4_and_pressed_when_a_post_with_3_likes_is_liked', async () => {
+        renderActions({ likeCount: 3 });
+
+        await userEvent.click(likeButton());
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('true');
+        expect(likeButton().textContent).toContain('4');
+    });
+
+    it('should_show_2_when_a_liked_post_with_3_likes_is_unliked', async () => {
+        renderActions({
+            likeCount: 3,
+            isLikedInitially: true,
+        });
+
+        await userEvent.click(likeButton());
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('false');
+        expect(likeButton().textContent).toContain('2');
+        expect(unlikeTweet).toHaveBeenCalledExactlyOnceWith(TWEET_ID);
+    });
+
+    it('should_show_3_when_a_post_with_3_likes_is_liked_and_unliked', async () => {
+        renderActions({ likeCount: 3 });
+
+        await userEvent.click(likeButton());
+        await userEvent.click(likeButton());
+
+        expect(likeButton().textContent).toContain('3');
+    });
+
+    it('should_show_3_unpressed_and_no_alert_when_the_like_request_fails', async () => {
+        vi.mocked(likeTweet).mockRejectedValue(new Error('The request failed.'));
+        renderActions({ likeCount: 3 });
+
+        await userEvent.click(likeButton());
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('false');
+        expect(likeButton().textContent).toContain('3');
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('should_show_3_and_pressed_when_the_unlike_of_a_liked_post_fails', async () => {
+        vi.mocked(unlikeTweet).mockRejectedValue(new Error('The request failed.'));
+        renderActions({
+            likeCount: 3,
+            isLikedInitially: true,
+        });
+
+        await userEvent.click(likeButton());
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('true');
+        expect(likeButton().textContent).toContain('3');
+    });
+
+    it('should_show_1.2K_for_1299_likes_and_1.3K_when_it_is_liked', async () => {
+        renderActions({ likeCount: 1_299 });
+
+        expect(likeButton().textContent).toContain('1.2K');
+
+        await userEvent.click(likeButton());
+
+        expect(likeButton().textContent).toContain('1.3K');
+    });
+
+    it('should_show_0_and_pressed_then_0_unpressed_never_minus_1_when_a_post_has_0_likes_and_is_liked_by_me', async () => {
+        renderActions({
+            likeCount: 0,
+            isLikedInitially: true,
+        });
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('true');
+        expect(likeButton().textContent).toContain('0');
+
+        await userEvent.click(likeButton());
+
+        expect(likeButton().getAttribute('aria-pressed')).toBe('false');
+        expect(likeButton().textContent).toBe('Like0');
     });
 });

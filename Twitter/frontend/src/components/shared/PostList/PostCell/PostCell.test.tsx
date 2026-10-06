@@ -20,6 +20,8 @@ const POST: TweetItem = {
     id: '6f1c2a3e-0000-4000-8000-000000000001',
     views: 3,
     savedByMe: false,
+    likes: 0,
+    likedByMe: false,
     content: 'hello world',
     createdAt: '2026-10-04T11:55:00.000Z',
     updatedAt: '2026-10-04T11:55:00.000Z',
@@ -166,13 +168,17 @@ describe('actions', () => {
         expect(screen.getByRole('button', { name: /^save/i }).getAttribute('aria-pressed')).toBe('false');
     });
 
-    it('should_start_the_like_unpressed_at_zero_whatever_the_view_count_is', () => {
-        renderPost({ views: 99 });
+    it('should_start_the_like_from_the_server_state_when_the_post_loads', () => {
+        renderPost({
+            views: 99,
+            likes: 7,
+            likedByMe: true,
+        });
 
         const like = screen.getByRole('button', { name: /^like/i });
 
-        expect(like.getAttribute('aria-pressed')).toBe('false');
-        expect(like.textContent).toContain('0');
+        expect(like.getAttribute('aria-pressed')).toBe('true');
+        expect(like.textContent).toContain('7');
     });
 
     it('should_not_show_the_view_count', () => {

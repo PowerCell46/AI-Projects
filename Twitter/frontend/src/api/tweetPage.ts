@@ -19,6 +19,8 @@ export interface TweetItem {
     id: string;
     views: number;
     savedByMe: boolean;
+    likes: number;
+    likedByMe: boolean;
     content: string;
     createdAt: string;
     updatedAt: string;

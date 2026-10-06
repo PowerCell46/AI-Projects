@@ -9,6 +9,8 @@ export function toOwnPost(tweet: PublishedTweet, author: AuthUser, pictureUrl: s
         id: tweet.id,
         views: 0,
         savedByMe: false,
+        likes: 0,
+        likedByMe: false,
         content: tweet.content,
         createdAt: tweet.createdAt,
         updatedAt: tweet.updatedAt,

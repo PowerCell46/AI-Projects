@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { me } from '../../api/auth';
 import { fetchFeed } from '../../api/feed';
-import { unsaveTweet, fetchSavedTweets } from '../../api/savedTweets';
+import { fetchLikedTweets, unlikeTweet } from '../../api/likes';
 import { fetchUserProfile } from '../../api/users';
 import { reportViews } from '../../api/views';
 import { ROUTES } from '../../routes';
@@ -23,7 +23,6 @@ vi.mock('../../api/feed', () => ({
 }));
 
 vi.mock('../../api/savedTweets', () => ({
-    fetchSavedTweets: vi.fn(),
     saveTweet: vi.fn(),
     unsaveTweet: vi.fn(),
 }));
@@ -37,6 +36,7 @@ vi.mock('../../api/views', () => ({
 }));
 
 vi.mock('../../api/likes', () => ({
+    fetchLikedTweets: vi.fn(),
     likeTweet: vi.fn(),
     unlikeTweet: vi.fn(),
 }));
@@ -47,13 +47,13 @@ const SIGNED_IN_USER = {
     email: 'peter@example.com',
 };
 
-const SAVED_POST = {
+const LIKED_POST = {
     id: 'tweet-1',
     views: 0,
-    savedByMe: true,
-    likes: 0,
-    likedByMe: false,
-    content: 'a saved post',
+    savedByMe: false,
+    likes: 1,
+    likedByMe: true,
+    content: 'a liked post',
     createdAt: '2026-10-04T11:55:00.000Z',
     updatedAt: '2026-10-04T11:55:00.000Z',
     author: {
@@ -81,8 +81,8 @@ beforeEach(() => {
             items: [],
             nextCursor: null,
         });
-    vi.mocked(fetchSavedTweets).mockReset();
-    vi.mocked(unsaveTweet)
+    vi.mocked(fetchLikedTweets).mockReset();
+    vi.mocked(unlikeTweet)
         .mockReset()
         .mockResolvedValue(undefined);
     vi.mocked(reportViews)
@@ -94,120 +94,142 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe('the saved page', () => {
-    it('should_show_the_saved_tweets_label_above_the_list', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
-            items: [SAVED_POST],
+describe('the liked page', () => {
+    it('should_show_the_liked_tweets_label_above_the_list', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [LIKED_POST],
             nextCursor: null,
         });
 
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
         const main = within(screen.getByRole('main'));
-        expect(main.getByRole('heading', { name: 'SAVED TWEETS' })).toBeTruthy();
-        expect(main.getByText('a saved post')).toBeTruthy();
+        expect(main.getByRole('heading', { name: 'LIKED TWEETS' })).toBeTruthy();
+        expect(main.getByText('a liked post')).toBeTruthy();
     });
 
-    it('should_read_the_saved_list_and_not_the_feed', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
+    it('should_read_the_liked_list_and_not_the_feed', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
             items: [],
             nextCursor: null,
         });
 
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
-        expect(fetchSavedTweets).toHaveBeenCalledExactlyOnceWith({
+        expect(fetchLikedTweets).toHaveBeenCalledExactlyOnceWith({
             cursor: null,
             size: 20,
         });
         expect(fetchFeed).not.toHaveBeenCalled();
     });
 
-    it('should_end_with_end_of_saved_tweets_when_the_cursor_is_exhausted', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
-            items: [SAVED_POST],
+    it('should_list_the_first_page_of_liked_posts', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [
+                LIKED_POST,
+                {
+                    ...LIKED_POST,
+                    id: 'tweet-2',
+                    content: 'a second liked post',
+                },
+            ],
+            nextCursor: 'more',
+        });
+
+        await renderApp(ROUTES.liked);
+
+        expect(screen.getByText('a liked post')).toBeTruthy();
+        expect(screen.getByText('a second liked post')).toBeTruthy();
+    });
+
+    it('should_end_with_end_of_liked_tweets_when_the_cursor_is_exhausted', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [LIKED_POST],
             nextCursor: null,
         });
 
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
-        expect(screen.getByText('END OF SAVED TWEETS')).toBeTruthy();
+        expect(screen.getByText('END OF LIKED TWEETS')).toBeTruthy();
     });
 
-    it('should_say_no_saved_tweets_yet_when_nothing_is_saved', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
+    it('should_say_no_liked_tweets_yet_when_nothing_is_liked', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
             items: [],
             nextCursor: null,
         });
 
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
-        expect(screen.getByText('NO SAVED TWEETS YET')).toBeTruthy();
+        expect(screen.getByText('NO LIKED TWEETS YET')).toBeTruthy();
     });
 
-    it('should_keep_an_unsaved_post_in_place_with_an_empty_bookmark', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
-            items: [SAVED_POST],
+    it('should_keep_an_unliked_post_in_place_with_an_empty_heart_and_a_count_one_lower', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [LIKED_POST],
             nextCursor: null,
         });
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
-        await user.click(screen.getByRole('button', { name: /^save/i }));
+        await user.click(screen.getByRole('button', { name: /^like/i }));
 
-        expect(unsaveTweet).toHaveBeenCalledExactlyOnceWith('tweet-1');
-        expect(screen.getByText('a saved post')).toBeTruthy();
-        expect(screen.getByRole('button', { name: /^save/i }).getAttribute('aria-pressed')).toBe('false');
+        const like = screen.getByRole('button', { name: /^like/i });
+
+        expect(unlikeTweet).toHaveBeenCalledExactlyOnceWith('tweet-1');
+        expect(screen.getByText('a liked post')).toBeTruthy();
+        expect(like.getAttribute('aria-pressed')).toBe('false');
+        expect(like.textContent).toContain('0');
     });
 
-    it('should_show_the_saved_list_when_the_menu_item_is_chosen_from_the_feed', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
-            items: [SAVED_POST],
+    it('should_show_the_liked_list_when_the_menu_item_is_chosen_from_the_feed', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [LIKED_POST],
             nextCursor: null,
         });
         await renderApp(ROUTES.feed);
 
         await user.click(screen.getByRole('button', { name: 'Account menu' }));
-        await user.click(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+        await user.click(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
         await advance(1);
 
-        expect(screen.getByText('a saved post')).toBeTruthy();
-        expect(fetchSavedTweets).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('a liked post')).toBeTruthy();
+        expect(fetchLikedTweets).toHaveBeenCalledTimes(1);
     });
 });
 
-describe('views on the saved page', () => {
-    it('should_report_a_saved_post_that_stayed_half_visible_for_a_second_after_the_batch_interval', async () => {
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
+describe('views on the liked page', () => {
+    it('should_report_a_liked_post_that_stayed_half_visible_for_a_second_once_per_page_load', async () => {
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
             items: [
                 {
-                    ...SAVED_POST,
-                    id: 'saved-viewed-post',
+                    ...LIKED_POST,
+                    id: 'liked-viewed-post',
                 },
             ],
             nextCursor: null,
         });
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
         await intersect(onlyPostItem(), 1);
         await advance(1000);
         await advance(5000);
 
         expect(reportViews).toHaveBeenCalledExactlyOnceWith(
-            ['saved-viewed-post'],
+            ['liked-viewed-post'],
             {},
         );
     });
 
     it('should_not_report_a_post_again_when_it_was_already_reported_on_the_feed_in_the_same_page_load', async () => {
         const sharedPost = {
-            ...SAVED_POST,
+            ...LIKED_POST,
             id: 'seen-on-both-pages',
         };
         vi.mocked(fetchFeed).mockResolvedValue({
             items: [sharedPost],
             nextCursor: null,
         });
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
             items: [sharedPost],
             nextCursor: null,
         });
@@ -218,7 +240,7 @@ describe('views on the saved page', () => {
         expect(reportViews).toHaveBeenCalledTimes(1);
 
         await user.click(screen.getByRole('button', { name: 'Account menu' }));
-        await user.click(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+        await user.click(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
         await advance(1);
         await intersect(onlyPostItem(), 1);
         await advance(1000);
@@ -228,19 +250,19 @@ describe('views on the saved page', () => {
     });
 });
 
-describe('the saved page and new posts', () => {
-    it('should_never_check_for_new_posts_on_the_saved_page', async () => {
+describe('the liked page and new posts', () => {
+    it('should_never_check_for_new_posts_on_the_liked_page', async () => {
         vi.useRealTimers();
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
-        vi.mocked(fetchSavedTweets).mockResolvedValue({
-            items: [SAVED_POST],
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [LIKED_POST],
             nextCursor: null,
         });
-        await renderApp(ROUTES.saved);
+        await renderApp(ROUTES.liked);
 
         await advance(60_000 * 3);
 
-        expect(fetchSavedTweets).toHaveBeenCalledTimes(1);
+        expect(fetchLikedTweets).toHaveBeenCalledTimes(1);
         expect(screen.queryByRole('button', { name: 'NEW POSTS' })).toBeNull();
     });
 });

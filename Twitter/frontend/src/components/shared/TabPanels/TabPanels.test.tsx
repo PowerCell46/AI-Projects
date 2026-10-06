@@ -49,6 +49,8 @@ const POST = {
     id: 'tweet-1',
     views: 0,
     savedByMe: false,
+    likes: 0,
+    likedByMe: false,
     content: 'a post from the feed',
     createdAt: '2026-10-04T11:55:00.000Z',
     updatedAt: '2026-10-04T11:55:00.000Z',

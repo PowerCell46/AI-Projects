@@ -51,6 +51,8 @@ function post(id: string, createdAt = '2026-10-04T11:55:00.000Z'): TweetItem {
         id,
         views: 0,
         savedByMe: false,
+        likes: 0,
+        likedByMe: false,
         content: `content of ${id}`,
         createdAt,
         updatedAt: createdAt,

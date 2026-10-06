@@ -4,13 +4,13 @@ running and testing this app.
 ## What this is
 
 The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`), the feed
-(`/feed`, `/saved`) and the People list (`/users`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
+(`/feed`, `/saved`, `/liked`) and the People list (`/users`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
 co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md`
 (auth), `feed-design.md` (feed, in git history), `feed-design-addition.md` (tab row, People).
 
-`/feed`, `/users` and `/saved` sit behind `ProtectedRoute` in one layout route, `Shell` (header, tab row, compose modal,
+`/feed`, `/users`, `/saved` and `/liked` sit behind `ProtectedRoute` in one layout route, `Shell` (header, tab row, compose modal,
 `<Outlet>`). `/feed` (TWEETS) and `/users` (PEOPLE) share one more layout route, `TabPanels`, which renders both pages as
-`role="tabpanel"` sections; `/saved` has no tab row. `/feed` and `/saved` render `PostList` with a different `fetchPage`;
+`role="tabpanel"` sections; `/saved` and `/liked` have no tab row. `/feed`, `/saved` and `/liked` render `PostList` with a different `fetchPage`;
 `/users` renders `PeopleList`. Both lists page through `usePagedList` (`src/hooks`). The shell hands the page what is
 shared through outlet context (`useShellContext()`): the posts you published this session (`ownPosts`) and the follow
 signal (`onFollowChanged`, `followChangeCount`).
@@ -56,8 +56,10 @@ signal (`onFollowChanged`, `followChangeCount`).
 - Validation rules mirror the gateway's `RegisterRequestDTO`; change both sides together.
 - Every request goes through `src/api/http.ts`. A `401` from a non-auth endpoint calls the handler `AuthProvider`
   registers, which signs out and lands on `/login`; auth endpoints keep their own `401` meaning.
-- Likes are a **stub**: the gateway's `PUT`/`DELETE /api/v1/likes/{tweetId}` answer `204` and store nothing, so every
-  post loads at `0` and a reload forgets your like. Replace the UI's starting state when a likes service exists.
+- Likes are real: a post opens with the server's `likedByMe` and `likes`, and `PostActions` shows `formatCount(max(0,
+  likes − (liked on load ? 1 : 0) + (liked now ? 1 : 0)))`: the server's count plus your own change, never below `0`.
+  Other people's likes on posts already shown appear after a reload. `/liked` (menu `LIKED TWEETS`, no tab row) lists
+  your own likes with `PostList`; an unliked post stays there, heart empty, until a reload.
 - Views: `ViewReporter` (`src/utils/viewReporter.ts`) is a module-level singleton that queues post ids (once per page
   load, after 1 s at half visible) and posts them every 5 s and on hide. Tests reset it.
 - `--header-height` and `--tab-row-height` in `src/index.css` are shared by the header, the tab row and the sticky
@@ -79,5 +81,5 @@ signal (`onFollowChanged`, `followChangeCount`).
   the next `NEW POSTS` check.
 - Signing out sinks the cards of both lists: `person-list-leave` (`PeopleList.css`) and `post-list-leave`
   (`PostList.css`) must stay inside `SIGN_OUT_LEAVE_MS`.
-- Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatFollowers`.
+- Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatCount`.
   Cards are not links and show no `@handle`.

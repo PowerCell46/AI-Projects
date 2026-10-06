@@ -180,3 +180,77 @@ path-segment hardening already recorded as finding 3 is still open and is extend
   `followedByMe`/`followersCount`, which any logged-in user can already see; no email, birthdate or location reaches
   the list DTO. Nothing from the responses is written to storage, the URL or router state.
 - **Dependencies:** `npm audit` reports 0 vulnerabilities (registry reachable).
+
+## Audit — 2026-10-06 (phase 5: real likes, `/liked`)
+
+**Scope:** the uncommitted likes UI work on top of `d79ce85`: `api/likes.ts` (`fetchLikedTweets`, `likeTweet`,
+`unlikeTweet`), `ENDPOINTS.likes` / `ENDPOINTS.like`, `api/tweetPage.ts` (`likes`, `likedByMe`), `PostActions`
+(`shownLikeCount`), `pages/LikedPage`, the `LIKED TWEETS` menu link, `utils/count.ts` (`formatCount`, renamed from
+`followers.ts`), `utils/ownPost.ts`, `routes.ts` and `App.tsx`; plus a fresh pass over `index.html`, `vite.config.ts`,
+the confirm-token flow and the 401 plumbing in `api/http.ts`. To confirm what the SPA relies on, the gateway's
+`TimelineRoutesConfiguration` / `CallerIdentityFilters` and the timeline service's `LikeController`, `LikeServiceImpl`
+and `LikeRecordingServiceImpl` were read; they have their own audit (`twitter_timeline_service/SECURITY-AUDITS.md`).
+`npm audit`: found 0 vulnerabilities (the registry was reachable). Not run: the Docker stack and a browser, so
+nothing below was exercised against a live gateway.
+
+No new findings of any severity. The new code adds no raw-HTML, URL, storage or redirect sink, and every old finding
+below is unchanged.
+
+### Status of earlier findings (re-checked today)
+- **1 (Low, CSP and referrer policy): still open.** `index.html` still has no CSP, no `<meta name="referrer">` and the
+  Google Fonts `<link>` is unchanged. Re-read today, not re-run in a browser.
+- **2 (Low, `COOKIE_SECURE` defaults to false): still open.** `application.properties:27` is still
+  `app.cookie.secure=${COOKIE_SECURE:false}`.
+- **3 (Informational, unencoded path segments / `backendPath`): still open and one call wider.** The new
+  `ENDPOINTS.like(tweetId)` interpolates the id the same way as `savedTweet` and `tweetImage`
+  (`${API_V1}/likes/${tweetId}`). The id comes from the server's JSON (`TweetItem.id`), the timeline service binds it
+  as a `UUID` path variable, and a user cannot choose it, so it is the same "no user input reaches it today" case.
+  Same fix: encode the segment.
+- **5 (Low, `usePagedList` has no progress check): still open, and `/liked` is a fourth consumer.** The loop at
+  `usePagedList.ts:44` and `:57` is unchanged. `LikedPage` passes `fetchLikedTweets` to `PostList`, so a response with
+  `items: []` and a non-advancing `nextCursor`, or one that omits `nextCursor`, now also loops on the liked list. The
+  backend as written emits an explicit `nextCursor: null` and its cursor is `TimelineCursorCodec.encode(likedAt,
+  tweetId)` of the last row, which always advances, so there is still no trigger today. Fixing the hook fixes all
+  four lists.
+
+## Considered, clean or not applicable (phase 5)
+- **XSS and markup injection through the new fields:** `likes` and `likedByMe` are numbers and booleans. The count
+  reaches the DOM only as `formatCount(...)` text inside `<span className="post-actions-count">`. A non-number from a
+  faulty server would print `NaN` or the raw value as text, not markup. `LikedPage` renders fixed strings plus
+  `PostList`, so the post body, username and images take the same React-text path as the feed. Grep of `src/`
+  (non-test) for `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `new Function`, `document.write`, `localStorage`,
+  `sessionStorage`, `document.cookie`, `window.open`, `location.href|assign|replace`, `postMessage`, `href={` and
+  `target=` found nothing. The only hits are `URL.createObjectURL` for the compose preview of a file the user picked,
+  and `<img src>` values built from `ENDPOINTS.tweetImage` or `toPictureUrl`.
+- **Open redirect / SSRF:** `ROUTES.liked` is a constant; the menu `Link` and the `/liked` route read no query
+  parameter. `/liked`, `/saved` and the rest sit behind `ProtectedRoute`; unknown paths fall to `SessionRedirect`.
+- **Authorization / IDOR on likes:** `PUT` and `DELETE /api/v1/likes/{tweetId}` and `GET /api/v1/likes` take the
+  caller from `@CurrentUserId` (the `X-User-Id` header), never from the body or path, so one user cannot like, unlike
+  or list for another. The gateway strips the caller's `Cookie`, `Authorization` and any `X-User-*` header before it
+  sets `X-User-Id` from the verified JWT (`CallerIdentityFilters.forwardAsTheAuthenticatedUser`), so the header cannot
+  be planted from the browser. The timeline service is not published in `docker-compose.yml` (only the gateway has
+  `ports:`, bound to `127.0.0.1:8080`), so it cannot be reached with a forged header from outside the stack.
+- **Like count integrity:** the primary key `(user_id, tweet_id)`, `insertIfAbsent` and a counter that moves only in
+  the transaction of a row actually added or removed (`LikeRecordingServiceImpl`) mean one account cannot inflate a
+  count by replaying `PUT`. The SPA's `shownLikeCount` (server count, minus your own like on load, plus your own change,
+  floored at 0) is display only and never sent back.
+- **Existence oracle:** `PUT /likes/{tweetId}` answers 404 for an unknown tweet and 204 for a known one. Tweet ids are
+  random UUIDs and tweets have no private visibility in this app, so it reveals nothing a signed-in user could not
+  already read. Not a finding.
+- **Request amplification from the heart button:** `useOptimisticToggle` keeps one request in flight per post and
+  sends the last wanted value only if it differs from the last confirmed one. A script can still call the endpoint
+  directly. There is no rate limit on likes, each `PUT` costing one tweet-service call and a log line; this is already
+  recorded as an accepted gap in `docs/likes-design.md` and `twitter_timeline_service/SECURITY-AUDITS.md`, so it is not
+  repeated as a finding.
+- **CSRF:** `PUT` and `DELETE` on a cookie session depend on the same `SameSite=Strict`, `HttpOnly` cookie as every
+  other call (see 2026-10-04); unchanged by the likes routes.
+- **Confirm token:** `confirm(token)` sends the token in a JSON `POST` body (`api/auth.ts:57`), not a `GET`, and
+  `ConfirmPage` reads it from `?token=` only. The URL keeps the token after the call, but it is single-use, so a
+  copy from browser history is useless once confirmed. The `Referer` exposure to the fonts host is finding 1.
+- **Dev server and build:** `vite.config.ts` proxies only `/api` to `GATEWAY_URL` (default `http://localhost:8080`),
+  with no `server.host`, so the dev server listens on loopback unless started with `--host`. `.env` is gitignored
+  (`Twitter/.gitignore:1`) and only `.env.example` is tracked. `dist/` is gitignored.
+- **Dependencies:** `package.json` has three runtime dependencies (`react`, `react-dom`, `react-router-dom`) on caret
+  ranges with a committed lockfile; `npm audit` reports 0 vulnerabilities.
+- **Injection (server-side), caching, ReDoS:** none in this package. `count.ts` has no regex and only integer
+  arithmetic on a number.

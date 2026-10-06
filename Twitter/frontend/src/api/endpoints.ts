@@ -6,6 +6,7 @@ export const ENDPOINTS = {
     feed: `${API_V1}/feed`,
     savedTweets: `${API_V1}/saved-tweets`,
     savedTweet: (tweetId: string) => `${API_V1}/saved-tweets/${tweetId}`,
+    likes: `${API_V1}/likes`,
     like: (tweetId: string) => `${API_V1}/likes/${tweetId}`,
     views: `${API_V1}/views`,
     tweets: `${API_V1}/tweets`,

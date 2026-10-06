@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logout, me } from '../../../../../api/auth';
 import { fetchFeed } from '../../../../../api/feed';
 import { ApiError } from '../../../../../api/http';
+import { fetchLikedTweets } from '../../../../../api/likes';
 import { fetchSavedTweets } from '../../../../../api/savedTweets';
 import { fetchUserProfile } from '../../../../../api/users';
 import { ROUTES } from '../../../../../routes';
@@ -20,6 +21,12 @@ vi.mock('../../../../../api/auth', async (importOriginal) => ({
 
 vi.mock('../../../../../api/feed', () => ({
     fetchFeed: vi.fn(),
+}));
+
+vi.mock('../../../../../api/likes', () => ({
+    fetchLikedTweets: vi.fn(),
+    likeTweet: vi.fn(),
+    unlikeTweet: vi.fn(),
 }));
 
 vi.mock('../../../../../api/savedTweets', () => ({
@@ -59,6 +66,9 @@ beforeEach(async () => {
         .mockReset()
         .mockResolvedValue(EMPTY_PAGE);
     vi.mocked(fetchSavedTweets)
+        .mockReset()
+        .mockResolvedValue(EMPTY_PAGE);
+    vi.mocked(fetchLikedTweets)
         .mockReset()
         .mockResolvedValue(EMPTY_PAGE);
     vi.mocked(logout).mockReset();
@@ -160,11 +170,11 @@ describe('opening and closing', () => {
         expect(screen.queryByRole('menu')).toBeNull();
     });
 
-    it('should_open_with_the_two_items_when_the_avatar_is_clicked', async () => {
+    it('should_open_with_the_three_items_when_the_avatar_is_clicked', async () => {
         await openMenu();
 
         expect(trigger().getAttribute('aria-expanded')).toBe('true');
-        expect(menuItemNames()).toEqual(['SAVED TWEETS', 'LOG OUT']);
+        expect(menuItemNames()).toEqual(['SAVED TWEETS', 'LIKED TWEETS', 'LOG OUT']);
     });
 
     it('should_move_focus_to_the_first_item_when_opened', async () => {
@@ -248,8 +258,11 @@ describe('keyboard', () => {
         expect(screen.getByRole('menu')).toBeTruthy();
     });
 
-    it('should_move_to_the_next_item_and_wrap_around_when_arrow_down_is_pressed', async () => {
+    it('should_move_to_the_next_item_and_wrap_around_across_three_items_when_arrow_down_is_pressed', async () => {
         await openMenu();
+
+        await user.keyboard('{ArrowDown}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
 
         await user.keyboard('{ArrowDown}');
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LOG OUT' }));
@@ -258,12 +271,14 @@ describe('keyboard', () => {
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
     });
 
-    it('should_move_to_the_previous_item_and_wrap_around_when_arrow_up_is_pressed', async () => {
+    it('should_move_to_the_previous_item_and_wrap_around_across_three_items_when_arrow_up_is_pressed', async () => {
         await openMenu();
 
         await user.keyboard('{ArrowUp}');
-
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LOG OUT' }));
+
+        await user.keyboard('{ArrowUp}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
     });
 
     it('should_jump_to_the_last_and_the_first_item_when_end_and_home_are_pressed', async () => {
@@ -362,5 +377,26 @@ describe('log out', () => {
         await user.click(screen.getByRole('menuitem', { name: 'LOG OUT' }));
 
         expect(logout).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('liked tweets', () => {
+    beforeEach(async () => {
+        await renderApp(ROUTES.feed);
+        await openMenu();
+    });
+
+    it('should_go_to_the_liked_page_and_close_the_menu_when_liked_tweets_is_chosen', async () => {
+        await user.click(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
+
+        expect(window.location.pathname).toBe(ROUTES.liked);
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(screen.getByRole('heading', { name: 'LIKED TWEETS' })).toBeTruthy();
+    });
+
+    it('should_return_focus_to_the_avatar_when_liked_tweets_is_chosen', async () => {
+        await user.click(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
+
+        expect(document.activeElement).toBe(trigger());
     });
 });

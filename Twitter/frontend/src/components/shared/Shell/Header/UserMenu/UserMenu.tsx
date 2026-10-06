@@ -138,6 +138,15 @@ function UserMenu({ pictureUrl }: UserMenuProps) {
                         >
                             SAVED TWEETS
                         </Link>
+                        <Link
+                            className="user-menu-item"
+                            to={ROUTES.liked}
+                            role="menuitem"
+                            tabIndex={-1}
+                            onClick={closeMenuAndFocusTrigger}
+                        >
+                            LIKED TWEETS
+                        </Link>
                         <button
                             type="button"
                             className="user-menu-item"

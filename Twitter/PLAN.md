@@ -19,8 +19,8 @@ Each service owns its own backlog:
   `/grill-me` 2026-10-01. Phase 1 (the confirmation email, `user.confirmation-requested`; steps 1–9) built
   2026-10-01, including the Playwright e2e that reads the link from the real email. Phase 2 (the follow email,
   `user.followed`; steps 10–13) built 2026-10-02: the gateway's `user.followed` change is committed (`85019be`).
-- **`twitter_timeline_service/PLAN.md`**: the feed (fan-out on `tweet.created`, 7-day retention), saved tweets and
-  unique views, in Postgres. Designed via `/grill-me` 2026-10-03; three phases, all built 2026-10-03 (the feed, saved tweets, views). Its plan also holds
+- **`twitter_timeline_service/PLAN.md`**: the feed (fan-out on `tweet.created`, 7-day retention), saved tweets,
+  unique views and likes (phases 4–5: the like endpoints and counter, the likes UI and `/liked`), in Postgres. Designed via `/grill-me` 2026-10-03; three phases, all built 2026-10-03 (the feed, saved tweets, views). Its plan also holds
   the gateway steps (internal endpoints, `user.unfollowed`, routes) and the tweet-service steps (internal batch
   read, `views` removed).
 
@@ -65,7 +65,7 @@ DELETE endpoint: unsave a tweet: again we need to check if the tweet_id exists t
 
 
 ||||
-This is for future implementation NOT NOW: (Again it could be located here, because it has similar logic, but this makes more sense to be a separate service)
+SUPERSEDED by `docs/likes-design.md` and phases 4–5 of `twitter_timeline_service/PLAN.md` (likes are built in the timeline service over HTTP, no Kafka topics). Old note: This is for future implementation NOT NOW: (Again it could be located here, because it has similar logic, but this makes more sense to be a separate service)
 Liked tweets:
 - again we will have a consumer, the tweet service will produce and we will consume here
 for topics like.tweet and unlike.tweet

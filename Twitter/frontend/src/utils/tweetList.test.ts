@@ -8,6 +8,8 @@ function item(id: string, createdAt = '2026-10-04T10:00:00Z'): TweetItem {
         id,
         views: 0,
         savedByMe: false,
+        likes: 0,
+        likedByMe: false,
         content: `tweet ${id}`,
         createdAt,
         updatedAt: createdAt,
@@ -41,6 +43,8 @@ describe('appendUnique', () => {
         const shown = {
             ...item('a'),
             savedByMe: true,
+            likes: 0,
+            likedByMe: false,
         };
 
         const merged = appendUnique([shown], [item('a')]);
@@ -198,6 +202,8 @@ describe('mergeNewestFirst', () => {
         const inBase = {
             ...item('same'),
             savedByMe: true,
+            likes: 0,
+            likedByMe: false,
         };
 
         const merged = mergeNewestFirst([inBase], [item('same')]);

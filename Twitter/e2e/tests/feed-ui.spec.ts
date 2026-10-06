@@ -64,6 +64,12 @@ async function saveViaApi(reader: Account, tweetId: string) {
     expect(response.status()).toBe(204);
 }
 
+async function likeViaApi(liker: Account, tweetId: string) {
+    const response = await liker.api.put(`/api/v1/likes/${tweetId}`);
+
+    expect(response.status()).toBe(204);
+}
+
 async function readViews(reader: Account, tweetId: string): Promise<number> {
     const response = await reader.api.get(`/api/v1/views?tweetIds=${tweetId}`);
 
@@ -299,4 +305,79 @@ test('should_land_on_the_login_page_when_the_cookie_is_gone_and_an_action_runs',
     await like.click();
 
     await expect(page).toHaveURL(/\/login$/);
+});
+
+test('should_keep_the_heart_filled_and_the_count_at_1_after_a_reload_when_a_post_is_liked', async ({ page, createAccount }) => {
+    const ana = await createAccount();
+    const content = `liked and kept from ${ana.user.username}`;
+    await expectFeedToContain(ana, await postTweet(ana, content));
+    await openAs(page, ana, '/feed');
+    const liked = waitForCall(page, 'PUT', '/likes/');
+
+    await likeButton(postWithText(page, content))
+        .click();
+    expect((await liked).status()).toBe(204);
+    await page.reload();
+
+    const like = likeButton(postWithText(page, content));
+    await expect(like).toHaveAttribute('aria-pressed', 'true');
+    await expect(like).toContainText('1');
+});
+
+test('should_show_a_like_from_another_user_as_1_with_an_empty_heart_and_move_to_2_when_tapped', async ({ page, createAccount }) => {
+    const ana = await createAccount();
+    const bob = await createAccount();
+    const content = `liked by bob from ${ana.user.username}`;
+    const tweetId = await postTweet(ana, content);
+    await expectFeedToContain(ana, tweetId);
+    await likeViaApi(bob, tweetId);
+    await openAs(page, ana, '/feed');
+    const like = likeButton(postWithText(page, content));
+    await expect(like).toHaveAttribute('aria-pressed', 'false');
+    await expect(like).toContainText('1');
+
+    await like.click();
+
+    await expect(like).toHaveAttribute('aria-pressed', 'true');
+    await expect(like).toContainText('2');
+});
+
+test('should_list_a_liked_post_on_the_liked_page_when_liked_tweets_is_chosen_from_the_menu', async ({ page, createAccount }) => {
+    const ana = await createAccount();
+    const content = `on the liked page from ${ana.user.username}`;
+    const tweetId = await postTweet(ana, content);
+    await expectFeedToContain(ana, tweetId);
+    await likeViaApi(ana, tweetId);
+    await openAs(page, ana, '/feed');
+
+    await openAccountMenu(page);
+    await page
+        .getByRole('menuitem', { name: 'LIKED TWEETS' })
+        .click();
+
+    await expect(page).toHaveURL(/\/liked$/);
+    await expect(likeButton(postWithText(page, content))).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('should_keep_an_unliked_post_on_the_liked_page_with_an_empty_heart_and_0_until_a_reload_shows_no_liked_tweets_yet', async ({ page, createAccount }) => {
+    const ana = await createAccount();
+    const content = `liked then dropped by ${ana.user.username}`;
+    await likeViaApi(ana, await postTweet(ana, content));
+    await openAs(page, ana, '/liked');
+    const post = postWithText(page, content);
+    await expect(likeButton(post)).toHaveAttribute('aria-pressed', 'true');
+    const unliked = waitForCall(page, 'DELETE', '/likes/');
+
+    await likeButton(post)
+        .click();
+    expect((await unliked).status()).toBe(204);
+
+    await expect(post).toBeVisible();
+    await expect(likeButton(post)).toHaveAttribute('aria-pressed', 'false');
+    await expect(likeButton(post)).toContainText('0');
+
+    await page.reload();
+
+    await expect(page.getByText('NO LIKED TWEETS YET')).toBeVisible();
+    await expect(postWithText(page, content)).toHaveCount(0);
 });

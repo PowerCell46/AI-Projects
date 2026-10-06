@@ -292,3 +292,16 @@ as a prop, so the one-minute tick of step 7 re-renders the times without the cel
   gap lists). `CLAUDE.md` now describes the tabs, the follow button and the follow signal.
 - Exit run: build, lint (0 findings), 866 frontend tests; `mvn verify` 3× green in the tweet service (267 tests), the
   gateway (844) and the timeline service (496); Playwright 40/40 three times in a row from a fresh stack.
+
+## Likes UI plan step 37 - one count formatter
+
+- `formatFollowers` (`utils/followers.ts`) is now `formatCount` (`utils/count.ts`), unchanged rule (rounded down, K / M,
+  one decimal below ten), because like counts read the same way as follower counts (Q23). `PersonCard` keeps its
+  `FOLLOWER` / `FOLLOWERS` word. The entry on `formatFollowers` above describes the same function under its old name.
+
+## Likes UI plan step 41 - the like count rule
+
+- A post shows `formatCount(max(0, likes - (isLikedInitially ? 1 : 0) + (isOn ? 1 : 0)))`: the server's count already
+  holds your like when the post loaded liked, so your own change is applied on top. The `max` keeps a count read
+  mid-race (`likes: 0` with `likedByMe: true`) from ever showing `-1`. A failed like or unlike reverts silently, a `404`
+  included.

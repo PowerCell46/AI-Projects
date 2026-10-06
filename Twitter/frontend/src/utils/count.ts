@@ -21,7 +21,7 @@ function formatScaled(count: number, unit: number, suffix: string): string {
 }
 
 // Always rounded down, so a count never reads higher than it is: 1,299 is 1.2K, never 1.3K.
-export function formatFollowers(count: number): string {
+export function formatCount(count: number): string {
     if (count < THOUSAND) {
         return String(count);
     }

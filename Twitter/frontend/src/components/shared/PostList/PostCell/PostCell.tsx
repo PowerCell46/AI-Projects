@@ -27,7 +27,12 @@ function PostCell({ post, now }: PostCellProps) {
             </header>
             {body && <p className="post-cell-body" dir="auto">{body}</p>}
             <PostImages tweetId={post.id} images={post.images} />
-            <PostActions tweetId={post.id} isSavedInitially={post.savedByMe} />
+            <PostActions
+                tweetId={post.id}
+                isSavedInitially={post.savedByMe}
+                isLikedInitially={post.likedByMe}
+                likeCount={post.likes}
+            />
         </article>
     );
 }

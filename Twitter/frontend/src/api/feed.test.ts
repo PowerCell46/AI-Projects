@@ -9,6 +9,8 @@ const ITEM = {
     id: 'tweet-1',
     views: 3,
     savedByMe: true,
+    likes: 0,
+    likedByMe: false,
     content: 'hello',
     createdAt: '2026-10-04T10:00:00.123Z',
     updatedAt: '2026-10-04T10:00:00.123Z',
@@ -91,6 +93,8 @@ describe('fetchFeed', () => {
         expect(page.items[0]).toMatchObject({
             id: 'tweet-1',
             savedByMe: true,
+            likes: 0,
+            likedByMe: false,
             views: 3,
         });
     });

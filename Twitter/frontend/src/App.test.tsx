@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { me } from './api/auth';
 import { ApiError } from './api/http';
+import { fetchLikedTweets } from './api/likes';
 import { ROUTES } from './routes';
 import { renderApp } from './test/renderApp';
 
@@ -9,6 +10,12 @@ import { renderApp } from './test/renderApp';
 vi.mock('./api/auth', async (importOriginal) => ({
     ...await importOriginal<typeof import('./api/auth')>(),
     me: vi.fn(),
+}));
+
+vi.mock('./api/likes', () => ({
+    fetchLikedTweets: vi.fn(),
+    likeTweet: vi.fn(),
+    unlikeTweet: vi.fn(),
 }));
 
 const SIGNED_IN_USER = {
@@ -88,5 +95,29 @@ describe('a logged-in user', () => {
         await renderApp(ROUTES.feed);
 
         expect(window.location.pathname).toBe(ROUTES.feed);
+    });
+});
+
+describe('the liked page route', () => {
+    it('should_send_a_signed_out_visitor_from_liked_to_login', async () => {
+        vi.mocked(me).mockRejectedValue(new ApiError(401, []));
+
+        await renderApp(ROUTES.liked);
+
+        expect(window.location.pathname).toBe(ROUTES.login);
+    });
+
+    it('should_show_the_liked_page_without_a_tab_row_when_signed_in', async () => {
+        vi.mocked(me).mockResolvedValue(SIGNED_IN_USER);
+        vi.mocked(fetchLikedTweets).mockResolvedValue({
+            items: [],
+            nextCursor: null,
+        });
+
+        await renderApp(ROUTES.liked);
+
+        expect(window.location.pathname).toBe(ROUTES.liked);
+        expect(screen.getByRole('heading', { name: 'LIKED TWEETS' })).toBeTruthy();
+        expect(screen.queryByRole('tablist')).toBeNull();
     });
 });

@@ -1,14 +1,14 @@
 import type { Person } from '../../../../api/users';
 import Avatar from '../../../../components/shared/Avatar/Avatar';
 import { truncateBio } from '../../../../utils/bio';
-import { formatFollowers } from '../../../../utils/followers';
+import { formatCount } from '../../../../utils/count';
 import FollowButton from './FollowButton/FollowButton';
 import { usePersonFollow } from './usePersonFollow';
 import './PersonCard.css';
 
 
 function followersTextOf(followersCount: number): string {
-    return `${formatFollowers(followersCount)} ${followersCount === 1 ? 'FOLLOWER' : 'FOLLOWERS'}`;
+    return `${formatCount(followersCount)} ${followersCount === 1 ? 'FOLLOWER' : 'FOLLOWERS'}`;
 }
 
 interface PersonCardProps {
