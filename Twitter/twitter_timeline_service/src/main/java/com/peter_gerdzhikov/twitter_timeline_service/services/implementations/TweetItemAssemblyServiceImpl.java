@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_timeline_service.services.implementations;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -70,21 +71,46 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
                 CompletableFuture.supplyAsync(() -> userLookupService.findByIds(authorIds), downstreamCallExecutor);
         Map<UUID, TweetClientDTO> tweetsById = await(tweetsRequest);
         Map<UUID, UserClientDTO> authorsById = await(authorsRequest);
+
+        List<TweetClientDTO> tweets = rows
+                .stream()
+                .filter(row -> authorsById.containsKey(authorIdOf.apply(row)))
+                .map(row -> tweetsById.get(tweetIdOf.apply(row)))
+                .filter(Objects::nonNull)
+                .toList();
+
+        return assembleFetched(viewerId, tweets, authorsById);
+    }
+
+    @Override
+    public List<TweetItemResponseDTO> assembleFetched(
+            UUID viewerId,
+            List<TweetClientDTO> tweets,
+            Map<UUID, UserClientDTO> authorsById
+    ) {
+        if (tweets.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> tweetIds = tweets
+                .stream()
+                .map(TweetClientDTO::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         Map<UUID, Long> viewsByTweetId = viewService.countViews(tweetIds);
         Set<UUID> savedTweetIds = Set.copyOf(savedTweetRepository.findSavedTweetIds(viewerId, tweetIds));
         Map<UUID, Long> likesByTweetId = countLikes(tweetIds);
         Set<UUID> likedTweetIds = Set.copyOf(tweetLikeRepository.findLikedTweetIds(viewerId, tweetIds));
 
-        return rows
+        return tweets
                 .stream()
-                .filter(row -> tweetsById.containsKey(tweetIdOf.apply(row)) && authorsById.containsKey(authorIdOf.apply(row)))
-                .map(row -> TweetItemMapper.toItem(
-                        tweetsById.get(tweetIdOf.apply(row)),
-                        authorsById.get(authorIdOf.apply(row)),
-                        viewsByTweetId.getOrDefault(tweetIdOf.apply(row), 0L),
-                        savedTweetIds.contains(tweetIdOf.apply(row)),
-                        likesByTweetId.getOrDefault(tweetIdOf.apply(row), 0L),
-                        likedTweetIds.contains(tweetIdOf.apply(row))))
+                .filter(tweet -> authorsById.containsKey(tweet.getAuthorId()))
+                .map(tweet -> TweetItemMapper.toItem(
+                        tweet,
+                        authorsById.get(tweet.getAuthorId()),
+                        viewsByTweetId.getOrDefault(tweet.getId(), 0L),
+                        savedTweetIds.contains(tweet.getId()),
+                        likesByTweetId.getOrDefault(tweet.getId(), 0L),
+                        likedTweetIds.contains(tweet.getId())))
                 .toList();
     }
 

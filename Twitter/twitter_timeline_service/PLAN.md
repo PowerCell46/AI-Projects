@@ -12,6 +12,9 @@ Phases 1–3 were settled in the `/grill-me` interview of 2026-10-03 (Q1–Q18),
 interview of 2026-10-05 (Q19–Q26, spec `../docs/likes-design.md`), which reverses Q1's "liked tweets later,
 elsewhere". Records at the bottom, Q-numbers in parentheses.
 
+The tweet details read (`GET /api/v1/tweet-details/{tweetId}`) and `replyCount` belong to the tweet service's replies
+phases: their steps are in `../twitter_tweet_service/PLAN.md` (phase 2, steps 18-19), their audit in `SECURITY-AUDITS.md`.
+
 Building it touched two other projects; their steps lived in this plan, marked **[gateway]** or **[tweet]**, and their
 own `PLAN.md` files only point here. Where things live now: calls made while building in `DECISIONS.md`, the test
 catalog in `TESTING.md`, conventions and standing rules in `CLAUDE.md`, the security audits in `SECURITY-AUDITS.md`.
@@ -253,7 +256,8 @@ ranking.
 - **One static internal secret on the gateway's public port, no rotation.** **Trigger:** any deployment → a private
   port or mTLS for `/internal/**`, and rotation. The tweet service's internal endpoints have no secret either; same
   trigger as its `X-User-Id` gap.
-- **No rate limiting** on feed reads, saves (each a tweet-service call and an INFO log line) or view reports (each a
+- **No rate limiting** on feed reads, the tweet details read (a tweet-service call, a gateway call and four queries per
+  call), saves (each a tweet-service call and an INFO log line) or view reports (each a
   tweet-service call and up to 50 new rows). **Trigger:** abuse, or a second instance.
 - **View rows kept forever** (one per viewer per tweet). **Trigger:** table size → HyperLogLog (e.g. Redis `PFADD`).
   **Hot counter row** on a viral tweet. **Trigger:** view-report latency → buffered or sharded counters. **No cap on
@@ -298,6 +302,9 @@ From phases 4–5 (likes):
 - **A forged `tweet.deleted` also wipes the tweet's likes and counter,** which have no source to replay from (audit
   2026-10-06, Info). Needs write access to the topic. **Trigger:** a second producer or a non-loopback broker → Kafka
   ACLs, or the listener confirms the delete with the tweet service before acting.
+- **The details read's `404` body tells a gone tweet from a disabled author** (audit 2026-10-07, Info). It only confirms
+  a tweet id the caller already has, and the tweet is readable through the tweet service anyway. **Trigger:** private
+  tweets or accounts → one `404` body for both.
 - **Counts on screen are a snapshot** plus your own change; other people's likes on posts already shown appear after a
   reload (a `NEW POSTS` load adds only new posts). **Trigger:** complaints that counts look stale → re-read counts for
   visible posts.

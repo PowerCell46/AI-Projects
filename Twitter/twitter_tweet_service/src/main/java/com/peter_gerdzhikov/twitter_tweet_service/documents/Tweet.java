@@ -25,6 +25,12 @@ public class Tweet extends CommonDocument {
 
     private String content;
 
+    /**
+     * Changed only by an increment inside the transaction that adds or removes a reply, never by a full save,
+     * so a tweet stored before replies existed has no such field and reads as zero.
+     */
+    private long replyCount;
+
     @Builder.Default
     private List<TweetImage> images = new ArrayList<>();
 }

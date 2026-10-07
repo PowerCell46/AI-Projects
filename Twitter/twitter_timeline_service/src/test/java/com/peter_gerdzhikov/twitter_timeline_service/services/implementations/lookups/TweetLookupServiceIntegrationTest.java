@@ -18,6 +18,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -241,6 +243,22 @@ class TweetLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTes
 
             assertThatThrownBy(() -> tweetLookupService.findByIds(List.of(TestIds.tweetId())))
                     .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "[{\"authorId\":\"00000000-0000-0000-0000-000000000001\",\"images\":[]}]",
+                "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"images\":[]}]",
+                "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"authorId\":\"00000000-0000-0000-0000-000000000002\"}]",
+                "[null]",
+                "null"
+        })
+        void should_throw_unavailable_when_a_tweet_lacks_its_id_author_or_images(String body) {
+            stubTweets(body);
+
+            assertThatThrownBy(() -> tweetLookupService.findByIds(List.of(TestIds.tweetId())))
+                    .isInstanceOf(UpstreamUnavailableException.class)
+                    .hasMessage("Upstream service unavailable.");
         }
 
         @Test

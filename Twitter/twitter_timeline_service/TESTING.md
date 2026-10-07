@@ -170,6 +170,8 @@ Written `@Disabled` in step 14 and approved. Enabled in step 16: the saved-tweet
 - An existing tweet returns 204 and is stored with its author (`should_return_204_and_store_the_tweet_with_its_author_when_the_tweet_exists`)
 - Saving again returns 204, keeps one row and the original `saved_at` (`should_keep_one_row_and_the_original_saved_at_when_the_tweet_is_saved_again`)
 - An unknown tweet returns 404 "Tweet not found." and stores nothing (`should_return_404_and_store_nothing_when_the_tweet_is_unknown`)
+- A viewer who did nothing with the tweet gets `savedByMe`, `likedByMe` false and `views`, `replyCount` 0 (`should_return_the_viewers_own_flags_as_false_when_the_viewer_did_nothing_with_the_tweet`)
+- One call goes to each downstream, with the tweet id and the author id (`should_make_one_call_to_each_downstream_when_the_tweet_is_read`)
 - A malformed tweet id returns 400 (`should_return_400_when_the_tweet_id_is_malformed`)
 - Tweet service down returns 502, nothing stored (`should_return_502_and_store_nothing_when_the_tweet_service_is_down`)
 - A `5xx` from the tweet service returns 502, nothing stored (`should_return_502_and_store_nothing_when_the_tweet_service_answers_5xx`)
@@ -435,3 +437,38 @@ New group `Likes` in `FeedControllerIntegrationTest` and in `SavedTweetControlle
 - A repeated delete of a liked tweet is a no-op (`should_do_nothing_when_the_same_delete_is_repeated_and_the_tweet_had_likes`)
 - A delete of a tweet with no likes is a no-op (`should_do_nothing_when_the_tweet_had_no_likes`)
 - The likes delete failing once removes nothing of the tweet (feed, saved, views, likes all still there); the retry removes all four (`should_remove_nothing_of_the_tweet_and_all_of_it_on_the_retry_when_the_likes_delete_fails_once`)
+
+## Replies (tweet service phase 2) - reply count and tweet details
+
+Written `@Disabled` in replies step 11 (tweet service `PLAN.md`); the groups are enabled in steps 18 and 19, all enabled now. The gateway side is in the gateway's `TESTING.md`.
+
+### `replyCount` on items
+
+Enabled in step 18. New group `Replies` in `FeedControllerIntegrationTest`, `SavedTweetControllerIntegrationTest` and `LikeControllerIntegrationTest` (one scenario each), plus one mapper test. The exact-key-set scenario of each `Read` group gains `replyCount`.
+
+- The tweet service's `replyCount` is passed through, `0` when nobody replied (feed: `should_return_the_reply_count_of_each_item_and_zero_when_nobody_replied_to_the_tweet`; saved: `..._the_saved_tweet`; liked: `..._the_liked_tweet`)
+- `TweetItemMapperTest` copies it (`toItem_copiesTheReplyCountOfTheTweet`)
+
+### `GET /api/v1/tweet-details/{tweetId}`
+
+`TweetDetailsControllerIntegrationTest` - WireMock stands in for the gateway's internal API and the tweet service. Enabled (step 19).
+
+`Identity`
+
+- A missing `X-User-Id` returns 400 (`should_return_400_when_the_user_id_header_is_missing`)
+
+`Read`
+
+- A tweet returns 200 with every feed-item field, including `likedByMe`, `savedByMe`, `views` and `replyCount` (`should_return_200_and_every_feed_item_field_when_the_tweet_exists`)
+- A malformed tweet id returns 400 (`should_return_400_when_the_tweet_id_is_malformed`)
+
+`MissingData`
+
+- A tweet the tweet service no longer has returns 404 "Tweet not found." and the gateway is not called (`should_return_404_when_the_tweet_is_gone`)
+- An author the gateway no longer returns returns 404 "Author not found." (`should_return_404_when_the_author_is_gone`)
+
+`Failures`
+
+- The tweet service down or answering `5xx` returns 502 (`should_return_502_when_the_tweet_service_is_down`, `..._answers_5xx`)
+- The gateway down or answering `5xx` returns 502 (`should_return_502_when_the_gateway_is_down`, `..._answers_5xx`)
+- Either downstream slower than the read timeout returns 504 (`should_return_504_when_the_tweet_service_is_slower_than_the_read_timeout`, `..._the_gateway_...`)

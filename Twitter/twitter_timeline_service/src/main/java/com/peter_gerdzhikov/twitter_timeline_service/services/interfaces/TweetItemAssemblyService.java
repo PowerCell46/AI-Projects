@@ -1,9 +1,12 @@
 package com.peter_gerdzhikov.twitter_timeline_service.services.interfaces;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 
 public interface TweetItemAssemblyService {
@@ -25,5 +28,17 @@ public interface TweetItemAssemblyService {
             List<T> rows,
             Function<T, UUID> tweetIdOf,
             Function<T, UUID> authorIdOf
+    );
+
+    /**
+     * The same items for tweets and authors the caller has already fetched: one item per tweet, in tweet order,
+     * with the number of unique viewers, whether the viewer saved it, its like count and whether the viewer
+     * liked it, each read in one query for all the tweets. A tweet whose author is not in {@code authorsById} is
+     * skipped. No call is made for no tweets.
+     */
+    List<TweetItemResponseDTO> assembleFetched(
+            UUID viewerId,
+            List<TweetClientDTO> tweets,
+            Map<UUID, UserClientDTO> authorsById
     );
 }

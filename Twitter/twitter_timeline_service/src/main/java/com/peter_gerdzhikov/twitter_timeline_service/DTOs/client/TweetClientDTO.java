@@ -25,6 +25,11 @@ public class TweetClientDTO {
 
     private String content;
 
+    /**
+     * A wrapper, because Jackson refuses a missing primitive; a tweet service that predates replies sends none.
+     */
+    private Long replyCount;
+
     private Instant createdAt;
 
     private Instant updatedAt;

@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
+import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
@@ -33,6 +34,22 @@ public final class TestDocuments {
                 .content("hello")
                 .createdAt(CREATED_AT)
                 .updatedAt(CREATED_AT)
+                .build();
+    }
+
+    public static Reply replyOn(UUID tweetId) {
+        return replyAt(tweetId, CREATED_AT);
+    }
+
+    public static Reply replyAt(UUID tweetId, Instant createdAt) {
+        return Reply
+                .builder()
+                .id(UUID.randomUUID())
+                .tweetId(tweetId)
+                .authorId(UUID.randomUUID())
+                .content("a reply")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
                 .build();
     }
 

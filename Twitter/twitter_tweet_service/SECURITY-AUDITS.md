@@ -7,6 +7,7 @@ reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md`
 | --- | --- | --- |
 | 2026-09-30 | The five `/api/v1/tweets` routes, outbox publisher, MinIO, Mongo (end of step 9) | 4 accepted (1 High if reachable, 2 Low, 1 Info) |
 | 2026-10-04 | `GET /internal/v1/tweets/by-author/{authorId}` (frontend phase 3) | 1 Medium fixed, 1 Low open |
+| 2026-10-07 | Phase 2: the four reply routes, cursor, conflict retrier, gateway user lookup (step 22) | 1 Low and 1 Info fixed |
 
 ## Tweet routes (2026-09-30)
 
@@ -43,3 +44,23 @@ reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md`
   (epoch millis refused by design); no string reaches the Mongo query; the gateway does not forward `/internal/**`
   (404 with or without its secret); only `GET` is allowed; error text carries no internals. No auth on `/internal/**`
   is by design (the `X-User-Id` gap), protected by network isolation only.
+
+## Replies (2026-10-07)
+
+Run against the built jar with throwaway Mongo, MinIO and a stub gateway. Raw report: `SECURITY-FINDINGS.md`.
+
+- **The 8 KB body cap did not apply to chunked multipart on any route (Low), fixed 2026-10-07 (phase 2, step 22).**
+  The container parses multipart without going through the counting wrapper, so a chunked 20 MB upload was read in
+  full on the reply routes, unmapped paths and `/internal/**`, before routing and the identity check. The body-size
+  filter now refuses multipart with `415` on every route but the tweet create (`DECISIONS.md`); a unit test and a
+  real-port test cover it.
+- **Reply edit and delete answered `403` or `404`, confirming a reply id exists (Info), fixed 2026-10-07.** Both now
+  answer `404 "Reply not found."` for someone else's reply, the same as a missing one. Reply ids are random UUIDs and
+  the list shows them to everyone, so little was exposed; the tweet routes keep their `403`.
+- **Not reproduced:** a reply flood starving the author's tweet delete (64 parallel clients, 1,524 replies in 6 s: the
+  delete answered `204` in 60 ms, no `503 BUSY`).
+- **Clean:** every Mongo value is typed and field names are fixed; the cursor is re-encoded and compared (bad sizes and
+  cursors are `400`); with 300,000 replies on one tweet a deep page examined 21 keys; edit matches `_id`, `tweetId`
+  and `authorId` in the write; the only outbound call is the gateway at a configured URL with UUID ids; error bodies
+  are fixed strings and `/actuator` shows `health` only; `INTERNAL_API_SECRET` has no default and a 32-byte floor.
+  Dependencies were not scanned.

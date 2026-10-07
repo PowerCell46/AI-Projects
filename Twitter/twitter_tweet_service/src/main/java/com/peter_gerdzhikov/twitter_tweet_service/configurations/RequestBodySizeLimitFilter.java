@@ -7,6 +7,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -27,7 +28,9 @@ import lombok.extern.slf4j.Slf4j;
  * once the body is already parsed. Ordered first so an oversized body is refused before any JSON or
  * multipart parsing work happens.
  *
- * <p>The tweet-create route gets the larger cap for its images; every other route keeps the small one.
+ * <p>The tweet-create route gets the larger cap for its images; every other route keeps the small one. Only
+ * that route takes multipart: the container parses it without going through the counting wrapper, so on any
+ * other route it is refused up front.
  */
 @Slf4j
 @Component
@@ -35,6 +38,8 @@ import lombok.extern.slf4j.Slf4j;
 public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
 
     private static final String CREATE_TWEET_PATH = "/api/v1/tweets";
+
+    private static final String UNSUPPORTED_BODY_MESSAGE = "This route does not accept multipart bodies.";
 
     private final long maxBodyBytes;
 
@@ -58,7 +63,13 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        long maxBytes = maxBytesFor(request);
+        if (isMultipart(request) && !isCreateTweet(request)) {
+            log.warn("Rejected a multipart request to '{}'.", request.getRequestURI());
+            ErrorResponseWriter.write(response, objectMapper, HttpStatus.UNSUPPORTED_MEDIA_TYPE, UNSUPPORTED_BODY_MESSAGE);
+            return;
+        }
+
+        long maxBytes = isCreateTweet(request) ? maxTweetBodyBytes : maxBodyBytes;
 
         if (request.getContentLengthLong() > maxBytes) {
             log.warn("Rejected a request to '{}' declaring an oversized body.", request.getRequestURI());
@@ -71,9 +82,15 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(new BodySizeLimitingRequestWrapper(request, maxBytes), response);
     }
 
-    private long maxBytesFor(HttpServletRequest request) {
-        boolean isCreateTweet = HttpMethod.POST.matches(request.getMethod()) && CREATE_TWEET_PATH.equals(request.getRequestURI());
+    private boolean isCreateTweet(HttpServletRequest request) {
+        return HttpMethod.POST.matches(request.getMethod()) && CREATE_TWEET_PATH.equals(request.getRequestURI());
+    }
 
-        return isCreateTweet ? maxTweetBodyBytes : maxBodyBytes;
+    private boolean isMultipart(HttpServletRequest request) {
+        String contentType = request.getContentType();
+
+        return contentType != null && contentType
+                .toLowerCase()
+                .startsWith(MediaType.MULTIPART_FORM_DATA_VALUE);
     }
 }

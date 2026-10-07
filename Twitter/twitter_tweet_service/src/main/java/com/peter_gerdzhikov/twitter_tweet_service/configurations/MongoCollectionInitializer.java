@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
+import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class MongoCollectionInitializer implements SmartInitializingSingleton {
     @Override
     public void afterSingletonsInstantiated() {
         createIfMissing(Tweet.class);
+        createIfMissing(Reply.class);
         createIfMissing(OutboxMessage.class);
     }
 

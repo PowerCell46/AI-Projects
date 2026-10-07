@@ -25,6 +25,7 @@ import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMongoIntegrationTest;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
 

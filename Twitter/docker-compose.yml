@@ -52,6 +52,7 @@ services:
       MONGODB_URI: mongodb://mongo:27017/twitter_tweet_service_db?directConnection=true
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MINIO_URL: http://minio:9000
+      GATEWAY_INTERNAL_URL: http://gateway:8080
     deploy:
       resources:
         limits:

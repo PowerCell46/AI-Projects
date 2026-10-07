@@ -16,8 +16,12 @@ import org.springframework.web.client.RestClient;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class TweetLookupServiceImpl extends DownstreamLookupSupport implements TweetLookupService {
 
@@ -47,6 +51,8 @@ public class TweetLookupServiceImpl extends DownstreamLookupSupport implements T
                 .body(new ParameterizedTypeReference<List<TweetClientDTO>>() {
                 }));
 
+        requireWellFormed(tweets);
+
         return tweets
                 .stream()
                 .collect(Collectors.toMap(TweetClientDTO::getId, Function.identity(), (first, second) -> first));
@@ -60,5 +66,16 @@ public class TweetLookupServiceImpl extends DownstreamLookupSupport implements T
                 .retrieve()
                 .body(new ParameterizedTypeReference<List<TweetSummaryClientDTO>>() {
                 }));
+    }
+
+    private void requireWellFormed(List<TweetClientDTO> tweets) {
+        boolean isMalformed = tweets == null || tweets
+                .stream()
+                .anyMatch(tweet -> tweet == null || tweet.getId() == null || tweet.getAuthorId() == null || tweet.getImages() == null);
+
+        if (isMalformed) {
+            log.warn("The tweet service answered with a tweet missing its id, author or images.");
+            throw new UpstreamUnavailableException();
+        }
     }
 }

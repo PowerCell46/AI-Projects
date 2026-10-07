@@ -33,8 +33,8 @@ import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.OutboxMessageRepository;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.TweetRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestImages;

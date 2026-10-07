@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,13 +46,16 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
+import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.OutboxMessageRepository;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.TweetRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_tweet_service.support.MutableClock;
+import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestImages;
 
 import io.minio.ListObjectsArgs;
@@ -96,6 +100,9 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
     @Autowired
     private TweetRepository tweetRepository;
+
+    @Autowired
+    private ReplyRepository replyRepository;
 
     @Autowired
     private OutboxMessageRepository outboxMessageRepository;
@@ -391,6 +398,31 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
     class GetTweet {
 
         @Test
+        void should_return_the_reply_count_when_the_tweet_has_replies() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            JsonNode created = create(authorId, "popular");
+            UUID tweetId = UUID.fromString(created.get("id").asString());
+            tweetRepository.incrementReplyCount(tweetId, 3);
+
+            JsonNode body = getTweet(tweetId.toString(), authorId, status().isOk());
+            JsonNode batch = findByIds(List.of(tweetId.toString()), status().isOk());
+
+            assertThat(body.get("replyCount").asLong()).isEqualTo(3);
+            assertThat(batch.get(0).get("replyCount").asLong()).isEqualTo(3);
+        }
+
+        @Test
+        void should_return_a_reply_count_of_zero_when_the_tweet_has_none() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            JsonNode created = create(authorId, "quiet");
+
+            JsonNode body = getTweet(created.get("id").asString(), authorId, status().isOk());
+
+            assertThat(created.get("replyCount").asLong()).isZero();
+            assertThat(body.get("replyCount").asLong()).isZero();
+        }
+
+        @Test
         void should_return_200_with_the_body_shape_when_the_tweet_exists() throws Exception {
             UUID authorId = UUID.randomUUID();
             JsonNode created = create(authorId, "shape", image("a.png", TestImages.png()));
@@ -601,6 +633,30 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
     @Nested
     class DeleteTweet {
+
+        @Test
+        void should_remove_the_replies_of_the_tweet_and_keep_the_replies_of_others_when_the_tweet_is_deleted() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            UUID tweetId = UUID.fromString(create(authorId, "bye").get("id").asString());
+            Reply ofAnotherTweet = replyRepository.save(TestDocuments.replyOn(UUID.randomUUID()));
+            replyRepository.saveAll(List.of(TestDocuments.replyOn(tweetId), TestDocuments.replyOn(tweetId)));
+
+            delete(tweetId.toString(), authorId, status().isNoContent());
+
+            assertThat(replyRepository.findFirstPage(tweetId, 10)).isEmpty();
+            assertThat(replyRepository.findById(ofAnotherTweet.getId())).isPresent();
+        }
+
+        @Test
+        void should_answer_404_to_the_replies_list_when_the_tweet_is_deleted() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            String id = create(authorId, "bye").get("id").asString();
+            delete(id, authorId, status().isNoContent());
+
+            mockMvc
+                    .perform(get(TWEETS_PATH + "/" + id + "/replies").header(USER_ID_HEADER, authorId.toString()))
+                    .andExpect(status().isNotFound());
+        }
 
         @Test
         void should_return_204_and_remove_the_tweet_and_its_images_when_the_author_deletes() throws Exception {

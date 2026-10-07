@@ -22,11 +22,18 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.CallerUnknownException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.InvalidCallerIdentityException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
@@ -35,6 +42,8 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContent
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException;
 
 class GlobalExceptionHandlerTest {
 
@@ -152,6 +161,70 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
         assertThat(response.getBody().getMessages()).containsExactly(StorageUnavailableException.MESSAGE);
+    }
+
+    @Test
+    void should_return_502_without_leaking_the_cause_when_a_downstream_is_unavailable() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamUnavailable(
+                new UpstreamUnavailableException(new IllegalStateException("secret downstream detail")));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().getMessages()).containsExactly(UpstreamUnavailableException.MESSAGE);
+    }
+
+    @Test
+    void should_return_504_without_leaking_the_cause_when_a_downstream_times_out() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleUpstreamTimeout(
+                new UpstreamTimeoutException(new IllegalStateException("secret downstream detail")));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
+        assertThat(response.getBody().getMessages()).containsExactly(UpstreamTimeoutException.MESSAGE);
+    }
+
+    @Test
+    void should_return_503_with_the_busy_code_when_the_write_conflict_budget_is_exceeded() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleWriteConflictBudgetExceeded(
+                new WriteConflictBudgetExceededException(new IllegalStateException("conflict detail")));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody().getCode()).isEqualTo("BUSY");
+        assertThat(response.getBody().getMessages()).containsExactly(WriteConflictBudgetExceededException.MESSAGE);
+    }
+
+    @Test
+    void should_return_403_with_the_caller_unknown_code_when_the_caller_is_not_a_known_user() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleCallerUnknown(new CallerUnknownException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody().getCode()).isEqualTo("CALLER_UNKNOWN");
+        assertThat(response.getBody().getMessages()).containsExactly(CallerUnknownException.MESSAGE);
+    }
+
+    @Test
+    void should_return_400_for_an_invalid_reply_request() {
+        List<RuntimeException> failures = List.of(
+                new EmptyReplyException(),
+                new ReplyContentTooLongException(280),
+                new InvalidCursorException(),
+                new InvalidPageSizeException(1, 100));
+
+        assertThat(failures)
+                .allSatisfy(failure -> {
+                    ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleInvalidReplyRequest(failure);
+
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(response.getBody().getMessages()).containsExactly(failure.getMessage());
+                    assertThat(response.getBody().getCode()).isNull();
+                });
+    }
+
+    @Test
+    void should_return_404_when_the_reply_does_not_exist() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleReplyNotFound(new ReplyNotFoundException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getMessages()).containsExactly(ReplyNotFoundException.MESSAGE);
+        assertThat(response.getBody().getCode()).isNull();
     }
 
     @Test

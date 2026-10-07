@@ -169,3 +169,31 @@ One entry per decision: what was chosen, what it was chosen over, and why.
   covered by the repository test of the returned order.
 - **View seeding goes through `ViewRecordingService`** (step 23). `seedView` / `seedViews` in
   `AbstractListenerIntegrationTest` use the real service, so a seeded counter and its rows agree.
+
+## `replyCount` passed through (tweet service phase 2, step 18)
+
+- **`TweetClientDTO.replyCount` is a `Long`, and the mapper turns a missing one into `0`.** Jackson 3 refuses a
+  missing primitive (it builds the DTO through its all-args constructor and maps the gap to `null`), so a `long` made
+  every tweet read fail with `502` whenever the tweet service did not send the field, for example while it is
+  deployed after this service. `TweetItemResponseDTO.replyCount` stays a `long`, after `likedByMe`.
+
+## The details read (tweet service phase 2, step 19)
+
+- **`assembleFetched(viewerId, tweets, authorsById)`** is the second half of `assemble`: views, saves, likes, then the
+  mapper. `assemble` fetches the tweets and the authors side by side, keeps the rows whose author and tweet exist, and
+  calls it. Two small effects, both invisible from outside: the author of an item is now the tweet's own `authorId`
+  (the rows named the same one), and the views, saves and likes queries cover only the tweets that were found.
+- **The details read is sequential:** tweet by id, then its author, one call each. A gone tweet answers `404` without
+  a call to the gateway; a gone author answers `404` "Author not found." (`AuthorNotFoundException`).
+- **Controllers grouped into `feed`, `likes`, `savedtweets`, `views` and `tweetdetails`** (the package would have held
+  6 files); `GlobalExceptionHandler` stays at the root, as in the test packages.
+
+## Audit fixes (tweet details read, 2026-10-07)
+
+- **Downstream timeouts are now 1 s connect and 3 s read (were 2 s and 5 s).** The details read calls two services
+  in sequence, so the worst case is 2 × (1 + 3) = 8 s, under the gateway's 10 s read timeout; before it was ~14 s and the
+  gateway answered `504` while this service kept working. The feed and the other reads get the tighter bound too.
+  Both stay overridable through `TIMELINE_HTTP_CONNECT_TIMEOUT` / `TIMELINE_HTTP_READ_TIMEOUT`.
+- **A tweet without `id`, `authorId` or `images`, a null item or a null body is an upstream failure (`502`).**
+  `TweetLookupServiceImpl.findByIds` checks the answer instead of letting an NPE become a `500` with a stack trace.
+  `UpstreamUnavailableException` gained a constructor without a cause for this.

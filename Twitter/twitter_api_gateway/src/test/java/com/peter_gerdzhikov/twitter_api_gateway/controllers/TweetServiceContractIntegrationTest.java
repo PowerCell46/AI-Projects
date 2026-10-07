@@ -94,6 +94,8 @@ class TweetServiceContractIntegrationTest extends AbstractMinioIntegrationTest {
             .withNetworkAliases("kafka")
             .withListener("kafka:" + KAFKA_INTERNAL_PORT);
 
+    private static final String TWEET_SERVICE_INTERNAL_SECRET = "test-only-internal-secret-for-the-contract-container";
+
     private static final GenericContainer<?> TWEET_SERVICE;
 
     static {
@@ -108,6 +110,7 @@ class TweetServiceContractIntegrationTest extends AbstractMinioIntegrationTest {
                 .withEnv("MINIO_URL", "http://minio:9000")
                 .withEnv("MINIO_ACCESS_KEY", TWEET_MINIO.getUserName())
                 .withEnv("MINIO_SECRET_KEY", TWEET_MINIO.getPassword())
+                .withEnv("INTERNAL_API_SECRET", TWEET_SERVICE_INTERNAL_SECRET)
                 .withExposedPorts(TWEET_SERVICE_PORT)
                 .waitingFor(Wait
                         .forHttp("/actuator/health")

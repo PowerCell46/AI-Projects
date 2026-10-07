@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +53,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException;
@@ -62,7 +65,9 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOu
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.TweetRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ConflictRetrier;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxService;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
@@ -93,6 +98,9 @@ class TweetServiceImplTest {
     private OutboxService outboxService;
 
     @Mock
+    private ReplyRepository replyRepository;
+
+    @Mock
     private TweetRepository tweetRepository;
 
     @Mock
@@ -100,6 +108,12 @@ class TweetServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        AtomicLong nanoTime = new AtomicLong();
+        ConflictRetrier conflictRetrier = new ConflictRetrierImpl(
+                pause -> nanoTime.addAndGet(pause.toNanos()),
+                nanoTime::get,
+                new TransactionTemplate(mock(PlatformTransactionManager.class))
+        );
         tweetService = new TweetServiceImpl(
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 MAX_FILES,
@@ -108,7 +122,9 @@ class TweetServiceImplTest {
                 DELETED_TOPIC,
                 MAX_CONTENT_CODE_POINTS,
                 outboxService,
+                replyRepository,
                 tweetRepository,
+                conflictRetrier,
                 new TransactionTemplate(mock(PlatformTransactionManager.class)),
                 objectStorageService
         );
@@ -422,16 +438,40 @@ class TweetServiceImplTest {
         }
 
         @Test
-        void should_give_up_and_rethrow_when_the_write_conflict_persists() {
+        void should_throw_busy_when_the_write_conflict_persists_past_the_retry_budget() {
             Tweet tweet = tweetWithImages(1);
             when(tweetRepository.deleteIfAuthor(tweet.getId(), AUTHOR_ID)).thenThrow(new MongoException(112, "conflict"));
             when(tweetRepository.existsById(tweet.getId())).thenReturn(true);
 
             assertThatThrownBy(() -> tweetService.delete(AUTHOR_ID, tweet.getId()))
-                    .isInstanceOf(MongoException.class);
+                    .isInstanceOf(WriteConflictBudgetExceededException.class);
 
-            verify(tweetRepository, times(3)).deleteIfAuthor(tweet.getId(), AUTHOR_ID);
+            verify(tweetRepository, atLeast(2)).deleteIfAuthor(tweet.getId(), AUTHOR_ID);
             verifyNoInteractions(objectStorageService);
+        }
+
+        @Test
+        void should_delete_the_replies_of_the_tweet_in_the_same_transaction_when_the_tweet_is_deleted() {
+            Tweet tweet = tweetWithImages(0);
+            when(tweetRepository.deleteIfAuthor(tweet.getId(), AUTHOR_ID)).thenReturn(true);
+
+            tweetService.delete(AUTHOR_ID, tweet.getId());
+
+            InOrder order = inOrder(tweetRepository, replyRepository, outboxService);
+            order.verify(tweetRepository).deleteIfAuthor(tweet.getId(), AUTHOR_ID);
+            order.verify(replyRepository).deleteAllByTweetId(tweet.getId());
+            order.verify(outboxService).enqueue(eq(DELETED_TOPIC), eq(tweet.getId().toString()), any());
+        }
+
+        @Test
+        void should_delete_no_replies_when_the_tweet_was_not_deleted() {
+            Tweet tweet = tweetWithImages(0);
+            when(tweetRepository.deleteIfAuthor(tweet.getId(), AUTHOR_ID)).thenReturn(false);
+
+            assertThatThrownBy(() -> tweetService.delete(AUTHOR_ID, tweet.getId()))
+                    .isInstanceOf(TweetNotFoundException.class);
+
+            verifyNoInteractions(replyRepository);
         }
 
         private Tweet tweetWithImages(int count) {

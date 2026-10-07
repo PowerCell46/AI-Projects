@@ -99,6 +99,30 @@ class RequestBodySizeLimitFilterTest {
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE.value());
     }
 
+    @Test
+    void should_return_415_without_calling_the_chain_when_a_multipart_body_hits_another_route() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+        MockHttpServletRequest request = requestWithBody("POST", TWEETS_PATH + "/1/replies", "x");
+        request.setContentType(MediaType.MULTIPART_FORM_DATA_VALUE + "; boundary=b");
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value());
+        assertThat(chain.getRequest()).isNull();
+    }
+
+    @Test
+    void should_pass_a_multipart_body_down_the_chain_when_it_creates_a_tweet() throws Exception {
+        MockFilterChain chain = new MockFilterChain();
+        MockHttpServletRequest request = requestWithBody("POST", TWEETS_PATH, "x");
+        request.setContentType(MediaType.MULTIPART_FORM_DATA_VALUE + "; boundary=b");
+
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
+
+        assertThat(chain.getRequest()).isNotNull();
+    }
+
     private MockHttpServletRequest requestWithBody(String body) {
         return requestWithBody("PUT", TWEETS_PATH, body);
     }

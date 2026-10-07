@@ -11,7 +11,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.OutboxMessageRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxService;
 
 import lombok.RequiredArgsConstructor;

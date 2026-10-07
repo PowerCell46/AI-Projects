@@ -27,6 +27,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeE
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 
@@ -55,6 +56,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(TweetNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleTweetNotFound(TweetNotFoundException e) {
+        return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(AuthorNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAuthorNotFound(AuthorNotFoundException e) {
         return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 

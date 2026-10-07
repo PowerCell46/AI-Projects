@@ -52,6 +52,10 @@ Added in step 5:
 - 4 images, each exactly the 5 MB file limit, return 201 (`should_return_201_when_four_images_are_each_exactly_the_file_limit`)
 - An image one byte over the file limit returns 413 "The uploaded file is too large." (`should_return_413_with_the_apps_error_shape_when_an_image_is_one_byte_over_the_file_limit`)
 
+`TweetUploadLimitsIntegrationTest.OtherRoutes` - the 8 KB cap cannot see a chunked multipart body, so any route but the create route refuses multipart outright.
+
+- A reply route receiving multipart returns 415 "This route does not accept multipart bodies." (`should_return_415_with_the_apps_error_shape_when_a_reply_route_receives_multipart`)
+
 ## `GET /api/v1/tweets/{id}`
 
 `TweetControllerIntegrationTest.GetTweet`
@@ -140,3 +144,78 @@ Added in step 5:
 - An edit racing a delete, 50 rounds: the edit answers 200 or 404 and never 500, the delete answers 204, and every round ends with no tweet and one deleted event (`Edits.should_end_with_no_tweet_and_never_answer_500_when_an_edit_races_a_delete_fifty_times`)
 - 20 overlapping edits all answer 200 and leave one of the 20 contents (`Edits.should_answer_200_to_every_edit_and_keep_one_of_the_contents_when_twenty_edits_overlap`)
 
+## Replies (phase 2)
+
+All groups are enabled (steps 15-17). Scope as above: HTTP layer only.
+
+### Identity (reply routes)
+
+`ReplyControllerIntegrationTest.Identity` (enabled in step 16: the four reply routes, parameterized)
+
+- A missing `X-User-Id` returns 400 on all four reply routes (`should_return_400_when_the_user_id_header_is_missing_on_a_reply_route`)
+- A non-UUID `X-User-Id` returns 400 on all four reply routes (`should_return_400_when_the_user_id_header_is_not_a_uuid_on_a_reply_route`)
+
+### `POST /api/v1/tweets/{tweetId}/replies`
+
+`ReplyControllerIntegrationTest.CreateReply` (enabled in step 15)
+
+- Returns 201 with the reply and its author `{id, username, profilePictureUrl}`; `edited = false`; `replyCount` on the tweet is 1 (`should_return_201_and_the_reply_with_its_author_when_the_content_is_valid`)
+- Content is trimmed (`should_trim_the_content_when_a_reply_is_created`)
+- 280 code points returns 201 (`should_return_201_when_the_content_is_280_code_points`)
+- Empty (blank) content returns 400 "A reply needs text."; nothing written (`should_return_400_when_the_content_is_empty`)
+- 281 code points returns 400 "A reply can be at most 280 characters."; nothing written (`should_return_400_when_the_content_is_281_code_points`)
+- An unknown tweet returns 404 (`should_return_404_when_the_tweet_is_unknown`)
+- A caller the lookup does not return gets 403 `CALLER_UNKNOWN`; nothing written (`should_return_403_and_write_nothing_when_the_caller_is_unknown`)
+- The gateway down returns 502; nothing written (`should_return_502_and_write_nothing_when_the_gateway_is_down`)
+
+### `GET /api/v1/tweets/{tweetId}/replies?cursor=&size=`
+
+`ReplyControllerIntegrationTest.ListReplies` (enabled in step 15)
+
+- Returns 200 `{items, nextCursor}`, oldest first (`should_return_200_with_the_replies_oldest_first_and_a_next_cursor_when_the_tweet_has_replies`)
+- Following the cursor returns the next page (`should_return_the_next_page_when_the_cursor_is_followed`)
+- A tweet with no replies returns 200 with no items (`should_return_200_with_no_items_when_the_tweet_has_no_replies`)
+- An unknown tweet returns 404 (`should_return_404_when_the_tweet_is_unknown`)
+- A bad cursor returns 400 (`should_return_400_when_the_cursor_is_bad`)
+- A size of 0, -1 or 101 returns 400 "Page size must be between 1 and 100." (parameterized) (`should_return_400_when_the_size_is_outside_1_to_100`)
+- A reply whose author the lookup does not return is left out of the page (`should_leave_out_a_reply_when_the_lookup_does_not_return_its_author`)
+- The gateway down returns 502 (`should_return_502_when_the_gateway_is_down`)
+
+### `PUT /api/v1/tweets/{tweetId}/replies/{replyId}`
+
+`ReplyControllerIntegrationTest.UpdateReply` (enabled in step 16)
+
+- The author gets 200 with the new content and `edited = true` (`should_return_200_and_mark_the_reply_edited_when_the_author_edits`)
+- Unchanged text still marks it edited and moves `updatedAt` (`should_mark_the_reply_edited_when_the_text_is_unchanged`)
+- Someone else gets 404 "Reply not found." (the same as a missing reply, so the answer never confirms an id); the reply is unchanged (`should_return_404_and_leave_the_reply_unchanged_when_someone_else_edits`)
+- An unknown reply returns 404 (`should_return_404_when_the_reply_is_unknown`)
+- A `replyId` of another tweet returns 404 (`should_return_404_when_the_reply_belongs_to_another_tweet`)
+- Empty content returns 400 (`should_return_400_when_the_content_is_empty`)
+- 281 code points returns 400 (`should_return_400_when_the_content_is_281_code_points`)
+- An unknown caller gets 403 `CALLER_UNKNOWN`; the reply is unchanged (`should_return_403_when_the_caller_is_unknown`)
+
+### `DELETE /api/v1/tweets/{tweetId}/replies/{replyId}`
+
+`ReplyControllerIntegrationTest.DeleteReply` (enabled in step 16)
+
+- The reply's author gets 204; the reply is gone; `replyCount` down by 1 (`should_return_204_and_decrement_the_count_when_the_reply_author_deletes`)
+- The tweet's author gets 204 (`should_return_204_when_the_tweet_author_deletes`)
+- Anyone else gets 404 "Reply not found."; nothing changes (`should_return_404_and_change_nothing_when_anyone_else_deletes`)
+- An unknown reply returns 404 (`should_return_404_when_the_reply_is_unknown`)
+- A `replyId` of another tweet returns 404 (`should_return_404_when_the_reply_belongs_to_another_tweet`)
+- A second delete returns 404 and the count goes down only once (`should_return_404_when_the_reply_is_deleted_twice`)
+
+### Tweet routes touched by replies
+
+- `GET /api/v1/tweets/{id}` and the internal batch read carry `replyCount`; a new tweet answers 0 (`TweetControllerIntegrationTest.GetTweet.should_return_the_reply_count_when_the_tweet_has_replies`, `...should_return_a_reply_count_of_zero_when_the_tweet_has_none`; enabled in step 15)
+- Deleting a tweet removes its replies and keeps the replies of other tweets (`TweetControllerIntegrationTest.DeleteTweet.should_remove_the_replies_of_the_tweet_and_keep_the_replies_of_others_when_the_tweet_is_deleted`; enabled in step 14)
+- After the tweet is deleted, `GET .../replies` answers 404 (`TweetControllerIntegrationTest.DeleteTweet.should_answer_404_to_the_replies_list_when_the_tweet_is_deleted`; enabled in step 15)
+
+### Concurrency (replies)
+
+`ReplyConcurrencyIntegrationTest` - latch-released threads, final state only; enabled in step 17.
+
+- 20 overlapping creates on one tweet: 20 x 201, `replyCount = 20`, 20 documents (`Creates.should_answer_201_to_every_create_and_count_twenty_when_twenty_creates_overlap`)
+- 10 creates racing the tweet delete: no reply left for the tweet, the tweet gone (`Creates.should_leave_no_reply_and_no_tweet_when_ten_creates_race_the_tweet_delete`)
+- Two deletes of one reply: one 204, one 404, count down by 1 (`Deletes.should_answer_one_204_and_one_404_and_decrement_once_when_two_deletes_overlap`)
+- Create/delete churn on one tweet: `replyCount` equals the documents left (`Churn.should_end_with_a_reply_count_equal_to_the_documents_left_when_creates_and_deletes_churn`)

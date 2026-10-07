@@ -1,8 +1,8 @@
 # Replies — design
 
-**Status:** approach approved 2026-10-04. Not broken into steps yet. Next: settle the open questions at the bottom,
-then a gated plan with **[timeline]**, **[gateway]**, **[frontend]** and **[e2e]** steps. Build after likes
-(`likes-design.md`): the details page shows likes too.
+**Status:** approach approved 2026-10-04. Planned 2026-10-06 as phases 2-3 of `../twitter_tweet_service/PLAN.md`
+(`/grill-me` Q1-Q14), which overrides this file where they differ: create order, conflict retries, the caller-not-found
+answer, and the UI. The 2026-10-07 audit (step 22) also changed the answer for someone else's reply to `404`.
 
 ## Decision
 
@@ -56,8 +56,8 @@ the caller's identity, so **no gateway route change**.
 |---|---|---|
 | `POST` `{content}` | anyone | `201` + the reply. `404` tweet missing, `400` empty or too long |
 | `GET ?cursor=&size=` | anyone | `200` `{items, nextCursor}`, oldest first. `404` tweet missing, `400` bad cursor or size |
-| `PUT /{replyId}` `{content}` | the reply's author | `200` + the reply, `edited = true`. `403` anyone else, `404` missing |
-| `DELETE /{replyId}` | the reply's author or the tweet's author | `204`. `403` anyone else, `404` missing or already deleted |
+| `PUT /{replyId}` `{content}` | the reply's author | `200` + the reply, `edited = true`. `404` missing or not yours |
+| `DELETE /{replyId}` | the reply's author or the tweet's author | `204`. `404` missing, already deleted, or not yours |
 
 A `replyId` that doesn't belong to `{tweetId}` answers `404`. `PUT` matches the tweet's own edit verb.
 
@@ -73,11 +73,11 @@ profilePictureUrl}`. The author has the same shape as the timeline service's `Au
    is never saved for a deleted tweet. Then insert the reply.
 
 **Edit.** Look up the caller first (same reason), then a conditional update matching `{_id, tweetId, authorId}`, as
-the tweet's `updateContentIfAuthor`: 0 matched → `404` if the reply is gone, `403` if it belongs to someone else. Sets
+the tweet's `updateContentIfAuthor`: 0 matched → `404` (the reply is gone, of another tweet, or someone else's). Sets
 `content`, `edited = true`, `updatedAt`.
 
 **Delete.** Load the reply (`404` if missing) and the tweet's `authorId`. The caller must be the reply's author or the
-tweet's author, else `403`. One transaction: delete the reply; only if that removed it → `$inc replyCount -1`. Two
+tweet's author, else `404`. One transaction: delete the reply; only if that removed it → `$inc replyCount -1`. Two
 deletes racing: one removes the reply and decrements, the other removes nothing and answers `404`.
 
 **Tweet delete.** The existing transaction also runs `deleteMany({tweetId})` on `replies`, next to the tweet delete and
@@ -145,8 +145,8 @@ None. Nothing consumes replies yet; `tweet.deleted` already covers the tweet goi
 Per each project's standing rules (`java-junit`, `TESTING.md` in the same change, `mvn verify` 3×, deterministic).
 
 - **Repository:** keyset pages with ties on `createdAt`; `$inc` leaves `updatedAt` alone; delete-all by tweet.
-- **Service:** create on a missing tweet saves nothing; edit by a non-author → `403`; delete by reply author and by
-  tweet author; delete by anyone else → `403`; the count moves only on a real add or remove; the caller lookup runs
+- **Service:** create on a missing tweet saves nothing; edit by a non-author → `404`; delete by reply author and by
+  tweet author; delete by anyone else → `404`; the count moves only on a real add or remove; the caller lookup runs
   before the write.
 - **Concurrency:** N replies at once on one tweet → `replyCount = N`; two deletes of one reply → decrement once; reply
   racing a tweet delete → no orphan.
@@ -179,6 +179,5 @@ Caller lookup before every write; a second delete answers `404` (as tweets); a r
 
 ## Open questions
 
-1. Where the steps go: a new phase in `twitter_tweet_service/PLAN.md` (reply work lives there, the timeline, gateway
-   and frontend steps marked), or one plan with likes?
-2. Saving the same text with no change: still marks `edited`, or a no-op?
+None. Settled in the plan's interview: the steps live in `twitter_tweet_service/PLAN.md` (Q1); saving the same text
+still marks `edited` (Q3).

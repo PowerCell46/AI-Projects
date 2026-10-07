@@ -11,6 +11,7 @@ left-open section, with a trigger. Dependencies were not scanned for CVEs in any
 | 2026-10-03 | Phase 3: views | 2 Low and 2 Info accepted |
 | 2026-10-04 | Frontend phase 3: back-fill on follow | 1 Medium fixed, 7 Low and 1 Info open |
 | 2026-10-06 | Phase 4: likes | 1 Low and 2 Info accepted, 1 Info unconfirmed |
+| 2026-10-07 | The tweet details read (tweet service phase 2, step 22) | 1 Low and 1 Info fixed, 1 Low and 1 Info accepted |
 
 ## Phase 1: feed (2026-10-03)
 
@@ -134,3 +135,21 @@ fields, the like deletes in `tweet.deleted`, the gateway's `/api/v1/likes/**` ro
   bodies; error bodies are fixed strings; the row insert or delete decides whether the counter moves, so parallel
   likes or unlikes by one user count once; Kafka values ignore type headers; the new `PUT` / `DELETE` routes are not
   a CSRF path (cross-origin `fetch` needs a preflight the gateway does not grant).
+
+## Tweet details read (2026-10-07)
+
+Read from source only; nothing was executed. Scope: `GET /api/v1/tweet-details/{tweetId}`, its two lookups, the
+mapper and the gateway route. Raw report: `SECURITY-FINDINGS.md`.
+
+- **Two sequential downstream calls could outlive the gateway's 10 s read timeout (Low), fixed 2026-10-07.** Each call
+  had 2 s connect and 5 s read, so ~14 s in the worst case; the gateway answered `504` while this service kept working.
+  The defaults are now 1 s and 3 s, so the pair stays under 8 s (`DECISIONS.md`).
+- **A malformed tweet-service answer ended as a `500` with a stack trace in the log (Info), fixed 2026-10-07.** A tweet
+  without `id`, `authorId` or `images`, a null item or a null body is now a `502`; a test covers each.
+- **No rate limit on the single-tweet read (Low), accepted.** Four queries here plus a Mongo read and a Postgres `IN`
+  per call. Same posture as every authenticated read (`PLAN.md`, "No rate limiting").
+- **The `404` body tells "tweet gone" from "author disabled" (Info), accepted.** It only confirms a random-UUID id the
+  caller already has, and any user can read the tweet through the tweet service anyway.
+- **Clean:** `tweetId` is a bound `UUID`; JPQL and `findAllById` bind their parameters; downstream URLs come from
+  configuration; `savedByMe` and `likedByMe` come from the header the gateway sets from the JWT; error bodies are fixed
+  strings; the route is behind `authenticated()` and wrong methods are `405`. Dependencies were not scanned.

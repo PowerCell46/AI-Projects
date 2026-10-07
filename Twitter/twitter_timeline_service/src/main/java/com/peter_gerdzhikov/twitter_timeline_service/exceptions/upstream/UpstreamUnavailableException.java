@@ -8,6 +8,10 @@ public class UpstreamUnavailableException extends RuntimeException {
 
     public static final String MESSAGE = "Upstream service unavailable.";
 
+    public UpstreamUnavailableException() {
+        super(MESSAGE);
+    }
+
     public UpstreamUnavailableException(Throwable cause) {
         super(MESSAGE, cause);
     }

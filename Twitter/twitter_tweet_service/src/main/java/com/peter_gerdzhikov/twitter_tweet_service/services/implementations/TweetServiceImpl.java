@@ -33,14 +33,14 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNo
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.TweetRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ConflictRetrier;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.ImageSignatureValidator;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.TweetMapper;
-
-import com.mongodb.MongoException;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.mappers.TweetMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,13 +48,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class TweetServiceImpl implements TweetService {
 
-    private static final int MAX_DELETE_ATTEMPTS = 3;
-
     private static final int MAX_IDS_PER_READ = 100;
 
     private static final int MAX_TWEETS_PER_AUTHOR_READ = 100;
-
-    private static final int WRITE_CONFLICT_CODE = 112;
 
     private final Clock clock;
 
@@ -70,7 +66,11 @@ public class TweetServiceImpl implements TweetService {
 
     private final OutboxService outboxService;
 
+    private final ReplyRepository replyRepository;
+
     private final TweetRepository tweetRepository;
+
+    private final ConflictRetrier conflictRetrier;
 
     private final TransactionTemplate transactionTemplate;
 
@@ -84,7 +84,9 @@ public class TweetServiceImpl implements TweetService {
             @Value("${app.kafka.tweet-deleted.name}") String deletedTopic,
             @Value("${app.tweets.max-content-code-points}") int maxContentCodePoints,
             OutboxService outboxService,
+            ReplyRepository replyRepository,
             TweetRepository tweetRepository,
+            ConflictRetrier conflictRetrier,
             TransactionTemplate transactionTemplate,
             ObjectStorageService objectStorageService
     ) {
@@ -95,7 +97,9 @@ public class TweetServiceImpl implements TweetService {
         this.deletedTopic = deletedTopic;
         this.maxContentCodePoints = maxContentCodePoints;
         this.outboxService = outboxService;
+        this.replyRepository = replyRepository;
         this.tweetRepository = tweetRepository;
+        this.conflictRetrier = conflictRetrier;
         this.transactionTemplate = transactionTemplate;
         this.objectStorageService = objectStorageService;
     }
@@ -214,23 +218,15 @@ public class TweetServiceImpl implements TweetService {
 
     /**
      * A write conflict means a concurrent writer touched the tweet. If it is gone, that writer deleted it and
-     * this caller lost the race; if it is still there (a concurrent edit), the transaction is tried again.
+     * this caller lost the race; if it is still there (a concurrent edit or reply), the transaction is tried again.
      */
     private void removeWithEvent(Tweet tweet) {
-        for (int attempt = 1; ; attempt++) {
-            try {
-                transactionTemplate.executeWithoutResult(status -> removeAndEnqueue(tweet));
-                return;
+        conflictRetrier.executeWithoutResult(() -> removeAndEnqueue(tweet), () -> requireTweetStillExists(tweet));
+    }
 
-            } catch (RuntimeException e) {
-                if (!isWriteConflict(e) || attempt == MAX_DELETE_ATTEMPTS) {
-                    throw e;
-                }
-
-                if (!tweetRepository.existsById(tweet.getId())) {
-                    throw new TweetNotFoundException();
-                }
-            }
+    private void requireTweetStillExists(Tweet tweet) {
+        if (!tweetRepository.existsById(tweet.getId())) {
+            throw new TweetNotFoundException();
         }
     }
 
@@ -238,6 +234,8 @@ public class TweetServiceImpl implements TweetService {
         if (!tweetRepository.deleteIfAuthor(tweet.getId(), tweet.getAuthorId())) {
             throw new TweetNotFoundException();
         }
+
+        replyRepository.deleteAllByTweetId(tweet.getId());
 
         TweetDeletedEventDTO event = TweetDeletedEventDTO
                 .builder()
@@ -247,20 +245,6 @@ public class TweetServiceImpl implements TweetService {
                 .deletedAt(Instant.now(clock).truncatedTo(ChronoUnit.MILLIS))
                 .build();
         outboxService.enqueue(deletedTopic, tweet.getId().toString(), event);
-    }
-
-    private boolean isWriteConflict(Throwable failure) {
-        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
-            if (
-                    cause instanceof MongoException mongoException
-                            && (mongoException.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)
-                            || mongoException.getCode() == WRITE_CONFLICT_CODE)
-            ) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private void validateText(String text, int imageCount) {

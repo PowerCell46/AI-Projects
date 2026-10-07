@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.index.IndexInfo;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMongoIntegrationTest;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
 

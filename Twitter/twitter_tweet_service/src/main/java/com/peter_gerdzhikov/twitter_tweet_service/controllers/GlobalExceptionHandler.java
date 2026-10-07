@@ -21,11 +21,18 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.CallerUnknownException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.InvalidCallerIdentityException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
@@ -34,6 +41,8 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNo
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -88,6 +97,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    @ExceptionHandler({
+            EmptyReplyException.class,
+            InvalidCursorException.class,
+            InvalidPageSizeException.class,
+            ReplyContentTooLongException.class
+    })
+    public ResponseEntity<ErrorResponseDTO> handleInvalidReplyRequest(RuntimeException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(CallerUnknownException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCallerUnknown(CallerUnknownException e) {
+        return errorResponseWithCode(HttpStatus.FORBIDDEN, e.getMessage(), CallerUnknownException.CODE);
+    }
+
+    @ExceptionHandler(ReplyNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleReplyNotFound(ReplyNotFoundException e) {
+        return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(WriteConflictBudgetExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handleWriteConflictBudgetExceeded(WriteConflictBudgetExceededException e) {
+        return errorResponseWithCode(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), WriteConflictBudgetExceededException.CODE);
+    }
+
     @ExceptionHandler(EmptyUploadException.class)
     public ResponseEntity<ErrorResponseDTO> handleEmptyUpload(EmptyUploadException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -106,6 +140,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RequestBodyTooLargeException.class)
     public ResponseEntity<ErrorResponseDTO> handleRequestBodyTooLarge(RequestBodyTooLargeException e) {
         return errorResponse(HttpStatus.CONTENT_TOO_LARGE, e.getMessage());
+    }
+
+    @ExceptionHandler(UpstreamUnavailableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUpstreamUnavailable(UpstreamUnavailableException e) {
+        return errorResponse(HttpStatus.BAD_GATEWAY, e.getMessage());
+    }
+
+    @ExceptionHandler(UpstreamTimeoutException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUpstreamTimeout(UpstreamTimeoutException e) {
+        return errorResponse(HttpStatus.GATEWAY_TIMEOUT, e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
@@ -204,6 +248,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity
                 .status(status)
                 .body(errorBody(status, List.of(message)));
+    }
+
+    private ResponseEntity<ErrorResponseDTO> errorResponseWithCode(HttpStatus status, String message, String code) {
+        ErrorResponseDTO body = errorBody(status, List.of(message));
+        body.setCode(code);
+
+        return ResponseEntity
+                .status(status)
+                .body(body);
     }
 
     private String describe(FieldError fieldError) {

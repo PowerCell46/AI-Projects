@@ -17,6 +17,8 @@ public class TweetResponseDTO {
 
     private final String content;
 
+    private final long replyCount;
+
     private final Instant createdAt;
 
     private final Instant updatedAt;

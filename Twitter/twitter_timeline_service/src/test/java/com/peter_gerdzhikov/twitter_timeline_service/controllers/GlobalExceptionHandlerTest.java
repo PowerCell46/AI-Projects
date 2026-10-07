@@ -28,6 +28,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeE
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 
@@ -60,6 +61,14 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
         assertThat(response.getBody().getMessages()).containsExactly("Upstream service timed out.");
+    }
+
+    @Test
+    void should_return_404_when_the_author_does_not_exist() {
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleAuthorNotFound(new AuthorNotFoundException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getMessages()).containsExactly("Author not found.");
     }
 
     @Test

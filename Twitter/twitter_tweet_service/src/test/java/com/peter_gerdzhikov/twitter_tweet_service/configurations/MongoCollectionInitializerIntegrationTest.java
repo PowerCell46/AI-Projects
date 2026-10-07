@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_tweet_service.configurations;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,6 +12,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
+import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 
@@ -26,6 +28,17 @@ class MongoCollectionInitializerIntegrationTest extends AbstractMinioIntegration
 
     @Nested
     class Startup {
+
+        @Test
+        void should_have_created_the_replies_collection_and_the_ix_replies_tweet_created_id_index_when_the_context_started() {
+            assertTrue(mongoTemplate.collectionExists(Reply.class), "the replies collection must exist right after startup");
+            assertThat(mongoTemplate.indexOps(Reply.class).getIndexInfo())
+                    .filteredOn(index -> index.getName().equals("ix_replies_tweet_created_id"))
+                    .singleElement()
+                    .satisfies(index -> assertThat(index.getIndexFields())
+                            .extracting(field -> field.getKey())
+                            .containsExactly("tweetId", "createdAt", "_id"));
+        }
 
         @Test
         void should_have_created_both_collections_when_the_context_started() {

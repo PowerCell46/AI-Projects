@@ -49,7 +49,7 @@ One entry per decision: what was chosen, what it was chosen over, and why.
   overwrite a colliding id. Tests that need a plain write use `save`.
 - **Custom repository operations return `boolean` / `Optional`** (step 3). `updateContentIfAuthor` and
   `deleteIfAuthor` say whether a document matched; services map `false` to `404`.
-- **A delete write conflict is retried unless the tweet is gone** (step 8). The plan maps a conflict to `404`, but one
+- **Superseded in phase 2, step 14: "at most 3 attempts" is gone; see "The conflict retrier" below.** **A delete write conflict is retried unless the tweet is gone** (step 8). The plan maps a conflict to `404`, but one
   can also come from a concurrent *edit* landing after the delete's snapshot, and `404` would leave the tweet alive.
   On a conflict (label `TransientTransactionError` or code 112) the service checks existence: gone -> `404`; still
   there -> retry, at most 3 attempts, then rethrow (`500`). So "edit || delete" always ends with no document.
@@ -90,3 +90,96 @@ timeline's back-fill on follow.
   conflict with an old-named index that a dev database keeps until dropped.
 - **A `createdAt` tie orders by `_id` descending** (binary UUID byte order). Tests compare ids as lower-case strings,
   not with `UUID.compareTo` (signed longs).
+
+## Gateway user lookup (phase 2, step 12)
+
+`UserLookupService` is ported from the timeline service: the gateway's `GET /internal/v1/users?ids=` with
+`X-Internal-Secret`; any failure becomes `UpstreamUnavailableException` (`502`) or `UpstreamTimeoutException` (`504`).
+
+- **Timeouts are fixed in `application.properties`** (`spring.http.clients.connect-timeout=2s`, `read-timeout=5s`),
+  no env override: the spec says "same timeouts" and a new env name would be a new contract. The timeline service's
+  names are prefixed because it shares the root `.env`; nothing here needs one yet.
+- **No tweet-service RestClient and no executor.** Only the gateway is called, and a replies page makes one call, so
+  the virtual-thread executor of the timeline service is not ported.
+- **Packages:** `configurations/downstream`, `utilities/downstream`, `exceptions/upstream`, `DTOs/client` and
+  `services/*/lookups`, grouped from the start (the flat packages already hold more than 5 files).
+- **Startup failure tests** use `ApplicationContextRunner` on `RestClientConfiguration`: a missing secret fails on the
+  unresolved placeholder, a short one on the 32-byte check.
+
+## Reply document and repositories (phase 2, step 13)
+
+- **`ReplyRepositoryCustom` has no cursor type.** `findFirstPage(tweetId, limit)` and `findPageAfter(tweetId,
+  afterCreatedAt, afterId, limit)` take the keyset position as plain values; the cursor codec (step 15) decodes into
+  them. The service asks for `size + 1` rows to know whether a next page exists.
+- **`incrementReplyCount(id, delta)` on `TweetRepositoryCustom`**, an `$inc` that never touches `updatedAt`. `Tweet.replyCount`
+  is a primitive `long`, so a tweet stored without the field reads `0`. A full `save` of a tweet would write the
+  value it holds, so nothing saves an existing tweet.
+- **`repositories` grouped** into `tweets`, `outbox` and `replies` (it would have held 7 files); the existing
+  repository classes only changed package.
+
+## The conflict retrier (phase 2, step 14)
+
+- **`ConflictRetrier` is a service** (interface + `ConflictRetrierImpl`), not a utility: it holds the
+  `TransactionTemplate`. It takes the transaction and a re-check that runs after every conflict (the tweet delete
+  passes "tweet gone -> 404"; the reply delete will pass "reply gone -> 404"). The test class is
+  `ConflictRetrierImplTest`, renamed from the catalog's `ConflictRetrierTest` to match the class under test.
+- **Time source and sleeper are two small functional interfaces** (`MonotonicTimeSource`, `Sleeper` in
+  `utilities/retry`), wired as beans in `RetryConfiguration`; tests drive both by hand. The 2 s budget and the
+  5-30 ms pause are constants, not properties. The budget is checked after a conflict and the re-check, so a call can
+  run one attempt past 2 s.
+- **An interrupted pause** restores the interrupt flag and answers `503 BUSY`, not the conflict.
+- **`ErrorResponseDTO` gains an optional `code`**, left out of the JSON when null (asked, 2026-10-06). Only
+  `BUSY` (`WriteConflictBudgetExceededException`, `503`) sets it so far; `CALLER_UNKNOWN` comes with step 15.
+- **`ReplyNotFoundException` (`404`) exists from this step**, because the retrier's catalog scenario for a reply gone
+  between attempts needs it.
+- **The tweet-delete test of the catalog was split:** the removal of the replies is enabled now
+  (`DeleteTweet.should_remove_the_replies_of_the_tweet_and_keep_the_replies_of_others_when_the_tweet_is_deleted`); the
+  `404` on `GET .../replies` stays disabled until the endpoint exists (step 15).
+- **The old unit test "give up and rethrow after 3 attempts" became "throws busy past the retry budget"** (the plan
+  replaces the 3 attempts).
+
+## Create and list replies (phase 2, step 15)
+
+- **Content is validated before the caller lookup**, so a blank or too long reply costs no gateway call. The limit is
+  the tweets' `app.tweets.max-content-code-points`; the messages are "A reply needs text." and "A reply can be at most
+  280 characters." (`EmptyReplyException`, `ReplyContentTooLongException`, both `400`).
+- **`CallerUnknownException` answers `403`** with `code: "CALLER_UNKNOWN"`, in the exceptions root next to
+  `InvalidCallerIdentityException`.
+- **A page asks for `size + 1` rows**; the extra row only says there is a next page, and the cursor is built from the
+  last row of the page, also when authors are then left out. So `items` can be shorter than `size` and only a `null`
+  `nextCursor` means the end.
+- **Bad cursor and bad size are checked before the tweet is looked up**, so they win over a `404`.
+- **The caller's author shape in the create answer** comes from the lookup that already ran, not a second call.
+- **`ConflictRetrier.execute(transaction)`** (no re-check) added for the reply create: a tweet deleted between
+  attempts fails the retried `$inc`, which already answers `404`.
+- **Packages:** `ReplyCursor` / `ReplyCursorCodec` / `PageSizeValidator` in `utilities/paging`, `InvalidCursorException`
+  and `InvalidPageSizeException` in `exceptions/paging`, the reply DTOs in `DTOs/response/replies`, `ReplyMapper` in
+  `utilities/mappers`. `TweetMapper` moved there too (the flat `utilities` package already held 6 files).
+- **`TweetResponseDTO.replyCount` is a `long` after `content`.** It is on the public read, the create and edit
+  answers and the internal batch (the timeline service ignores the unknown field until step 18).
+
+## Edit and delete replies (phase 2, step 16)
+
+- **Edit answers `404` when the conditional update matched nothing:** the reply is gone, of another tweet or someone
+  else's, and the answer does not say which (superseded 2026-10-07: it used to tell someone else's reply apart with
+  `403`). Validation runs before the caller lookup, as on create.
+- **Delete needs no caller lookup** (the caller is only compared with the two authors) and reads the reply, then the
+  tweet's author, before the transaction. A reply of another tweet is `404`, so its existence is not told.
+- **Inside the delete transaction:** delete the reply by id and tweet, `404` when nothing was removed, then `-1`
+  on the tweet. If that `-1` matches no tweet the transaction aborts with `404` (cannot happen while the tweet delete
+  removes its replies in its own transaction). The re-check after a write conflict is "reply gone -> `404`".
+- **Delete by anyone who wrote neither the reply nor the tweet answers `404`** (superseded 2026-10-07: it used to be
+  `403`). `NotReplyAuthorException` and `NotAllowedToDeleteReplyException` are gone; only `CALLER_UNKNOWN` is a
+  reply `403`.
+- **The four-route Identity check** is a parameterized test in `ReplyControllerIntegrationTest.Identity` (method and
+  path suffix), not an addition to the tweet routes' `endpoints()`.
+
+## Audit fixes (phase 2, step 22, 2026-10-07)
+
+- **Only the tweet-create route takes multipart.** `RequestBodySizeLimitFilter` answers `415` ("This route does not
+  accept multipart bodies.") to a `multipart/form-data` request anywhere else. The counting wrapper cannot see
+  multipart (the container parses it), so a chunked upload skipped the 8 KB cap on every route; the check is on the
+  content type, before any parsing. No other route reads multipart.
+- **A non-owner's edit or delete of a reply is `404`, not `403`** (audit finding 2, Info). Reply ids are public in the
+  list, so this hides little, but the answer no longer separates "not yours" from "not there". The tweet routes keep
+  their `403`. The reply edit's re-read of the reply to tell the two apart is gone.

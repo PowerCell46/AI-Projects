@@ -66,10 +66,30 @@ class TweetUploadLimitsIntegrationTest extends AbstractMinioIntegrationTest {
         }
     }
 
+    @Nested
+    class OtherRoutes {
+
+        @Test
+        void should_return_415_with_the_apps_error_shape_when_a_reply_route_receives_multipart() {
+            ErrorResponseDTO body = post("/api/v1/tweets/" + UUID.randomUUID() + "/replies", multipartBody(pngOfSize(maxFileBytes)))
+                    .expectStatus()
+                    .isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                    .expectBody(ErrorResponseDTO.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            assertThat(body.getMessages()).containsExactly("This route does not accept multipart bodies.");
+        }
+    }
+
     private RestTestClient.ResponseSpec post(byte[] body) {
+        return post("/api/v1/tweets", body);
+    }
+
+    private RestTestClient.ResponseSpec post(String uri, byte[] body) {
         return restTestClient
                 .post()
-                .uri("/api/v1/tweets")
+                .uri(uri)
                 .header("X-User-Id", UUID.randomUUID().toString())
                 .contentType(MediaType.parseMediaType("multipart/form-data; boundary=" + BOUNDARY))
                 .body(body)

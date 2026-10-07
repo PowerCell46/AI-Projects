@@ -27,6 +27,7 @@ public final class TweetItemMapper {
                 .savedByMe(savedByMe)
                 .likes(likes)
                 .likedByMe(likedByMe)
+                .replyCount(tweet.getReplyCount() == null ? 0 : tweet.getReplyCount())
                 .content(tweet.getContent())
                 .createdAt(tweet.getCreatedAt())
                 .updatedAt(tweet.getUpdatedAt())

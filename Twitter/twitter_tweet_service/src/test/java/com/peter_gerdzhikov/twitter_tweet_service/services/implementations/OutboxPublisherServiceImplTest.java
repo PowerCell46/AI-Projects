@@ -28,7 +28,7 @@ import org.springframework.kafka.support.SendResult;
 
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
-import com.peter_gerdzhikov.twitter_tweet_service.repositories.OutboxMessageRepository;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxPublisherServiceImplTest {

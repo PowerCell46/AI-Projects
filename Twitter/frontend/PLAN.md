@@ -3,7 +3,8 @@
 **Status: phase 3 (tab row, People, back-fill on follow) designed via `/grill-me` on 2026-10-04 (Q24–Q39) and built
 2026-10-04 (steps 14–24; the visual check was waived).** Phase 2 (feed) was designed via `/grill-me` (Q1–Q23) and built 2026-10-04. Phase 1 (the "Hadal Descent"
 auth flow) was built 2026-10-01; its plan is in git history (`git show 95502e1:./PLAN.md` from this folder) and its
-still-open items are under "Carried over" below.
+still-open items are under "Carried over" below. The replies UI and the tweet page are phase 3 of
+`../twitter_tweet_service/PLAN.md` (steps 23-30), not started.
 
 Visual sources of truth: phase 2 `feed-design.md` (removed in `95d594a`; `git show 95d594a^:./feed-design.md` from this
 folder), phase 3 `feed-design-addition.md`. This plan records where the build departs from or extends a brief;

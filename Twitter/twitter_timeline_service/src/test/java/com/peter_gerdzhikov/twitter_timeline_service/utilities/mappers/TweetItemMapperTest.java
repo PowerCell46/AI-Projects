@@ -74,6 +74,26 @@ class TweetItemMapperTest {
         assertThat(item.isLikedByMe()).isFalse();
     }
 
+    @Test
+    void toItem_countsZeroRepliesWhenTheTweetServiceSendsNoReplyCount() {
+        UUID authorId = UUID.randomUUID();
+
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet(authorId, List.of()), new UserClientDTO(authorId, "bob", null), 0, false, 0, false);
+
+        assertThat(item.getReplyCount()).isZero();
+    }
+
+    @Test
+    void toItem_copiesTheReplyCountOfTheTweet() {
+        UUID authorId = UUID.randomUUID();
+        TweetClientDTO tweet = tweet(authorId, List.of());
+        tweet.setReplyCount(5L);
+
+        TweetItemResponseDTO item = TweetItemMapper.toItem(tweet, new UserClientDTO(authorId, "bob", null), 0, false, 0, false);
+
+        assertThat(item.getReplyCount()).isEqualTo(5);
+    }
+
     private TweetClientDTO tweet(UUID authorId, List<TweetImageClientDTO> images) {
         return TweetClientDTO
                 .builder()

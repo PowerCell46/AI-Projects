@@ -157,3 +157,11 @@ code or its tests already say.
   pair, unknown ids and a self pair included (`false`). It first answered `204`/bare `404`, but the guard and a
   gateway build without the route also answer a bare 404, so the timeline service couldn't tell "not following" from
   a misconfiguration. A 404 now means a wrong secret or a missing route. Malformed ids are a 400.
+
+## The tweet-details route and the contract test (tweet service phase 2, step 20)
+
+- **`/api/v1/tweet-details/*` joins the `timeline-service` route**, one path segment, so a path below the id is not
+  forwarded. The same identity filters apply.
+- **`TweetServiceContractIntegrationTest` hands the real tweet-service container an `INTERNAL_API_SECRET`** (a fixed,
+  test-only value). Since tweet service step 12 the image refuses to start without one, which the gateway's suite
+  only showed at this step. No assertion changed.

@@ -222,6 +222,9 @@ services:
       MINIO_URL: http://minio:9000
       MINIO_ACCESS_KEY: twitter-e2e
       MINIO_SECRET_KEY: twitter-e2e-secret
+      # The reply authors are looked up at the gateway, with the secret the gateway checks.
+      GATEWAY_INTERNAL_URL: http://gateway:8080
+      INTERNAL_API_SECRET: e2e-test-only-internal-secret-not-for-any-real-use-0123456789
       # The feed shows a tweet once its event has left the outbox, so the poller has to run; half a second
       # keeps the wait short.
       OUTBOX_POLL_FIXED_DELAY_MS: 500
