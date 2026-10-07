@@ -62,13 +62,16 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
     return (
         <>
             <h1 className="sr-only">Post</h1>
-            <Link to={ROUTES.feed} className="tweet-details-back" onClick={handleBackClick}>{BACK_LABEL}</Link>
+            <Link to={ROUTES.feed} className="tweet-details-back" onClick={handleBackClick}>
+                <span className="tweet-details-back-arrow" aria-hidden="true" />
+                {BACK_LABEL}
+            </Link>
             {post ? (
                 <>
                     <div data-tweet-id={post.id} ref={trackView}>
                         <PostCell post={post} now={now} isClickable={false} />
                     </div>
-                    <ReplyThread tweetId={tweetId} postAuthorId={post.author.id} thread={thread} now={now} />
+                    <ReplyThread tweetId={tweetId} postAuthorId={post.author.id} replyCount={post.replyCount} thread={thread} now={now} />
                 </>
             ) : (
                 <PostListStatus

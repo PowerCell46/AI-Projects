@@ -38,6 +38,11 @@ function replyLink(post: Locator): Locator {
     return post.getByRole('link', { name: /^Replies/ });
 }
 
+// On the details page the count is plain text, not a link.
+function replyCount(post: Locator): Locator {
+    return post.locator('[data-action="reply"]');
+}
+
 function currentScrollY(page: Page): Promise<number> {
     return page.evaluate(() => window.scrollY);
 }
@@ -81,6 +86,9 @@ test('should_open_details_reply_and_return_to_the_feed_spot_when_a_post_is_click
     await expect(postWithText(page, openedContent)).toBeVisible();
     await expect(page.getByRole('tablist')).toHaveCount(0);
     await page
+        .getByRole('button', { name: 'Write a reply…' })
+        .click();
+    await page
         .getByLabel('YOUR REPLY')
         .fill('a reply from ana');
     await page
@@ -91,7 +99,7 @@ test('should_open_details_reply_and_return_to_the_feed_spot_when_a_post_is_click
         .click();
 
     await expect(replyWithText(page, 'a reply from ana')).toBeVisible();
-    await expect(replyLink(postWithText(page, openedContent))).toHaveText(/1$/);
+    await expect(replyCount(postWithText(page, openedContent))).toHaveText(/1$/);
 
     await page
         .getByRole('link', { name: 'BACK' })
@@ -139,7 +147,7 @@ test('should_remove_the_reply_and_drop_the_count_when_the_post_author_deletes_it
     const reply = replyWithText(page, 'a reply bob will delete');
     await expect(reply).toBeVisible();
     await expect(reply.getByRole('button', { name: 'EDIT' })).toHaveCount(0);
-    await expect(replyLink(postWithText(page, 'a post by'))).toHaveText(/1$/);
+    await expect(replyCount(postWithText(page, 'a post by'))).toHaveText(/1$/);
 
     await reply
         .getByRole('button', { name: 'DELETE' })
@@ -149,12 +157,12 @@ test('should_remove_the_reply_and_drop_the_count_when_the_post_author_deletes_it
         .click();
 
     await expect(reply).toHaveCount(0);
-    await expect(replyLink(postWithText(page, 'a post by'))).toHaveText(/0$/);
+    await expect(replyCount(postWithText(page, 'a post by'))).toHaveText(/0$/);
 
     await page.reload();
 
     await expect(page.getByText('NO REPLIES YET')).toBeVisible();
-    await expect(replyLink(postWithText(page, 'a post by'))).toHaveText(/0$/);
+    await expect(replyCount(postWithText(page, 'a post by'))).toHaveText(/0$/);
 });
 
 test('should_open_details_when_the_reply_link_is_activated_with_the_keyboard', async ({ page, createAccount }) => {

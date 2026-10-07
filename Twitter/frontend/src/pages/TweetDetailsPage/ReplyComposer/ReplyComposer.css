@@ -1,39 +1,46 @@
-.reply-composer {
-    margin-top: 1.375rem;
-    padding: 1rem 1.375rem;
-    background: var(--cell);
-    border: 1px solid var(--pale-cell-border);
-}
-
-.reply-composer-send {
-    min-width: 2.75rem;
+/* No card and no box: collapsed it is one quiet row aligned with the reply index column, open it is a hairline field. */
+.reply-composer-opener {
+    display: grid;
+    grid-template-columns: 2.125rem minmax(0, 1fr);
+    align-items: center;
+    width: 100%;
     min-height: 2.75rem;
-    padding: 0 1.75rem;
-    background: var(--glow);
+    margin-top: 1.375rem;
+    padding: 1.25rem 0;
+    background: none;
     border: 0;
-    font-size: 0.78125rem;
-    letter-spacing: 0.14em;
-    color: var(--deep);
-    cursor: pointer;
-    transition: background-color 300ms;
+    border-bottom: 1px solid var(--pale-textarea-rule);
+    text-align: left;
+    cursor: text;
 }
 
-.reply-composer-send:not([aria-disabled='true']):hover {
-    background: var(--glow-hover);
+.reply-composer-opener-tag {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    color: var(--glow);
 }
 
-.reply-composer-send[aria-disabled='true'] {
-    opacity: 0.4;
-    cursor: not-allowed;
+.reply-composer-opener-text {
+    font-family: var(--font-headline);
+    font-size: 0.9375rem;
+    color: var(--pale-secondary);
 }
 
-.reply-composer-send:focus-visible {
+.reply-composer-opener:focus-visible {
     outline: 1px solid var(--pale);
     outline-offset: 0.25rem;
 }
 
+/* The field grows open: height over 440ms, opacity over 300ms. */
+.reply-composer {
+    margin-top: 1.375rem;
+    animation: reply-composer-open 440ms var(--e), reply-composer-fade 300ms var(--e);
+}
+
 .reply-composer-error {
     min-height: 0;
+    font-family: var(--font-mono);
     font-size: 0.625rem;
     letter-spacing: 0.13em;
     overflow-wrap: anywhere;
@@ -44,8 +51,24 @@
     margin-top: 0.5rem;
 }
 
-@media (max-width: 600px) {
-    .reply-composer {
-        padding: 0.875rem 1.125rem;
+@keyframes reply-composer-open {
+    from {
+        max-height: 0;
+        overflow: hidden;
+    }
+
+    to {
+        max-height: 20rem;
+        overflow: hidden;
+    }
+}
+
+@keyframes reply-composer-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
     }
 }

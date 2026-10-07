@@ -1,23 +1,16 @@
-.reply-text-field-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 0.59375rem;
-    letter-spacing: 0.18em;
-    color: var(--pale-secondary);
-}
-
+/* No box: the field is a hairline rule that fills from the left on focus, like the sign-in field and the compose modal. */
 .reply-text-field-text {
     display: block;
     width: 100%;
-    min-height: 4.5rem;
-    padding: 0 0 0.75rem;
+    min-height: 5.25rem;
+    padding: 0 0 0.875rem;
     resize: none;
     background: none;
     border: 0;
     border-radius: 0;
     outline: 0;
     font-family: var(--font-headline);
-    font-size: 1.0625rem;
+    font-size: 1.03125rem;
     line-height: 1.5;
     color: var(--input-text);
 }
@@ -28,7 +21,6 @@
     background: var(--pale-textarea-rule);
 }
 
-/* The rule fills from the left while the textarea has focus, as in the compose modal. */
 .reply-text-field-rule::after {
     content: '';
     position: absolute;
@@ -46,12 +38,12 @@
 .reply-text-field-meta {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 1rem;
-    margin-top: 0.5rem;
+    margin-top: 0.875rem;
 }
 
 .reply-text-field-counter {
+    font-family: var(--font-mono);
     font-size: 0.59375rem;
     letter-spacing: 0.14em;
     font-variant-numeric: tabular-nums;
@@ -60,4 +52,71 @@
 
 .reply-text-field-counter[data-over-limit='true'] {
     color: var(--alarm);
+}
+
+.reply-text-field-cancel {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    margin-right: auto;
+    padding: 0;
+    background: none;
+    border: 0;
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    letter-spacing: 0.14em;
+    color: var(--pale-secondary);
+    cursor: pointer;
+    transition: color 300ms var(--e);
+}
+
+.reply-text-field-cancel:hover {
+    color: var(--pale);
+}
+
+/* The same ghost button as POST and FOLLOW: a glow panel rises from the bottom and the text turns dark. */
+.reply-text-field-submit {
+    position: relative;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 1.25rem;
+    isolation: isolate;
+    overflow: hidden;
+    background: none;
+    border: 1px solid var(--glow-border);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.17em;
+    color: var(--glow);
+    cursor: pointer;
+    transition: color 360ms var(--e);
+}
+
+.reply-text-field-submit::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--glow);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 420ms var(--e);
+}
+
+.reply-text-field-submit:not([aria-disabled='true']):hover {
+    color: var(--deep);
+}
+
+.reply-text-field-submit:not([aria-disabled='true']):hover::before {
+    transform: scaleY(1);
+}
+
+.reply-text-field-submit[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.reply-text-field-cancel:focus-visible,
+.reply-text-field-submit:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
 }

@@ -51,14 +51,11 @@ function ReplyEditor({ reply, onSaved, onCancel }: ReplyEditorProps) {
                 text={text}
                 errorId={errorId}
                 shouldFocusOnMount
+                submitLabel="SAVE"
+                isSubmitOff={!isSavable}
                 onChange={setText}
-                onEscape={onCancel}
-            >
-                <div className="reply-editor-actions">
-                    <button type="submit" className="reply-editor-save" aria-disabled={!isSavable}>SAVE</button>
-                    <button type="button" className="reply-editor-cancel" onClick={onCancel}>CANCEL</button>
-                </div>
-            </ReplyTextField>
+                onCancel={onCancel}
+            />
             <p className="reply-editor-error" id={errorId} role="alert">{errorMessage}</p>
         </form>
     );

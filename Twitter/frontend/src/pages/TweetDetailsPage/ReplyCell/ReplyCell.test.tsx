@@ -46,6 +46,7 @@ function renderCell(currentUserId: string | null = REPLY_AUTHOR_ID, changes: Par
     return render(
         <ReplyCell
             reply={{ ...REPLY, ...changes }}
+            position={1}
             now={NOW}
             currentUserId={currentUserId}
             postAuthorId={POST_AUTHOR_ID}
@@ -82,6 +83,14 @@ beforeEach(() => {
     vi.mocked(deleteReply)
         .mockReset()
         .mockResolvedValue(undefined);
+});
+
+describe('the index', () => {
+    it('should_show_the_position_with_two_digits_and_hide_it_from_screen_readers', () => {
+        renderCell();
+
+        expect(screen.getByText('01').getAttribute('aria-hidden')).toBe('true');
+    });
 });
 
 describe('the reply', () => {

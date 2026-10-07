@@ -15,8 +15,16 @@ const NOT_FOUND_STATUS = 404;
 
 const DELETE_FAILED_MESSAGE = "Couldn't delete. Try again.";
 
+const INDEX_DIGITS = 2;
+
+// Two digits, and past 99 the number simply grows.
+function formatReplyIndex(position: number): string {
+    return String(position).padStart(INDEX_DIGITS, '0');
+}
+
 interface ReplyCellProps {
     reply: Reply;
+    position: number;
     now: Date;
     currentUserId: string | null;
     postAuthorId: string;
@@ -24,7 +32,15 @@ interface ReplyCellProps {
     onRemoved: (replyId: string) => void;
 }
 
-function ReplyCell({ reply, now, currentUserId, postAuthorId, onChanged, onRemoved }: ReplyCellProps) {
+function ReplyCell({
+    reply,
+    position,
+    now,
+    currentUserId,
+    postAuthorId,
+    onChanged,
+    onRemoved,
+}: ReplyCellProps) {
     const [mode, setMode] = useState<ReplyMode>('viewing');
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteErrorMessage, setDeleteErrorMessage] = useState('');
@@ -92,65 +108,77 @@ function ReplyCell({ reply, now, currentUserId, postAuthorId, onChanged, onRemov
 
     return (
         <article className="reply-cell" aria-label={`Reply by ${author.username}`}>
-            <header className="reply-cell-author">
-                <Avatar pictureUrl={author.profilePictureUrl} />
-                <span className="reply-cell-name">{author.username}</span>
-                <time className="reply-cell-time" dateTime={reply.createdAt}>
-                    {formatPostTime(reply.createdAt, now)}
-                </time>
-                {reply.edited && <span className="reply-cell-edited">EDITED</span>}
-            </header>
-            {mode === 'editing' ? (
-                <ReplyEditor reply={reply} onSaved={handleSaved} onCancel={() => setMode('viewing')} />
-            ) : (
-                <p className="reply-cell-body" dir="auto">{stripBidiControls(reply.content)}</p>
-            )}
-            {mode !== 'editing' && (canEdit || canDelete) && (
-                <div className="reply-cell-actions">
-                    {canEdit && mode === 'viewing' && (
-                        <button
-                            type="button"
-                            className="reply-cell-action"
-                            ref={editButtonRef}
-                            onClick={() => setMode('editing')}
-                        >
-                            EDIT
-                        </button>
+            <span className="reply-cell-index" aria-hidden="true">{formatReplyIndex(position)}</span>
+            <div className="reply-cell-content">
+                <header className="reply-cell-author">
+                    <Avatar pictureUrl={author.profilePictureUrl} size="tiny" />
+                    <span className="reply-cell-name">{author.username}</span>
+                    <time className="reply-cell-time" dateTime={reply.createdAt}>
+                        {formatPostTime(reply.createdAt, now)}
+                    </time>
+                    {reply.edited && (
+                        <span className="reply-cell-edited">
+                            <span aria-hidden="true">EDITED</span>
+                            <span className="sr-only">edited</span>
+                        </span>
                     )}
-                    {canDelete && mode === 'viewing' && (
-                        <button
-                            type="button"
-                            className="reply-cell-action"
-                            ref={deleteButtonRef}
-                            onClick={handleDeleteAsked}
-                        >
-                            DELETE
-                        </button>
-                    )}
-                    {mode === 'confirming-delete' && (
-                        <div className="reply-cell-confirm" role="group" aria-label="Delete this reply?">
-                            <span className="reply-cell-question">DELETE?</span>
+                </header>
+                {mode === 'editing' ? (
+                    <ReplyEditor reply={reply} onSaved={handleSaved} onCancel={() => setMode('viewing')} />
+                ) : (
+                    <p className="reply-cell-body" dir="auto">{stripBidiControls(reply.content)}</p>
+                )}
+                {mode !== 'editing' && (canEdit || canDelete) && (
+                    <div className="reply-cell-actions">
+                        {canEdit && mode === 'viewing' && (
                             <button
                                 type="button"
                                 className="reply-cell-action"
-                                aria-disabled={isDeleting}
-                                onClick={handleDeleteConfirmed}
+                                data-action="edit"
+                                ref={editButtonRef}
+                                onClick={() => setMode('editing')}
                             >
-                                YES
+                                EDIT
                             </button>
+                        )}
+                        {canDelete && mode === 'viewing' && (
                             <button
                                 type="button"
                                 className="reply-cell-action"
-                                ref={keepButtonRef}
-                                onClick={() => setMode('viewing')}
+                                data-action="delete"
+                                ref={deleteButtonRef}
+                                onClick={handleDeleteAsked}
                             >
-                                NO
+                                DELETE
                             </button>
-                        </div>
-                    )}
-                </div>
-            )}
-            <p className="reply-cell-error" role="alert">{deleteErrorMessage}</p>
+                        )}
+                        {mode === 'confirming-delete' && (
+                            <div className="reply-cell-confirm" role="group" aria-label="Delete this reply?">
+                                <span className="reply-cell-question">DELETE?</span>
+                                <button
+                                    type="button"
+                                    className="reply-cell-action"
+                                    data-action="delete"
+                                    aria-disabled={isDeleting}
+                                    onClick={handleDeleteConfirmed}
+                                >
+                                    YES
+                                </button>
+                                <button
+                                    type="button"
+                                    className="reply-cell-action"
+                                    data-action="edit"
+                                    ref={keepButtonRef}
+                                    onClick={() => setMode('viewing')}
+                                >
+                                    NO
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                <p className="reply-cell-error" role="alert">{deleteErrorMessage}</p>
+            </div>
         </article>
     );
 }

@@ -44,6 +44,15 @@
     color: var(--pale);
 }
 
+/* On the post's own page the reply count only reports; there is nowhere to go. */
+.post-actions-button[data-static='true'] {
+    cursor: default;
+}
+
+.post-actions-button[data-static='true']:hover {
+    color: var(--pale-action-icon);
+}
+
 .post-actions-button:active .post-actions-icon {
     transform: scale(0.82);
     transition-duration: 90ms;

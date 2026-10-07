@@ -1,19 +1,33 @@
+/* A ledger row, not a card: the index gutter on the left, the whole remaining width for the reply. */
 .reply-cell {
-    background: var(--cell);
-    border: 1px solid var(--pale-cell-border);
+    display: grid;
+    grid-template-columns: 2.125rem minmax(0, 1fr);
+    padding: 1.75rem 0 1.25rem;
+}
+
+.reply-cell-index {
+    padding-top: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+    color: var(--pale-depth-label);
+}
+
+.reply-cell-content {
+    min-width: 0;
 }
 
 .reply-cell-author {
     display: flex;
     align-items: center;
-    gap: 0.6875rem;
-    padding: 0.875rem 1.375rem 0;
+    gap: 0.5rem;
 }
 
 .reply-cell-name {
     min-width: 0;
     font-family: var(--font-headline);
-    font-size: 0.90625rem;
+    font-size: 0.8125rem;
     font-weight: 500;
     letter-spacing: -0.01em;
     overflow-wrap: anywhere;
@@ -29,39 +43,43 @@
     color: var(--pale-secondary);
 }
 
+.reply-cell-edited {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+    color: var(--pale-secondary);
+}
+
 .reply-cell-body {
-    padding: 0.75rem 1.375rem 1.125rem;
+    padding-top: 0.5rem;
     font-family: var(--font-headline);
-    font-size: 1.0625rem;
+    font-size: 0.96875rem;
     letter-spacing: -0.005em;
-    line-height: 1.5;
+    line-height: 1.52;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--pale-post-body);
 }
 
-/* Sits after the time, so the time keeps pushing the pair to the right edge. */
-.reply-cell-edited {
-    font-size: 0.59375rem;
-    letter-spacing: 0.14em;
-    color: var(--pale-secondary);
-}
-
+/* The buttons keep their 2.75rem touch height; the negative margin lines their text up with the reply's text. */
 .reply-cell-actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0 1.375rem 0.5rem;
+    gap: 0.25rem;
+    margin-left: -0.5rem;
 }
 
 .reply-cell-confirm {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
 }
 
 .reply-cell-question {
-    font-size: 0.6875rem;
+    padding-left: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
     letter-spacing: 0.14em;
     color: var(--pale);
 }
@@ -72,15 +90,20 @@
     padding: 0 0.5rem;
     background: none;
     border: 0;
-    font-size: 0.6875rem;
-    letter-spacing: 0.12em;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
     color: var(--pale-secondary);
     cursor: pointer;
-    transition: color 300ms;
+    transition: color 300ms var(--e);
 }
 
 .reply-cell-action:hover {
     color: var(--pale);
+}
+
+.reply-cell-action[data-action='delete']:hover {
+    color: var(--alarm);
 }
 
 .reply-cell-action:focus-visible {
@@ -90,7 +113,7 @@
 
 .reply-cell-error {
     min-height: 0;
-    padding: 0 1.375rem;
+    font-family: var(--font-mono);
     font-size: 0.625rem;
     letter-spacing: 0.13em;
     overflow-wrap: anywhere;
@@ -99,22 +122,4 @@
 
 .reply-cell-error:not(:empty) {
     padding-bottom: 0.75rem;
-}
-
-@media (max-width: 600px) {
-    .reply-cell-author {
-        padding: 0.75rem 1.125rem 0;
-    }
-
-    .reply-cell-body {
-        padding: 0.625rem 1.125rem 1rem;
-    }
-
-    .reply-cell-actions {
-        padding: 0 1.125rem 0.375rem;
-    }
-
-    .reply-cell-error {
-        padding: 0 1.125rem;
-    }
 }

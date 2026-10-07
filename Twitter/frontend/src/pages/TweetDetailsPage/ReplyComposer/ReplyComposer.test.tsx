@@ -44,12 +44,46 @@ async function typeAndSend(text: string) {
     await userEvent.click(replyButton());
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     onSent.mockReset();
     vi.mocked(createReply)
         .mockReset()
         .mockResolvedValue(REPLY);
     render(<ReplyComposer tweetId={TWEET_ID} onSent={onSent} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
+});
+
+describe('collapsing', () => {
+    it('should_fold_back_into_its_row_when_the_empty_field_loses_focus', async () => {
+        await userEvent.tab({ shift: true });
+
+        expect(screen.queryByLabelText('YOUR REPLY')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Write a reply…' })).toBeTruthy();
+    });
+
+    it('should_stay_open_when_the_field_with_text_loses_focus', async () => {
+        await userEvent.paste('half a thought');
+        await userEvent.tab();
+
+        expect(field().value).toBe('half a thought');
+    });
+
+    it('should_clear_the_text_and_fold_when_cancel_is_pressed', async () => {
+        await userEvent.paste('half a thought');
+        await userEvent.click(screen.getByRole('button', { name: 'CANCEL' }));
+
+        expect(screen.queryByLabelText('YOUR REPLY')).toBeNull();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
+
+        expect(field().value).toBe('');
+    });
+
+    it('should_fold_when_a_reply_is_sent', async () => {
+        await typeAndSend('hello world');
+
+        expect(screen.queryByLabelText('YOUR REPLY')).toBeNull();
+    });
 });
 
 describe('the counter', () => {
@@ -105,6 +139,7 @@ describe('sending', () => {
 
     it('should_clear_the_field_when_the_reply_is_sent', async () => {
         await typeAndSend('hello world');
+        await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
 
         expect(field().value).toBe('');
     });
@@ -141,7 +176,7 @@ describe('sending', () => {
 
         await userEvent.click(replyButton());
 
-        expect(screen.getByRole('alert').textContent).toBe('');
+        expect(screen.queryByRole('alert')).toBeNull();
         expect(onSent).toHaveBeenCalledExactlyOnceWith(REPLY);
     });
 });

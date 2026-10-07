@@ -14,9 +14,17 @@ interface PostActionsProps {
     isLikedInitially: boolean;
     likeCount: number;
     replyCount: number;
+    isReplyLinked: boolean;
 }
 
-function PostActions({ tweetId, isSavedInitially, isLikedInitially, likeCount, replyCount }: PostActionsProps) {
+function PostActions({
+    tweetId,
+    isSavedInitially,
+    isLikedInitially,
+    likeCount,
+    replyCount,
+    isReplyLinked,
+}: PostActionsProps) {
     const like = useOptimisticToggle(
         isLikedInitially,
         (shouldLike) => (shouldLike ? likeTweet(tweetId) : unlikeTweet(tweetId)),
@@ -30,19 +38,31 @@ function PostActions({ tweetId, isSavedInitially, isLikedInitially, likeCount, r
     // post that is liked by you, so the shown count never goes below 0.
     const shownLikeCount = Math.max(0, likeCount - Number(isLikedInitially) + Number(like.isOn));
 
+    const replyContent = (
+        <>
+            <span className="post-actions-icon">
+                <FillIcon shape="bubble" isActive={false} />
+            </span>
+            <span className="sr-only">Replies</span>
+            <span className="post-actions-count">{formatCount(replyCount)}</span>
+        </>
+    );
+
     return (
         <footer className="post-actions">
-            <Link
-                to={tweetPath(tweetId)}
-                className="post-actions-button"
-                data-action="reply"
-            >
-                <span className="post-actions-icon">
-                    <FillIcon shape="bubble" isActive={false} />
-                </span>
-                <span className="sr-only">Replies</span>
-                <span className="post-actions-count">{formatCount(replyCount)}</span>
-            </Link>
+            {isReplyLinked ? (
+                <Link
+                    to={tweetPath(tweetId)}
+                    className="post-actions-button"
+                    data-action="reply"
+                >
+                    {replyContent}
+                </Link>
+            ) : (
+                <div className="post-actions-button" data-action="reply" data-static="true">
+                    {replyContent}
+                </div>
+            )}
             <button
                 type="button"
                 className="post-actions-button"

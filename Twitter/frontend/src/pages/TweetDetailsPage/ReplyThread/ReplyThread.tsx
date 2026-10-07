@@ -15,11 +15,12 @@ const EMPTY_TEXT = 'NO REPLIES YET';
 interface ReplyThreadProps {
     tweetId: string;
     postAuthorId: string;
+    replyCount: number;
     thread: ReplyThreadState;
     now: Date;
 }
 
-function ReplyThread({ tweetId, postAuthorId, thread, now }: ReplyThreadProps) {
+function ReplyThread({ tweetId, postAuthorId, replyCount, thread, now }: ReplyThreadProps) {
     const { user } = useAuth();
     const sentinelRef = useBottomSentinel(thread.loadMore, `${thread.replies.length}-${thread.status}`);
     const bottomState = bottomStateOf(thread.status, thread.isEnd, thread.replies.length);
@@ -27,11 +28,13 @@ function ReplyThread({ tweetId, postAuthorId, thread, now }: ReplyThreadProps) {
     return (
         <>
             <ReplyComposer tweetId={tweetId} onSent={thread.addSentReply} />
-            <ul className="reply-thread-list">
-                {thread.replies.map((reply) => (
+            <h2 className="reply-thread-title">REPLIES · {replyCount}</h2>
+            <ol className="reply-thread-list">
+                {thread.replies.map((reply, replyIndex) => (
                     <li key={reply.id}>
                         <ReplyCell
                             reply={reply}
+                            position={replyIndex + 1}
                             now={now}
                             currentUserId={user?.id ?? null}
                             postAuthorId={postAuthorId}
@@ -40,7 +43,7 @@ function ReplyThread({ tweetId, postAuthorId, thread, now }: ReplyThreadProps) {
                         />
                     </li>
                 ))}
-            </ul>
+            </ol>
             {bottomState && (
                 <PostListStatus
                     state={bottomState}

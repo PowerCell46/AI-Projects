@@ -62,6 +62,7 @@ function PostCell({ post, now, isClickable = true }: PostCellProps) {
                 isLikedInitially={post.likedByMe}
                 likeCount={post.likes}
                 replyCount={post.replyCount}
+                isReplyLinked={isClickable}
             />
         </article>
     );

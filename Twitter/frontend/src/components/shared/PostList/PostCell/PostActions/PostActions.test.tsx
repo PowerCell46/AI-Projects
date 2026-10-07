@@ -44,6 +44,7 @@ function renderActions(props: Partial<ComponentProps<typeof PostActions>> = {}) 
                 isLikedInitially={false}
                 likeCount={0}
                 replyCount={0}
+                isReplyLinked
                 {...props}
             />
         </MemoryRouter>,
@@ -280,5 +281,20 @@ describe('the reply link', () => {
         renderActions();
 
         expect(screen.getByRole('link', { name: /^replies/i }).getAttribute('href')).toBe(`/tweets/${TWEET_ID}`);
+    });
+});
+
+describe('the reply count', () => {
+    it('should_be_a_link_to_the_post_when_the_reply_is_linked', () => {
+        renderActions({ replyCount: 3 });
+
+        expect(screen.getByRole('link', { name: /^replies/i }).textContent).toContain('3');
+    });
+
+    it('should_be_plain_text_when_the_reply_is_not_linked', () => {
+        renderActions({ replyCount: 3, isReplyLinked: false });
+
+        expect(screen.queryByRole('link')).toBeNull();
+        expect(screen.getByText('Replies').closest('[data-action="reply"]')?.textContent).toContain('3');
     });
 });
