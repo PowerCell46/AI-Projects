@@ -4,7 +4,7 @@ running and testing this app.
 ## What this is
 
 The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`), the feed
-(`/feed`, `/saved`, `/liked`) and the People list (`/users`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
+(`/feed`, `/saved`, `/liked`), the People list (`/users`) and a post's details with its replies (`/tweets/:tweetId`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
 co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md`
 (auth), `feed-design.md` (feed, in git history), `feed-design-addition.md` (tab row, People).
 
@@ -14,6 +14,12 @@ co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visua
 `/users` renders `PeopleList`. Both lists page through `usePagedList` (`src/hooks`). The shell hands the page what is
 shared through outlet context (`useShellContext()`): the posts you published this session (`ownPosts`) and the follow
 signal (`onFollowChanged`, `followChangeCount`).
+
+`/tweets/:tweetId` is a third, non-tab panel of `TabPanels` (no tab row): the feed and People panels stay mounted and
+hidden while it is open, so Back lands on the same spot. `TweetDetailsPage` shows the back link, the post (not
+clickable), the reply composer and the replies (`useReplyThread`, oldest first, paged like the lists). A post cell opens
+it on a click anywhere except on a button, link or image or at the end of a text selection; the reply link in the
+action row is the keyboard and screen-reader way in.
 
 ## Running it
 
@@ -83,3 +89,13 @@ signal (`onFollowChanged`, `followChangeCount`).
   (`PostList.css`) must stay inside `SIGN_OUT_LEAVE_MS`.
 - Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatCount`.
   Cards are not links and show no `@handle`.
+- The details route: `useOpenTweetId` returns the id only when it is a UUID (it goes into API paths, and a `..` would
+  climb out of them); any other id on `/tweets/...` redirects to `/feed`. `ENDPOINTS` encodes every id segment as well.
+  Opened from `/saved` or `/liked`, Back reloads that list (only the feed and People stay mounted). The page scrolls
+  itself to the top on open; `useTabScrollMemory` keeps the leaving tab's position for the way back, and coming back
+  plays no enter animation.
+- The back link goes `navigate(-1)` when the router's `location.key` is not `default`, else to `/feed`.
+- Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
+  (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a
+  reload. Edits and deletes are overrides on the loaded list, so `usePagedList` is unchanged. `EDIT` and `DELETE` only
+  decide which buttons show: the server decides who may.

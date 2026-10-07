@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import { likeTweet, unlikeTweet } from '../../../../../api/likes';
 import { saveTweet, unsaveTweet } from '../../../../../api/savedTweets';
 import { useOptimisticToggle } from '../../../../../hooks/useOptimisticToggle';
+import { tweetPath } from '../../../../../routes';
 import { formatCount } from '../../../../../utils/count';
 import FillIcon from './FillIcon/FillIcon';
 import './PostActions.css';
@@ -11,9 +13,10 @@ interface PostActionsProps {
     isSavedInitially: boolean;
     isLikedInitially: boolean;
     likeCount: number;
+    replyCount: number;
 }
 
-function PostActions({ tweetId, isSavedInitially, isLikedInitially, likeCount }: PostActionsProps) {
+function PostActions({ tweetId, isSavedInitially, isLikedInitially, likeCount, replyCount }: PostActionsProps) {
     const like = useOptimisticToggle(
         isLikedInitially,
         (shouldLike) => (shouldLike ? likeTweet(tweetId) : unlikeTweet(tweetId)),
@@ -29,6 +32,17 @@ function PostActions({ tweetId, isSavedInitially, isLikedInitially, likeCount }:
 
     return (
         <footer className="post-actions">
+            <Link
+                to={tweetPath(tweetId)}
+                className="post-actions-button"
+                data-action="reply"
+            >
+                <span className="post-actions-icon">
+                    <FillIcon shape="bubble" isActive={false} />
+                </span>
+                <span className="sr-only">Replies</span>
+                <span className="post-actions-count">{formatCount(replyCount)}</span>
+            </Link>
             <button
                 type="button"
                 className="post-actions-button"

@@ -1,6 +1,9 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { TweetItem } from '../../../../api/tweetPage';
+import { ROUTES } from '../../../../routes';
 import PostCell from './PostCell';
 
 
@@ -22,6 +25,7 @@ const POST: TweetItem = {
     savedByMe: false,
     likes: 0,
     likedByMe: false,
+    replyCount: 0,
     content: 'hello world',
     createdAt: '2026-10-04T11:55:00.000Z',
     updatedAt: '2026-10-04T11:55:00.000Z',
@@ -33,8 +37,28 @@ const POST: TweetItem = {
     images: [],
 };
 
-function renderPost(changes: Partial<TweetItem> = {}) {
-    return render(<PostCell post={{ ...POST, ...changes }} now={NOW} />);
+function renderPost(changes: Partial<TweetItem> = {}, isClickable = true) {
+    return render(
+        <MemoryRouter>
+            <Routes>
+                <Route
+                    path="/"
+                    element={(
+                        <PostCell
+                            post={{ ...POST, ...changes }}
+                            now={NOW}
+                            isClickable={isClickable}
+                        />
+                    )}
+                />
+                <Route path={ROUTES.tweet} element={<p>details page</p>} />
+            </Routes>
+        </MemoryRouter>,
+    );
+}
+
+function isOnDetailsPage(): boolean {
+    return screen.queryByText('details page') !== null;
 }
 
 describe('author row', () => {
@@ -100,7 +124,7 @@ describe('body', () => {
     it('should_render_links_as_plain_text', () => {
         renderPost({ content: 'see https://example.com now' });
 
-        expect(screen.queryByRole('link')).toBeNull();
+        expect(within(screen.getByText('see https://example.com now')).queryByRole('link')).toBeNull();
         expect(screen.getByText('see https://example.com now')).toBeTruthy();
     });
 
@@ -185,5 +209,76 @@ describe('actions', () => {
         const { container } = renderPost({ views: 4242 });
 
         expect(container.textContent).not.toContain('4242');
+    });
+});
+
+describe('opening the details page', () => {
+    it('should_open_the_details_page_when_the_text_is_clicked', async () => {
+        renderPost();
+
+        await userEvent.click(screen.getByText('hello world'));
+
+        expect(isOnDetailsPage()).toBe(true);
+    });
+
+    it('should_not_navigate_when_the_heart_is_clicked', async () => {
+        renderPost();
+
+        await userEvent.click(screen.getByRole('button', { name: /^like/i }));
+
+        expect(isOnDetailsPage()).toBe(false);
+    });
+
+    it('should_not_navigate_when_the_bookmark_is_clicked', async () => {
+        renderPost();
+
+        await userEvent.click(screen.getByRole('button', { name: /^save/i }));
+
+        expect(isOnDetailsPage()).toBe(false);
+    });
+
+    it('should_open_the_details_page_once_when_the_reply_link_is_clicked', async () => {
+        renderPost();
+
+        await userEvent.click(screen.getByRole('link', { name: /^replies/i }));
+
+        expect(screen.getAllByText('details page')).toHaveLength(1);
+    });
+
+    it('should_not_navigate_when_an_image_is_clicked', async () => {
+        renderPost({
+            images: [
+                {
+                    id: 'image-1',
+                    sizeBytes: 10,
+                    contentType: 'image/png',
+                },
+            ],
+        });
+
+        await userEvent.click(screen.getByRole('img', { name: /^image 1/i }));
+
+        expect(isOnDetailsPage()).toBe(false);
+    });
+
+    it('should_not_navigate_when_the_click_ends_a_text_selection', () => {
+        renderPost();
+        const body = screen.getByText('hello world');
+        window.getSelection()?.selectAllChildren(body);
+
+        fireEvent.click(body);
+
+        expect(isOnDetailsPage()).toBe(false);
+
+        window.getSelection()?.removeAllRanges();
+    });
+
+    it('should_not_be_clickable_when_rendered_on_the_details_page', async () => {
+        renderPost({}, false);
+
+        await userEvent.click(screen.getByText('hello world'));
+
+        expect(isOnDetailsPage()).toBe(false);
+        expect(screen.getByRole('article').getAttribute('data-clickable')).toBe('false');
     });
 });

@@ -208,6 +208,7 @@ describe('composing', () => {
         savedByMe: false,
         likes: 0,
         likedByMe: false,
+        replyCount: 0,
         content: 'an older post',
         createdAt: '2026-10-04T10:00:00.000Z',
         updatedAt: '2026-10-04T10:00:00.000Z',

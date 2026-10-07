@@ -1,0 +1,51 @@
+.reply-composer {
+    margin-top: 1.375rem;
+    padding: 1rem 1.375rem;
+    background: var(--cell);
+    border: 1px solid var(--pale-cell-border);
+}
+
+.reply-composer-send {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 1.75rem;
+    background: var(--glow);
+    border: 0;
+    font-size: 0.78125rem;
+    letter-spacing: 0.14em;
+    color: var(--deep);
+    cursor: pointer;
+    transition: background-color 300ms;
+}
+
+.reply-composer-send:not([aria-disabled='true']):hover {
+    background: var(--glow-hover);
+}
+
+.reply-composer-send[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.reply-composer-send:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.reply-composer-error {
+    min-height: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.13em;
+    overflow-wrap: anywhere;
+    color: var(--alarm);
+}
+
+.reply-composer-error:not(:empty) {
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .reply-composer {
+        padding: 0.875rem 1.125rem;
+    }
+}

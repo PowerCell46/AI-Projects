@@ -3,9 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { me } from '../../../api/auth';
 import { fetchFeed } from '../../../api/feed';
+import { ApiError } from '../../../api/http';
+import { fetchReplies } from '../../../api/replies';
 import { fetchSavedTweets } from '../../../api/savedTweets';
+import { fetchTweetDetails } from '../../../api/tweetDetails';
 import { fetchPeople, fetchUserProfile, followUser } from '../../../api/users';
-import { ROUTES } from '../../../routes';
+import { ROUTES, tweetPath } from '../../../routes';
 import { renderApp } from '../../../test/renderApp';
 import { advance, waitForHistoryTraversal } from '../../../test/stepFlowHelpers';
 import { tabPanelId } from '../../../utils/tabs';
@@ -32,6 +35,15 @@ vi.mock('../../../api/likes', () => ({
     unlikeTweet: vi.fn(),
 }));
 
+vi.mock('../../../api/replies', () => ({
+    fetchReplies: vi.fn(),
+    createReply: vi.fn(),
+}));
+
+vi.mock('../../../api/tweetDetails', () => ({
+    fetchTweetDetails: vi.fn(),
+}));
+
 vi.mock('../../../api/users', () => ({
     fetchUserProfile: vi.fn(),
     fetchPeople: vi.fn(),
@@ -46,11 +58,12 @@ const SIGNED_IN_USER = {
 };
 
 const POST = {
-    id: 'tweet-1',
+    id: '6f1c2a3e-0000-4000-8000-000000000001',
     views: 0,
     savedByMe: false,
     likes: 0,
     likedByMe: false,
+    replyCount: 0,
     content: 'a post from the feed',
     createdAt: '2026-10-04T11:55:00.000Z',
     updatedAt: '2026-10-04T11:55:00.000Z',
@@ -60,6 +73,11 @@ const POST = {
         profilePictureUrl: null,
     },
     images: [],
+};
+
+const DETAILS_POST = {
+    ...POST,
+    content: 'the post in the details panel',
 };
 
 const PERSON = {
@@ -146,6 +164,15 @@ beforeEach(() => {
             items: [],
             nextCursor: null,
         });
+    vi.mocked(fetchReplies)
+        .mockReset()
+        .mockResolvedValue({
+            items: [],
+            nextCursor: null,
+        });
+    vi.mocked(fetchTweetDetails)
+        .mockReset()
+        .mockResolvedValue(DETAILS_POST);
     vi.mocked(fetchPeople)
         .mockReset()
         .mockResolvedValue({
@@ -543,5 +570,76 @@ describe('leaving the tabs', () => {
             name: 'People',
             hidden: true,
         })).toBeNull();
+    });
+});
+
+describe('the tweet details panel', () => {
+    it('should_redirect_to_login_when_signed_out', async () => {
+        vi.mocked(me).mockRejectedValue(new ApiError(401, []));
+
+        await renderApp(tweetPath(POST.id));
+
+        expect(window.location.pathname).toBe(ROUTES.login);
+    });
+
+    it('should_show_the_details_panel_without_the_tab_row_when_signed_in', async () => {
+        await renderApp(tweetPath(POST.id));
+
+        const panel = screen.getByRole('region', { name: 'Post details' });
+
+        expect(panel.textContent).toContain('the post in the details panel');
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(fetchTweetDetails).toHaveBeenCalledExactlyOnceWith(POST.id);
+    });
+
+    it('should_open_the_feed_when_the_tweet_id_is_not_a_uuid', async () => {
+        await renderApp('/tweets/..%2F..%2Fauth%2Flogout');
+
+        expect(window.location.pathname).toBe(ROUTES.feed);
+        expect(fetchTweetDetails).not.toHaveBeenCalled();
+    });
+
+    it('should_not_mount_the_feed_when_the_details_are_opened_first', async () => {
+        await renderApp(tweetPath(POST.id));
+
+        expect(fetchFeed).not.toHaveBeenCalled();
+    });
+
+    it('should_keep_the_feed_mounted_when_the_details_panel_is_open', async () => {
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByText('a post from the feed'));
+        await advance(1);
+
+        expect(window.location.pathname).toBe(tweetPath(POST.id));
+        expect(tweetsPanel().hidden).toBe(true);
+        expect(tweetsPanel().textContent).toContain('a post from the feed');
+        expect(peoplePanel().hidden).toBe(true);
+        expect(fetchFeed).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_restore_the_feed_scroll_position_when_going_back', async () => {
+        await renderApp(ROUTES.feed);
+        scrollTo(300);
+        await user.click(screen.getByText('a post from the feed'));
+        await advance(1);
+
+        await user.click(screen.getByRole('link', { name: 'BACK' }));
+        await waitForHistoryTraversal();
+
+        expect(window.location.pathname).toBe(ROUTES.feed);
+        expect(tweetsPanel().hidden).toBe(false);
+        expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 300 });
+    });
+
+    it('should_play_no_enter_animation_on_the_feed_when_coming_back_from_the_details', async () => {
+        await renderApp(ROUTES.feed);
+        await user.click(screen.getByText('a post from the feed'));
+        await advance(1);
+
+        await user.click(screen.getByRole('link', { name: 'BACK' }));
+        await waitForHistoryTraversal();
+
+        expect(tweetsPanel().getAttribute('data-entering')).toBe('false');
     });
 });

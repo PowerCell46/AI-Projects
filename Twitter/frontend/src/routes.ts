@@ -7,4 +7,9 @@ export const ROUTES = {
     people: '/users',
     saved: '/saved',
     liked: '/liked',
+    tweet: '/tweets/:tweetId',
 } as const;
+
+export function tweetPath(tweetId: string): string {
+    return `/tweets/${tweetId}`;
+}

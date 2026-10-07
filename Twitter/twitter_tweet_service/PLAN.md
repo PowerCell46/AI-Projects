@@ -1,12 +1,12 @@
 # Twitter Tweet Service: plan
 
-**Status:** phase 1 built (steps 1-10 done, 2026-09-30). Phases 2-3 (replies) planned 2026-10-06; phase 2 built and hardened 2026-10-07 (steps 11-22), phase 3 not started.
+**Status:** phase 1 built (steps 1-10 done, 2026-09-30). Phases 2-3 (replies) planned 2026-10-06; phase 2 built and hardened 2026-10-07 (steps 11-22), phase 3 built and hardened 2026-10-07 (steps 23-30).
 
 | Phase | Scope | Done |
 |---|---|---|
 | 1 | Tweets: create, read, edit, delete, events (steps 1-10) | 2026-09-30 |
 | 2 | Replies API (steps 11-22) | 2026-10-07 (audit: `SECURITY-FINDINGS.md`, 1 Low and 1 Info fixed; timeline: 1 Low and 1 Info fixed, 1 Low and 1 Info accepted) |
-| 3 | Replies UI (steps 23-30) | |
+| 3 | Replies UI (steps 23-30) | 2026-10-07 (audit: `../frontend/SECURITY-FINDINGS.md`, 1 Low fixed; visual check waived) |
 
 **Later changes:** `../twitter_timeline_service/PLAN.md` added `GET /internal/v1/tweets?ids=` here (its phase 1,
 built 2026-10-03, plus the startup collection creation) and removed `views` (its phase 3, step 24, 2026-10-03):
@@ -92,97 +92,43 @@ test catalog in `TESTING.md`, the audit in `SECURITY-AUDITS.md`.
 
 ---
 
-## Phase 3 — Replies UI
+## Phase 3 — Replies UI ✅ **Done** (2026-10-07)
 
-Steps are tagged **[frontend]** and **[e2e]** and follow `../frontend/CLAUDE.md`: invoke `frontend-code-style` before
-any `.ts` / `.tsx` / `.css`, names `should_..._when_...`, component tests on jsdom with fake timers and `src/api/*`
-stubbed with `vi.mock`, never waiting in real time. Tests: the Vitest and Playwright names are the catalog.
+Built in steps 23-30 (frontend, e2e); the Vitest and Playwright test names are the catalog. Calls made while building are
+in `../frontend/DECISIONS.md`, the conventions in `../frontend/CLAUDE.md`, the audit in
+`../frontend/SECURITY-FINDINGS.md` ("Audit — 2026-10-07 (tweet details page, post cell, tab panels)").
 
-**Hard rule:** no step starts on a red or missing test, each step ends green; nothing here starts before step 22's
-gate.
+### What was built
 
-### Design
+- **Data (Q8):** `TweetItem.replyCount` (`toOwnPost` starts at `0`); `src/api/replies.ts` (`fetchReplies`, `createReply`,
+  `updateReply`, `deleteReply`, `Reply` with the author's picture mapped), `src/api/tweetDetails.ts`; `ENDPOINTS.replies`,
+  `reply`, `tweetDetails`, every id encoded as one path segment.
+- **Reply count and the clickable post (Q9, Q10):** `PostActions` has a reply link (speech-bubble icon, `formatCount`,
+  label "Replies") before the heart; a click anywhere on a `PostCell` opens `/tweets/:id` except on a button, link or image
+  or at the end of a text selection (`isClickable` is off on the details page).
+- **Route (Q14):** `ROUTES.tweet` + `tweetPath`; `TabPanels` renders the details as a third non-tab panel keyed by the
+  tweet id (no tab row), so the feed and People stay mounted and Back restores the scroll (`useTabScrollMemory`,
+  `useTabVisits`); `useOpenTweetId` accepts only a UUID, any other id redirects to `/feed` (audit finding 6).
+- **Details page (Q11, Q13):** back link (`navigate(-1)` with history, else `/feed`), the post reported through
+  `ViewReporter`, `POST NOT FOUND` on `404`, `SIGNAL LOST` / `TRY AGAIN` on other failures; the details read and the
+  first replies page start together (`useTweetDetails`, `useReplyThread` on `usePagedList`); `END OF REPLIES`,
+  `NO REPLIES YET`, the replies error with retry under the composer.
+- **Composer (Q11):** `ReplyComposer` + shared `ReplyTextField` (label `YOUR REPLY`, code-point counter, `REPLY` off when
+  empty or over 280); errors under the field (`404`, `503`, other); a sent reply shows under the composer and the post's
+  count goes up by 1.
+- **Reply, edit, delete (Q12):** `ReplyCell` (`EDITED`, `EDIT` on your reply, `DELETE` on your reply or any reply under your
+  post), `ReplyEditor` (`SAVE` off while empty, too long or unchanged; Escape cancels; focus returns to `EDIT`),
+  `DELETE? YES / NO` (focus on `NO`; a `404` also removes the reply); edits and deletes are overrides in `useReplyThread`.
+- **Tests:** Vitest 960 (API, `PostActions`, `PostCell`, `TabPanels`, `TweetDetailsPage`, `ReplyComposer`, `ReplyCell`,
+  `endpoints`); Playwright `replies-ui.spec.ts` (4 journeys). Gate: build, lint, `npm test` clean; e2e 58 green 3× from a
+  fresh stack.
+- **Audit (2026-10-07):** no Critical, High or Medium; 1 Low fixed (the address reached API paths), the reply thread joins
+  finding 5 (`usePagedList` follows a cursor with no progress check; open, no trigger today).
 
-- **Data.** `TweetItem` gains `replyCount: number`; `toOwnPost` starts at `0`; fixtures gain it. New
-  `src/api/replies.ts`: `fetchReplies(tweetId, request)`, `createReply`, `updateReply`, `deleteReply`, `Reply`
-  (`id`, `tweetId`, `content`, `edited`, `createdAt`, `updatedAt`, `author` with `toPictureUrl`). New
-  `fetchTweetDetails(tweetId)` (`src/api/tweetDetails.ts`). `ENDPOINTS.replies(tweetId)`, `reply(tweetId, replyId)`,
-  `tweetDetails(tweetId)`.
-- **Reply count on posts.** `PostActions` gains a reply item before the heart: a speech-bubble icon and
-  `formatCount(replyCount)`, a real `<a href="/tweets/:id">` labelled "Replies" (the keyboard and screen-reader path,
-  Q10).
-- **Clickable post (Q9, Q10).** In a list, a click anywhere on a `PostCell` opens `/tweets/:id`, except a click on a
-  button, link or image, or one that ends a text selection. The cell is not focusable; the reply link is the keyboard
-  way in. On the details page the post is not clickable.
-- **Route (Q14).** `ROUTES.tweet = '/tweets/:tweetId'` (+ a `tweetPath(id)` helper) sits inside the `TabPanels`
-  layout as a third, non-tab panel: no tab row, the feed and People panels stay mounted and hidden, so Back lands on
-  the same spot (`useTabScrollMemory` restores it). The details panel is keyed by `tweetId` and scrolls to the top
-  on open. Opened from `/saved` or `/liked`, Back reloads that list, as today.
-- **Details page (Q11).** A back link (`navigate(-1)` when the visit has in-app history, otherwise `/feed`), the post
-  (`PostCell`, not clickable), the composer, then the replies (oldest first, `usePagedList` + `useBottomSentinel`).
-  The details read and the first replies page start together. Details `404` → `POST NOT FOUND` and the back link
-  only. Replies failing while the post loaded → the `PostListStatus` error with retry under the composer. End:
-  `END OF REPLIES`; empty: `NO REPLIES YET`. The post reports a view through `ViewReporter`, as feed posts (Q13);
-  replies report nothing.
-- **Composer (Q11).** Visible label `YOUR REPLY`, a textarea, a `n / 280` counter (code points), button `REPLY`
-  (≥44 px), off while the trimmed text is empty or over 280. Errors under the field: `404` "This post was deleted.",
-  `503` "Busy, try again.", anything else "Couldn't send. Try again.". A sent reply appears straight under the
-  composer (newest of yours first) and the post's count goes up by 1; after a reload it sits in its real place.
-- **A reply.** Avatar, username, time, `EDITED` when `edited`, the text. Text buttons `EDIT` (your reply) and
-  `DELETE` (your reply, or any reply under your post), shown only when allowed (`author.id` vs the signed-in id).
-- **Edit (Q12).** The text becomes a labelled textarea with the counter and `SAVE` / `CANCEL`; `SAVE` is off while
-  empty, too long or unchanged; Escape cancels; focus returns to `EDIT`. Success → the server's reply (shows
-  `EDITED`). `403` / `404` / other → the error under the field, the text kept.
-- **Delete (Q12).** `DELETE` turns into `DELETE? YES / NO` (focus on `NO`); `YES` → the reply goes and the post's
-  count drops by 1; a `404` also removes it (already gone); other errors → the message next to the reply.
-- **Docs.** Frontend `CLAUDE.md` (the route, the third panel, the click rules), `DECISIONS.md`, `PLAN.md` pointer;
-  the e2e helpers if new ones are needed.
+## Left open
 
-### Scenarios
-
-- **API (stubbed `fetch`):** each function's method, URL, body and credentials; author pictures mapped; an error
-  status rejects with that status.
-- **`PostActions`:** the reply link shows `formatCount(replyCount)` (`1299` → `1.2K`) and points at `/tweets/:id`.
-- **`PostCell`:** a click on the text opens details; a click on the heart, the bookmark, the reply link or an image
-  doesn't navigate twice or at all; a click that ends a text selection doesn't navigate; not clickable when
-  rendered on the details page.
-- **`TabPanels` / `App`:** `/tweets/:id` signed out → `/login`; signed in → the details panel, no tab row; the feed
-  stays mounted while it is open; Back restores the feed's scroll position.
-- **`TweetDetailsPage`:** both reads start together; the post and the first replies; `POST NOT FOUND` on `404`;
-  replies error with retry; `END OF REPLIES`; `NO REPLIES YET`; the post reported as viewed once.
-- **`ReplyComposer`:** counter by code points; `REPLY` off when empty/blank/281; sending shows the reply under the
-  composer and the count +1; each error text under the field; the field cleared after success.
-- **`ReplyCell`:** `EDITED` only when `edited`; `EDIT` only on your reply; `DELETE` on your reply and on any reply
-  under your post, not otherwise; edit save/cancel/Escape and focus return; `SAVE` off when unchanged; delete
-  confirm `YES` / `NO`; a `404` on delete removes it; the count −1.
-- **[e2e] `replies-ui.spec.ts`** (fresh users, `expect.poll` for fan-out): (1) Ana clicks Bob's post in her feed →
-  details; she replies → under the composer, count `1`; Back → the feed at the same spot. (2) Ana edits her reply →
-  `EDITED` after a reload. (3) Bob (the post's author) deletes Ana's reply → gone, count `0`. (4) The keyboard: Tab to
-  the reply link, Enter → details.
-- **Not applicable:** server races (the API phase covers them); a garbage `replyCount` from the server (the gateway
-  is the only source, as `likes`).
-
-### Steps
-
-23. **Test catalog.** Every scenario above as `it.todo` (Vitest) and `test.fixme` (Playwright). **Gate:** `npm run
-    build`, `npm run lint`, `npm test` clean in `frontend`; `npx playwright test --list` in `e2e` shows the four;
-    **and you have approved the catalog**.
-24. **[frontend] API layer.** `replyCount`, `replies.ts`, `tweetDetails.ts`, `ENDPOINTS`, `toOwnPost`, fixtures.
-    **Gate:** the API scenarios green; `npm run build` and `npm test` green.
-25. **[frontend] Reply count and the clickable post.** `PostActions`, `PostCell`. **Gate:** their scenarios green.
-26. **[frontend] The details route and page shell.** `ROUTES.tweet`, the third panel in `TabPanels`, the page with
-    the post, the back link, `404`, the view report. **Gate:** the `TabPanels` / `App` and page scenarios green.
-27. **[frontend] Replies list and composer.** **Gate:** the list and `ReplyComposer` scenarios green.
-28. **[frontend] Edit and delete.** **Gate:** the `ReplyCell` scenarios green; `npm run build`, `npm run lint`,
-    `npm test` clean.
-29. **[e2e] The UI over the real chain.** The four journeys enabled. **Gate:** `npm test` in `e2e` green 3× from a
-    fresh stack.
-30. **Hardening.** Stop and ask the user to run `/exploit-hunter` on the phase 3 surface (reply rendering, the
-    composer, the click handling, the new route); report merged into `frontend/SECURITY-FINDINGS.md`. Each finding
-    fixed or an accepted gap with a trigger. Docs reconciled; the Status row and this heading marked ✅ **Done**
-    (date). **Manual:** you look at the details page with a long reply thread, an edited reply, and the edit and
-    delete states at 1440 and 320 px. **Gate:** `npm run build`, `npm run lint`, `npm test` clean; `npm test` in
-    `e2e` green **3× in a row** from a fresh stack; the visual check signed off.
+- **Phase 3 visual check waived** (step 30): the details page with a long thread, an edited reply and the edit and delete
+  states at 1440 and 320 px was not looked at by hand.
 
 ---
 

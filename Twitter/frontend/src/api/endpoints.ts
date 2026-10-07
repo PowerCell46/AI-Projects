@@ -2,15 +2,24 @@ const BASE_URL = import.meta.env.VITE_BASE_API_URL ?? '';
 
 const API_V1 = `${BASE_URL}/api/v1`;
 
+// An id is one path segment, whatever it holds. A bare `..` still climbs out once the browser normalises the URL (also
+// as `%2E%2E`), so ids that come from the address bar are checked before they get here (`useOpenTweetId`).
+function segment(value: string): string {
+    return encodeURIComponent(value);
+}
+
 export const ENDPOINTS = {
     feed: `${API_V1}/feed`,
     savedTweets: `${API_V1}/saved-tweets`,
-    savedTweet: (tweetId: string) => `${API_V1}/saved-tweets/${tweetId}`,
+    savedTweet: (tweetId: string) => `${API_V1}/saved-tweets/${segment(tweetId)}`,
     likes: `${API_V1}/likes`,
-    like: (tweetId: string) => `${API_V1}/likes/${tweetId}`,
+    like: (tweetId: string) => `${API_V1}/likes/${segment(tweetId)}`,
     views: `${API_V1}/views`,
     tweets: `${API_V1}/tweets`,
-    tweetImage: (tweetId: string, imageId: string) => `${API_V1}/tweets/${tweetId}/images/${imageId}`,
+    tweetImage: (tweetId: string, imageId: string) => `${API_V1}/tweets/${segment(tweetId)}/images/${segment(imageId)}`,
+    replies: (tweetId: string) => `${API_V1}/tweets/${segment(tweetId)}/replies`,
+    reply: (tweetId: string, replyId: string) => `${API_V1}/tweets/${segment(tweetId)}/replies/${segment(replyId)}`,
+    tweetDetails: (tweetId: string) => `${API_V1}/tweet-details/${segment(tweetId)}`,
     users: `${API_V1}/users`,
     user: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}`,
     follow: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}/follow`,

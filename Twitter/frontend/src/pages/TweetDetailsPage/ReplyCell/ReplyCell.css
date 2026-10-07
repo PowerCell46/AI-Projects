@@ -1,0 +1,120 @@
+.reply-cell {
+    background: var(--cell);
+    border: 1px solid var(--pale-cell-border);
+}
+
+.reply-cell-author {
+    display: flex;
+    align-items: center;
+    gap: 0.6875rem;
+    padding: 0.875rem 1.375rem 0;
+}
+
+.reply-cell-name {
+    min-width: 0;
+    font-family: var(--font-headline);
+    font-size: 0.90625rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+    color: var(--display-name);
+}
+
+.reply-cell-time {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: var(--pale-secondary);
+}
+
+.reply-cell-body {
+    padding: 0.75rem 1.375rem 1.125rem;
+    font-family: var(--font-headline);
+    font-size: 1.0625rem;
+    letter-spacing: -0.005em;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--pale-post-body);
+}
+
+/* Sits after the time, so the time keeps pushing the pair to the right edge. */
+.reply-cell-edited {
+    font-size: 0.59375rem;
+    letter-spacing: 0.14em;
+    color: var(--pale-secondary);
+}
+
+.reply-cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1.375rem 0.5rem;
+}
+
+.reply-cell-confirm {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reply-cell-question {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    color: var(--pale);
+}
+
+.reply-cell-action {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    background: none;
+    border: 0;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    color: var(--pale-secondary);
+    cursor: pointer;
+    transition: color 300ms;
+}
+
+.reply-cell-action:hover {
+    color: var(--pale);
+}
+
+.reply-cell-action:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.reply-cell-error {
+    min-height: 0;
+    padding: 0 1.375rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.13em;
+    overflow-wrap: anywhere;
+    color: var(--alarm);
+}
+
+.reply-cell-error:not(:empty) {
+    padding-bottom: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .reply-cell-author {
+        padding: 0.75rem 1.125rem 0;
+    }
+
+    .reply-cell-body {
+        padding: 0.625rem 1.125rem 1rem;
+    }
+
+    .reply-cell-actions {
+        padding: 0 1.125rem 0.375rem;
+    }
+
+    .reply-cell-error {
+        padding: 0 1.125rem;
+    }
+}

@@ -9,6 +9,7 @@
     --fill-icon-active: var(--like);
 }
 
+.fill-icon[data-shape='bubble'],
 .fill-icon[data-shape='bookmark'] {
     --fill-icon-active: var(--glow);
 }

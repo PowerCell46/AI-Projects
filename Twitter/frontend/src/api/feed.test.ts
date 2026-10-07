@@ -11,6 +11,7 @@ const ITEM = {
     savedByMe: true,
     likes: 0,
     likedByMe: false,
+    replyCount: 0,
     content: 'hello',
     createdAt: '2026-10-04T10:00:00.123Z',
     updatedAt: '2026-10-04T10:00:00.123Z',

@@ -27,6 +27,7 @@ function App() {
                     <Route element={<TabPanels />}>
                         <Route path={ROUTES.feed} />
                         <Route path={ROUTES.people} />
+                        <Route path={ROUTES.tweet} />
                     </Route>
                     <Route path={ROUTES.saved} element={<SavedPage />} />
                     <Route path={ROUTES.liked} element={<LikedPage />} />

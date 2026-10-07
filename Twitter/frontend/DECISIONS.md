@@ -305,3 +305,56 @@ as a prop, so the one-minute tick of step 7 re-renders the times without the cel
   holds your like when the post loaded liked, so your own change is applied on top. The `max` keeps a count read
   mid-race (`likes: 0` with `likedByMe: true`) from ever showing `-1`. A failed like or unlike reverts silently, a `404`
   included.
+
+## Replies UI plan steps 24-26 - the details route
+
+- A post's reply link is a router `<Link>` to `/tweets/:id`; `ROUTES.tweet` and `tweetPath` landed with it (step 25),
+  the route itself with the panel (step 26). `PostCell` takes `isClickable` (default `true`); the details page passes
+  `false`. Its click rules: a click inside `button, a, img`, or one that ends a text selection, opens nothing.
+- The details panel is no tab: `useActiveTab()` is `null` there, so both tab panels are hidden and the tab row is
+  absent. `useTabVisits` mounts no tab panel while the details are open first (opened from `/saved`, `/liked` or a
+  link: Back loads that list again). `useTabScrollMemory` keeps the leaving tab's position and restores it on the way
+  back; the details page scrolls itself to the top on open. Coming back from the details plays no enter animation.
+- The back link is a `<Link>` to `/feed` whose click goes `navigate(-1)` when the router's `location.key` is not
+  `default` (an entry exists behind it), else follows the link. `renderApp` takes a `locationKey` for the test of that.
+- A details read that fails other than `404` shows the lists' `SIGNAL LOST` / `TRY AGAIN` (`PostListStatus`);
+  loading shows its `FETCHING MORE`; `POST NOT FOUND` reuses its `empty` state. The plan names only the `404` text.
+- `useMinuteClock` moved from `PostList/` to `src/hooks/`, as the details page is its second consumer.
+
+## Replies UI plan step 27 - the thread
+
+- `useReplyThread` (page folder) pages the replies with `usePagedList`; the page calls it, not the thread component, so
+  the first replies page starts with the details read. Replies you send sit above the loaded ones, newest of yours
+  first, and a loaded copy of the same id replaces them (`appendUnique`). The post's count is the server's plus the
+  number you sent this session, worked out in `TweetDetailsPage`.
+- The composer counts and limits the trimmed text in code points with `composeChecks` (`countCharacters`,
+  `MAX_TWEET_CHARACTERS`), as the compose modal does. Its button is `aria-disabled` while off, like `PUBLISH`.
+- `ReplyCell` shows the reply only for now (author, time, text); `EDITED`, `EDIT` and `DELETE` come with step 28.
+- The catalog entry "sending shows the reply under the composer and the count +1" is tested in
+  `TweetDetailsPage.test.tsx`, where the count lives; `ReplyComposer.test.tsx` covers the send and the hand-off.
+
+## Replies UI plan step 28 - edit and delete
+
+- `ReplyCell` takes `currentUserId` and `postAuthorId` and works out `EDIT` (your reply) and `DELETE` (your reply, or
+  any reply under your post) itself; with nobody signed in it shows neither. `ReplyThread` reads the id from `useAuth`.
+- The composer and the editor share `ReplyTextField` (label, textarea, rule, counter; the buttons go beside the
+  counter). Both use `canPublish(text, 0)` for the length rules. `SAVE` is also off while the trimmed text equals the
+  reply's.
+- Texts the plan left open: the editor's label `EDIT YOUR REPLY`; one save error for `403`, `404` and the rest,
+  `Couldn't save. Try again.`; a failed delete shows `Couldn't delete. Try again.` under the reply and returns to
+  `DELETE`. `NO` returns focus to `DELETE`, as cancel and save return it to `EDIT`.
+- `useReplyThread` keeps edits and deletes as overrides on top of the loaded and sent replies (`replaceReply`,
+  `removeReply`), so `usePagedList` is unchanged. `countChange` = sends - deletes; a `404` on delete counts as a delete.
+
+## Replies UI plan step 29 - the e2e journeys
+
+- `replies-ui.spec.ts` holds the four journeys. The first posts 25 posts as Bob so the feed scrolls, opens the 12th with a
+  dispatched click (a Playwright click may scroll first and move the measured position), and checks Back lands on the same
+  `scrollY`. Replies for the edit and delete journeys are created through the API. Two locators needed `exact: true`:
+  `EDITED` (also a substring of reply text) and `SAVE` (the bookmark's `Save`).
+
+## Replies UI plan step 30 - the audit
+
+- Finding 6 (the address reaching API paths) is fixed in two layers: `useOpenTweetId` accepts only a UUID and `TabPanels`
+  redirects any other `/tweets/...` address to `/feed`; `ENDPOINTS` encodes every id segment. Finding 5's reply-thread
+  case stays open with the hook's other four consumers (no trigger today: the backend always advances its cursor).

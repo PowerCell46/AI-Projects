@@ -8,7 +8,7 @@ Each service owns its own backlog:
 - **`twitter_tweet_service/PLAN.md`**: tweets in Mongo (create with up to 4 images, read, edit text, delete),
   `tweet.created` / `tweet.deleted` via an outbox. Designed via `/grill-me` 2026-09-30. Built 2026-09-30 (steps 1–10 done); gateway
   phase 4 may start. Phases 2–3, replies (API, then UI; `docs/replies-design.md`), designed via `/grill-me`
-  2026-10-06; phase 2 (the API) is built and hardened (steps 11-22, done 2026-10-07), phase 3 not started; they also hold the
+  2026-10-06; phase 2 (the API) is built and hardened (steps 11-22, done 2026-10-07), phase 3 (the UI) is built and hardened (steps 23-30, done 2026-10-07, visual check waived); they also hold the
   timeline, gateway, frontend and e2e steps.
 - **`frontend/PLAN.md`**: the SPA, starting with the "Hadal Descent" auth flow (login, register, `/confirm`,
   `/resend`) from `frontend/AuthenticationViewsDesigns.md`. Designed via `/grill-me`

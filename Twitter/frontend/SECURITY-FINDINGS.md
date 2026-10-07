@@ -254,3 +254,96 @@ below is unchanged.
   ranges with a committed lockfile; `npm audit` reports 0 vulnerabilities.
 - **Injection (server-side), caching, ReDoS:** none in this package. `count.ts` has no regex and only integer
   arithmetic on a number.
+
+## Audit — 2026-10-07 (tweet details page, post cell, tab panels)
+
+**Scope:** `pages/TweetDetailsPage/**` (`TweetDetailsPage`, `useTweetDetails`, `useReplyThread`, `ReplyThread`,
+`ReplyCell`, `ReplyComposer`, `ReplyEditor`, `ReplyTextField`), `components/shared/PostList/PostCell/**` (`PostCell`,
+`PostActions`, `FillIcon`, `PostImages`) and `components/shared/TabPanels/**` (`TabPanels`, `useTabScrollMemory`,
+`useTabVisits`), with the code they call: `api/replies.ts`, `api/tweetDetails.ts`, `api/tweetPage.ts`,
+`api/endpoints.ts`, `hooks/useOpenTweetId.ts`, `routes.ts`, `useViewTracking`. The tweet service's `ReplyController`
+and `ReplyServiceImpl` were read to confirm what the SPA relies on; they have their own audit
+(`twitter_tweet_service/SECURITY-FINDINGS.md`). `npm audit`: found 0 vulnerabilities. Not run: the Docker stack and a
+browser, so the demonstration below is the URL arithmetic only, not a request against a live gateway.
+
+No Critical, High or Medium findings. One Low is new, and it changes the premise of finding 3.
+
+### 6. Low — the `/tweets/:tweetId` address is spliced into API paths without encoding (client-side path traversal)
+- **Location:** `src/hooks/useOpenTweetId.ts:9` (reads the route param), `src/api/endpoints.ts` (`tweetDetails`,
+  `replies`, `reply`), used by `api/tweetDetails.ts`, `api/replies.ts`, `TweetDetailsPage.tsx:36-37`.
+- **Mechanism:** this is the first place where text the user (or a link someone sends them) controls reaches an
+  unencoded path segment. `matchPath` returns `%2F` as `/`, and the browser's URL parser collapses `..` and `%2E%2E`
+  segments before the request leaves. So `tweetId` is a path of the attacker's choosing under `/api/` (one `..` stays
+  inside `/api/v1/`). `fetchTweetDetails` sends it as an authenticated `GET` with the session cookie, and
+  `fetchReplies` as `GET .../replies?size=20`. It is Low because: the method is fixed to `GET` on the first call and
+  the second adds `/replies`; the response is only parsed as a post (a different shape ends in the `failed` state and
+  nothing is displayed or sent anywhere); the cookie is `SameSite=Strict`, and I found no `GET` endpoint with a side
+  effect; and the reply writes (`POST`/`PUT`/`DELETE`) only run after the details call returned a valid post, which
+  needs a real tweet id. It is the same class as finding 3, but that finding's premise ("no user input reaches them
+  today") no longer holds for `tweetId`. The server side holds: the tweet service binds `tweetId` and `replyId` as
+  `UUID` path variables, so a non-UUID segment is a 400 there.
+- **Demonstration:** `matchPath('/tweets/:tweetId', pathname)` (react-router 7, run in node against `node_modules`),
+  then the URL the browser would request:
+  - `/tweets/..%2F..%2Fauth%2Flogout` gives `tweetId` `../../auth/logout` and a request to `/api/auth/logout`.
+  - `/tweets/..%2Fusers%2Fme` gives `../users/me` and a request to `/api/v1/users/me`.
+  - `/tweets/%2E%2E` gives `%2E%2E` and a request to `/api/v1/`; the replies call goes to `/api/v1/replies`.
+  In a browser: be signed in, open `http://localhost:5173/tweets/..%2Fusers%2Fme`, and read the
+  `GET /api/v1/users/me` in DevTools, Network (not run here).
+- **Suggested fix (not applied):** encode every path segment in `ENDPOINTS` (`encodeURIComponent`, as `user` and
+  `follow` already do), or reject a `tweetId` that is not a UUID in `useOpenTweetId` and show `POST NOT FOUND`.
+  Together with finding 3's `backendPath` check, this closes the whole class.
+- **Status: fixed 2026-10-07.** `useOpenTweetId` returns the id only when it is a UUID, and `TabPanels` redirects any
+  other `/tweets/...` address to `/feed` (a bare `..` cannot be neutralised by encoding: the URL parser treats `%2E%2E` as
+  a dot segment too). `ENDPOINTS` also encodes every id segment now (`api/endpoints.test.ts`), which closes finding 3's
+  path part for ids; its `backendPath` part stays informational. Tests: `TabPanels.test.tsx`
+  (`should_open_the_feed_when_the_tweet_id_is_not_a_uuid`), `endpoints.test.ts`.
+
+### Update to finding 5 (still open): the reply thread is a fifth `usePagedList` consumer
+`useReplyThread` passes `fetchReplies` to `usePagedList`, so a response with `items: []` and a non-advancing
+`nextCursor`, or one that omits `nextCursor`, now also loops on the details page. The backend as written emits an
+explicit `nextCursor: null` and `ReplyCursorCodec.encode(createdAt, id)` of the last row always advances, so there is no
+trigger today. Fixing the hook fixes all five lists.
+
+## Considered, clean or not applicable (tweet details, post cell, tab panels)
+- **XSS and markup injection:** reply bodies, post bodies and usernames reach the DOM only as React text children
+  (`<p dir="auto">{stripBidiControls(...)}</p>`, `{author.username}`) or inside plain-string `aria-label`s. Grep of
+  `src/` (non-test) for `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `new Function`, `document.write`,
+  `localStorage`, `sessionStorage`, `document.cookie`, `window.open`, `location.href|assign|replace`, `href={` and
+  `target=` found nothing. `FillIcon` builds `d`, `viewBox` and `clipPath` from constants and `useId`, never from data.
+  Reply text is sent as JSON (`JSON.stringify({ content })`) and shown in a `<textarea>` `value`, so editing a hostile
+  reply cannot inject markup either.
+- **Bidi spoofing in replies:** `ReplyCell` runs the body through `stripBidiControls` and sets `dir="auto"`, as `PostCell`
+  does for posts, so an RTL-override reply cannot reorder the username or the EDIT/DELETE buttons next to it.
+- **Open redirect / SSRF:** `navigate(tweetPath(post.id))`, the reply `Link` and the BACK link only build
+  `/tweets/<server id>` or `ROUTES.feed`; the prefix is fixed, so a server id cannot make a `//host` target. `navigate(-1)` is
+  used only when the router has an earlier entry of this app. `<img src>` is `ENDPOINTS.tweetImage(tweetId, image.id)`
+  (fixed prefix plus ids from the server) or the avatar path from `toPictureUrl` (finding 3's note applies).
+- **Authorization / IDOR on replies:** `canEdit` and `canDelete` in `ReplyCell` only decide which buttons show. The
+  server decides: `updateContentIfAuthor(replyId, tweetId, callerId, ...)` is one conditional write, and `delete` allows
+  the reply's author or the post's author and answers `ReplyNotFoundException` (404) otherwise, so there is no
+  "exists but forbidden" oracle. The caller id comes from the gateway's `X-User-Id`, never from the body. A forged
+  `PUT`/`DELETE` from another account is refused (code read, not run).
+- **Resource limits:** the 280-character cap and the empty check run in `canPublish` in the browser and again in
+  `ReplyServiceImpl.validateText` (code points of the stripped text). There is no rate limit on creating replies; it is
+  already an accepted gap (`replies-design.md:169`, `twitter_tweet_service/PLAN.md:242`), so it is not repeated.
+  `ReplyComposer` and `ReplyEditor` allow one request in flight (`isSending`, `isSaving`); `ReplyCell` ignores a second
+  delete while `isDeleting`.
+- **Caching and state races:** the page keeps `sentReplies`, `editedReplies` and `removedReplyIds` in memory only; the
+  `<section key={openTweetId}>` in `TabPanels` remounts the page per post, so one post's replies, drafts and removed ids do
+  not carry into another. `useTweetDetails` drops a response that lands after unmount (`isCancelled`). The like and
+  save buttons keep one request in flight (`useOptimisticToggle`). A 404 on delete hides the reply locally; the
+  server also answers 404 for "not yours", so the UI can show a reply as gone that still exists. That is a display
+  quirk, not a security issue (nothing was deleted).
+- **View counting:** `data-tweet-id={post.id}` comes from the server response, and the reporter deduplicates ids per
+  page and per viewer on the server (see 2026-10-04). Finding 6 cannot be used to report a chosen id: a post must parse
+  as a post first.
+- **Tab panels:** `useTabScrollMemory` and `useTabVisits` handle only numbers, the `TabId` union and DOM events. No
+  storage, URL, network or markup sink. `useActiveTab` and `useOpenTweetId` read `pathname` only (no query, no hash).
+  Hidden tab pages stay mounted; their effect on request volume is finding 5.
+- **Information disclosure:** failure paths show fixed strings (`Couldn't send. Try again.`, `POST NOT FOUND`, ...).
+  Server messages are not rendered on this page (`describeSendFailure` ignores `ApiError.messages`).
+- **Injection (server-side), CSRF, secrets, dependencies, caching of untrusted keys, ReDoS:** none new here. CSRF rests
+  on the `SameSite=Strict` cookie as before, now also covering `POST`/`PUT`/`DELETE` on replies. The regexes touched
+  are `bidi.ts` and none are new. `npm audit`: 0 vulnerabilities.
+- **Still open, unchanged, outside this scope:** findings 1 (no CSP or referrer policy in `index.html`) and 2
+  (`COOKIE_SECURE` defaults to false) were not re-checked in this pass.

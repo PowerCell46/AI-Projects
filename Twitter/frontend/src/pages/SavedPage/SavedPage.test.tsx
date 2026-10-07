@@ -53,6 +53,7 @@ const SAVED_POST = {
     savedByMe: true,
     likes: 0,
     likedByMe: false,
+    replyCount: 0,
     content: 'a saved post',
     createdAt: '2026-10-04T11:55:00.000Z',
     updatedAt: '2026-10-04T11:55:00.000Z',

@@ -1,10 +1,18 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render as renderWithoutRouter, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageRequest } from '../../../api/paging';
 import type { TweetItem, TweetPage } from '../../../api/tweetPage';
 import { IntersectionObserverDouble, intersect, observersWatching } from '../../../test/intersectionObserver';
 import PostList from './PostList';
+
+
+// Every cell holds a router link, so each render sits in a router; the wrapper survives `rerender`.
+function render(list: ReactElement) {
+    return renderWithoutRouter(list, { wrapper: MemoryRouter });
+}
 
 
 vi.mock('../../../api/likes', () => ({
@@ -53,6 +61,7 @@ function post(id: string, createdAt = '2026-10-04T11:55:00.000Z'): TweetItem {
         savedByMe: false,
         likes: 0,
         likedByMe: false,
+        replyCount: 0,
         content: `content of ${id}`,
         createdAt,
         updatedAt: createdAt,

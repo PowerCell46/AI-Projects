@@ -3,6 +3,10 @@
     border: 1px solid var(--pale-cell-border);
 }
 
+.post-cell[data-clickable='true'] {
+    cursor: pointer;
+}
+
 .post-cell-author {
     display: flex;
     align-items: center;

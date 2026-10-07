@@ -1,0 +1,22 @@
+.tweet-details-back {
+    display: inline-flex;
+    align-items: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    margin-bottom: 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.2em;
+    text-decoration: none;
+    color: var(--pale-secondary);
+    transition: color 340ms;
+}
+
+.tweet-details-back:hover {
+    color: var(--pale);
+}
+
+.tweet-details-back:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}

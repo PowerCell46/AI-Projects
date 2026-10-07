@@ -1,12 +1,12 @@
 import type { PageRequest } from '../../../api/paging';
 import type { TweetItem, TweetPage } from '../../../api/tweetPage';
 import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
+import { useMinuteClock } from '../../../hooks/useMinuteClock';
 import { bottomStateOf } from '../../../utils/bottomState';
 import PostListStatus from '../PostListStatus/PostListStatus';
 import type { EmptyAction } from '../PostListStatus/PostListStatus';
 import NewPostsButton from './NewPostsButton/NewPostsButton';
 import PostCell from './PostCell/PostCell';
-import { useMinuteClock } from './useMinuteClock';
 import { useNewPosts } from './useNewPosts';
 import { usePostList } from './usePostList';
 import { useReloadEmptyList } from './useReloadEmptyList';

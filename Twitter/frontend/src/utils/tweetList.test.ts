@@ -10,6 +10,7 @@ function item(id: string, createdAt = '2026-10-04T10:00:00Z'): TweetItem {
         savedByMe: false,
         likes: 0,
         likedByMe: false,
+        replyCount: 0,
         content: `tweet ${id}`,
         createdAt,
         updatedAt: createdAt,

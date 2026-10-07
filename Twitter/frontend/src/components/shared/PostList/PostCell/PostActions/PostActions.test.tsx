@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { likeTweet, unlikeTweet } from '../../../../../api/likes';
 import { saveTweet, unsaveTweet } from '../../../../../api/savedTweets';
@@ -36,13 +37,16 @@ beforeEach(() => {
 
 function renderActions(props: Partial<ComponentProps<typeof PostActions>> = {}) {
     return render(
-        <PostActions
-            tweetId={TWEET_ID}
-            isSavedInitially={false}
-            isLikedInitially={false}
-            likeCount={0}
-            {...props}
-        />,
+        <MemoryRouter>
+            <PostActions
+                tweetId={TWEET_ID}
+                isSavedInitially={false}
+                isLikedInitially={false}
+                likeCount={0}
+                replyCount={0}
+                {...props}
+            />
+        </MemoryRouter>,
     );
 }
 
@@ -262,5 +266,19 @@ describe('like from the server state', () => {
 
         expect(likeButton().getAttribute('aria-pressed')).toBe('false');
         expect(likeButton().textContent).toBe('Like0');
+    });
+});
+
+describe('the reply link', () => {
+    it('should_show_the_formatted_reply_count_when_the_post_has_replies', () => {
+        renderActions({ replyCount: 1299 });
+
+        expect(screen.getByRole('link', { name: /^replies/i }).textContent).toContain('1.2K');
+    });
+
+    it('should_point_at_the_tweet_details_route_when_rendered', () => {
+        renderActions();
+
+        expect(screen.getByRole('link', { name: /^replies/i }).getAttribute('href')).toBe(`/tweets/${TWEET_ID}`);
     });
 });

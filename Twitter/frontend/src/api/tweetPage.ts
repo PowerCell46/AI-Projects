@@ -21,6 +21,7 @@ export interface TweetItem {
     savedByMe: boolean;
     likes: number;
     likedByMe: boolean;
+    replyCount: number;
     content: string;
     createdAt: string;
     updatedAt: string;
@@ -30,13 +31,17 @@ export interface TweetItem {
 
 export type TweetPage = Page<TweetItem>;
 
-function withPictureUrl(tweet: TweetItem): TweetItem {
+export function withAuthorPictureUrl(author: TweetAuthor): TweetAuthor {
+    return {
+        ...author,
+        profilePictureUrl: toPictureUrl(author.profilePictureUrl),
+    };
+}
+
+export function withPictureUrl(tweet: TweetItem): TweetItem {
     return {
         ...tweet,
-        author: {
-            ...tweet.author,
-            profilePictureUrl: toPictureUrl(tweet.author.profilePictureUrl),
-        },
+        author: withAuthorPictureUrl(tweet.author),
     };
 }
 

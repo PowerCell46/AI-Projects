@@ -1,0 +1,63 @@
+.reply-text-field-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.59375rem;
+    letter-spacing: 0.18em;
+    color: var(--pale-secondary);
+}
+
+.reply-text-field-text {
+    display: block;
+    width: 100%;
+    min-height: 4.5rem;
+    padding: 0 0 0.75rem;
+    resize: none;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    font-family: var(--font-headline);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    color: var(--input-text);
+}
+
+.reply-text-field-rule {
+    position: relative;
+    height: 1px;
+    background: var(--pale-textarea-rule);
+}
+
+/* The rule fills from the left while the textarea has focus, as in the compose modal. */
+.reply-text-field-rule::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 720ms var(--e);
+}
+
+.reply-text-field-text:focus + .reply-text-field-rule::after {
+    transform: scaleX(1);
+}
+
+.reply-text-field-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.reply-text-field-counter {
+    font-size: 0.59375rem;
+    letter-spacing: 0.14em;
+    font-variant-numeric: tabular-nums;
+    color: var(--pale-secondary);
+}
+
+.reply-text-field-counter[data-over-limit='true'] {
+    color: var(--alarm);
+}
