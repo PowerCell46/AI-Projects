@@ -1,6 +1,6 @@
 ---
 name: java-code-style
-description: Java/Spring code style and conventions for this codebase — naming, class layout, field/annotation ordering, blank-line rules, interface-over-implementation, DRY, JavaDoc policy, DTO/package layout, Lombok, JPA, transactions, utility classes, exceptions, logging. Use before writing or editing any Java file, and when judging existing code for style.
+description: Java code style for this codebase. Use always when writing Java code.
 ---
 
 # Java code style
@@ -17,19 +17,15 @@ Examples use `// flag` for what to avoid and `// prefer` for what to write. When
 
 - **Readability is the end goal.** Write clean, easy-to-test code: small single-purpose methods, no hidden side effects,
   one level of abstraction per method.
-- **Keep methods short.** When a method does more than one thing, or needs a comment to separate its steps, split it into
-  well-named private methods.
+- **Keep methods short.** When a method does more than one thing, or needs a comment to separate its steps, split it
+  into well-named private methods.
 - **DRY.** Don't duplicate logic. Extract shared behaviour into a common method, class or abstraction instead of
   copy-pasting it.
-- **Match the existing style before writing new code.** Where this skill is silent, look at the surrounding class,
-  package or a similar existing service for its conventions (method/variable naming, parameter ordering, spacing) and
-  follow them. This applies to hand-written and AI-generated code alike.
 
 ## Naming
 
-- **Names must be self-explanatory.** Take effort naming variables, methods, classes and interfaces. A reader should know
-  what something is or does from its name alone, without opening the body.
-- Follow the naming convention already used in the surrounding code.
+- **Names must be self-explanatory.** Take effort naming variables, methods, classes and interfaces. A reader should
+  know what something is or does from its name alone, without opening the body.
 - Constants are `UPPER_SNAKE_CASE` (`MAX_RETRIES`, `INITIAL_INTERVAL_MILLIS`). Put the unit in the name when the type
   doesn't carry it.
 - **Magic numbers:** name them or extract them to a constant. Skip this when the meaning is obvious from context (for
@@ -325,11 +321,12 @@ See `references/builder.md`.
 
 DTOs live in a package that states their direction, and their name ends with a matching suffix:
 
-| Package          | Suffix        | Holds                        |
-| ---------------- | ------------- | ---------------------------- |
-| `/DTOs/request`  | `RequestDTO`  | inbound request bodies       |
-| `/DTOs/response` | `ResponseDTO` | anything the API returns     |
-| `/DTOs/event`    | `EventDTO`    | Kafka message payloads       |
+| Package          | Suffix        | Holds                                      |
+| ---------------- | ------------- | ------------------------------------------ |
+| `/DTOs/request`  | `RequestDTO`  | inbound request bodies                     |
+| `/DTOs/response` | `ResponseDTO` | anything the API returns                   |
+| `/DTOs/event`    | `EventDTO`    | Kafka message payloads                     |
+| `/DTOs/client`   | `ClientDTO`   | what another service answers to our calls  |
 
 Don't double a suffix that is already part of the name (`ErrorResponseDTO`, not `ErrorResponseResponseDTO`). One DTO
 never serves both directions. Split it even if the fields currently match, so a request field can't leak into the
@@ -352,8 +349,8 @@ DTOs/request/SubscribeRequestDTO.java
   This applies to every package, including `services/interfaces`, `services/implementations`, `entities` and
   `utilities`, and to the mirrored test packages.
 - **Count before you add.** Before creating or moving a `.java` file, count the `*.java` files directly in the target
-  package (`ls <package> | wc -l`). If the new file would make it more than 5, group the package first, then add the
-  file to its subpackage. Interfaces, implementations and tests use the same subpackage names.
+  package (`ls <package>/*.java | wc -l`). If the new file would make it more than 5, group the package first, then add
+  the file to its subpackage. Interfaces, implementations and tests use the same subpackage names.
 - Subpackage names are lowercase, plural where the domain is a noun, with words run together
   (`interesttopics`, `subscriptions`).
 - A class used across every domain (`ErrorResponseDTO`, `RequestBodyTooLargeException`) stays at the package root
@@ -361,16 +358,16 @@ DTOs/request/SubscribeRequestDTO.java
 
 ### Enums
 
-Enums in `/entities` live in `entities/enums` (`entities/enums/Role.java`, not `entities/Role.java`). That keeps
-`/entities` easy to scan for the actual persisted aggregates.
+Enums in `/entities` or `/documents` live in an `enums` subpackage (`entities/enums/Role.java`, not
+`entities/Role.java`). That keeps the package easy to scan for the actual persisted aggregates.
 
 ## Lombok
 
 Used freely: `@RequiredArgsConstructor`, `@Data`, `@Builder`, `@Slf4j`, `@Getter`/`@Setter`, Lombok's `@Value`
 (`lombok.Value`, the immutable-class annotation, not Spring's `@Value` property injection), etc.
 
-No records. Model data with plain classes and Lombok annotations, even where a record would otherwise fit. This applies
-to DTOs and entities alike.
+**No records.** Model data with plain classes and Lombok annotations, even where a record would otherwise fit. This
+applies to DTOs and entities alike.
 
 Always write field modifiers explicitly, even when a Lombok annotation (`@Value`, `@FieldDefaults`) would add them.
 A reader should see a field's access and mutability without knowing what the class annotation does.
@@ -429,10 +426,8 @@ that needs a Spring dependency belongs in a service, not a utility.
 Use `@Slf4j` in Spring-managed beans (services, controllers, jobs, listeners, filters, configurations). Never log from
 entities, DTOs or utilities.
 
-- **INFO**: meaningful business events (subscription created, news event consumed, notification email sent).
-- **WARN**: recoverable, unexpected situations (retrying a connection, skipping a malformed event).
-- **ERROR**: failures that affect the outcome. Always pass the exception: `log.error("...", e)`.
-- **DEBUG**: never commit debug logs. Use them locally and remove them before pushing.
+- `log.error` always passes the exception: `log.error("...", e)`.
+- Never commit DEBUG logs. Use them locally and remove them before pushing.
 - Use `{}` placeholders, never string concatenation, in log calls.
 - Never log secrets: passwords, JWTs, API keys, cookie values.
 - Write log and exception messages as full sentences ending in terminal punctuation. A message that ends with a
@@ -451,21 +446,13 @@ entities, DTOs or utilities.
 
 ---
 
-## Review checklist
+## Most-missed rules
 
-When judging existing code, check in this order:
+Standard Java formatting and habits get these wrong. Check every file you write or review against them:
 
-1. Class layout order, one blank line after the opening brace, one blank line between methods.
-2. Fields: explicit modifiers (even under `@Value`), one blank line between each, ordered shortest line first within
-   each group.
-3. Annotation stacks ordered shortest first, with a multi-line annotation last.
-4. Chains of two or more calls split one call per line.
-5. A blank line before every `} catch`, `} finally`, `} else` and `} else if`, and after every block's closing `}` when
-   a statement follows. A blank line between enum constants.
-6. Declared types are interfaces. No hand-rolled JDK/library one-liners. No unnamed magic numbers.
-7. Names are self-explanatory. JavaDoc only where the name can't say it. No `.md` references in comments.
-8. DTO package and suffix. Entity enums in `entities/enums`. Count the `*.java` files in every package you touched (and
-   the package of every file you add): more than 5 means group into subpackages.
-9. `@Column` nullability is explicit. `@Transactional` only where it's needed. Builder instead of 2+ setter calls.
-10. Log levels, `{}` placeholders, no secrets, sentence punctuation (log/exception messages) and lowercase, unpunctuated
-    fragments (validation constraint messages).
+1. A blank line before every `} catch`, `} finally`, `} else` and `} else if`, and after a block's closing `}` when a
+   statement follows.
+2. Fields and annotation stacks sorted by line length, shortest first. One blank line between fields, explicit
+   modifiers even under `@Value`.
+3. Chains of two or more calls split one call per line. A blank line between enum constants.
+4. Count the `*.java` files in every package you add to: more than 5 means group into subpackages first.

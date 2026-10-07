@@ -11,8 +11,8 @@ The point of every rule here: let the types carry the meaning, so you and the ag
 ## `interface` vs `type`
 
 - `interface` for every **object shape**: props, API payloads, state objects, context values.
-- `type` only for what an interface can't express: unions, literal sets, and aliases built from utility types
-  (`Record<...>`, `Pick<...>`).
+- `type` only for what an interface can't express: unions, literal sets, function types
+  (`type UnauthorizedHandler = () => void`) and aliases built from utility types (`Record<...>`, `Pick<...>`).
 - **No inline object types**, whether in generics, parameters or return types. Every object shape gets a named
   interface.
 
@@ -69,17 +69,22 @@ const button = event.currentTarget;
 No string literal that is a URL or an app path appears outside these two files.
 
 **API URLs** live in `src/api/endpoints.ts`. Nothing else reads `import.meta.env.VITE_BASE_API_URL`. Endpoints that
-take a parameter are functions.
+take a parameter are functions, and they encode every path parameter with `segment()`, so an id like `../users`
+can't change the path.
 
 ```ts
 const BASE_URL = import.meta.env.VITE_BASE_API_URL ?? '';
 
 const API_V1 = `${BASE_URL}/api/v1`;
 
+function segment(value: string): string {
+    return encodeURIComponent(value);
+}
+
 export const ENDPOINTS = {
     feed: `${API_V1}/feed`,
     subscriptions: `${API_V1}/subscriptions`,
-    subscription: (interestTopicId: string) => `${API_V1}/subscriptions/${interestTopicId}`,
+    subscription: (interestTopicId: string) => `${API_V1}/subscriptions/${segment(interestTopicId)}`,
     auth: {
         login: `${API_V1}/auth/login`,
         register: `${API_V1}/auth/register`,
@@ -114,9 +119,17 @@ navigate(ROUTES.login);
 One module per resource in `src/api/`. Each one:
 
 - exports the request/response interfaces for its resource
-- throws its own `<Resource>ApiError` (with the HTTP `status`) on a non-OK response
+- sends through one shared request helper, which throws one shared `ApiError` (with the HTTP `status`) on a non-OK
+  response, so callers catch every API failure the same way
 - returns typed promises, so callers never see `any`
+
+## Module layout
+
+A `.ts` module that isn't a component follows this order: constants → types and interfaces → module state (`let`) →
+classes → functions. This matches the component anatomy in `react.md`. Declare a function before the code that calls
+it, so the file reads from the building blocks up. Exported and private functions mix freely within that order.
 
 ## Exports
 
-Components are default exports. Everything else (types, constants, functions, hooks) uses named exports.
+Components are default exports, except a context's provider, which is a named export next to its `use<Name>()`
+hook. Everything else (types, constants, functions, hooks) uses named exports.

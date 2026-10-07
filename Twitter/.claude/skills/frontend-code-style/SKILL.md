@@ -1,16 +1,12 @@
 ---
 name: frontend-code-style
-description: Frontend code style for this codebase — React + TypeScript + plain CSS: formatting, naming, TS type rules, URL constants, component anatomy and extraction, state/context, tables (TanStack), CSS units/naming/scaling. Use before writing or editing any `.ts`, `.tsx` or `.css` file under `frontend/`, and when judging existing frontend code for style.
+description: Frontend code style for this codebase. Use always when writing frontend code (`.ts`, `.tsx`, `.css`).
 ---
 
 # Frontend code style
 
-**Precedence:** `frontend/CLAUDE.md` hard rules → this skill → the surrounding code. Match the surrounding code
-wherever this skill is silent; where existing code breaks a rule here, follow the rule, not the code.
-
-Design skills (`ui-ux-pro-max`) decide **what** it looks like (colors, type, spacing values, motion); this skill
-decides **how** it's written. When their output conflicts with a rule here (Tailwind classes, raw hex, px), translate
-it: hex → a new token in `src/index.css`, px → rem. Never paste it as is.
+**Precedence:** the repo-level `CLAUDE.md` hard rules → this skill → the surrounding code. Match the surrounding
+code wherever this skill is silent; where existing code breaks a rule here, follow the rule, not the code.
 
 This file holds what applies to every frontend file. Load the reference for the kind of file you're touching:
 
@@ -41,7 +37,6 @@ Examples use `// flag` for what to avoid and `// prefer` for what to write.
 - **Keep functions short.** When a function does more than one thing, or needs a comment to separate its steps, split
   it into well-named helpers.
 - **DRY.** Don't duplicate logic; extract it into a shared function, hook or component.
-- **Match the existing style** where this skill is silent: look at the surrounding file or a similar component first.
 
 ## Formatting & whitespace
 
@@ -50,25 +45,6 @@ Examples use `// flag` for what to avoid and `// prefer` for what to write.
 - 4-space indent in every `.ts`, `.tsx`, `.css` and config file.
 - Every statement ends with a semicolon, imports included.
 - `const` by default, `let` only when the binding is reassigned, never `var`.
-
-### Imports
-
-Exactly **two** blank lines after the last import.
-
-```ts
-// flag
-import { fetchFeed } from '../../../api/feed';
-import './Feed.css';
-
-const PAGE_SIZE = 20;
-
-// prefer
-import { fetchFeed } from '../../../api/feed';
-import './Feed.css';
-
-
-const PAGE_SIZE = 20;
-```
 
 ### No crammed one-liners
 
@@ -154,6 +130,81 @@ try {
 }
 ```
 
+### Blank line after a closing brace
+
+Leave exactly one blank line after the closing `}` of any block (`if`, `for`, `while`, `try`, `switch`) when another
+statement follows in the same scope. This doesn't apply when the next line is another closing brace, or a `} else` /
+`} catch` / `} finally`, which have their own rule above.
+
+```ts
+// flag
+if (!user) {
+    return null;
+}
+for (const reply of replies) {
+    seenIds.add(reply.id);
+}
+return seenIds;
+
+// prefer
+if (!user) {
+    return null;
+}
+
+for (const reply of replies) {
+    seenIds.add(reply.id);
+}
+
+return seenIds;
+```
+
+### Blank lines between declarations
+
+- Exactly one blank line between module-level declarations: each constant, interface, type and function.
+- No blank lines between the members of an interface, a type literal or a class's fields.
+
+```ts
+// flag
+const PAGE_SIZE = 20;
+const RETRY_DELAY_MS = 500;
+interface Page {
+
+    items: Item[];
+
+    nextCursor: string | null;
+}
+
+// prefer
+const PAGE_SIZE = 20;
+
+const RETRY_DELAY_MS = 500;
+
+interface Page {
+    items: Item[];
+    nextCursor: string | null;
+}
+```
+
+### Interface member order
+
+Data members first, callbacks (`on<Event>`) last. Within each group, required members before optional ones.
+
+```ts
+// flag
+interface PostListStatusProps {
+    onRetry: () => void;
+    emptyAction?: EmptyAction;
+    state: BottomState;
+}
+
+// prefer
+interface PostListStatusProps {
+    state: BottomState;
+    emptyAction?: EmptyAction;
+    onRetry: () => void;
+}
+```
+
 ### Method chaining
 
 - A chain of **two or more** calls puts each call on its own line, indented 4 spaces from the start of the statement.
@@ -166,8 +217,6 @@ const names = topics.filter(isActive).map((topic) => topic.name);
 logout().catch(() => {});
 
 // prefer
-const activeTopics = topics.filter(isActive);
-
 const names = topics
     .filter(isActive)
     .map((topic) => topic.name);
@@ -197,6 +246,7 @@ const [loading, setLoading] = useState(false);
 
 // prefer
 setTopics((currentTopics) => currentTopics.map((topic) => withSubscription(topic, topicId, subscribed)));
+
 const [isLoading, setIsLoading] = useState(false);
 ```
 
@@ -226,29 +276,21 @@ const CURTAIN_COVER_MS = 340;
 - **Reuse first.** Before creating a component, hook or helper, look in `src/components`, `src/hooks` and `src/utils`
   for one to reuse or extend.
 - **Don't hand-roll a built-in.** When a loop, temp variable or manual copy does what one standard call does
-  (`Object.groupBy`, `array.at(-1)`, `toSorted()`, `structuredClone`, `Array.from({ length })`), use the call, as long
-  as the result is clearer, not just shorter.
-- **Extraction thresholds** (component > 150 lines, function or effect > 30 lines, several unrelated effects) are a
-  signal to consider splitting. See `references/react.md`.
-- **Overflow**: containers shouldn't let their content spill out. See `references/css.md`.
-- **Comments**: see **Comments** above.
+  (`array.at(-1)`, `toSorted()`, `structuredClone`, `Array.from({ length })`), use the call, as long as the result
+  is clearer, not just shorter.
 
 ---
 
-## Review checklist
+## Most-missed rules
 
-When judging existing code, check the rules in this order:
+Standard formatting and habits get these wrong. Check every file you write or review against them:
 
-1. Formatting: 4 spaces, semicolons, two blank lines after imports, multi-field objects and crammed calls broken one
-   per line, braces on every `if`.
-2. `if`/`else` and `try`/`catch` blank lines; chains of 2+ calls split; promise methods on their own line.
-3. Naming: `is`/`has`/`should` booleans, units in constant names, `handle`/`on`, no vague names, no magic numbers.
-4. TypeScript (`references/typescript.md`): interfaces for object shapes, no inline object types, no `any`/`!`/
-   `@ts-ignore`, `as` only in `src/api/`, no URL or path literals outside `ENDPOINTS`/`ROUTES`.
-5. React (`references/react.md`): component anatomy order, file placement, context shape, effect cleanup, semantic
-   markup, stable `key`s, tables through `DataTable`.
-6. CSS (`references/css.md`): units, class naming, own classes only, no `!important`/IDs/inline styles, no raw colors,
-   no per-page scale var on new pages.
-
-Then mention (not as violations) any guideline misses: comments (why not what, coupling commented, no `.md`
-references), reuse, hand-rolled built-ins, extraction thresholds, overflow.
+1. A blank line at the end of every `if`/`try` branch before `} else`, `} catch` or `} finally`, and after a block's
+   closing `}` when a statement follows.
+2. One blank line between module-level declarations; none between interface members.
+3. A single call stays inline; a chain of two or more calls goes one call per line; `.then`/`.catch`/`.finally` always
+   start their own line.
+4. Objects with two or more fields, and crammed multi-argument calls, go one item per line.
+5. `as` only in `src/api/`; no URL or path literals outside `ENDPOINTS`/`ROUTES`.
+6. CSS sizes are plain `rem` that follow the root font size: no `vw`/`clamp()` sizes, no font size changed in a
+   component media query, no `height` on a box that holds text.

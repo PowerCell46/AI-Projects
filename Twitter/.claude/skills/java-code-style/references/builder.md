@@ -4,9 +4,9 @@ When constructing an object with `new X()` followed by two or more chained sette
 `@Builder` to the class and construct it with the builder instead. A single setter call doesn't
 warrant a builder — leave `new X(); x.setY(...)` as-is.
 
-On a JPA entity, `@Builder` only covers the class's own declared fields, not inherited ones (e.g.
-`CommonEntity`'s `id`/`createdAt`/`updatedAt`), so it's safe to combine with `@NoArgsConstructor` —
-Hibernate still gets its no-arg constructor for hydration. `@Builder` needs an all-args constructor
+On an entity or document, `@Builder` only covers the class's own declared fields, not inherited ones
+(e.g. `CommonEntity`'s or `CommonDocument`'s `id`/`createdAt`/`updatedAt`), so it's safe to combine
+with `@NoArgsConstructor` — Hibernate or Spring Data MongoDB still gets its no-arg constructor. `@Builder` needs an all-args constructor
 to build from, so pair it with `@AllArgsConstructor` whenever `@NoArgsConstructor` is already present
 (without it, Lombok won't generate one for you).
 
@@ -32,7 +32,8 @@ interestTopic.setCategory(category);
 @Table(name = "interest_topics")
 public class InterestTopic extends CommonEntity { ... }
 
-InterestTopic interestTopic = InterestTopic.builder()
+InterestTopic interestTopic = InterestTopic
+        .builder()
         .name(name)
         .description(description)
         .prompt(prompt)

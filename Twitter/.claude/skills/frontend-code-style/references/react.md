@@ -9,38 +9,40 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Pager.css';
 
-
 const RETRY_DELAY_MS = 500;                              // 1. module constants
 
-function remainingCount(total: number, loaded: number): number {   // 2. pure helpers (no state, no props)
+type PagerStatus = 'idle' | 'loading';                   // 2. other types and interfaces
+
+function remainingCount(total: number, loaded: number): number {   // 3. pure helpers (no state, no props)
     return Math.max(0, total - loaded);
 }
 
-interface PagerProps {                                   // 3. props interface, right above the component
+interface PagerProps {                                   // 4. props interface, right above the component
     loaded: number;
     total: number;
     onLoadMore: () => void;
 }
 
-function Pager({ loaded, total, onLoadMore }: PagerProps) {        // 4. `function` declaration, props destructured
-    const navigate = useNavigate();                      // 5. hooks: router/context → useState → useRef
-    const [isLoading, setIsLoading] = useState(false);
+function Pager({ loaded, total, onLoadMore }: PagerProps) {        // 5. `function` declaration, props destructured
+    const navigate = useNavigate();                      // 6. hooks: router/context → custom → useState → useRef
+    const retry = useRetry(RETRY_DELAY_MS);
+    const [status, setStatus] = useState<PagerStatus>('idle');
     const timeoutIdsRef = useRef<number[]>([]);
 
-    useEffect(() => { ... }, [...]);                     // 6. effects
+    useEffect(() => { ... }, [...]);                     // 7. effects
 
-    function handleLoadMore() { ... }                    // 7. handlers
+    function handleLoadMore() { ... }                    // 8. handlers
 
-    const nextCount = remainingCount(total, loaded);     // 8. derived values, right before render
+    const nextCount = remainingCount(total, loaded);     // 9. derived values, right before render
 
-    if (total === 0) {                                   // 9. early returns
+    if (total === 0) {                                   // 10. early returns
         return null;
     }
 
-    return ( ... );                                      // 10. JSX
+    return ( ... );                                      // 11. JSX
 }
 
-export default Pager;                                    // 11. default export at the bottom
+export default Pager;                                    // 12. default export at the bottom
 ```
 
 - Pure helpers live at module level, above the component, so they aren't recreated on every render.
@@ -135,6 +137,27 @@ useEffect(() => {
 // prefer
 <article className="topic-card" data-subscribed={topic.subscribed}>
     <button type="button" className="topic-card-button" onClick={handleToggle}>
+```
+
+## JSX attributes
+
+- An opening tag that passes ~120 characters, or has four or more attributes, puts each attribute on its own line.
+  The closing `>` or `/>` goes on its own line, level with the tag.
+- Attribute order: `key` → identity (`id`, `name`, `type`) → `className` → `data-*` and `aria-*` → other props →
+  `ref` → event handlers (`on*`) last.
+
+```tsx
+// flag
+<button onClick={handleDelete} ref={deleteButtonRef} className="reply-action" type="button" data-action="delete">
+
+// prefer
+<button
+    type="button"
+    className="reply-action"
+    data-action="delete"
+    ref={deleteButtonRef}
+    onClick={handleDelete}
+>
 ```
 
 ## Loading states
