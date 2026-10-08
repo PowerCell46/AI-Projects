@@ -1,11 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ENDPOINTS } from './endpoints';
 import { setUnauthorizedHandler } from './http';
-import { fetchPeople, fetchUserProfile, followUser, unfollowUser } from './users';
+import { fetchPeople, fetchUserProfile, followUser, unfollowUser, updateProfile, uploadProfilePicture } from './users';
 import { fetchMock, installFetchStub, respondWith } from '../test/fetchStub';
+import { userProfile } from '../test/userProfile';
 
 
 installFetchStub();
+
+function sentForm(): FormData {
+    const init = fetchMock.mock.calls[0][1];
+
+    if (!(init?.body instanceof FormData)) {
+        throw new Error('Expected the request body to be FormData.');
+    }
+
+    return init.body;
+}
 
 describe('fetchUserProfile', () => {
     it('should_get_the_profile_of_the_username', async () => {
@@ -70,6 +81,89 @@ describe('fetchUserProfile', () => {
         );
 
         await expect(fetchUserProfile('ghost')).rejects.toMatchObject({ status: 404 });
+    });
+});
+
+describe('fetchUserProfile fields', () => {
+    it('should_return_the_bio_location_join_date_counts_and_follow_state', async () => {
+        const profile = userProfile({
+            bio: 'Builds boats.',
+            location: 'Sofia',
+            followersCount: 1204,
+            followingCount: 31,
+            followedByMe: true,
+        });
+        respondWith(200, profile);
+
+        await expect(fetchUserProfile('peter_g')).resolves.toEqual(profile);
+    });
+});
+
+describe('updateProfile', () => {
+    it('should_patch_only_the_given_fields_as_json', async () => {
+        respondWith(200, userProfile({ location: 'Plovdiv' }));
+
+        await updateProfile({ location: 'Plovdiv' });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            ENDPOINTS.me,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ location: 'Plovdiv' }),
+                credentials: 'include',
+            },
+        );
+    });
+
+    it('should_return_the_saved_profile_with_the_picture_on_the_api_origin', async () => {
+        respondWith(200, userProfile({ profilePictureUrl: '/api/v1/files/pic-2' }));
+
+        const profile = await updateProfile({ bio: 'hi' });
+
+        expect(profile.profilePictureUrl).toBe(ENDPOINTS.backendPath('/api/v1/files/pic-2'));
+    });
+
+    it('should_reject_with_400_when_the_server_refuses_the_values', async () => {
+        respondWith(
+            400,
+            { messages: ['bio must be at most 160 characters'] },
+        );
+
+        await expect(updateProfile({ bio: 'x' })).rejects.toMatchObject({
+            status: 400,
+            messages: ['bio must be at most 160 characters'],
+        });
+    });
+});
+
+describe('uploadProfilePicture', () => {
+    it('should_put_the_file_as_multipart_without_a_content_type_header', async () => {
+        respondWith(200, userProfile({ profilePictureUrl: '/api/v1/files/pic-3' }));
+        const photo = new File(
+            ['abc'],
+            'me.png',
+            { type: 'image/png' },
+        );
+
+        const profile = await uploadProfilePicture(photo);
+
+        const init = fetchMock.mock.calls[0][1];
+        expect(fetchMock.mock.calls[0][0]).toBe(ENDPOINTS.profilePicture);
+        expect(init?.method).toBe('PUT');
+        expect(init?.credentials).toBe('include');
+        expect(init?.headers).toBeUndefined();
+        expect(sentForm().get('file')).toBe(photo);
+        expect(profile.profilePictureUrl).toBe(ENDPOINTS.backendPath('/api/v1/files/pic-3'));
+    });
+
+    it('should_reject_with_415_when_the_file_is_not_an_image', async () => {
+        respondWith(
+            415,
+            { messages: ['Unsupported image type.'] },
+        );
+
+        await expect(uploadProfilePicture(new File([''], 'a.gif'))).rejects.toMatchObject({ status: 415 });
     });
 });
 

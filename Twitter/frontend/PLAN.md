@@ -1,7 +1,7 @@
 # Twitter Frontend — plan
 
 **Status: phases 4–5 (profile view: API, then UI; `profile-view-design.md`) designed via `/grill-me` on 2026-10-08
-(Q40–Q59), not started.** Phase 3 (tab row, People, back-fill on follow) designed via `/grill-me` on 2026-10-04 (Q24–Q39) and built
+(Q40–Q59) and built 2026-10-08 (steps 25–40; the UI's visual check was waived).** Phase 3 (tab row, People, back-fill on follow) designed via `/grill-me` on 2026-10-04 (Q24–Q39) and built
 2026-10-04 (steps 14–24; the visual check was waived).** Phase 2 (feed) was designed via `/grill-me` (Q1–Q23) and built 2026-10-04. Phase 1 (the "Hadal Descent"
 auth flow) was built 2026-10-01; its plan is in git history (`git show 95502e1:./PLAN.md` from this folder) and its
 still-open items are under "Carried over" below. The replies UI and the tweet page are phase 3 of
@@ -25,55 +25,14 @@ touching any `.ts`/`.tsx`/`.css`.
 | 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
 
 | 4 | Profile API (steps 25–29) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08" |
-| 5 | Profile UI (steps 30–40) | — | — |
+| 5 | Profile UI (steps 30–40) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08 (profile page ...)" |
 
 Likes UI (real counts, `/liked`, the stub removed): phase 5 of `../twitter_timeline_service/PLAN.md`.
 
-## Phases 4–5 — Profile view
+## Phases 4–5 — Profile view ✅ **Done** (2026-10-08)
 
-Brief: `profile-view-design.md` (§-numbers below). Designed via `/grill-me` 2026-10-08 (Q40–Q59). Phase 4 makes the API
-complete; phase 5 builds the UI on it and starts only after phase 4's final gate passes.
-
-### What exists and what is missing
-
-| Need | Today | Change |
-|---|---|---|
-| Profile read | `GET /api/v1/users/{username}`: bio, location, `createdAt`, counts, `followedByMe`, picture | none |
-| Email (edit sheet) | `GET /api/v1/auth/me` → the session's `AuthUser` | none (read from `AuthContext`) |
-| Save bio, location | `PUT /api/v1/users/me`, full replace (a missing field is wiped), `@Size` counts UTF-16 units, location 30 | `PATCH`, partial, code points, location 60 (step 25) |
-| Photo | `PUT /api/v1/users/me/profile-picture`, JPEG / PNG / WEBP ≤ 5 MB | none (Q46) |
-| One person's tweets | internal `by-author?since=&limit=` for back-fill only (ids and `createdAt`) | paged internal read (step 26) + timeline `author-tweets` (27, 28) |
-| Tweet count | nothing | `GET /api/v1/tweets/count?authorId=` (step 26) |
-| Menu entry | `SAVED TWEETS`, `LIKED TWEETS`, `LOG OUT` | `PROFILE` first (step 35) |
-
-### Design in short
-
-- **Route (Q40, Q49):** `/users/:username` for anyone; `EDIT` only when the username is yours (case-insensitive), `FOLLOW`
-  otherwise (Q50). A third non-tab panel of `TabPanels`, like `/tweets/:tweetId`: feed and People stay mounted, Back
-  lands on the same spot, no tab row. `useActiveTab` must not read `/users/x` as PEOPLE.
-- **Ways in (Q41, Q42):** a post cell's author name and avatar are links (the cell's open-the-tweet click already skips
-  links); a People card opens the profile on a click anywhere except `FOLLOW`, and its name is a real link for keyboard
-  and screen readers. Menu: `PROFILE` first (Q55). Reply authors stay plain (gap).
-- **Loading (Q43, Q44):** profile first; then the tweet count and the first page of `author-tweets/{id}` in parallel.
-  `PostList` unchanged, `fetchPage` bound to the profile's id.
-- **Masthead (Q51):** username once in the name slot, no handle line; initials from the username; empty bio / location
-  omitted (§3); `JOINED OCT 2026`. Stats not clickable (Q56); `TWEETS · n` in the stats and the section header.
-- **Save (Q45, Q47):** `PATCH` with only the changed fields; nothing changed → close, no request. A picked photo is a change:
-  preview at once, uploaded on `SAVE` after the `PATCH`. Text saved but photo failed → sheet stays open, error by the
-  photo row, the text counts as saved.
-- **After a new photo (Q48):** masthead and header avatar update at once (setter through `Shell`'s outlet context); posts
-  already on screen keep the old picture until a reload — **a deliberate shortcut**, recorded under Accepted gaps and
-  in `CLAUDE.md`.
-- **Discard (Q53):** `CANCEL` turns into `DISCARD CHANGES?` for 3 s; a second `CANCEL` or `Escape` discards; blur or timeout
-  disarms (the `UNFOLLOW?` pattern).
-- **Own posts (Q52):** on your own profile a post you publish shows at the top at once and the count goes up by 1
-  (`ownPosts`). Count = the server's count read on open + your posts published while the page is open.
-- **Not found (Q54):** `404` → `USER NOT FOUND` (`PostListStatus`, like `POST NOT FOUND`); other failures → `SIGNAL LOST` /
-  `TRY AGAIN`.
-- **Limits (Q46, Q58):** bio ≤ 160, location ≤ 60, both trimmed and counted in code points on both sides; photo JPG / PNG /
-  WEBP ≤ 5 MB, hint `JPG, PNG OR WEBP · MAX 5 MB` (departs from §4's `JPG OR PNG · MAX 2 MB`). No cropping: centred
-  square via `object-fit: cover` (§5).
-- **Birthdate (Q59):** untouched; `PATCH` still accepts it, the UI neither shows nor sends it.
+Brief: `profile-view-design.md` (§-numbers below). Designed via `/grill-me` 2026-10-08 (Q40–Q59). Phase 4 made the API
+complete; phase 5 built the UI on it.
 
 ### What was built (phase 4, Profile API, steps 25–29)
 
@@ -96,51 +55,33 @@ complete; phase 5 builds the UI on it and starts only after phase 4's final gate
 - **Audit (2026-10-08, `SECURITY-FINDINGS.md`):** one Medium (no rate limit, accepted gap below), three Lows (under
   Left open). Step 29's gate was waived for the Medium.
 
-### Steps — phase 5, Profile UI
+### What was built (phase 5, Profile UI, steps 30–40)
 
-30. **Foundation.** `ROUTES.profile` (`/users/:username`) + `profilePath`; `ENDPOINTS.me`, `authorTweets`, `tweetCount`,
-    every segment encoded; `UserProfile` gains `bio`, `location`, `createdAt`, the counts, `followedByMe`;
-    `updateProfile` (`PATCH`, only the given fields), `uploadProfilePicture`, `fetchTweetCount`, `fetchAuthorTweets`.
-    Unit-tested on the stubbed `fetch`. **Gate:** build, lint, test clean.
-31. **Route and panel (Q49).** `TabPanels` renders `ProfilePage` as a third non-tab panel keyed by the username;
-    `useOpenUsername` (a username that fails the registration pattern shows `USER NOT FOUND` without a request);
-    `useActiveTab` no longer matches `/users/x`; scroll to top on open; Back restores the feed's place
-    (`useTabScrollMemory`). **Gate:** component tests green (`TabPanels`, the hooks).
-32. **Read view (§3, Q51, Q54, Q56).** Masthead, stats (full accessible text: "1,204 followers"), `TWEETS · n` header,
-    `PostList` on `fetchAuthorTweets`, `END OF TWEETS`, `NO TWEETS YET`, `USER NOT FOUND`, `SIGNAL LOST`; omitted empty
-    fields; ≤ 620 px wrap; contrast of `.40` against `--bg` checked (raise to `.52` as elsewhere if under 4.5:1).
-    **Gate:** component tests green.
-33. **Follow on other profiles (Q50).** `FollowButton` and `useFollowPhase` move from `PersonCard` to a shared place; the
-    profile shows it in the `EDIT` spot; followers count = server + your change; `onFollowChanged` fires. People tests
-    unchanged in behaviour. **Gate:** component tests green.
-34. **Links in (Q41, Q42).** `PostCell` author name and avatar → `profilePath` links; `PersonCard` click-anywhere
-    except `FOLLOW` (and the end of a text selection), name is a link. `CLAUDE.md`'s "cards are not links" rewritten.
-    **Gate:** component tests green.
-35. **Menu (Q55).** `PROFILE` first in `UserMenu` → your profile; arrow-key order and tests updated.
-    **Gate:** component tests green.
-36. **Edit sheet, text fields (§4, §5, Q45, Q53).** `role="dialog"`, `aria-modal`, focus trap, scroll lock (`data-scroll-locked`
-    as compose), bio autofocus after ~80 ms, focus back to `EDIT`; `EMAIL` and `USERNAME` as static text with `LOCKED` and
-    an accessible reason; bio (trimmed code-point counter, `--alarm` past 160, `aria-live` only on crossing) and location
-    (≤ 60); dirty tracking, only changed fields sent, no change → close; pending `SAVE`; field errors under the field;
-    `DISCARD CHANGES?` (the 3 s arm hook shared with step 33's `useFollowPhase`); masthead updated in place.
-    **Gate:** component tests green.
-37. **Photo (Q46, Q47, Q48).** `CHANGE PHOTO` → file picker; type and 5 MB checked on pick, error by the row; object-URL
-    preview (revoked on close and replace); upload after the `PATCH` on `SAVE`; partial failure as in Design; `Shell` gets
-    a picture setter in outlet context (replaces the read-once in `useProfilePicture`), so the header avatar follows.
-    **Gate:** component tests green.
-38. **Own posts and the count (Q52).** Your own profile passes `ownPosts`; the count adds the posts published while the
-    page is open. **Gate:** component tests green.
-39. **[e2e] UI journeys.** `profile-ui.spec.ts`: (1) `PROFILE` → your profile, empty bio and location omitted; (2) edit bio
-    and location → masthead updates, survives a reload; (3) change only the location → the request body holds only
-    `location`, the bio stays; (4) dirty `Escape` → `DISCARD CHANGES?`; (5) upload a photo → masthead and header avatar
-    change; (6) click an author in the feed → their profile, `FOLLOW` works, Back → same post in view; (7) People card
-    click → profile, `FOLLOW` on the card doesn't navigate; (8) `/users/nobody_here` → `USER NOT FOUND`; (9) 25 tweets →
-    second page, `END OF TWEETS`, `TWEETS · 25`; (10) post from your profile → top of the list, count + 1.
-    **Gate:** green 3× in a row from a fresh stack.
-40. **Manual check and finish.** Visual check at 1440 / 620 / 320 px, reduced motion on and off, safe areas; style review
-    of every touched file; `exploit-hunter` on the profile UI; `CLAUDE.md` (route, panel, links, the avatar shortcut under
-    "Things that are easy to break"); `DECISIONS.md`; root `PLAN.md` line. **Gate:** the user signs off the visual check;
-    no style violations; nothing above Low open.
+- **Route and panel (Q40, Q49):** `/users/:username` for anyone, a third non-tab panel of `TabPanels` keyed by the
+  username (feed and People stay mounted, Back keeps the place); `useOpenUsername` shows `USER NOT FOUND` for a
+  malformed name without a request; `useActiveTab` no longer reads `/users/x` as PEOPLE.
+- **API layer (`src/api`):** `ROUTES.profile` / `profilePath`, `ENDPOINTS.me`, `authorTweets`, `tweetCount` (every
+  segment encoded), `updateProfile` (`PATCH`, only the given fields), `uploadProfilePicture`, `fetchTweetCount`,
+  `fetchAuthorTweets`.
+- **Read view (Q51, Q54, Q56):** masthead (username once, empty bio and location omitted, `JOINED OCT 2026`), stats
+  with full accessible text, `TWEETS · n` header, `PostList` on `fetchAuthorTweets`, `END OF TWEETS`,
+  `NO TWEETS YET`, `USER NOT FOUND`, `SIGNAL LOST`.
+- **Follow (Q50):** the shared `FollowButton` (with `useArmPhase`, `usePersonFollow`) sits in the `EDIT` spot on other
+  profiles; followers count = server + your change; one `GlowButton` styles it and `EDIT`.
+- **Ways in (Q41, Q42, Q55):** post author name and avatar are links, a People card opens on a click anywhere but
+  `FOLLOW` with its name a real link, `PROFILE` first in the menu.
+- **Edit sheet (Q45, Q53):** dialog with focus trap and scroll lock, static `EMAIL` / `USERNAME`, bio and location with
+  code-point counters, dirty tracking, only changed fields sent (nothing changed → close), `DISCARD CHANGES?` for 3 s.
+- **Photo (Q46, Q47, Q48):** type and 5 MB checked on pick, object-URL preview, upload after the `PATCH` on `SAVE`,
+  partial failure keeps the sheet open; masthead and header avatar update through `Shell`'s outlet context.
+- **Own posts (Q52):** on your own profile a new post shows at the top and the count rises (`useOwnProfilePosts`:
+  posts published after the page opened).
+- **Tests:** 1146 Vitest tests; `e2e/tests/profile-ui.spec.ts` (11 journeys); the whole e2e suite 78/78 green 3× from
+  fresh stacks.
+- **Audit (2026-10-08, `SECURITY-FINDINGS.md`):** no new findings; finding 5 (`usePagedList` cursor progress) still
+  open as a Low with one more consumer.
+- **Style review:** about 50 findings fixed, including the shared `GlowButton`, `utils/clickTarget.ts`, `ProfileStatus`
+  and `withProfilePictureUrl`; not applied: splitting `ProfileEditSheet`, `useFocusTrap` order.
 
 ### Accepted gaps (phases 4–5) — revisit when the named trigger lands
 
@@ -394,6 +335,10 @@ No question needed re-asking.
 
 ## Left open
 
+- **Step 40 gate waived (2026-10-08):** the profile UI's visual check (1440 / 620 / 320 px, reduced motion on and off, safe
+  areas) was not done. Look at: `UNFOLLOW?` at `0.75rem` widening the follow button at 320 px, the taller name link on
+  People cards, the edit sheet's padding on phones (its media query was removed), the bio's `26rem` max width, and
+  `.person-card-followers` still at `0.59375rem`.
 - **Step 12 gate waived (2026-10-04):** the visual check at 1440 / 600 / 320 px, reduced motion on and off, and iPhone
   Safari (thumb reach of `POST`, compose keyboard, safe areas) was not signed off; the user will raise design and
   scalability follow-ups later. `LAN-DEV-SERVER.md`, which `CLAUDE.md` points to, does not exist.

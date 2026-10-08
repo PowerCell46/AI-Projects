@@ -16,7 +16,7 @@ const EMAIL_PATTERN = /^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/;
 
 const EMAIL_MAX_LENGTH = 254;
 
-const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,15}$/;
+export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,15}$/;
 
 const PASSWORD_MIN_LENGTH = 8;
 

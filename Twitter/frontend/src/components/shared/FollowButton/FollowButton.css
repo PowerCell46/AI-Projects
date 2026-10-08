@@ -1,0 +1,22 @@
+.follow-button[data-following='true'] {
+    color: var(--deep);
+}
+
+.follow-button[data-following='true']::before {
+    transform: scaleY(1);
+}
+
+/* Armed: the panel drops, so the button no longer looks followed while it asks to unfollow. */
+.follow-button[data-phase='armed'] {
+    color: var(--pale);
+}
+
+.follow-button[data-phase='armed']::before,
+.follow-button[data-phase='failed']::before {
+    transform: scaleY(0);
+}
+
+.follow-button[data-phase='failed'] {
+    color: var(--alarm);
+    border-color: var(--alarm);
+}

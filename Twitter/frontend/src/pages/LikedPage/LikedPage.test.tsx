@@ -11,6 +11,7 @@ import { intersect } from '../../test/intersectionObserver';
 import { onlyPostItem } from '../../test/postListHelpers';
 import { renderApp } from '../../test/renderApp';
 import { advance } from '../../test/stepFlowHelpers';
+import { userProfile } from '../../test/userProfile';
 
 
 vi.mock('../../api/auth', async (importOriginal) => ({
@@ -71,11 +72,11 @@ beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
     user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     vi.mocked(me).mockResolvedValue(SIGNED_IN_USER);
-    vi.mocked(fetchUserProfile).mockResolvedValue({
+    vi.mocked(fetchUserProfile).mockResolvedValue(userProfile({
         id: 'user-1',
         username: 'peter_g',
         profilePictureUrl: null,
-    });
+    }));
     vi.mocked(fetchFeed)
         .mockReset()
         .mockResolvedValue({

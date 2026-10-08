@@ -28,6 +28,7 @@ function App() {
                         <Route path={ROUTES.feed} />
                         <Route path={ROUTES.people} />
                         <Route path={ROUTES.tweet} />
+                        <Route path={ROUTES.profile} />
                     </Route>
                     <Route path={ROUTES.saved} element={<SavedPage />} />
                     <Route path={ROUTES.liked} element={<LikedPage />} />

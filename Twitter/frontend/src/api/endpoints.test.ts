@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENDPOINTS } from './endpoints';
+import { profilePath } from '../routes';
 
 
 const TRAVERSAL_ID = '../../auth/logout';
@@ -17,11 +18,26 @@ describe('path segments', () => {
             ENDPOINTS.replies(TRAVERSAL_ID),
             ENDPOINTS.reply(TRAVERSAL_ID, TRAVERSAL_ID),
             ENDPOINTS.tweetDetails(TRAVERSAL_ID),
+            ENDPOINTS.authorTweets(TRAVERSAL_ID),
+            ENDPOINTS.user(TRAVERSAL_ID),
+            ENDPOINTS.follow(TRAVERSAL_ID),
         ];
 
         urls.forEach((url) => {
             expect(url).not.toContain(TRAVERSAL_ID);
             expect(new URL(url, 'http://localhost').pathname.startsWith('/api/v1/')).toBe(true);
         });
+    });
+});
+
+describe('profile addresses', () => {
+    it('should_build_the_own_profile_endpoints_without_a_path_parameter', () => {
+        expect(ENDPOINTS.me).toBe('/api/v1/users/me');
+        expect(ENDPOINTS.profilePicture).toBe('/api/v1/users/me/profile-picture');
+    });
+
+    it('should_encode_the_username_in_the_profile_path', () => {
+        expect(profilePath('peter_g')).toBe('/users/peter_g');
+        expect(profilePath('a b/c')).toBe('/users/a%20b%2Fc');
     });
 });

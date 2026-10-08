@@ -20,9 +20,13 @@ export const ENDPOINTS = {
     replies: (tweetId: string) => `${API_V1}/tweets/${segment(tweetId)}/replies`,
     reply: (tweetId: string, replyId: string) => `${API_V1}/tweets/${segment(tweetId)}/replies/${segment(replyId)}`,
     tweetDetails: (tweetId: string) => `${API_V1}/tweet-details/${segment(tweetId)}`,
+    tweetCount: `${API_V1}/tweets/count`,
+    authorTweets: (authorId: string) => `${API_V1}/author-tweets/${segment(authorId)}`,
     users: `${API_V1}/users`,
-    user: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}`,
-    follow: (username: string) => `${API_V1}/users/${encodeURIComponent(username)}/follow`,
+    user: (username: string) => `${API_V1}/users/${segment(username)}`,
+    me: `${API_V1}/users/me`,
+    profilePicture: `${API_V1}/users/me/profile-picture`,
+    follow: (username: string) => `${API_V1}/users/${segment(username)}/follow`,
     // Served from the frontend's own public folder, not by the API.
     defaultProfilePicture: '/Default-Profile-Picture.png',
     // The backend hands out paths like /api/v1/files/{id}; the browser needs them on the API's own origin.

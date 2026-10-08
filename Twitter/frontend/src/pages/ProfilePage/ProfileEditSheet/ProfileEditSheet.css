@@ -1,0 +1,230 @@
+.profile-edit-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    overflow-y: auto;
+    background: var(--deep);
+    animation: profile-edit-sheet-fade 340ms;
+}
+
+.profile-edit-sheet-content {
+    width: 100%;
+    max-width: 38.75rem;
+    margin: 0 auto;
+    padding: 3.75rem 1.5rem 5rem;
+    animation: profile-edit-sheet-rise 560ms var(--s);
+}
+
+.profile-edit-sheet-eyebrow {
+    margin: 0 0 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    color: var(--glow);
+}
+
+.profile-edit-sheet-headline {
+    margin: 0 0 2.25rem;
+    font-family: var(--font-headline);
+    font-size: 2.125rem;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+}
+
+.profile-edit-sheet-photo {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 2.125rem;
+}
+
+.profile-edit-sheet-photo-text {
+    min-width: 0;
+}
+
+.profile-edit-sheet-photo-pick {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    color: var(--glow);
+    cursor: pointer;
+    transition: color 300ms;
+}
+
+.profile-edit-sheet-hint {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--pale-secondary);
+}
+
+.profile-edit-sheet-field {
+    margin-bottom: 1.75rem;
+}
+
+.profile-edit-sheet-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    color: var(--pale-secondary);
+}
+
+.profile-edit-sheet-text,
+.profile-edit-sheet-input {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0 0 0.3125rem;
+    resize: none;
+    font-family: var(--font-headline);
+    font-size: 1.09375rem;
+    line-height: 1.5;
+    color: var(--input-text);
+    background: none;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+}
+
+.profile-edit-sheet-text {
+    min-height: 4.125rem;
+}
+
+.profile-edit-sheet-input::placeholder {
+    color: var(--pale-placeholder);
+}
+
+.profile-edit-sheet-rule {
+    position: relative;
+    height: 1px;
+    background: var(--pale-textarea-rule);
+}
+
+/* The rule fills from the left while the field has focus, the same treatment as sign-in, compose and replies. */
+.profile-edit-sheet-rule::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 720ms var(--e);
+}
+
+.profile-edit-sheet-text:focus + .profile-edit-sheet-rule::after,
+.profile-edit-sheet-input:focus + .profile-edit-sheet-rule::after {
+    transform: scaleX(1);
+}
+
+.profile-edit-sheet-counter {
+    margin: 0.5625rem 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--pale-secondary);
+}
+
+.profile-edit-sheet-counter[data-over-limit='true'] {
+    color: var(--alarm);
+}
+
+.profile-edit-sheet-error {
+    min-height: 0;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.13em;
+    overflow-wrap: anywhere;
+    color: var(--alarm);
+}
+
+.profile-edit-sheet-error:not(:empty) {
+    margin-top: 0.5rem;
+}
+
+.profile-edit-sheet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.625rem;
+    margin-top: 2.375rem;
+}
+
+.profile-edit-sheet-save {
+    min-height: 2.75rem;
+    padding: 0 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    color: var(--glow);
+    background: none;
+    border: 1px solid var(--glow-border);
+    cursor: pointer;
+    transition: color 360ms var(--e), border-color 360ms var(--e), background-color 360ms var(--e);
+}
+
+.profile-edit-sheet-cancel {
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--pale-secondary);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    transition: color 300ms;
+}
+
+.profile-edit-sheet-photo-pick:hover {
+    color: var(--glow-hover);
+}
+
+.profile-edit-sheet-photo-pick:focus-within {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.profile-edit-sheet-save:not([aria-disabled='true']):hover {
+    background: var(--glow);
+    color: var(--deep);
+}
+
+.profile-edit-sheet-save[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.profile-edit-sheet-cancel:hover {
+    color: var(--pale);
+}
+
+.profile-edit-sheet-cancel[data-armed='true'] {
+    color: var(--alarm);
+}
+
+.profile-edit-sheet-save:focus-visible,
+.profile-edit-sheet-cancel:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+@keyframes profile-edit-sheet-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes profile-edit-sheet-rise {
+    from {
+        transform: translateY(1.75rem);
+    }
+}

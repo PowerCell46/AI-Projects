@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../../../../contexts/AuthContext';
 import { useProfilePictureSource } from '../../../../../hooks/useProfilePictureSource';
-import { ROUTES } from '../../../../../routes';
+import { ROUTES, profilePath } from '../../../../../routes';
 import { SIGNAL_LOST_MESSAGE } from '../../../../../utils/authErrors';
 import { useLogout } from './useLogout';
 import './UserMenu.css';
@@ -23,6 +24,7 @@ interface UserMenuProps {
 }
 
 function UserMenu({ pictureUrl }: UserMenuProps) {
+    const { user } = useAuth();
     const { isLoggingOut, hasFailed, logOut } = useLogout();
     const picture = useProfilePictureSource(pictureUrl);
     const [isOpen, setIsOpen] = useState(false);
@@ -129,6 +131,17 @@ function UserMenu({ pictureUrl }: UserMenuProps) {
                         ref={menuRef}
                         onKeyDown={handleMenuKeyDown}
                     >
+                        {user && (
+                            <Link
+                                className="user-menu-item"
+                                to={profilePath(user.username)}
+                                role="menuitem"
+                                tabIndex={-1}
+                                onClick={closeMenuAndFocusTrigger}
+                            >
+                                PROFILE
+                            </Link>
+                        )}
                         <Link
                             className="user-menu-item"
                             to={ROUTES.saved}

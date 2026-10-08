@@ -358,3 +358,69 @@ as a prop, so the one-minute tick of step 7 re-renders the times without the cel
 - Finding 6 (the address reaching API paths) is fixed in two layers: `useOpenTweetId` accepts only a UUID and `TabPanels`
   redirects any other `/tweets/...` address to `/feed`; `ENDPOINTS` encodes every id segment. Finding 5's reply-thread
   case stays open with the hook's other four consumers (no trigger today: the backend always advances its cursor).
+
+## Profile plan step 32 - the read view
+
+- **The masthead avatar is the picture, else the default picture** (asked): the plan said initials, but no avatar in the app
+  shows initials. `Avatar` gained a `huge` size (84 px).
+- **Text under the dark background uses `--pale-secondary` (.52), not .40:** .40 over `--deep` is 3.2:1, .52 is 4.7:1
+  (checked, WCAG AA needs 4.5:1). All profile labels, metadata and stats use it.
+- **Sizes follow the CSS rules, not the brief's pixels:** the brief's 9.5 px mono texts are `0.75rem` (the 12 px minimum);
+  the stats and the tweets header wrap with `flex-wrap`, no media query.
+- **The tweet count is read after the profile, beside the first page.** A count that fails leaves the number out of the
+  stats and the header (`TWEETS`), and nothing else. A `404` is `USER NOT FOUND`, any other failure `SIGNAL LOST` with
+  `TRY AGAIN`, which reads the profile again. Counts show in full (`1,204`), singular for one.
+
+## Profile plan step 33 - follow on other profiles
+
+- **Shared places:** `FollowButton` is in `components/shared/FollowButton`, `useFollowPhase` and `usePersonFollow` in
+  `hooks/`. `usePersonFollow` takes a `FollowSubject` (username, `followedByMe`, `followersCount`), so a person card and a
+  profile feed it alike; step 36's discard prompt reuses `useFollowPhase`.
+- **Own profile has no follow button:** the username is compared case-insensitively with the signed-in user's. The `EDIT`
+  button takes that spot in step 36.
+- **`ProfileView`** holds a loaded profile (the follow state needs a profile, which the page has only once loaded).
+
+## Profile plan step 34 - links in
+
+- **One link for the avatar and the name** in a post cell (`post-cell-author-link`), 44 px tall; the time stays outside it.
+  The cell's own click already skips links, so a click on the author opens the profile and not the post.
+- **A person card** opens the profile on a click except on a `button` or `a` and at the end of a text selection; the name
+  link is the keyboard and screen-reader way in. The card's tests now render inside a router.
+
+## Profile plan step 36 - the edit sheet, text fields
+
+- **Shared hooks:** `useFocusTrap` and `useScrollLock` moved from `ComposeModal` to `hooks/` (two sheets use them now);
+  `useFollowPhase` became `useArmPhase` (type `ArmPhase`), because `UNFOLLOW?` and `DISCARD CHANGES?` are the same
+  3-second ask. `useOverLimitAnnouncement` (hooks) speaks only when a counter crosses its limit.
+- **The sheet's texts are mine, the brief gave none:** headline `Say who you are.`; `SAVE CHANGES` becomes `SAVING` while the
+  request runs; `CANCEL ESC` becomes `DISCARD CHANGES?` (and a polite live region says "Press again to discard your
+  changes"). `Enter` in the location field saves (the sheet is a form). The photo row comes with step 37.
+- **`Escape` is the same press as `CANCEL`:** the first one with unsaved changes asks, the second discards; typing,
+  leaving the button or three seconds take the question back. A changed-then-changed-back draft counts as clean.
+- **Refusals:** a `400` naming `bio` or `location` goes under that field; any other `400` and every other failure go
+  beside the buttons (`SIGNAL LOST — TRY AGAIN` for a lost connection or a server error). Over 160 (bio) or 60 (location)
+  characters blocks `SAVE` before any request (`aria-disabled`, like compose).
+- **The `LOCKED` tag uses `--pale-secondary`** (4.7:1) instead of the brief's .28 (about 2:1); the reason is also read
+  aloud as hidden text. The masthead takes the server's saved profile as the new one, with no second read.
+- **Escape needs focus inside the sheet,** like compose: the bio takes it after 80 ms.
+
+## Profile plan step 37 - the photo
+
+- **The pick is checked with the compose rules** (`checkPickedImage`, count 0): JPEG, PNG or WebP, at most 5 MB, the same two
+  messages. A refused pick leaves the earlier one and says why by the photo row. `describePublishFailure` became
+  `describeUploadFailure`, since the photo uses it too.
+- **Save is two requests in a row:** the text `PATCH` (only changed fields), then the photo `PUT`. Each answer goes to the
+  page as soon as it arrives, so text that went through counts as saved even when the photo then fails; the retry sends
+  the photo alone (the sheet's baseline is the page's profile). A refused text skips the photo.
+- **`Shell` keeps the picture URL in state:** `useProfilePicture` still reads it once, and now returns a setter that goes to
+  the pages as `onProfilePictureChanged` in the outlet context. The masthead and the header avatar change at once; posts
+  already on screen keep the old picture until a reload (accepted gap, Q48).
+- **The preview is an object URL**, released when it is replaced and when the sheet closes. The photo row shows the
+  current picture at 84 px (the `huge` avatar), not the brief's 70 px.
+
+
+## Profile plan step 38 - own posts and the count
+
+- `useOwnProfilePosts` (next to `ProfilePage`) takes the shell's `ownPosts` only on the reader's own profile. The count
+  adds `ownPosts.length` minus the length when the page opened, so posts published earlier in the session are not
+  counted twice (the server's count read on open already has them).

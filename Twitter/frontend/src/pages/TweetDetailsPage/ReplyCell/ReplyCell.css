@@ -5,7 +5,19 @@
     padding: 1.75rem 0 1.25rem;
 }
 
+/* A reply you just sent opens its row, rises into place and lets its index flash in the accent colour. The padding
+   is animated with the row so nothing below it jumps. */
+.reply-cell[data-entering='true'] {
+    grid-template-rows: 1fr;
+    animation: reply-cell-enter 640ms var(--e);
+}
+
+.reply-cell[data-entering='true'] .reply-cell-index {
+    animation: reply-cell-index-flash 1600ms var(--e);
+}
+
 .reply-cell-index {
+    min-height: 0;
     padding-top: 0.25rem;
     font-family: var(--font-mono);
     font-size: 0.5625rem;
@@ -16,6 +28,7 @@
 
 .reply-cell-content {
     min-width: 0;
+    min-height: 0;
 }
 
 .reply-cell-author {
@@ -122,4 +135,25 @@
 
 .reply-cell-error:not(:empty) {
     padding-bottom: 0.75rem;
+}
+
+@keyframes reply-cell-enter {
+    from {
+        grid-template-rows: 0fr;
+        padding-top: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-0.75rem);
+    }
+
+    to {
+        overflow: hidden;
+    }
+}
+
+@keyframes reply-cell-index-flash {
+    from {
+        color: var(--glow);
+    }
 }

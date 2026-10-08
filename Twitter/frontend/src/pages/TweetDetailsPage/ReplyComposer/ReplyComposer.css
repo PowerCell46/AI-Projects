@@ -12,6 +12,7 @@
     border-bottom: 1px solid var(--pale-textarea-rule);
     text-align: left;
     cursor: text;
+    animation: reply-composer-fade 360ms var(--e);
 }
 
 .reply-composer-opener-tag {
@@ -32,10 +33,27 @@
     outline-offset: 0.25rem;
 }
 
-/* The field grows open: height over 440ms, opacity over 300ms. */
+/* The field grows open, and folds away again once the reply is sent or the field is left empty: the row height
+   animates (not a max-height, which would spend most of its time past the real height), with a short fade. */
 .reply-composer {
+    display: grid;
+    grid-template-rows: 1fr;
     margin-top: 1.375rem;
     animation: reply-composer-open 440ms var(--e), reply-composer-fade 300ms var(--e);
+}
+
+.reply-composer[data-closing='true'] {
+    animation: reply-composer-close 360ms var(--e) forwards;
+}
+
+.reply-composer-inner {
+    min-height: 0;
+    animation: reply-composer-clip 440ms;
+}
+
+.reply-composer[data-closing='true'] .reply-composer-inner {
+    overflow: hidden;
+    animation: none;
 }
 
 .reply-composer-error {
@@ -53,13 +71,16 @@
 
 @keyframes reply-composer-open {
     from {
-        max-height: 0;
-        overflow: hidden;
+        grid-template-rows: 0fr;
+        margin-top: 0;
     }
+}
 
+@keyframes reply-composer-close {
     to {
-        max-height: 20rem;
-        overflow: hidden;
+        grid-template-rows: 0fr;
+        margin-top: 0;
+        opacity: 0;
     }
 }
 
@@ -67,8 +88,12 @@
     from {
         opacity: 0;
     }
+}
 
+/* Clips the growing field only while it grows, so the buttons' focus outlines are not cut off afterwards. */
+@keyframes reply-composer-clip {
+    from,
     to {
-        opacity: 1;
+        overflow: hidden;
     }
 }

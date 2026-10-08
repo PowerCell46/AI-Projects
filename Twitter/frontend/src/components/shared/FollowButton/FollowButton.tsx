@@ -1,9 +1,10 @@
 import type { KeyboardEvent } from 'react';
-import type { FollowPhase } from '../useFollowPhase';
+import type { ArmPhase } from '../../../hooks/useArmPhase';
+import GlowButton from '../GlowButton/GlowButton';
 import './FollowButton.css';
 
 
-function labelOf(isFollowing: boolean, phase: FollowPhase): string {
+function labelOf(isFollowing: boolean, phase: ArmPhase): string {
     if (phase === 'failed') {
         return 'TRY AGAIN';
     }
@@ -18,7 +19,7 @@ function labelOf(isFollowing: boolean, phase: FollowPhase): string {
 interface FollowButtonProps {
     username: string;
     isFollowing: boolean;
-    phase: FollowPhase;
+    phase: ArmPhase;
     onClick: () => void;
     onDisarm: () => void;
 }
@@ -31,9 +32,10 @@ function FollowButton({ username, isFollowing, phase, onClick, onDisarm }: Follo
     }
 
     return (
-        <button
-            type="button"
+        <GlowButton
             className="follow-button"
+            label={labelOf(isFollowing, phase)}
+            isLabelHidden
             aria-label={`Follow ${username}`}
             aria-pressed={isFollowing}
             data-following={isFollowing}
@@ -41,9 +43,7 @@ function FollowButton({ username, isFollowing, phase, onClick, onDisarm }: Follo
             onClick={onClick}
             onBlur={onDisarm}
             onKeyDown={handleKeyDown}
-        >
-            <span className="follow-button-label" aria-hidden="true">{labelOf(isFollowing, phase)}</span>
-        </button>
+        />
     );
 }
 

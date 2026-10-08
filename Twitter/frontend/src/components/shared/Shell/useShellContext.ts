@@ -6,6 +6,7 @@ export interface ShellContext {
     ownPosts: TweetItem[];
     followChangeCount: number;
     onFollowChanged: () => void;
+    onProfilePictureChanged: (pictureUrl: string | null) => void;
 }
 
 export function useShellContext(): ShellContext {

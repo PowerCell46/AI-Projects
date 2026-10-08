@@ -7,12 +7,12 @@ import {
     countCharacters,
     MAX_TWEET_CHARACTERS,
 } from '../../../../utils/composeChecks';
+import { useFocusTrap } from '../../../../hooks/useFocusTrap';
+import { useScrollLock } from '../../../../hooks/useScrollLock';
 import { isApplePlatform } from '../../../../utils/platform';
 import ImagePreviews from './ImagePreviews/ImagePreviews';
-import { useFocusTrap } from './useFocusTrap';
 import { useImageAttachments } from './useImageAttachments';
 import { usePublish } from './usePublish';
-import { useScrollLock } from './useScrollLock';
 import './ComposeModal.css';
 
 

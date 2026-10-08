@@ -11,6 +11,7 @@ import { ROUTES } from '../../../routes';
 import { reachListBottom } from '../../../test/postListHelpers';
 import { renderApp } from '../../../test/renderApp';
 import { advance } from '../../../test/stepFlowHelpers';
+import { userProfile } from '../../../test/userProfile';
 
 
 vi.mock('../../../api/auth', async (importOriginal) => ({
@@ -72,11 +73,11 @@ beforeEach(() => {
         .mockResolvedValue(EMPTY_PAGE);
     vi.mocked(fetchUserProfile)
         .mockReset()
-        .mockResolvedValue({
+        .mockResolvedValue(userProfile({
             id: SIGNED_IN_USER.id,
             username: SIGNED_IN_USER.username,
             profilePictureUrl: null,
-        });
+        }));
 });
 
 afterEach(() => {
@@ -333,11 +334,11 @@ describe('composing', () => {
     });
 
     it('should_show_my_profile_picture_on_the_new_post_when_the_profile_has_one', async () => {
-        vi.mocked(fetchUserProfile).mockResolvedValue({
+        vi.mocked(fetchUserProfile).mockResolvedValue(userProfile({
             id: 'user-1',
             username: 'peter_g',
             profilePictureUrl: 'http://localhost/api/v1/files/pic-1',
-        });
+        }));
         await renderApp(ROUTES.feed);
         await openCompose();
 

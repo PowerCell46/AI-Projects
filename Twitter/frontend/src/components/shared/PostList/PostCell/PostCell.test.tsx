@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { TweetItem } from '../../../../api/tweetPage';
-import { ROUTES } from '../../../../routes';
+import { ROUTES, profilePath } from '../../../../routes';
 import PostCell from './PostCell';
 
 
@@ -52,6 +52,7 @@ function renderPost(changes: Partial<TweetItem> = {}, isClickable = true) {
                     )}
                 />
                 <Route path={ROUTES.tweet} element={<p>details page</p>} />
+                <Route path={ROUTES.profile} element={<p>profile page</p>} />
             </Routes>
         </MemoryRouter>,
     );
@@ -99,6 +100,57 @@ describe('author row', () => {
         renderPost();
 
         expect(screen.getByRole('article', { name: 'Post by peter_g' })).toBeTruthy();
+    });
+});
+
+describe('author link', () => {
+    function isOnProfilePage(): boolean {
+        return screen.queryByText('profile page') !== null;
+    }
+
+    it('should_link_the_avatar_and_the_name_to_the_profile_of_the_author_in_one_link', () => {
+        const { container } = renderPost();
+
+        const link = screen.getByRole('link', { name: 'peter_g' });
+
+        expect(link.getAttribute('href')).toBe(profilePath('peter_g'));
+        expect(link.querySelector('img.avatar')).not.toBeNull();
+        expect(container.querySelectorAll('.post-cell-author a')).toHaveLength(1);
+    });
+
+    it('should_open_the_profile_and_not_the_post_when_the_author_is_clicked', async () => {
+        renderPost();
+
+        await userEvent.click(screen.getByRole('link', { name: 'peter_g' }));
+
+        expect(isOnProfilePage()).toBe(true);
+        expect(isOnDetailsPage()).toBe(false);
+    });
+
+    it('should_open_the_profile_when_the_avatar_is_clicked', async () => {
+        const { container } = renderPost();
+        const avatar = container.querySelector<HTMLElement>('img.avatar');
+
+        if (!avatar) {
+            throw new Error('Expected the post to show an avatar.');
+        }
+
+        await userEvent.click(avatar);
+
+        expect(isOnProfilePage()).toBe(true);
+        expect(isOnDetailsPage()).toBe(false);
+    });
+
+    it('should_link_the_author_also_when_the_post_is_not_clickable', () => {
+        renderPost({}, false);
+
+        expect(screen.getByRole('link', { name: 'peter_g' }).getAttribute('href')).toBe(profilePath('peter_g'));
+    });
+
+    it('should_not_make_the_time_part_of_the_link', () => {
+        const { container } = renderPost();
+
+        expect(container.querySelector('a time')).toBeNull();
     });
 });
 

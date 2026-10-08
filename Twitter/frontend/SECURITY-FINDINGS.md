@@ -347,3 +347,50 @@ trigger today. Fixing the hook fixes all five lists.
   are `bidi.ts` and none are new. `npm audit`: 0 vulnerabilities.
 - **Still open, unchanged, outside this scope:** findings 1 (no CSP or referrer policy in `index.html`) and 2
   (`COOKIE_SECURE` defaults to false) were not re-checked in this pass.
+
+## Audit — 2026-10-08 (profile page, profile links, `users.ts` / `tweets.ts` / `authorTweets.ts`)
+
+**Scope:** `src/pages/ProfilePage/` (view, masthead, stats, tweets, edit sheet and its hooks), the profile links in
+`PostCell`, `PersonCard` and `UserMenu` (the PROFILE entry), `routes.ts`, `useOpenUsername`, `endpoints.ts`, and the api
+modules `users.ts`, `tweets.ts`, `authorTweets.ts`, `tweetPage.ts`, `http.ts`, `paging.ts`. The matching backend routes
+were audited the same day in `../SECURITY-FINDINGS.md`. Read from code; nothing was run.
+
+No new findings. Nothing here is exploitable today.
+
+### Status of earlier findings (re-checked today)
+- **Findings 3 and 6 (ids and addresses spliced into API paths): fixed for these routes.** `endpoints.ts` now wraps every
+  path value in `segment()` (`encodeURIComponent`), including `user(username)`, `authorTweets(authorId)` and
+  `follow(username)`. `ProfilePage` also refuses to call the API unless the address matches `USERNAME_PATTERN`
+  (`/^[A-Za-z0-9_]{3,15}$/`, anchored, no backtracking), so `/users/..%2F..` shows USER NOT FOUND without a request.
+  `fetchTweetCount` builds its query with `URLSearchParams`.
+- **Finding 5 (`usePagedList` follows a cursor with no progress check): still open, one more consumer.** `ProfileTweets`
+  passes `fetchAuthorTweets` to `PostList`, which uses `usePagedList`. The backend only returns a cursor when a next
+  page exists (`TweetServiceImpl.findPageByAuthor`), so it does not loop today.
+- **Findings 1 and 2 (no CSP or referrer policy; `Secure` cookie flag): not re-checked here.** `index.html` is unchanged
+  in this scope.
+
+### Considered, clean or not applicable (profile UI)
+- **XSS / markup injection:** `bio`, `location`, `username` and tweet content are all rendered as React text nodes
+  (`ProfileMasthead`, `PostCell`, `PersonCard`). No `dangerouslySetInnerHTML`, `innerHTML` or `href` built from data
+  anywhere in `src`. `location` is upper-cased with `toUpperCase()` before rendering, which does not change that.
+- **Bidi spoofing:** bio and location go through `stripBidiControls` in `ProfileMasthead`, tweet bodies in `PostCell`.
+  Usernames are limited to `[A-Za-z0-9_]` by the backend, so they need no stripping.
+- **Open redirect / `javascript:` links:** the profile links are `<Link to={profilePath(username)}>` and
+  `navigate(profilePath(...))`, which encode the username and stay inside the router. No external URLs, no
+  `window.open` or `location.href`.
+- **Picture URLs:** `toPictureUrl` prefixes `BASE_URL` to the path the gateway sends (`/api/v1/files/{uuid}`, built from
+  a file id). It is only used as `<img src>`, so a bad value could at worst fail to load and fall back to the default
+  avatar. Not attacker-controlled.
+- **Stale profile shown for the wrong user:** `useProfile` keeps the old profile while a new one loads, but `TabPanels`
+  mounts `ProfilePage` with `key={openUsername}`, so each username starts from fresh state.
+- **Own-profile check:** `isOwnProfile` compares usernames and only decides whether the edit button shows. The server
+  uses the JWT subject for `PATCH /users/me`, so a spoofed view cannot edit another profile.
+- **Edit sheet:** sends only `bio` and `location` as JSON with `Content-Type: application/json` and
+  `credentials: 'include'`; the cookie is `SameSite=Strict`, so a cross-site page cannot send it (CSRF as before).
+  Server refusal text reaches the DOM only as text. Client-side length limits mirror the server and are UX only; the
+  server enforces them.
+- **Information disclosure:** the SPA's `UserProfile` type leaves out `birthdate`, but the gateway still sends it to
+  every logged-in viewer; see finding 3 in `../SECURITY-FINDINGS.md`, which is where it is fixed. `email` shown in the
+  edit sheet comes from the signed-in user's own session.
+- **Injection (server-side), SSRF, secrets, dependencies, caching, races:** no sinks in these files. No new
+  dependencies were added.

@@ -1,8 +1,11 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { followUser, unfollowUser } from '../../../../api/users';
 import type { Person } from '../../../../api/users';
+import { ROUTES, profilePath } from '../../../../routes';
 import PersonCard from './PersonCard';
 
 
@@ -12,6 +15,8 @@ vi.mock('../../../../api/users', () => ({
 }));
 
 const FAILURE_RESET_MS = 3000;
+
+const CARD_PATH = '/';
 
 const PERSON: Person = {
     id: '6f1c2a3e-0000-4000-8000-0000000000aa',
@@ -24,8 +29,20 @@ const PERSON: Person = {
 
 const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
+// The routes make a navigation visible: the profile address renders a marker.
+function renderInRouter(card: ReactElement) {
+    return render(
+        <MemoryRouter>
+            <Routes>
+                <Route path={CARD_PATH} element={card} />
+                <Route path={ROUTES.profile} element={<p>profile page</p>} />
+            </Routes>
+        </MemoryRouter>,
+    );
+}
+
 function renderCard(changes: Partial<Person> = {}, onFollowChanged = vi.fn()) {
-    render(
+    renderInRouter(
         <ul>
             <PersonCard person={{ ...PERSON, ...changes }} onFollowChanged={onFollowChanged} />
         </ul>,
@@ -116,7 +133,7 @@ describe('person card', () => {
     });
 
     it('should_keep_an_empty_bio_line_marked_as_empty_when_there_is_no_bio', () => {
-        const { container } = render(
+        const { container } = renderInRouter(
             <ul>
                 <PersonCard person={{ ...PERSON, bio: null }} onFollowChanged={vi.fn()} />
             </ul>,
@@ -129,7 +146,7 @@ describe('person card', () => {
     });
 
     it('should_not_mark_the_bio_line_as_empty_when_there_is_a_bio', () => {
-        const { container } = render(
+        const { container } = renderInRouter(
             <ul>
                 <PersonCard person={PERSON} onFollowChanged={vi.fn()} />
             </ul>,
@@ -465,7 +482,7 @@ describe('an unfollow that fails', () => {
 
 describe('a card that goes away', () => {
     it('should_leave_no_timer_behind_when_it_unmounts_while_armed', async () => {
-        const { unmount } = render(
+        const { unmount } = renderInRouter(
             <ul>
                 <PersonCard person={{ ...PERSON, followedByMe: true }} onFollowChanged={vi.fn()} />
             </ul>,
@@ -475,5 +492,93 @@ describe('a card that goes away', () => {
         unmount();
 
         expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+describe('opening the profile', () => {
+    function isOnProfilePage(): boolean {
+        return screen.queryByText('profile page') !== null;
+    }
+
+    function avatarOf(): HTMLElement {
+        const avatar = cardOf().querySelector<HTMLElement>('img.avatar');
+
+        if (!avatar) {
+            throw new Error('Expected the card to show an avatar.');
+        }
+
+        return avatar;
+    }
+
+    it('should_make_the_name_a_link_to_the_profile_of_the_person', () => {
+        renderCard();
+
+        expect(screen.getByRole('link', { name: 'ana' }).getAttribute('href')).toBe(profilePath('ana'));
+    });
+
+    it('should_open_the_profile_when_the_name_is_clicked', async () => {
+        renderCard();
+
+        await user.click(screen.getByRole('link', { name: 'ana' }));
+
+        expect(isOnProfilePage()).toBe(true);
+    });
+
+    it('should_open_the_profile_with_the_keyboard_when_the_name_link_has_focus_and_enter_is_pressed', async () => {
+        renderCard();
+        screen.getByRole('link', { name: 'ana' }).focus();
+
+        await user.keyboard('{Enter}');
+
+        expect(isOnProfilePage()).toBe(true);
+    });
+
+    it.each([
+        ['the bio', () => screen.getByText('Writes about the sea')],
+        ['the follower count', () => screen.getByText('1.2K FOLLOWERS')],
+        ['the avatar', () => avatarOf()],
+        ['the card itself', () => cardOf()],
+    ])('should_open_the_profile_when_%s_is_clicked', async (_part, target) => {
+        renderCard();
+
+        await user.click(target());
+
+        expect(isOnProfilePage()).toBe(true);
+    });
+
+    it('should_stay_on_the_list_when_the_follow_button_is_clicked', async () => {
+        renderCard();
+
+        await user.click(followButton());
+
+        expect(isOnProfilePage()).toBe(false);
+        expect(followUser).toHaveBeenCalledExactlyOnceWith('ana');
+    });
+
+    it('should_stay_on_the_list_when_the_unfollow_button_is_armed_and_pressed_again', async () => {
+        renderCard({ followedByMe: true });
+
+        await user.click(followButton());
+        await user.click(followButton());
+
+        expect(isOnProfilePage()).toBe(false);
+    });
+
+    it('should_stay_on_the_list_when_the_click_ends_a_text_selection', async () => {
+        renderCard();
+        const bio = screen.getByText('Writes about the sea');
+        window.getSelection()?.selectAllChildren(bio);
+
+        fireEvent.click(bio);
+
+        expect(isOnProfilePage()).toBe(false);
+
+        window.getSelection()?.removeAllRanges();
+    });
+
+    it('should_encode_the_username_in_the_address', () => {
+        renderCard({ username: 'a b' });
+
+        expect(screen.getByRole('link', { name: 'a b' }).getAttribute('href')).toBe(profilePath('a b'));
     });
 });

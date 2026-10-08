@@ -4,7 +4,7 @@ import {
     canPublish,
     checkPickedImage,
     countCharacters,
-    describePublishFailure,
+    describeUploadFailure,
     IMAGE_TOO_LARGE_MESSAGE,
     isOverCharacterLimit,
     MAX_IMAGE_BYTES,
@@ -156,35 +156,35 @@ describe('checkPickedImage', () => {
     });
 });
 
-describe('describePublishFailure', () => {
+describe('describeUploadFailure', () => {
     it('should_use_the_servers_message_in_capitals_without_the_final_period_when_the_post_is_refused', () => {
         const failure = new ApiError(400, ['A tweet can have at most 4 images.']);
 
-        expect(describePublishFailure(failure)).toBe('A TWEET CAN HAVE AT MOST 4 IMAGES');
+        expect(describeUploadFailure(failure)).toBe('A TWEET CAN HAVE AT MOST 4 IMAGES');
     });
 
     it('should_join_several_messages_when_the_server_gives_more_than_one', () => {
         const failure = new ApiError(400, ['Content is too long.', 'Another problem.']);
 
-        expect(describePublishFailure(failure)).toBe('CONTENT IS TOO LONG. ANOTHER PROBLEM');
+        expect(describeUploadFailure(failure)).toBe('CONTENT IS TOO LONG. ANOTHER PROBLEM');
     });
 
     it.each([413, 415])('should_use_the_servers_message_when_the_status_is_%i', (status) => {
-        expect(describePublishFailure(new ApiError(status, ['The uploaded file is too large.'])))
+        expect(describeUploadFailure(new ApiError(status, ['The uploaded file is too large.'])))
             .toBe('THE UPLOADED FILE IS TOO LARGE');
     });
 
     it.each([0, 500, 502, 504])('should_say_signal_lost_when_the_status_is_%i', (status) => {
         const failure = new ApiError(status, ['Upstream service unavailable.']);
 
-        expect(describePublishFailure(failure)).toBe(SIGNAL_LOST_MESSAGE);
+        expect(describeUploadFailure(failure)).toBe(SIGNAL_LOST_MESSAGE);
     });
 
     it('should_say_signal_lost_when_a_refusal_comes_without_a_message', () => {
-        expect(describePublishFailure(new ApiError(400, []))).toBe(SIGNAL_LOST_MESSAGE);
+        expect(describeUploadFailure(new ApiError(400, []))).toBe(SIGNAL_LOST_MESSAGE);
     });
 
     it('should_say_signal_lost_when_the_failure_is_not_an_api_error', () => {
-        expect(describePublishFailure(new TypeError('Failed to fetch'))).toBe(SIGNAL_LOST_MESSAGE);
+        expect(describeUploadFailure(new TypeError('Failed to fetch'))).toBe(SIGNAL_LOST_MESSAGE);
     });
 });

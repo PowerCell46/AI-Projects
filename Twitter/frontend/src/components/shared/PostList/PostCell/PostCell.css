@@ -15,6 +15,15 @@
     border-bottom: 1px solid var(--pale-cell-rule);
 }
 
+.post-cell-author-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6875rem;
+    min-width: 0;
+    min-height: 2.75rem;
+    text-decoration: none;
+}
+
 .post-cell-name {
     min-width: 0;
     font-family: var(--font-headline);
@@ -23,6 +32,7 @@
     letter-spacing: -0.01em;
     overflow-wrap: anywhere;
     color: var(--display-name);
+    transition: color 340ms var(--e);
 }
 
 .post-cell-time {
@@ -43,6 +53,15 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--pale-post-body);
+}
+
+.post-cell-author-link:hover .post-cell-name {
+    color: var(--glow);
+}
+
+.post-cell-author-link:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
 }
 
 @media (max-width: 600px) {

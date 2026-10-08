@@ -58,7 +58,7 @@ function toUppercaseWithoutFinalPeriod(message: string): string {
 
 // The server's own words when it refused the post (too long, wrong file type, ...); a lost connection or a server
 // failure has nothing useful to say, so it reads as a lost signal.
-export function describePublishFailure(failure: unknown): string {
+export function describeUploadFailure(failure: unknown): string {
     const isRefusal = failure instanceof ApiError
         && failure.status >= FIRST_CLIENT_ERROR_STATUS
         && failure.status < FIRST_SERVER_ERROR_STATUS

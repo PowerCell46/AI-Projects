@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchPeople, followUser } from '../../../api/users';
 import type { PeoplePage, Person } from '../../../api/users';
@@ -53,7 +54,11 @@ function liveRegion(): HTMLElement {
 
 async function renderList(onFollowChanged = vi.fn()) {
     await act(async () => {
-        render(<PeopleList onFollowChanged={onFollowChanged} />);
+        render(
+            <MemoryRouter>
+                <PeopleList onFollowChanged={onFollowChanged} />
+            </MemoryRouter>,
+        );
     });
 
     return { onFollowChanged };

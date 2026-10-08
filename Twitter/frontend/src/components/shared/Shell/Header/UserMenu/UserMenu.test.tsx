@@ -2,15 +2,18 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logout, me } from '../../../../../api/auth';
+import { fetchAuthorTweets } from '../../../../../api/authorTweets';
 import { fetchFeed } from '../../../../../api/feed';
 import { ApiError } from '../../../../../api/http';
 import { fetchLikedTweets } from '../../../../../api/likes';
 import { fetchSavedTweets } from '../../../../../api/savedTweets';
+import { fetchTweetCount } from '../../../../../api/tweets';
 import { fetchUserProfile } from '../../../../../api/users';
-import { ROUTES } from '../../../../../routes';
+import { ROUTES, profilePath } from '../../../../../routes';
 import { renderApp } from '../../../../../test/renderApp';
 import { advance } from '../../../../../test/stepFlowHelpers';
 import { SIGNAL_LOST_MESSAGE } from '../../../../../utils/authErrors';
+import { userProfile } from '../../../../../test/userProfile';
 
 
 vi.mock('../../../../../api/auth', async (importOriginal) => ({
@@ -37,6 +40,15 @@ vi.mock('../../../../../api/users', () => ({
     fetchUserProfile: vi.fn(),
 }));
 
+vi.mock('../../../../../api/authorTweets', () => ({
+    fetchAuthorTweets: vi.fn(),
+}));
+
+vi.mock('../../../../../api/tweets', () => ({
+    fetchTweetCount: vi.fn(),
+    publishTweet: vi.fn(),
+}));
+
 const SIGN_OUT_LEAVE_MS = 1200;
 
 const SIGNED_IN_USER = {
@@ -50,11 +62,11 @@ const EMPTY_PAGE = {
     nextCursor: null,
 };
 
-const PROFILE_WITHOUT_PICTURE = {
+const PROFILE_WITHOUT_PICTURE = userProfile({
     id: SIGNED_IN_USER.id,
     username: SIGNED_IN_USER.username,
     profilePictureUrl: null,
-};
+});
 
 let user: ReturnType<typeof userEvent.setup>;
 
@@ -71,6 +83,12 @@ beforeEach(async () => {
     vi.mocked(fetchLikedTweets)
         .mockReset()
         .mockResolvedValue(EMPTY_PAGE);
+    vi.mocked(fetchAuthorTweets)
+        .mockReset()
+        .mockResolvedValue(EMPTY_PAGE);
+    vi.mocked(fetchTweetCount)
+        .mockReset()
+        .mockResolvedValue(0);
     vi.mocked(logout).mockReset();
     vi.mocked(fetchUserProfile)
         .mockReset()
@@ -170,17 +188,17 @@ describe('opening and closing', () => {
         expect(screen.queryByRole('menu')).toBeNull();
     });
 
-    it('should_open_with_the_three_items_when_the_avatar_is_clicked', async () => {
+    it('should_open_with_the_four_items_when_the_avatar_is_clicked', async () => {
         await openMenu();
 
         expect(trigger().getAttribute('aria-expanded')).toBe('true');
-        expect(menuItemNames()).toEqual(['SAVED TWEETS', 'LIKED TWEETS', 'LOG OUT']);
+        expect(menuItemNames()).toEqual(['PROFILE', 'SAVED TWEETS', 'LIKED TWEETS', 'LOG OUT']);
     });
 
     it('should_move_focus_to_the_first_item_when_opened', async () => {
         await openMenu();
 
-        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'PROFILE' }));
     });
 
     it('should_close_when_the_avatar_is_clicked_again', async () => {
@@ -237,7 +255,7 @@ describe('keyboard', () => {
 
         await user.keyboard('{ArrowDown}');
 
-        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'PROFILE' }));
     });
 
     it('should_open_on_the_last_item_when_arrow_up_is_pressed_on_the_avatar', async () => {
@@ -258,20 +276,23 @@ describe('keyboard', () => {
         expect(screen.getByRole('menu')).toBeTruthy();
     });
 
-    it('should_move_to_the_next_item_and_wrap_around_across_three_items_when_arrow_down_is_pressed', async () => {
+    it('should_move_to_the_next_item_and_wrap_around_across_four_items_when_arrow_down_is_pressed', async () => {
         await openMenu();
-
-        await user.keyboard('{ArrowDown}');
-        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
-
-        await user.keyboard('{ArrowDown}');
-        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LOG OUT' }));
 
         await user.keyboard('{ArrowDown}');
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+
+        await user.keyboard('{ArrowDown}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
+
+        await user.keyboard('{ArrowDown}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LOG OUT' }));
+
+        await user.keyboard('{ArrowDown}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'PROFILE' }));
     });
 
-    it('should_move_to_the_previous_item_and_wrap_around_across_three_items_when_arrow_up_is_pressed', async () => {
+    it('should_move_to_the_previous_item_and_wrap_around_across_four_items_when_arrow_up_is_pressed', async () => {
         await openMenu();
 
         await user.keyboard('{ArrowUp}');
@@ -279,6 +300,15 @@ describe('keyboard', () => {
 
         await user.keyboard('{ArrowUp}');
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LIKED TWEETS' }));
+
+        await user.keyboard('{ArrowUp}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+
+        await user.keyboard('{ArrowUp}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'PROFILE' }));
+
+        await user.keyboard('{ArrowUp}');
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LOG OUT' }));
     });
 
     it('should_jump_to_the_last_and_the_first_item_when_end_and_home_are_pressed', async () => {
@@ -288,7 +318,33 @@ describe('keyboard', () => {
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'LOG OUT' }));
 
         await user.keyboard('{Home}');
-        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'SAVED TWEETS' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'PROFILE' }));
+    });
+});
+
+describe('profile', () => {
+    beforeEach(async () => {
+        await renderApp(ROUTES.feed);
+        await openMenu();
+    });
+
+    it('should_link_to_the_profile_of_the_signed_in_user', () => {
+        expect(screen.getByRole('menuitem', { name: 'PROFILE' }).getAttribute('href')).toBe(profilePath('peter_g'));
+    });
+
+    it('should_go_to_the_own_profile_and_close_the_menu_when_profile_is_chosen', async () => {
+        await user.click(screen.getByRole('menuitem', { name: 'PROFILE' }));
+        await advance(1);
+
+        expect(window.location.pathname).toBe(profilePath('peter_g'));
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'peter_g' })).toBeTruthy();
+    });
+
+    it('should_return_focus_to_the_avatar_when_profile_is_chosen', async () => {
+        await user.click(screen.getByRole('menuitem', { name: 'PROFILE' }));
+
+        expect(document.activeElement).toBe(trigger());
     });
 });
 

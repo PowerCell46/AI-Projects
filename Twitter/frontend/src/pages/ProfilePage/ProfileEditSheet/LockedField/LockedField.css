@@ -1,0 +1,30 @@
+.locked-field {
+    margin-bottom: 1.5rem;
+}
+
+.locked-field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    color: var(--pale-secondary);
+}
+
+.locked-field-tag {
+    padding: 0.125rem 0.4375rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    color: var(--pale-secondary);
+    border: 1px solid var(--pale-cell-border);
+}
+
+.locked-field-value {
+    margin: 0.4375rem 0 0;
+    font-family: var(--font-headline);
+    font-size: 1.09375rem;
+    overflow-wrap: anywhere;
+    color: var(--pale-secondary);
+}

@@ -1,8 +1,9 @@
 import type { MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { TweetItem } from '../../../../api/tweetPage';
-import { tweetPath } from '../../../../routes';
+import { profilePath, tweetPath } from '../../../../routes';
 import { stripBidiControls } from '../../../../utils/bidi';
+import { hasTextSelection, isInsideElement } from '../../../../utils/clickTarget';
 import { formatPostTime } from '../../../../utils/relativeTime';
 import Avatar from '../../Avatar/Avatar';
 import PostActions from './PostActions/PostActions';
@@ -12,14 +13,6 @@ import './PostCell.css';
 
 // A click on any of these keeps its own meaning (like, save, the reply link, an image) instead of opening the post.
 const OWN_CLICK_SELECTOR = 'button, a, img';
-
-function isOwnClick(target: EventTarget): boolean {
-    return target instanceof Element && target.closest(OWN_CLICK_SELECTOR) !== null;
-}
-
-function endsTextSelection(): boolean {
-    return (window.getSelection()?.toString() ?? '') !== '';
-}
 
 interface PostCellProps {
     post: TweetItem;
@@ -33,7 +26,7 @@ function PostCell({ post, now, isClickable = true }: PostCellProps) {
     const body = stripBidiControls(post.content);
 
     function handleClick(event: MouseEvent<HTMLElement>) {
-        if (!isClickable || isOwnClick(event.target) || endsTextSelection()) {
+        if (!isClickable || isInsideElement(event.target, OWN_CLICK_SELECTOR) || hasTextSelection()) {
             return;
         }
 
@@ -48,8 +41,10 @@ function PostCell({ post, now, isClickable = true }: PostCellProps) {
             onClick={handleClick}
         >
             <header className="post-cell-author">
-                <Avatar pictureUrl={author.profilePictureUrl} />
-                <span className="post-cell-name">{author.username}</span>
+                <Link className="post-cell-author-link" to={profilePath(author.username)}>
+                    <Avatar pictureUrl={author.profilePictureUrl} />
+                    <span className="post-cell-name">{author.username}</span>
+                </Link>
                 <time className="post-cell-time" dateTime={post.createdAt}>
                     {formatPostTime(post.createdAt, now)}
                 </time>

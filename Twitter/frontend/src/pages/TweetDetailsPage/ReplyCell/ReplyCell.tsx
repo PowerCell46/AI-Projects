@@ -25,6 +25,7 @@ function formatReplyIndex(position: number): string {
 interface ReplyCellProps {
     reply: Reply;
     position: number;
+    isEntering: boolean;
     now: Date;
     currentUserId: string | null;
     postAuthorId: string;
@@ -35,6 +36,7 @@ interface ReplyCellProps {
 function ReplyCell({
     reply,
     position,
+    isEntering,
     now,
     currentUserId,
     postAuthorId,
@@ -107,7 +109,7 @@ function ReplyCell({
     }
 
     return (
-        <article className="reply-cell" aria-label={`Reply by ${author.username}`}>
+        <article className="reply-cell" aria-label={`Reply by ${author.username}`} data-entering={isEntering}>
             <span className="reply-cell-index" aria-hidden="true">{formatReplyIndex(position)}</span>
             <div className="reply-cell-content">
                 <header className="reply-cell-author">

@@ -8,11 +8,12 @@ import { fetchReplies } from '../../../api/replies';
 import { fetchSavedTweets } from '../../../api/savedTweets';
 import { fetchTweetDetails } from '../../../api/tweetDetails';
 import { fetchPeople, fetchUserProfile, followUser } from '../../../api/users';
-import { ROUTES, tweetPath } from '../../../routes';
+import { ROUTES, profilePath, tweetPath } from '../../../routes';
 import { renderApp } from '../../../test/renderApp';
 import { advance, waitForHistoryTraversal } from '../../../test/stepFlowHelpers';
 import { tabPanelId } from '../../../utils/tabs';
 import type { TabId } from '../../../utils/tabs';
+import { userProfile } from '../../../test/userProfile';
 
 
 vi.mock('../../../api/auth', async (importOriginal) => ({
@@ -99,6 +100,9 @@ const NEWER_POST = {
 
 const NEW_POSTS_INTERVAL_MS = 60_000;
 
+// A username that would climb out of an API path if it were not rejected before the request.
+const TRAVERSAL_USERNAME_ADDRESS = `${ROUTES.people}/..%2Fauth%2Flogout`;
+
 let user: ReturnType<typeof userEvent.setup>;
 
 // By id, not by role and name: the accessible name of a hidden element is empty.
@@ -181,11 +185,11 @@ beforeEach(() => {
         });
     vi.mocked(fetchUserProfile)
         .mockReset()
-        .mockResolvedValue({
+        .mockResolvedValue(userProfile({
             id: SIGNED_IN_USER.id,
             username: SIGNED_IN_USER.username,
             profilePictureUrl: null,
-        });
+        }));
 });
 
 afterEach(() => {
@@ -593,7 +597,7 @@ describe('the tweet details panel', () => {
     });
 
     it('should_open_the_feed_when_the_tweet_id_is_not_a_uuid', async () => {
-        await renderApp('/tweets/..%2F..%2Fauth%2Flogout');
+        await renderApp(tweetPath('..%2F..%2Fauth%2Flogout'));
 
         expect(window.location.pathname).toBe(ROUTES.feed);
         expect(fetchTweetDetails).not.toHaveBeenCalled();
@@ -638,6 +642,107 @@ describe('the tweet details panel', () => {
         await advance(1);
 
         await user.click(screen.getByRole('link', { name: 'BACK' }));
+        await waitForHistoryTraversal();
+
+        expect(tweetsPanel().getAttribute('data-entering')).toBe('false');
+    });
+});
+
+describe('the profile panel', () => {
+    function openProfileInPlace(username: string) {
+        act(() => {
+            window.history.pushState(
+                {
+                    usr: null,
+                    key: 'profile',
+                    idx: 1,
+                },
+                '',
+                profilePath(username),
+            );
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        });
+    }
+
+    it('should_redirect_to_login_when_signed_out', async () => {
+        vi.mocked(me).mockRejectedValue(new ApiError(401, []));
+
+        await renderApp(profilePath('ana_b'));
+
+        expect(window.location.pathname).toBe(ROUTES.login);
+    });
+
+    it('should_show_the_profile_panel_without_the_tab_row_when_signed_in', async () => {
+        await renderApp(profilePath('ana_b'));
+
+        expect(screen.getByRole('region', { name: 'Profile' })).not.toBeNull();
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(window.location.pathname).toBe(profilePath('ana_b'));
+    });
+
+    it('should_not_read_the_profile_address_as_the_people_tab', async () => {
+        await renderApp(profilePath('ana_b'));
+
+        expect(fetchPeople).not.toHaveBeenCalled();
+        expect(document.getElementById(tabPanelId('people'))?.hidden).toBe(true);
+    });
+
+    it('should_show_user_not_found_without_a_request_when_the_username_cannot_exist', async () => {
+        await renderApp(TRAVERSAL_USERNAME_ADDRESS);
+
+        expect(screen.getByText('USER NOT FOUND')).not.toBeNull();
+        expect(window.location.pathname).toBe(TRAVERSAL_USERNAME_ADDRESS);
+        expect(fetchUserProfile).not.toHaveBeenCalledWith(expect.stringContaining('..'));
+    });
+
+    it.each(['ab', 'a'.repeat(16), 'ana-b'])('should_show_user_not_found_when_the_username_is_%s', async (username) => {
+        await renderApp(profilePath(username));
+
+        expect(screen.getByText('USER NOT FOUND')).not.toBeNull();
+    });
+
+    it('should_scroll_to_the_top_when_a_profile_opens', async () => {
+        await renderApp(profilePath('ana_b'));
+
+        expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 });
+    });
+
+    it('should_keep_the_feed_and_people_mounted_and_hidden_when_a_profile_is_open', async () => {
+        await renderApp(ROUTES.feed);
+        openProfileInPlace('ana_b');
+        await advance(1);
+
+        expect(tweetsPanel().hidden).toBe(true);
+        expect(tweetsPanel().textContent).toContain('a post from the feed');
+        expect(peoplePanel().hidden).toBe(true);
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(fetchFeed).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_restore_the_feed_scroll_position_when_going_back_from_a_profile', async () => {
+        await renderApp(ROUTES.feed);
+        scrollTo(300);
+        openProfileInPlace('ana_b');
+        await advance(1);
+
+        act(() => {
+            window.history.back();
+        });
+        await waitForHistoryTraversal();
+
+        expect(window.location.pathname).toBe(ROUTES.feed);
+        expect(tweetsPanel().hidden).toBe(false);
+        expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 300 });
+    });
+
+    it('should_play_no_enter_animation_on_the_feed_when_coming_back_from_a_profile', async () => {
+        await renderApp(ROUTES.feed);
+        openProfileInPlace('ana_b');
+        await advance(1);
+
+        act(() => {
+            window.history.back();
+        });
         await waitForHistoryTraversal();
 
         expect(tweetsPanel().getAttribute('data-entering')).toBe('false');

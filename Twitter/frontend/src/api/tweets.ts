@@ -8,6 +8,10 @@ export interface PublishRequest {
     images: File[];
 }
 
+export interface TweetCount {
+    count: number;
+}
+
 export interface PublishedTweet {
     id: string;
     authorId: string;
@@ -30,4 +34,15 @@ export async function publishTweet(request: PublishRequest): Promise<PublishedTw
     });
 
     return readJson<PublishedTweet>(response);
+}
+
+export async function fetchTweetCount(authorId: string): Promise<number> {
+    const params = new URLSearchParams({ authorId });
+    const response = await sendAuthenticated(
+        `${ENDPOINTS.tweetCount}?${params.toString()}`,
+        { method: 'GET' },
+    );
+    const tweetCount = await readJson<TweetCount>(response);
+
+    return tweetCount.count;
 }

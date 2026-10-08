@@ -19,7 +19,7 @@ function Shell() {
     const { user, isSigningOut } = useAuth();
     const navigate = useNavigate();
     const activeTab = useActiveTab();
-    const pictureUrl = useProfilePicture(user?.username);
+    const { pictureUrl, setPictureUrl } = useProfilePicture(user?.username);
     const [isComposing, setIsComposing] = useState(false);
     const [ownPosts, setOwnPosts] = useState<TweetItem[]>([]);
     const [followChangeCount, setFollowChangeCount] = useState(0);
@@ -53,6 +53,7 @@ function Shell() {
         ownPosts,
         followChangeCount,
         onFollowChanged: () => setFollowChangeCount((currentCount) => currentCount + 1),
+        onProfilePictureChanged: setPictureUrl,
     };
 
     return (

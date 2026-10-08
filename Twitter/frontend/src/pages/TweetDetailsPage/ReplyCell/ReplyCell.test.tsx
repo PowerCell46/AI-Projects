@@ -47,6 +47,7 @@ function renderCell(currentUserId: string | null = REPLY_AUTHOR_ID, changes: Par
         <ReplyCell
             reply={{ ...REPLY, ...changes }}
             position={1}
+            isEntering={false}
             now={NOW}
             currentUserId={currentUserId}
             postAuthorId={POST_AUTHOR_ID}

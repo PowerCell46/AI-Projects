@@ -4,9 +4,9 @@ running and testing this app.
 ## What this is
 
 The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`), the feed
-(`/feed`, `/saved`, `/liked`), the People list (`/users`) and a post's details with its replies (`/tweets/:tweetId`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
+(`/feed`, `/saved`, `/liked`), the People list (`/users`), a post's details with its replies (`/tweets/:tweetId`) and profiles (`/users/:username`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
 co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md`
-(auth), `feed-design.md` (feed, in git history), `feed-design-addition.md` (tab row, People).
+(auth), `feed-design.md` (feed, in git history), `feed-design-addition.md` (tab row, People), `profile-view-design.md` (profile).
 
 `/feed`, `/users`, `/saved` and `/liked` sit behind `ProtectedRoute` in one layout route, `Shell` (header, tab row, compose modal,
 `<Outlet>`). `/feed` (TWEETS) and `/users` (PEOPLE) share one more layout route, `TabPanels`, which renders both pages as
@@ -20,6 +20,14 @@ hidden while it is open, so Back lands on the same spot. `TweetDetailsPage` show
 clickable), the reply composer and the replies (`useReplyThread`, oldest first, paged like the lists). A post cell opens
 it on a click anywhere except on a button, link or image or at the end of a text selection; the reply link in the
 action row is the keyboard and screen-reader way in.
+
+`/users/:username` is a fourth panel of the same kind: `ProfilePage` for anyone's profile, keyed by the username, with
+the feed and People mounted and hidden under it. `useOpenUsername` returns the name only when it matches the
+registration pattern (it goes into API paths); anything else shows `USER NOT FOUND` without a request, and `useActiveTab`
+does not read `/users/x` as PEOPLE. The profile loads first, then the tweet count and the first page of
+`author-tweets/{id}` in parallel (`useProfile`, `ProfileTweets` on `PostList`). `EDIT` shows only when the username is
+yours (case-insensitive), otherwise the shared `FollowButton`. Back from a profile lands on the same spot of the feed;
+profile → tweet → Back reloads the profile from the top.
 
 ## Running it
 
@@ -88,7 +96,10 @@ action row is the keyboard and screen-reader way in.
 - Signing out sinks the cards of both lists: `person-list-leave` (`PeopleList.css`) and `post-list-leave`
   (`PostList.css`) must stay inside `SIGN_OUT_LEAVE_MS`.
 - Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatCount`.
-  Cards are not links and show no `@handle`.
+  A card opens the person's profile on a click anywhere except the follow button, a link or the end of a text selection
+  (the same rule as a post cell), and its name is a real link, the way in for the keyboard and screen readers. A post
+  cell's author (avatar and name, one link) opens the author's profile too; reply authors stay plain text. Cards show no
+  `@handle`.
 - The details route: `useOpenTweetId` returns the id only when it is a UUID (it goes into API paths, and a `..` would
   climb out of them); any other id on `/tweets/...` redirects to `/feed`. `ENDPOINTS` encodes every id segment as well.
   Opened from `/saved` or `/liked`, Back reloads that list (only the feed and People stay mounted). The page scrolls
@@ -99,3 +110,9 @@ action row is the keyboard and screen-reader way in.
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a
   reload. Edits and deletes are overrides on the loaded list, so `usePagedList` is unchanged. `EDIT` and `DELETE` only
   decide which buttons show: the server decides who may.
+- The profile: `PATCH /users/me` sends only the changed fields (nothing changed → the sheet closes, no request); bio ≤ 160
+  and location ≤ 60 are counted in code points on both sides. A picked photo uploads on `SAVE` after the `PATCH`; if the
+  text saved but the photo failed, the sheet stays open and the text counts as saved. On your own profile the count is
+  the server's count read on open plus the posts you published after it opened (`useOwnProfilePosts`).
+- **Shortcut (Q48):** after a new photo only the masthead and the header avatar update (`onProfilePictureChanged`
+  through `Shell`'s outlet context). Posts already on screen keep the old picture until a reload.

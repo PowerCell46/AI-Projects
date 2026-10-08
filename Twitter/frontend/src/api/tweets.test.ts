@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENDPOINTS } from './endpoints';
-import { publishTweet } from './tweets';
+import { fetchTweetCount, publishTweet } from './tweets';
 import { fetchMock, installFetchStub, respondWith } from '../test/fetchStub';
 
 
@@ -107,5 +107,36 @@ describe('publishTweet', () => {
             status: 400,
             messages: ['A tweet can have at most 4 images.'],
         });
+    });
+});
+
+describe('fetchTweetCount', () => {
+    it('should_get_the_count_of_the_author_with_the_id_as_a_query_parameter', async () => {
+        respondWith(200, { count: 25 });
+
+        const count = await fetchTweetCount('user-1');
+
+        expect(count).toBe(25);
+        expect(fetchMock).toHaveBeenCalledWith(
+            `${ENDPOINTS.tweetCount}?authorId=user-1`,
+            {
+                method: 'GET',
+                credentials: 'include',
+            },
+        );
+    });
+
+    it('should_encode_the_author_id_in_the_query', async () => {
+        respondWith(200, { count: 0 });
+
+        await fetchTweetCount('a&b=c');
+
+        expect(fetchMock.mock.calls[0][0]).toBe(`${ENDPOINTS.tweetCount}?authorId=a%26b%3Dc`);
+    });
+
+    it('should_reject_with_400_when_the_id_is_refused', async () => {
+        respondWith(400);
+
+        await expect(fetchTweetCount('nope')).rejects.toMatchObject({ status: 400 });
     });
 });

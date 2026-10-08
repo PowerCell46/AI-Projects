@@ -6,6 +6,7 @@
     padding: 1.125rem 1.375rem;
     background: var(--cell);
     border: 1px solid var(--pale-cell-border);
+    cursor: pointer;
 }
 
 .person-card-body {
@@ -30,9 +31,12 @@
     color: var(--pale-bio);
 }
 
-/* Keeps the height of one line, so a card without a bio is as tall as one with a short bio. */
-.person-card-bio[data-empty='true'] {
-    min-height: 1.45em;
+.person-card-link {
+    display: inline-block;
+    min-height: 2.75rem;
+    text-decoration: none;
+    color: inherit;
+    transition: color 340ms var(--e);
 }
 
 .person-card-followers {
@@ -42,6 +46,20 @@
     letter-spacing: 0.14em;
     font-variant-numeric: tabular-nums;
     color: var(--pale-secondary);
+}
+
+/* Keeps the height of one line, so a card without a bio is as tall as one with a short bio. */
+.person-card-bio[data-empty='true'] {
+    min-height: 1.45em;
+}
+
+.person-card-link:hover {
+    color: var(--glow);
+}
+
+.person-card-link:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
 }
 
 @media (max-width: 600px) {

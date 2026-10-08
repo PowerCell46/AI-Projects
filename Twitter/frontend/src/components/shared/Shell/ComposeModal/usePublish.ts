@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { publishTweet } from '../../../../api/tweets';
 import type { PublishedTweet, PublishRequest } from '../../../../api/tweets';
-import { describePublishFailure } from '../../../../utils/composeChecks';
+import { describeUploadFailure } from '../../../../utils/composeChecks';
 
 
 interface Publishing {
@@ -29,7 +29,7 @@ export function usePublish(onPublished: (tweet: PublishedTweet) => void): Publis
             onPublished(await publishTweet(request));
 
         } catch (failure) {
-            setErrorMessage(describePublishFailure(failure));
+            setErrorMessage(describeUploadFailure(failure));
             setIsPublishing(false);
             isPublishingRef.current = false;
         }

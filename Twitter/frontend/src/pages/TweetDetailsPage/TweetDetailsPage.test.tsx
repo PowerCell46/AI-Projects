@@ -335,7 +335,7 @@ describe('sending a reply', () => {
         await user.click(screen.getByRole('button', { name: 'REPLY' }));
         await advance(1);
 
-        expect(screen.getAllByText('the first reply')).toHaveLength(1);
+        expect(screen.getAllByRole('article', { name: /^Reply by/ })).toHaveLength(1);
     });
 });
 

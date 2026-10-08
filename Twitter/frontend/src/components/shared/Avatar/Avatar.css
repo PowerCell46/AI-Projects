@@ -16,6 +16,11 @@
     height: 2.75rem;
 }
 
+.avatar[data-size='huge'] {
+    width: 5.25rem;
+    height: 5.25rem;
+}
+
 @media (max-width: 600px) {
     .avatar[data-size='large'] {
         width: 2.5rem;

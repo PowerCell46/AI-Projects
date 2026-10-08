@@ -2,7 +2,7 @@ import { useProfilePictureSource } from '../../../hooks/useProfilePictureSource'
 import './Avatar.css';
 
 
-export type AvatarSize = 'tiny' | 'small' | 'large';
+export type AvatarSize = 'tiny' | 'small' | 'large' | 'huge';
 
 interface AvatarProps {
     pictureUrl: string | null;
