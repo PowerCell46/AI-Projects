@@ -25,6 +25,9 @@ services:
       MINIO_URL: http://minio:9000
       TWEET_SERVICE_URL: http://tweet-service:8081
       TIMELINE_SERVICE_URL: http://timeline-service:8083
+    # The demo users' profile pictures (see seed-images/README.md); read once, on the first start
+    volumes:
+      - ./twitter_api_gateway/seed-images:/app/seed-images:ro
     deploy:
       resources:
         limits:

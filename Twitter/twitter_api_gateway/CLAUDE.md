@@ -29,6 +29,20 @@ Twitter root, export the env (`set -a; . ../.env; set +a`), then `./mvnw spring-
 
 Tests use **Testcontainers**, never embedded fakes — a running Docker daemon is a hard prerequisite.
 
+## Demo data
+
+`DataSeedRunner` runs after startup and, when the `users` table is empty, seeds 12 confirmed users
+(`stiliyan@seed.local` ..., one shared password, `SEED_PASSWORD`, default `Password123`), their profile pictures,
+about a third of all possible follows between them (fixed random seed, through `FollowService`, so counts, outbox
+events and timeline back-fill are real), 3 tweets each (POST to the tweet service with `X-User-Id`), 0 to 3 replies per tweet from other users and likes
+(PUT to the timeline service, each user likes about 30% of the others' tweets).
+Pictures: drop `<username>.png|jpg|jpeg|webp` into `seed-images/` (`SEED_PICTURES_DIR`; see its README; the full
+compose stack mounts it read-only). Users without a file keep the default avatar.
+The seed runs on a background thread (the timeline service only starts once this app is healthy, so the likes retry
+for about three minutes), after `MinioBucketInitializer`. Images over `MAX_UPLOAD_FILE_BYTES` (5 MB) are skipped with a
+warning. `SEED_ENABLED=false` turns the seeder off; tests and the e2e stack do.
+Follow emails go to the `@seed.local` addresses, so run the mail service against Mailpit locally.
+
 ## Spring Boot 4
 
 The pom is on **4.1.1**. Boot 4 renamed the starters — `spring-boot-starter-webmvc` (not `-web`) — and ships a
@@ -77,6 +91,9 @@ Root-level packages, under `com.peter_gerdzhikov.twitter_api_gateway`:
 
 ## Accepted shortcuts
 
+- **Seed tweets, replies and likes are not retried** (2026-10-08): if the tweet or timeline service is down at the first
+  start, the users and follows stay and the tweets (replies, likes) are skipped, because the seed only runs on an empty `users` table. Wipe the
+  database to seed again.
 - **No rate limiting on the proxied read routes** (audit 2026-10-08): `author-tweets`, `feed` and `tweets/count` fan out to other services. Add a per-user limit here before any public deployment. Logged in `../frontend/PLAN.md` (accepted gaps, phases 4–5).
 
 ## Standing rules

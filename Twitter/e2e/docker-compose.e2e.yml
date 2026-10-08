@@ -148,6 +148,8 @@ services:
       INTERNAL_API_SECRET: e2e-test-only-internal-secret-not-for-any-real-use-0123456789
       COOKIE_SECURE: "false"
       BCRYPT_STRENGTH: 4
+      # The specs register their own users in an empty database.
+      SEED_ENABLED: "false"
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MINIO_URL: http://minio:9000
       MINIO_ACCESS_KEY: twitter-e2e

@@ -7,13 +7,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
+ * Runs first of all runners: the data seeder uploads pictures into the bucket this creates.
  * Fails startup when MinIO is unreachable: an app that can't store pictures should not report healthy.
  */
 @Slf4j
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class MinioBucketInitializer implements ApplicationRunner {
 
     private final String bucket;
