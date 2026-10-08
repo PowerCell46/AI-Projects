@@ -7,7 +7,7 @@ before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
 
 From phase 4 the gateway also **routes** `/api/v1/tweets/**` to `../twitter_tweet_service` (Spring Cloud Gateway
 MVC, `TWEET_SERVICE_URL`), stripping caller identity headers and adding `X-User-Id` from the JWT. It holds no tweet
-code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`. `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`, `/api/v1/likes/**` and `/api/v1/tweet-details/*` are routed the same way
+code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`. `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`, `/api/v1/likes/**`, `/api/v1/tweet-details/*` and `/api/v1/author-tweets/*` are routed the same way
 to `../twitter_timeline_service` (`TIMELINE_SERVICE_URL`); both routes share `CallerIdentityFilters`.
 
 It also serves `/internal/v1/**` (follower ids and user lookups for `../twitter_timeline_service`). Those routes sit on
@@ -74,6 +74,10 @@ Root-level packages, under `com.peter_gerdzhikov.twitter_api_gateway`:
     - `/interfaces` — service interfaces
     - `/implementations` — service implementations
 - `/utilities`
+
+## Accepted shortcuts
+
+- **No rate limiting on the proxied read routes** (audit 2026-10-08): `author-tweets`, `feed` and `tweets/count` fan out to other services. Add a per-user limit here before any public deployment. Logged in `../frontend/PLAN.md` (accepted gaps, phases 4–5).
 
 ## Standing rules
 

@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.DTOs.client;
+package com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.follows;
 
 import java.util.List;
 import java.util.UUID;

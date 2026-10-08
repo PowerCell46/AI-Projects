@@ -1,6 +1,7 @@
 # Twitter Frontend — plan
 
-**Status: phase 3 (tab row, People, back-fill on follow) designed via `/grill-me` on 2026-10-04 (Q24–Q39) and built
+**Status: phases 4–5 (profile view: API, then UI; `profile-view-design.md`) designed via `/grill-me` on 2026-10-08
+(Q40–Q59), not started.** Phase 3 (tab row, People, back-fill on follow) designed via `/grill-me` on 2026-10-04 (Q24–Q39) and built
 2026-10-04 (steps 14–24; the visual check was waived).** Phase 2 (feed) was designed via `/grill-me` (Q1–Q23) and built 2026-10-04. Phase 1 (the "Hadal Descent"
 auth flow) was built 2026-10-01; its plan is in git history (`git show 95502e1:./PLAN.md` from this folder) and its
 still-open items are under "Carried over" below. The replies UI and the tweet page are phase 3 of
@@ -23,7 +24,181 @@ touching any `.ts`/`.tsx`/`.css`.
 | 2 | Feed (steps 1–13) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04" |
 | 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
 
+| 4 | Profile API (steps 25–29) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08" |
+| 5 | Profile UI (steps 30–40) | — | — |
+
 Likes UI (real counts, `/liked`, the stub removed): phase 5 of `../twitter_timeline_service/PLAN.md`.
+
+## Phases 4–5 — Profile view
+
+Brief: `profile-view-design.md` (§-numbers below). Designed via `/grill-me` 2026-10-08 (Q40–Q59). Phase 4 makes the API
+complete; phase 5 builds the UI on it and starts only after phase 4's final gate passes.
+
+### What exists and what is missing
+
+| Need | Today | Change |
+|---|---|---|
+| Profile read | `GET /api/v1/users/{username}`: bio, location, `createdAt`, counts, `followedByMe`, picture | none |
+| Email (edit sheet) | `GET /api/v1/auth/me` → the session's `AuthUser` | none (read from `AuthContext`) |
+| Save bio, location | `PUT /api/v1/users/me`, full replace (a missing field is wiped), `@Size` counts UTF-16 units, location 30 | `PATCH`, partial, code points, location 60 (step 25) |
+| Photo | `PUT /api/v1/users/me/profile-picture`, JPEG / PNG / WEBP ≤ 5 MB | none (Q46) |
+| One person's tweets | internal `by-author?since=&limit=` for back-fill only (ids and `createdAt`) | paged internal read (step 26) + timeline `author-tweets` (27, 28) |
+| Tweet count | nothing | `GET /api/v1/tweets/count?authorId=` (step 26) |
+| Menu entry | `SAVED TWEETS`, `LIKED TWEETS`, `LOG OUT` | `PROFILE` first (step 35) |
+
+### Design in short
+
+- **Route (Q40, Q49):** `/users/:username` for anyone; `EDIT` only when the username is yours (case-insensitive), `FOLLOW`
+  otherwise (Q50). A third non-tab panel of `TabPanels`, like `/tweets/:tweetId`: feed and People stay mounted, Back
+  lands on the same spot, no tab row. `useActiveTab` must not read `/users/x` as PEOPLE.
+- **Ways in (Q41, Q42):** a post cell's author name and avatar are links (the cell's open-the-tweet click already skips
+  links); a People card opens the profile on a click anywhere except `FOLLOW`, and its name is a real link for keyboard
+  and screen readers. Menu: `PROFILE` first (Q55). Reply authors stay plain (gap).
+- **Loading (Q43, Q44):** profile first; then the tweet count and the first page of `author-tweets/{id}` in parallel.
+  `PostList` unchanged, `fetchPage` bound to the profile's id.
+- **Masthead (Q51):** username once in the name slot, no handle line; initials from the username; empty bio / location
+  omitted (§3); `JOINED OCT 2026`. Stats not clickable (Q56); `TWEETS · n` in the stats and the section header.
+- **Save (Q45, Q47):** `PATCH` with only the changed fields; nothing changed → close, no request. A picked photo is a change:
+  preview at once, uploaded on `SAVE` after the `PATCH`. Text saved but photo failed → sheet stays open, error by the
+  photo row, the text counts as saved.
+- **After a new photo (Q48):** masthead and header avatar update at once (setter through `Shell`'s outlet context); posts
+  already on screen keep the old picture until a reload — **a deliberate shortcut**, recorded under Accepted gaps and
+  in `CLAUDE.md`.
+- **Discard (Q53):** `CANCEL` turns into `DISCARD CHANGES?` for 3 s; a second `CANCEL` or `Escape` discards; blur or timeout
+  disarms (the `UNFOLLOW?` pattern).
+- **Own posts (Q52):** on your own profile a post you publish shows at the top at once and the count goes up by 1
+  (`ownPosts`). Count = the server's count read on open + your posts published while the page is open.
+- **Not found (Q54):** `404` → `USER NOT FOUND` (`PostListStatus`, like `POST NOT FOUND`); other failures → `SIGNAL LOST` /
+  `TRY AGAIN`.
+- **Limits (Q46, Q58):** bio ≤ 160, location ≤ 60, both trimmed and counted in code points on both sides; photo JPG / PNG /
+  WEBP ≤ 5 MB, hint `JPG, PNG OR WEBP · MAX 5 MB` (departs from §4's `JPG OR PNG · MAX 2 MB`). No cropping: centred
+  square via `object-fit: cover` (§5).
+- **Birthdate (Q59):** untouched; `PATCH` still accepts it, the UI neither shows nor sends it.
+
+### What was built (phase 4, Profile API, steps 25–29)
+
+- **Gateway `PATCH /api/v1/users/me` (Q45, Q46, Q58):** replaces the `PUT` (now `405`). A missing or `null` field is kept
+  (a birthdate can't be cleared), a blank bio or location clears it, values are stripped. `@MaxCodePoints` (bio 160,
+  location 60) counts code points after stripping; `User.location` is `varchar(60)`. Local databases need
+  `ALTER TABLE users ALTER COLUMN location TYPE varchar(60);`.
+- **Tweet service (Q43, Q44):** internal `GET /internal/v1/tweets/by-author/{authorId}/page?cursor=&size=` (whole tweets,
+  newest first on `ix_tweets_author_created_id`, keyset cursor shared with replies as `KeysetCursor`, size 1–100,
+  default 20, bad cursor `400`); `GET /api/v1/tweets/count?authorId=` → `{"count": n}`, unknown author `0`, non-UUID
+  `400`. The back-fill read is unchanged. Tweet DTOs moved to `DTOs/response/tweets`.
+- **Timeline:** `GET /api/v1/author-tweets/{authorId}?cursor=&size=` returns feed-shaped items (`assembleFetched`: likes,
+  `likedByMe`, `savedByMe`, `replyCount`, author), the tweet service's cursor passed through; unknown or unconfirmed
+  author `404` before any tweet is read; a tweet-service `400` becomes `400 Invalid cursor.`; downstream failures
+  `502` / `504`. `DTOs/client` regrouped into `users`, `follows`, `tweets`.
+- **Gateway route** `/api/v1/author-tweets/*` to the timeline service, in the Identity group (`X-User-Id` set, a forged
+  one replaced, cookie and `Authorization` dropped).
+- **Tests:** gateway, tweet and timeline `mvn verify` green 3× (scenario lists in each `TESTING.md`); `e2e/tests/profile.spec.ts`
+  (9 API scenarios) and the whole e2e suite 67/67 green 3× from a fresh stack.
+- **Audit (2026-10-08, `SECURITY-FINDINGS.md`):** one Medium (no rate limit, accepted gap below), three Lows (under
+  Left open). Step 29's gate was waived for the Medium.
+
+### Steps — phase 5, Profile UI
+
+30. **Foundation.** `ROUTES.profile` (`/users/:username`) + `profilePath`; `ENDPOINTS.me`, `authorTweets`, `tweetCount`,
+    every segment encoded; `UserProfile` gains `bio`, `location`, `createdAt`, the counts, `followedByMe`;
+    `updateProfile` (`PATCH`, only the given fields), `uploadProfilePicture`, `fetchTweetCount`, `fetchAuthorTweets`.
+    Unit-tested on the stubbed `fetch`. **Gate:** build, lint, test clean.
+31. **Route and panel (Q49).** `TabPanels` renders `ProfilePage` as a third non-tab panel keyed by the username;
+    `useOpenUsername` (a username that fails the registration pattern shows `USER NOT FOUND` without a request);
+    `useActiveTab` no longer matches `/users/x`; scroll to top on open; Back restores the feed's place
+    (`useTabScrollMemory`). **Gate:** component tests green (`TabPanels`, the hooks).
+32. **Read view (§3, Q51, Q54, Q56).** Masthead, stats (full accessible text: "1,204 followers"), `TWEETS · n` header,
+    `PostList` on `fetchAuthorTweets`, `END OF TWEETS`, `NO TWEETS YET`, `USER NOT FOUND`, `SIGNAL LOST`; omitted empty
+    fields; ≤ 620 px wrap; contrast of `.40` against `--bg` checked (raise to `.52` as elsewhere if under 4.5:1).
+    **Gate:** component tests green.
+33. **Follow on other profiles (Q50).** `FollowButton` and `useFollowPhase` move from `PersonCard` to a shared place; the
+    profile shows it in the `EDIT` spot; followers count = server + your change; `onFollowChanged` fires. People tests
+    unchanged in behaviour. **Gate:** component tests green.
+34. **Links in (Q41, Q42).** `PostCell` author name and avatar → `profilePath` links; `PersonCard` click-anywhere
+    except `FOLLOW` (and the end of a text selection), name is a link. `CLAUDE.md`'s "cards are not links" rewritten.
+    **Gate:** component tests green.
+35. **Menu (Q55).** `PROFILE` first in `UserMenu` → your profile; arrow-key order and tests updated.
+    **Gate:** component tests green.
+36. **Edit sheet, text fields (§4, §5, Q45, Q53).** `role="dialog"`, `aria-modal`, focus trap, scroll lock (`data-scroll-locked`
+    as compose), bio autofocus after ~80 ms, focus back to `EDIT`; `EMAIL` and `USERNAME` as static text with `LOCKED` and
+    an accessible reason; bio (trimmed code-point counter, `--alarm` past 160, `aria-live` only on crossing) and location
+    (≤ 60); dirty tracking, only changed fields sent, no change → close; pending `SAVE`; field errors under the field;
+    `DISCARD CHANGES?` (the 3 s arm hook shared with step 33's `useFollowPhase`); masthead updated in place.
+    **Gate:** component tests green.
+37. **Photo (Q46, Q47, Q48).** `CHANGE PHOTO` → file picker; type and 5 MB checked on pick, error by the row; object-URL
+    preview (revoked on close and replace); upload after the `PATCH` on `SAVE`; partial failure as in Design; `Shell` gets
+    a picture setter in outlet context (replaces the read-once in `useProfilePicture`), so the header avatar follows.
+    **Gate:** component tests green.
+38. **Own posts and the count (Q52).** Your own profile passes `ownPosts`; the count adds the posts published while the
+    page is open. **Gate:** component tests green.
+39. **[e2e] UI journeys.** `profile-ui.spec.ts`: (1) `PROFILE` → your profile, empty bio and location omitted; (2) edit bio
+    and location → masthead updates, survives a reload; (3) change only the location → the request body holds only
+    `location`, the bio stays; (4) dirty `Escape` → `DISCARD CHANGES?`; (5) upload a photo → masthead and header avatar
+    change; (6) click an author in the feed → their profile, `FOLLOW` works, Back → same post in view; (7) People card
+    click → profile, `FOLLOW` on the card doesn't navigate; (8) `/users/nobody_here` → `USER NOT FOUND`; (9) 25 tweets →
+    second page, `END OF TWEETS`, `TWEETS · 25`; (10) post from your profile → top of the list, count + 1.
+    **Gate:** green 3× in a row from a fresh stack.
+40. **Manual check and finish.** Visual check at 1440 / 620 / 320 px, reduced motion on and off, safe areas; style review
+    of every touched file; `exploit-hunter` on the profile UI; `CLAUDE.md` (route, panel, links, the avatar shortcut under
+    "Things that are easy to break"); `DECISIONS.md`; root `PLAN.md` line. **Gate:** the user signs off the visual check;
+    no style violations; nothing above Low open.
+
+### Accepted gaps (phases 4–5) — revisit when the named trigger lands
+
+- **Shortcut: your posts already on screen keep your old picture after a photo change (Q48)** until a reload; only the
+  masthead and the header avatar update. **Trigger:** a report of mismatched avatars → an author-picture override in the
+  lists, or a refetch of the mounted lists.
+- **Reply authors aren't links (Q41).** **Trigger:** wanting to visit a replier's profile.
+- **Profile → tweet → Back reloads the profile from the top (Q49),** as `/saved` and `/liked` do. **Trigger:** long
+  profiles where the lost place hurts → keep the profile panel mounted.
+- **Follower and following counts aren't clickable (Q56);** the API lists exist. **Trigger:** wanting to see who
+  follows whom → a list view designed.
+- **No "remove photo"** (Q47); `DELETE /me/profile-picture` exists. **Trigger:** a user asks to go back to initials.
+- **The tweet count is read on open** plus your own posts while the page is open; other changes show after a reload.
+  One count query per open (indexed). **Trigger:** load concern → a stored counter fed by `tweet.created` /
+  `tweet.deleted`.
+- **The paged by-author read has no secret,** like the tweet service's other internal reads. **Trigger:** that service's
+  network-trust trigger.
+- **No `NEW POSTS` check on a profile.** **Trigger:** people keep a profile open to watch it.
+- **No display names (Q51);** phase 2's gap holds.
+- **Shortcut: no rate limit on the proxied read routes** (audit 2026-10-08, Medium; `SECURITY-FINDINGS.md`). One
+  `author-tweets` request with `size=100` fans out to three services and four queries, and `/tweets/count` counts every
+  tweet of an author; the feed has the same exposure. **Trigger:** before any public deployment → a per-user limit at
+  the gateway on all proxied read routes.
+
+### Out of scope (phases 4–5)
+
+Brief §7; display names; follower / following lists; reply-author links; removing the photo; the cover picture (API
+exists, no UI); deleting your own tweets (the API exists, no UI); a birthdate UI; search.
+
+### Interview record (phases 4–5, `/grill-me`, 2026-10-08)
+
+| Q | Question | Answer |
+|---|---|---|
+| 40 | Whose profiles can be opened? | Anyone's, `/users/:username`; `EDIT` only on your own |
+| 41 | Ways in to someone's profile | A post's author, a People card; reply authors later |
+| 42 | What exactly is clickable | Author name and avatar are links; a card opens on any click but `FOLLOW`, its name a link |
+| 43 | Which service serves a person's tweets | Timeline `author-tweets`, built like the feed, on a new paged tweet-service read |
+| 44 | Where the tweet count comes from | Counted on request by the tweet service |
+| 45 | How `SAVE` talks to the server | `PATCH`, only changed fields; the `PUT` goes |
+| 46 | Brief vs server limits | Location raised to 60 on the server; photo stays 5 MB, JPG / PNG / WEBP |
+| 47 | When the photo uploads | On `SAVE`; no "remove photo" |
+| 48 | What updates after a new photo | Masthead and header at once; posts after reload — written down as a shortcut |
+| 49 | Back after a profile | Third non-tab panel; feed keeps its place |
+| 50 | The `EDIT` spot on someone else's profile | The existing `FOLLOW` button |
+| 51 | Name and handle with only a username | Username once; no full-name field |
+| 52 | Posting from your own profile | Top of the list at once, count + 1 |
+| 53 | Discard unsaved changes | `DISCARD CHANGES?` in place, 3 s |
+| 54 | Unknown user | `USER NOT FOUND` |
+| 55 | Menu item | `PROFILE`, first |
+| 56 | Clickable stats | No |
+| 57 | Phases and plan file | API phase 4, UI phase 5, in this file |
+| 58 | Counting bio / location length | Code points on the gateway too |
+| 59 | Birthdate visible to others | Leave it: a birthdate you set is meant to be public |
+| — | `(my call)` | A malformed username shows `USER NOT FOUND` without a request; `null` in the `PATCH` keeps (so a birthdate can't be cleared); `{"count": n}`, unknown author `0`; unknown author on `author-tweets` `404`; 20 per page; `END OF TWEETS` / `NO TWEETS YET`; `JOINED OCT 2026`; `FollowButton` moves to shared; one arm hook for `UNFOLLOW?` and `DISCARD CHANGES?` |
+
+Questions that needed re-asking: Q51 (the first wording used the brief's terms "display name" and "handle").
+
+---
 
 ## Phase 3 — Tab row, People, back-fill on follow ✅ **Done** (2026-10-04)
 
@@ -198,7 +373,7 @@ No question needed re-asking.
   `/liked`).
 - **No display names (Q6).** **Trigger:** the backend gets one → bring the `@handle` back.
 - **Alt text is generic (Q10).** **Trigger:** the tweet service stores descriptions → a field in compose.
-- **No `EDIT ACCOUNT` (Q4).** **Trigger:** an account screen is designed (the backend already exists).
+- **No `EDIT ACCOUNT` (Q4):** taken up by phases 4–5 (the profile view, menu item `PROFILE`).
 - **View counts aren't shown (Q7).** **Trigger:** the tweet-details page.
 - **Views are best-effort:** a failed batch and reports pending when the tab dies are lost.
 - **`NEW POSTS` reads a full feed page every 60 s** per open tab, with both downstream calls. **Trigger:** load
@@ -244,6 +419,10 @@ No question needed re-asking.
     user's own tweets from their feed; a malformed event's text reaches the error log; the poison-event tests cover
     only a missing `occurredAt`.
   - **Gateway:** nothing found on the follow check (`twitter_api_gateway/SECURITY-AUDITS.md`).
+- **Phase 4 audit (2026-10-08, `SECURITY-FINDINGS.md`):** Medium logged as a gap (above); open Lows: `PATCH /users/me`
+  accepts a `birthdate` outside Postgres's range and `\u0000` in `bio` / `location`, which fail as a `409` / `500` instead
+  of `400` (add a lower bound and a control-character check); the birthdate is visible to every logged-in user
+  (the form should say so); the tweet and timeline services trust the network for `/internal/**` and `X-User-Id`.
 - **Phase 3 style leftovers:** the sign-out leave animation is copied in `PeopleList.css` and `PostList.css`, and
   `tab-row-fade` / `tab-row-leave` repeat `header-content-fade` / `-leave`; `TabPanels` (shared) imports the two pages;
   `utils/bottomState.ts` imports a type from a component; the `merged.push(... ++ ...)` ternary in `utils/tweetList.ts`;

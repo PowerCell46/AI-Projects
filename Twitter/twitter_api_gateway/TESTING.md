@@ -137,18 +137,23 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 - Unconfirmed user returns 404 (`should_return_404_when_the_user_is_unconfirmed`)
 - No cookie returns 401 (`should_return_401_when_there_is_no_cookie`)
 
-## `PUT /api/v1/users/me`
+## `PATCH /api/v1/users/me`
 
 `ProfileControllerIntegrationTest.EditProfile` — enabled
 
 - Sets all fields and returns 200 with the profile (`should_return_200_and_set_all_fields_when_the_request_is_valid`)
-- `null` clears the fields (`should_return_200_and_clear_the_fields_when_they_are_null`)
-- Blank clears the fields (`should_return_200_and_clear_the_fields_when_they_are_blank`)
+- A missing or `null` field is kept (`should_return_200_and_keep_the_fields_when_they_are_null`)
+- Only the location sent: the bio and the birthdate stay (`should_keep_the_bio_and_the_birthdate_when_only_the_location_is_sent`)
+- A blank bio or location clears it, the birthdate stays (`should_return_200_and_clear_the_text_fields_when_they_are_blank`)
 - Strings are trimmed (`should_trim_the_strings_when_they_have_surrounding_whitespace`)
+- 160 emoji bio accepted (`should_return_200_and_store_the_bio_when_it_is_160_emoji`)
+- 161 emoji bio returns 400 (`should_return_400_when_the_bio_is_161_emoji`)
 - Bio over 160 characters returns 400 (`should_return_400_when_the_bio_is_longer_than_160_characters`)
-- Location over 30 characters returns 400 (`should_return_400_when_the_location_is_longer_than_30_characters`)
+- 60-character location accepted (`should_return_200_and_store_the_location_when_it_is_60_characters`)
+- Location over 60 characters returns 400 (`should_return_400_when_the_location_is_longer_than_60_characters`)
 - Future birthdate returns 400 (`should_return_400_when_the_birthdate_is_in_the_future`)
 - Pictures are untouched (`should_not_touch_the_pictures_when_the_profile_is_edited`)
+- `PUT` returns 405 (`should_return_405_when_the_profile_is_put`)
 - No cookie returns 401 (`should_return_401_when_there_is_no_cookie`)
 
 ## `PUT /api/v1/users/me/{profile-picture|cover-picture}`
@@ -197,7 +202,7 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 
 `ProfileConcurrencyIntegrationTest` — enabled
 
-- `PUT /users/me` in parallel with a picture `PUT` for the same user: both changes survive (`should_keep_both_changes_when_a_profile_edit_and_a_picture_upload_run_in_parallel`)
+- `PATCH /users/me` in parallel with a picture `PUT` for the same user: both changes survive (`should_keep_both_changes_when_a_profile_edit_and_a_picture_upload_run_in_parallel`)
 - Parallel picture `PUT`s to one slot: all `200`, exactly one `DbFile` row remains, no orphans (`should_leave_no_orphan_rows_when_uploads_to_one_slot_run_in_parallel`)
 
 # Phase 3 — follows
@@ -333,7 +338,7 @@ Written `@Disabled` in step 25 and approved; every group is now enabled (steps 2
 
 - Tweet service down returns 502, no exception text (`should_return_502_without_leaking_exception_text_when_the_tweet_service_is_down`)
 
-## `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`, `/api/v1/likes/**` and `/api/v1/tweet-details/*` (proxy to the timeline service)
+## `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`, `/api/v1/likes/**`, `/api/v1/tweet-details/*` and `/api/v1/author-tweets/*` (proxy to the timeline service)
 
 Added in timeline step 11 (feed), step 17 (saved tweets), step 25 (views) and step 32 (likes). `TimelineRoutesIntegrationTest` uses WireMock as the timeline service; the test profile lowers the read timeout to 1s. The identity filters are the ones the tweet routes use, so both suites guard the same behaviour.
 
@@ -391,6 +396,13 @@ Added in timeline step 11 (feed), step 17 (saved tweets), step 25 (views) and st
 
 - A GET arrives with its path and status unchanged and the caller's `X-User-Id` (`should_forward_a_get_with_the_path_and_status_unchanged_and_the_callers_identity_when_the_user_is_authenticated`)
 - A spoofed `X-User-Id` is replaced by the JWT `sub` (`should_replace_a_spoofed_x_user_id_with_the_jwt_subject_when_a_get_is_forwarded`)
+- No cookie returns 401 and nothing is forwarded (`should_return_401_and_forward_nothing_when_there_is_no_cookie`)
+
+`TimelineRoutesIntegrationTest.AuthorTweets` - enabled in frontend step 28. `/api/v1/author-tweets/*` joins the timeline route. Same identity filters.
+
+- A GET arrives with its path, query and status unchanged and the caller's `X-User-Id` (`should_forward_a_get_with_the_path_query_and_status_unchanged_and_the_callers_identity_when_the_user_is_authenticated`)
+- A spoofed `X-User-Id` is replaced by the JWT `sub` (`should_replace_a_spoofed_x_user_id_with_the_jwt_subject_when_a_get_is_forwarded`)
+- `Cookie` and `Authorization` are not forwarded (`should_not_forward_the_cookie_or_the_authorization_header_when_a_get_is_forwarded`)
 - No cookie returns 401 and nothing is forwarded (`should_return_401_and_forward_nothing_when_there_is_no_cookie`)
 
 `TimelineRoutesIntegrationTest.Failures` - enabled

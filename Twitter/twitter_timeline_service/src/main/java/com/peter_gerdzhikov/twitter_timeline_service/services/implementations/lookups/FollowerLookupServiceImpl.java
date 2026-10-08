@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.FollowerIdsClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.follows.FollowerIdsClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowerLookupService;
 

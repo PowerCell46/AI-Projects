@@ -16,7 +16,9 @@ Each service owns its own backlog:
   (`/feed`, `/saved`, compose, views, `NEW POSTS`; `frontend/feed-design.md`), designed via `/grill-me` and built
   2026-10-04 (13 steps, with a like stub in the gateway and `savedByMe` in the timeline service). Phase 3, the tab row
   and People at `/users` (`frontend/feed-design-addition.md`) with back-fill on follow across the tweet service, the
-  gateway and the timeline service (steps 14–24), designed via `/grill-me` and built 2026-10-04 (visual check waived).
+  gateway and the timeline service (steps 14–24), designed via `/grill-me` and built 2026-10-04 (visual check waived). Phases 4–5, the profile
+  view (`frontend/profile-view-design.md`; API in the gateway, tweet and timeline services, then the UI; steps 25–40),
+  designed via `/grill-me` 2026-10-08; phase 4 (the API, steps 25–29) built 2026-10-08, phase 5 (the UI) not started.
 - **`twitter_mail_service/PLAN.md`**: sends the emails over SMTP from Kafka, deduped in Redis. Designed via
   `/grill-me` 2026-10-01. Phase 1 (the confirmation email, `user.confirmation-requested`; steps 1–9) built
   2026-10-01, including the Playwright e2e that reads the link from the real email. Phase 2 (the follow email,

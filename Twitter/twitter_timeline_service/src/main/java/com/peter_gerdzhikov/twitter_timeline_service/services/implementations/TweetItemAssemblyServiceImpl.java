@@ -14,8 +14,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeCountRepository;

@@ -55,6 +55,35 @@ public class TweetRepositoryCustomImpl implements TweetRepositoryCustom {
     }
 
     @Override
+    public List<Tweet> findFirstPageByAuthor(UUID authorId, int limit) {
+        Query query = Query.query(Criteria
+                .where("authorId")
+                .is(authorId));
+
+        return findNewestFirst(query, limit);
+    }
+
+    @Override
+    public List<Tweet> findPageByAuthorAfter(UUID authorId, Instant afterCreatedAt, UUID afterId, int limit) {
+        Criteria afterThePosition = new Criteria().orOperator(
+                Criteria
+                        .where("createdAt")
+                        .lt(afterCreatedAt),
+                Criteria
+                        .where("createdAt")
+                        .is(afterCreatedAt)
+                        .and("id")
+                        .lt(afterId));
+        Query query = Query.query(new Criteria().andOperator(
+                Criteria
+                        .where("authorId")
+                        .is(authorId),
+                afterThePosition));
+
+        return findNewestFirst(query, limit);
+    }
+
+    @Override
     public boolean incrementReplyCount(UUID id, long delta) {
         Query byId = Query.query(Criteria
                 .where("id")
@@ -63,6 +92,14 @@ public class TweetRepositoryCustomImpl implements TweetRepositoryCustom {
         return mongoTemplate
                 .updateFirst(byId, new Update().inc("replyCount", delta), Tweet.class)
                 .getMatchedCount() > 0;
+    }
+
+    private List<Tweet> findNewestFirst(Query query, int limit) {
+        query
+                .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+                .limit(limit);
+
+        return mongoTemplate.find(query, Tweet.class);
     }
 
     private Query byIdAndAuthor(UUID id, UUID authorId) {

@@ -48,15 +48,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetDeletedEventDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetImageContentResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetPageResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
@@ -72,6 +75,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ObjectStor
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxService;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestImages;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursorCodec;
 
 import com.mongodb.MongoException;
 
@@ -689,6 +693,84 @@ class TweetServiceImplTest {
                     .isInstanceOf(TweetLimitOutOfRangeException.class)
                     .hasMessage("Provide a limit between 1 and 100.");
             verifyNoInteractions(tweetRepository);
+        }
+    }
+
+    @Nested
+    class FindPageByAuthor {
+
+        private static final Instant CREATED_AT = Instant.parse("2026-03-02T00:00:00Z");
+
+        @Test
+        void should_read_one_more_than_the_size_and_return_a_cursor_when_more_tweets_follow() {
+            Tweet first = tweetAt(CREATED_AT.plusSeconds(3));
+            Tweet second = tweetAt(CREATED_AT.plusSeconds(2));
+            Tweet third = tweetAt(CREATED_AT.plusSeconds(1));
+            when(tweetRepository.findFirstPageByAuthor(AUTHOR_ID, 3)).thenReturn(List.of(first, second, third));
+
+            TweetPageResponseDTO page = tweetService.findPageByAuthor(AUTHOR_ID, null, 2);
+
+            assertThat(page.getItems())
+                    .extracting(TweetResponseDTO::getId)
+                    .containsExactly(first.getId(), second.getId());
+            assertThat(page.getNextCursor()).isEqualTo(KeysetCursorCodec.encode(second.getCreatedAt(), second.getId()));
+        }
+
+        @Test
+        void should_return_no_cursor_when_the_page_is_the_last() {
+            Tweet only = tweetAt(CREATED_AT);
+            when(tweetRepository.findFirstPageByAuthor(AUTHOR_ID, 3)).thenReturn(List.of(only));
+
+            TweetPageResponseDTO page = tweetService.findPageByAuthor(AUTHOR_ID, null, 2);
+
+            assertThat(page.getItems()).hasSize(1);
+            assertThat(page.getNextCursor()).isNull();
+        }
+
+        @Test
+        void should_continue_after_the_cursor_position_when_a_cursor_is_given() {
+            UUID afterId = UUID.randomUUID();
+            String cursor = KeysetCursorCodec.encode(CREATED_AT, afterId);
+            when(tweetRepository.findPageByAuthorAfter(AUTHOR_ID, CREATED_AT, afterId, 21)).thenReturn(List.of());
+
+            TweetPageResponseDTO page = tweetService.findPageByAuthor(AUTHOR_ID, cursor, 20);
+
+            assertThat(page.getItems()).isEmpty();
+            assertThat(page.getNextCursor()).isNull();
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {Integer.MIN_VALUE, -1, 0, 101, Integer.MAX_VALUE})
+        void should_throw_and_not_query_when_the_size_is_outside_1_to_100(int size) {
+            assertThatThrownBy(() -> tweetService.findPageByAuthor(AUTHOR_ID, null, size))
+                    .isInstanceOf(InvalidPageSizeException.class);
+            verifyNoInteractions(tweetRepository);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", "not-a-cursor", "MTox"})
+        void should_throw_and_not_query_when_the_cursor_is_malformed(String cursor) {
+            assertThatThrownBy(() -> tweetService.findPageByAuthor(AUTHOR_ID, cursor, 20))
+                    .isInstanceOf(InvalidCursorException.class);
+            verifyNoInteractions(tweetRepository);
+        }
+
+        private Tweet tweetAt(Instant createdAt) {
+            Tweet tweet = TestDocuments.tweetBy(AUTHOR_ID);
+            tweet.setCreatedAt(createdAt);
+
+            return tweet;
+        }
+    }
+
+    @Nested
+    class CountByAuthor {
+
+        @Test
+        void should_return_the_repository_count_when_the_author_is_asked_for() {
+            when(tweetRepository.countByAuthorId(AUTHOR_ID)).thenReturn(7L);
+
+            assertThat(tweetService.countByAuthor(AUTHOR_ID)).isEqualTo(7L);
         }
     }
 

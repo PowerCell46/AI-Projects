@@ -21,8 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.request.UpdateTweetRequestDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetImageContentResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetCountResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.CurrentUserId;
 
@@ -52,6 +53,17 @@ public class TweetController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(tweetService.create(userId, content, images));
+    }
+
+    /**
+     * The caller id is unused, but declaring it makes the missing-identity check apply to this route too.
+     */
+    @GetMapping("/count")
+    public TweetCountResponseDTO count(@CurrentUserId UUID userId, @RequestParam UUID authorId) {
+        return TweetCountResponseDTO
+                .builder()
+                .count(tweetService.countByAuthor(authorId))
+                .build();
     }
 
     /**

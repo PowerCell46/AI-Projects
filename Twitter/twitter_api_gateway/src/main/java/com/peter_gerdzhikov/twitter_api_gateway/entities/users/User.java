@@ -72,7 +72,7 @@ public class User extends CommonEntity {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = true, length = 30)
+    @Column(nullable = true, length = 60)
     private String location;
 
     @Past

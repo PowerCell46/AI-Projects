@@ -472,3 +472,37 @@ Enabled in step 18. New group `Replies` in `FeedControllerIntegrationTest`, `Sav
 - The tweet service down or answering `5xx` returns 502 (`should_return_502_when_the_tweet_service_is_down`, `..._answers_5xx`)
 - The gateway down or answering `5xx` returns 502 (`should_return_502_when_the_gateway_is_down`, `..._answers_5xx`)
 - Either downstream slower than the read timeout returns 504 (`should_return_504_when_the_tweet_service_is_slower_than_the_read_timeout`, `..._the_gateway_...`)
+
+## Profile - one author's tweets (frontend step 27)
+
+### `GET /api/v1/author-tweets/{authorId}?cursor=&size=`
+
+`AuthorTweetsControllerIntegrationTest` - WireMock stands in for the gateway's internal API and the tweet service. Enabled (step 27).
+
+`Identity`
+
+- A missing `X-User-Id` returns 400 (`should_return_400_when_the_user_id_header_is_missing`)
+
+`Read`
+
+- A page returns `nextCursor` and `items`; each item has every feed-item field (`should_return_200_and_every_feed_item_field_when_the_author_has_a_tweet`)
+- `likedByMe` and `savedByMe` follow the viewer; `likes` counts everyone (`should_return_the_viewers_own_flags_per_viewer_when_two_viewers_read_the_same_page`)
+- The tweet service's cursor is passed to the client and back (`should_pass_the_cursor_through_in_both_directions_when_the_author_has_more_pages`)
+- An author with no tweets returns an empty page without a cursor (`should_return_an_empty_page_when_the_author_has_no_tweets`)
+- A missing `size` asks the tweet service for 20 (`should_ask_the_tweet_service_for_20_when_the_size_is_missing`)
+- One call to each downstream per page (`should_make_one_call_to_each_downstream_when_a_page_is_read`)
+- A `size` of 0, -1, 101 or not a number returns 400 (parameterized) (`should_return_400_when_the_size_is_outside_1_to_100_or_not_a_number`)
+- A malformed author id returns 400 (`should_return_400_when_the_author_id_is_malformed`)
+- A cursor the tweet service refuses returns 400 "Invalid cursor." (`should_return_400_invalid_cursor_when_the_tweet_service_refuses_the_cursor`)
+
+`MissingData`
+
+- An author the gateway doesn't return (unknown or unconfirmed) returns 404 "Author not found." and no tweets are read (`should_return_404_when_the_author_is_unknown_and_read_no_tweets`)
+
+`Failures`
+
+- The gateway or the tweet service down or answering `5xx` returns 502 (`should_return_502_when_the_gateway_is_down`, `..._the_tweet_service_is_down`, `..._the_tweet_service_answers_5xx`)
+- Either downstream slower than the read timeout returns 504 (`should_return_504_when_the_gateway_is_slower_than_the_read_timeout`, `..._the_tweet_service_...`)
+
+Also `TweetLookupServiceIntegrationTest.FindPageByAuthor` (page and cursor read, size and cursor sent as parameters, no internal secret sent, `400` becomes `InvalidCursorException`, `5xx` / malformed page unavailable, slow answer timeout) and `AuthorTweetsServiceImplTest` (assembly for the viewer, unknown author, size range, downstream failure).
+

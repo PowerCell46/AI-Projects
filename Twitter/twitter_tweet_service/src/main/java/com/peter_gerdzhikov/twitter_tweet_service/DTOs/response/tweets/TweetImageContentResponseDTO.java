@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_tweet_service.DTOs.response;
+package com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets;
 
 import java.io.InputStream;
 

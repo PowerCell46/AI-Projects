@@ -183,3 +183,15 @@ timeline's back-fill on follow.
 - **A non-owner's edit or delete of a reply is `404`, not `403`** (audit finding 2, Info). Reply ids are public in the
   list, so this hides little, but the answer no longer separates "not yours" from "not there". The tweet routes keep
   their `403`. The reply edit's re-read of the reply to tell the two apart is gone.
+
+## The paged by-author read and the count (frontend step 26)
+
+- **One keyset cursor for replies and tweets.** `ReplyCursor` / `ReplyCursorCodec` became `KeysetCursor` /
+  `KeysetCursorCodec` (a timestamp and an id); the replies list is unchanged. A tweet page continues strictly after
+  `(createdAt, id)` descending, on `ix_tweets_author_created_id`.
+- **The page returns whole tweets**, the same body as `findByIds`, so the timeline service builds feed-shaped items
+  without a second read. `size` defaults to 20 and must be 1–100 (`PageSizeValidator`, as replies).
+- **`GET /api/v1/tweets/count?authorId=`** answers `{"count": n}` from `countByAuthorId` (a count query on the
+  same index prefix); an unknown author is `0`. It sits on the identity-checked public route like every `/api/v1`
+  endpoint, though the count is not tied to the caller.
+- **`DTOs/response` grouped:** the tweet DTOs moved to `DTOs/response/tweets` (the package would have held 7 files).

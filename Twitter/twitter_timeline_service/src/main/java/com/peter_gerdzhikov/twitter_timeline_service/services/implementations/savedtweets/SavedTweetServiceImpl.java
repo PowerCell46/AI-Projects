@@ -12,7 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.savedtweets.SavedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;

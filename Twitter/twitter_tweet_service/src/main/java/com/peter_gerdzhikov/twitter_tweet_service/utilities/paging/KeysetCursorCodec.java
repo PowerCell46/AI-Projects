@@ -10,20 +10,20 @@ import java.util.regex.Pattern;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
 
 /**
- * The opaque keyset cursor of the replies list: a timestamp and a reply id, which the list is ordered by.
+ * The opaque keyset cursor of the replies list and of an author's tweets: a timestamp and an id, which the list is ordered by.
  */
-public final class ReplyCursorCodec {
+public final class KeysetCursorCodec {
 
     private static final String SEPARATOR = ":";
 
     private static final Pattern MICROS_PATTERN = Pattern.compile("\\d{1,18}");
 
-    private ReplyCursorCodec() {
+    private KeysetCursorCodec() {
     }
 
-    public static String encode(Instant createdAt, UUID replyId) {
+    public static String encode(Instant createdAt, UUID id) {
         long epochMicros = ChronoUnit.MICROS.between(Instant.EPOCH, createdAt);
-        String raw = epochMicros + SEPARATOR + replyId;
+        String raw = epochMicros + SEPARATOR + id;
 
         return Base64
                 .getUrlEncoder()
@@ -35,10 +35,10 @@ public final class ReplyCursorCodec {
      * Accepts only what {@link #encode} produces: the decoded cursor is re-encoded and must equal the input,
      * so padding, signs, leading zeros and upper-case ids are all rejected.
      */
-    public static ReplyCursor decode(String cursor) {
+    public static KeysetCursor decode(String cursor) {
         try {
-            ReplyCursor decoded = parse(cursor);
-            if (!encode(decoded.getCreatedAt(), decoded.getReplyId()).equals(cursor)) {
+            KeysetCursor decoded = parse(cursor);
+            if (!encode(decoded.getCreatedAt(), decoded.getId()).equals(cursor)) {
                 throw new InvalidCursorException();
             }
 
@@ -49,7 +49,7 @@ public final class ReplyCursorCodec {
         }
     }
 
-    private static ReplyCursor parse(String cursor) {
+    private static KeysetCursor parse(String cursor) {
         String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
         String[] parts = raw.split(SEPARATOR, -1);
         if (parts.length != 2 || !MICROS_PATTERN.matcher(parts[0]).matches()) {
@@ -58,6 +58,6 @@ public final class ReplyCursorCodec {
 
         Instant createdAt = Instant.EPOCH.plus(Long.parseLong(parts[0]), ChronoUnit.MICROS);
 
-        return new ReplyCursor(UUID.fromString(parts[1]), createdAt);
+        return new KeysetCursor(UUID.fromString(parts[1]), createdAt);
     }
 }

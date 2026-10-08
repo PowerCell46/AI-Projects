@@ -24,7 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;

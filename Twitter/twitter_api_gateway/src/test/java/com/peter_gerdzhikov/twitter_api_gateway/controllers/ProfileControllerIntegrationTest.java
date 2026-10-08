@@ -244,7 +244,7 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
                     .birthdate(LocalDate.of(1990, 5, 17))
                     .build();
 
-            ProfileResponseDTO body = putProfile(request, cookieOf(user))
+            ProfileResponseDTO body = patchProfile(request, cookieOf(user))
                     .expectStatus()
                     .isOk()
                     .expectBody(ProfileResponseDTO.class)
@@ -262,29 +262,49 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
-        void should_return_200_and_clear_the_fields_when_they_are_null() {
+        void should_return_200_and_keep_the_fields_when_they_are_null() {
             User user = confirmedUserWithProfileText();
 
-            putProfile(new UpdateProfileRequestDTO(), cookieOf(user))
+            patchProfile(new UpdateProfileRequestDTO(), cookieOf(user))
                     .expectStatus()
                     .isOk();
 
-            assertProfileTextCleared(reload(user));
+            assertProfileTextKept(reload(user));
         }
 
         @Test
-        void should_return_200_and_clear_the_fields_when_they_are_blank() {
+        void should_keep_the_bio_and_the_birthdate_when_only_the_location_is_sent() {
+            User user = confirmedUserWithProfileText();
+            UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
+                    .location("Plovdiv")
+                    .build();
+
+            patchProfile(request, cookieOf(user))
+                    .expectStatus()
+                    .isOk();
+
+            User stored = reload(user);
+            assertThat(stored.getLocation()).isEqualTo("Plovdiv");
+            assertThat(stored.getBio()).isEqualTo("old bio");
+            assertThat(stored.getBirthdate()).isEqualTo(LocalDate.of(1980, 1, 1));
+        }
+
+        @Test
+        void should_return_200_and_clear_the_text_fields_when_they_are_blank() {
             User user = confirmedUserWithProfileText();
             UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
                     .bio("   ")
                     .location("")
                     .build();
 
-            putProfile(request, cookieOf(user))
+            patchProfile(request, cookieOf(user))
                     .expectStatus()
                     .isOk();
 
-            assertProfileTextCleared(reload(user));
+            User stored = reload(user);
+            assertThat(stored.getBio()).isNull();
+            assertThat(stored.getLocation()).isNull();
+            assertThat(stored.getBirthdate()).isEqualTo(LocalDate.of(1980, 1, 1));
         }
 
         @Test
@@ -295,7 +315,7 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
                     .location(" Sofia ")
                     .build();
 
-            ProfileResponseDTO body = putProfile(request, cookieOf(user))
+            ProfileResponseDTO body = patchProfile(request, cookieOf(user))
                     .expectStatus()
                     .isOk()
                     .expectBody(ProfileResponseDTO.class)
@@ -308,6 +328,30 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
+        void should_return_200_and_store_the_bio_when_it_is_160_emoji() {
+            User user = confirmedUser();
+            String bio = "\uD83D\uDE00".repeat(160);
+            UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
+                    .bio(bio)
+                    .build();
+
+            patchProfile(request, cookieOf(user))
+                    .expectStatus()
+                    .isOk();
+
+            assertThat(reload(user).getBio()).isEqualTo(bio);
+        }
+
+        @Test
+        void should_return_400_when_the_bio_is_161_emoji() {
+            UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
+                    .bio("\uD83D\uDE00".repeat(161))
+                    .build();
+
+            assertRejectedNaming(request, "bio");
+        }
+
+        @Test
         void should_return_400_when_the_bio_is_longer_than_160_characters() {
             UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
                     .bio("b".repeat(161))
@@ -317,9 +361,23 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
-        void should_return_400_when_the_location_is_longer_than_30_characters() {
+        void should_return_200_and_store_the_location_when_it_is_60_characters() {
+            User user = confirmedUser();
             UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
-                    .location("l".repeat(31))
+                    .location("l".repeat(60))
+                    .build();
+
+            patchProfile(request, cookieOf(user))
+                    .expectStatus()
+                    .isOk();
+
+            assertThat(reload(user).getLocation()).isEqualTo("l".repeat(60));
+        }
+
+        @Test
+        void should_return_400_when_the_location_is_longer_than_60_characters() {
+            UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
+                    .location("l".repeat(61))
                     .build();
 
             assertRejectedNaming(request, "location");
@@ -346,7 +404,7 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
                     .bio("Hello")
                     .build();
 
-            ProfileResponseDTO body = putProfile(request, cookieOf(user))
+            ProfileResponseDTO body = patchProfile(request, cookieOf(user))
                     .expectStatus()
                     .isOk()
                     .expectBody(ProfileResponseDTO.class)
@@ -362,14 +420,29 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
         @Test
         void should_return_401_when_there_is_no_cookie() {
-            putProfile(new UpdateProfileRequestDTO(), null)
+            patchProfile(new UpdateProfileRequestDTO(), null)
                     .expectStatus()
                     .isUnauthorized();
         }
 
-        private RestTestClient.ResponseSpec putProfile(UpdateProfileRequestDTO request, String cookie) {
-            RestTestClient.RequestBodySpec spec = restTestClient
+        @Test
+        void should_return_405_when_the_profile_is_put() {
+            User user = confirmedUser();
+
+            restTestClient
                     .put()
+                    .uri("/api/v1/users/me")
+                    .cookie(CookieFactory.COOKIE_NAME, cookieOf(user))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new UpdateProfileRequestDTO())
+                    .exchange()
+                    .expectStatus()
+                    .isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        }
+
+        private RestTestClient.ResponseSpec patchProfile(UpdateProfileRequestDTO request, String cookie) {
+            RestTestClient.RequestBodySpec spec = restTestClient
+                    .patch()
                     .uri("/api/v1/users/me");
             if (cookie != null) {
                 spec.cookie(CookieFactory.COOKIE_NAME, cookie);
@@ -384,7 +457,7 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
         private void assertRejectedNaming(UpdateProfileRequestDTO request, String field) {
             User user = confirmedUserWithProfileText();
 
-            ErrorResponseDTO body = putProfile(request, cookieOf(user))
+            ErrorResponseDTO body = patchProfile(request, cookieOf(user))
                     .expectStatus()
                     .isBadRequest()
                     .expectBody(ErrorResponseDTO.class)
@@ -404,10 +477,10 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
             return userRepository.save(user);
         }
 
-        private void assertProfileTextCleared(User stored) {
-            assertThat(stored.getBio()).isNull();
-            assertThat(stored.getLocation()).isNull();
-            assertThat(stored.getBirthdate()).isNull();
+        private void assertProfileTextKept(User stored) {
+            assertThat(stored.getBio()).isEqualTo("old bio");
+            assertThat(stored.getLocation()).isEqualTo("old location");
+            assertThat(stored.getBirthdate()).isEqualTo(LocalDate.of(1980, 1, 1));
         }
     }
 

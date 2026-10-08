@@ -24,8 +24,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetPageClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetSummaryClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
@@ -208,6 +210,114 @@ class TweetLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTes
     }
 
     @Nested
+    class FindPageByAuthor {
+
+        @Test
+        void should_return_the_cursor_and_the_whole_tweets_in_the_order_the_tweet_service_sent_them() {
+            UUID authorId = TestIds.userId();
+            UUID first = TestIds.tweetId();
+            UUID second = TestIds.tweetId();
+            stubPage(authorId, "{\"nextCursor\":\"abc_-\",\"items\":[" + tweetJson(first, authorId) + "," + tweetJson(second, authorId) + "]}");
+
+            TweetPageClientDTO page = tweetLookupService.findPageByAuthor(authorId, null, 2);
+
+            assertThat(page.getNextCursor()).isEqualTo("abc_-");
+            assertThat(page.getItems())
+                    .extracting(TweetClientDTO::getId)
+                    .containsExactly(first, second);
+            assertThat(page.getItems().getFirst().getImages()).hasSize(1);
+        }
+
+        @Test
+        void should_return_no_cursor_when_the_tweet_service_sends_none() {
+            UUID authorId = TestIds.userId();
+            stubPage(authorId, "{\"nextCursor\":null,\"items\":[]}");
+
+            TweetPageClientDTO page = tweetLookupService.findPageByAuthor(authorId, null, 20);
+
+            assertThat(page.getNextCursor()).isNull();
+            assertThat(page.getItems()).isEmpty();
+        }
+
+        @Test
+        void should_send_the_size_and_no_cursor_when_the_first_page_is_read() {
+            UUID authorId = TestIds.userId();
+            stubPage(authorId, "{\"nextCursor\":null,\"items\":[]}");
+
+            tweetLookupService.findPageByAuthor(authorId, null, 20);
+
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(urlPathEqualTo(pagePath(authorId)))
+                    .withQueryParam("size", equalTo("20"))
+                    .withoutQueryParam("cursor"));
+        }
+
+        @Test
+        void should_send_the_cursor_untouched_when_a_later_page_is_read() {
+            UUID authorId = TestIds.userId();
+            stubPage(authorId, "{\"nextCursor\":null,\"items\":[]}");
+
+            tweetLookupService.findPageByAuthor(authorId, "MTc2NzIyNTYwMDEyMzQ1NjowMTkw", 20);
+
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(urlPathEqualTo(pagePath(authorId)))
+                    .withQueryParam("cursor", equalTo("MTc2NzIyNTYwMDEyMzQ1NjowMTkw")));
+        }
+
+        @Test
+        void should_never_send_the_gateways_internal_secret_to_the_tweet_service() {
+            UUID authorId = TestIds.userId();
+            stubPage(authorId, "{\"nextCursor\":null,\"items\":[]}");
+
+            tweetLookupService.findPageByAuthor(authorId, null, 20);
+
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(urlPathEqualTo(pagePath(authorId)))
+                    .withoutHeader("X-Internal-Secret"));
+        }
+
+        @Test
+        void should_throw_invalid_cursor_when_the_tweet_service_answers_400() {
+            UUID authorId = TestIds.userId();
+            TWEET_SERVICE_STUB.register(get(urlPathEqualTo(pagePath(authorId))).willReturn(aResponse().withStatus(400)));
+
+            assertThatThrownBy(() -> tweetLookupService.findPageByAuthor(authorId, "bad", 20))
+                    .isInstanceOf(InvalidCursorException.class);
+        }
+
+        @Test
+        void should_throw_unavailable_when_the_tweet_service_answers_5xx() {
+            UUID authorId = TestIds.userId();
+            TWEET_SERVICE_STUB.register(get(urlPathEqualTo(pagePath(authorId))).willReturn(aResponse().withStatus(503)));
+
+            assertThatThrownBy(() -> tweetLookupService.findPageByAuthor(authorId, null, 20))
+                    .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "null",
+                "{\"nextCursor\":null}",
+                "{\"nextCursor\":null,\"items\":[null]}",
+                "{\"nextCursor\":null,\"items\":[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"images\":[]}]}"
+        })
+        void should_throw_unavailable_when_the_page_or_a_tweet_in_it_is_malformed(String body) {
+            UUID authorId = TestIds.userId();
+            stubPage(authorId, body);
+
+            assertThatThrownBy(() -> tweetLookupService.findPageByAuthor(authorId, null, 20))
+                    .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
+        void should_throw_timeout_when_the_tweet_service_is_slower_than_the_read_timeout() {
+            UUID authorId = TestIds.userId();
+            TWEET_SERVICE_STUB.register(get(urlPathEqualTo(pagePath(authorId)))
+                    .willReturn(aResponse().withStatus(200).withFixedDelay(DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS)));
+
+            assertThatThrownBy(() -> tweetLookupService.findPageByAuthor(authorId, null, 20))
+                    .isInstanceOf(UpstreamTimeoutException.class);
+        }
+    }
+
+    @Nested
     class Failures {
 
         @Test
@@ -270,6 +380,24 @@ class TweetLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTes
                     .isInstanceOf(UpstreamTimeoutException.class)
                     .hasMessage("Upstream service timed out.");
         }
+    }
+
+    private String pagePath(UUID authorId) {
+        return BY_AUTHOR_PATH + authorId + "/page";
+    }
+
+    private String tweetJson(UUID tweetId, UUID authorId) {
+        return "{\"id\":\"" + tweetId + "\",\"authorId\":\"" + authorId + "\",\"content\":\"hi\","
+                + "\"createdAt\":\"2026-01-01T00:00:00.123Z\",\"updatedAt\":\"2026-01-01T00:00:00.123Z\","
+                + "\"images\":[{\"id\":\"" + UUID.randomUUID() + "\",\"sizeBytes\":1,\"contentType\":\"image/png\"}]}";
+    }
+
+    private void stubPage(UUID authorId, String body) {
+        TWEET_SERVICE_STUB.register(get(urlPathEqualTo(pagePath(authorId)))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(body)));
     }
 
     private void stubByAuthor(String body) {

@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.FollowCheckClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.follows.FollowCheckClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowLookupService;

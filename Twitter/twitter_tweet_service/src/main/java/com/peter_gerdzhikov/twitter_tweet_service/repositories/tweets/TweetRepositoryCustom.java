@@ -29,6 +29,17 @@ public interface TweetRepositoryCustom {
     List<Tweet> findNewestByAuthorSince(UUID authorId, Instant since, int limit);
 
     /**
+     * Reads the author's newest tweets, whole, ordered by creation time then id, both descending.
+     */
+    List<Tweet> findFirstPageByAuthor(UUID authorId, int limit);
+
+    /**
+     * Like {@link #findFirstPageByAuthor}, continuing strictly after the tweet at {@code afterCreatedAt} and
+     * {@code afterId}.
+     */
+    List<Tweet> findPageByAuthorAfter(UUID authorId, Instant afterCreatedAt, UUID afterId, int limit);
+
+    /**
      * Adds {@code delta} to {@code replyCount} and leaves {@code updatedAt} alone, so a reply never makes the tweet
      * look edited.
      *

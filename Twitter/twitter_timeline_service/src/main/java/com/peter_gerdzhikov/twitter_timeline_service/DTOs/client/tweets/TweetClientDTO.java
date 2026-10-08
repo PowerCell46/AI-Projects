@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.DTOs.client;
+package com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets;
 
 import java.time.Instant;
 import java.util.List;

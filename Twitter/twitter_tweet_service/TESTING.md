@@ -15,8 +15,8 @@ The two limit scenarios that need a real servlet container live in `TweetUploadL
 
 `TweetControllerIntegrationTest.Identity`
 
-- A missing `X-User-Id` returns 400 "Missing or invalid caller identity." on every endpoint (parameterized over the implemented endpoints: all five routes) (`should_return_400_when_the_user_id_header_is_missing`)
-- A non-UUID `X-User-Id` returns 400 on every endpoint (parameterized over the implemented endpoints: all five routes) (`should_return_400_when_the_user_id_header_is_not_a_uuid`)
+- A missing `X-User-Id` returns 400 "Missing or invalid caller identity." on every endpoint (parameterized over the implemented endpoints: all six routes, the count included) (`should_return_400_when_the_user_id_header_is_missing`)
+- A non-UUID `X-User-Id` returns 400 on every endpoint (parameterized over the implemented endpoints: all six routes, the count included) (`should_return_400_when_the_user_id_header_is_not_a_uuid`)
 - `GET /actuator/health` returns 200 without `X-User-Id` (`should_return_200_when_health_is_requested_without_the_user_id_header`)
 
 ## `POST /api/v1/tweets`
@@ -135,6 +135,35 @@ Added in step 5:
 - A missing `since` returns 400 (`should_return_400_when_since_is_missing`)
 - A `since` that is not an ISO-8601 instant (`yesterday`, a bare date, epoch millis, empty) returns 400 (parameterized) (`should_return_400_when_since_is_not_an_iso_8601_instant`)
 - A non-UUID `authorId` returns 400 (`should_return_400_when_the_author_id_is_not_a_uuid`)
+
+## `GET /internal/v1/tweets/by-author/{authorId}/page?cursor=&size=`
+
+`TweetControllerIntegrationTest.InternalByAuthorPage` - service-to-service paged read for the timeline service's profile page; needs no `X-User-Id`.
+
+- Returns 200 with `nextCursor` and `items`, each item the full tweet shape of `POST` (`should_return_200_with_the_tweet_body_shape_and_no_cursor_when_the_author_has_one_tweet`)
+- Tweets come newest first (`should_return_the_tweets_newest_first_when_the_author_has_several`)
+- The next cursor leads to the rest and the last page has none (`should_split_the_tweets_over_pages_and_end_without_a_cursor_when_the_size_is_smaller`)
+- A last page that is exactly full has no cursor (`should_return_no_cursor_when_the_tweets_exactly_fill_the_last_page`)
+- Tweets with equal `createdAt` are neither repeated nor skipped across pages (`should_not_repeat_or_skip_a_tweet_when_several_share_one_created_at`)
+- Other authors' tweets never appear (`should_leave_out_the_tweets_of_other_authors`)
+- An author with no tweets returns an empty page without a cursor (`should_return_an_empty_page_when_the_author_has_no_tweets`)
+- A missing `size` means 20 (`should_use_a_size_of_20_when_the_size_is_missing`)
+- Works without `X-User-Id`; reading leaves the documents unchanged (`should_not_require_the_user_id_header_and_leave_the_documents_unchanged`)
+- A `size` of 1 and of 100 return 200 (parameterized) (`should_return_200_when_the_size_is_at_the_edge_of_the_range`)
+- A `size` of 0, -1, 101 or not a number returns 400 (parameterized) (`should_return_400_when_the_size_is_outside_1_to_100_or_not_a_number`)
+- A malformed `cursor` returns 400 (parameterized) (`should_return_400_when_the_cursor_is_malformed`)
+- A non-UUID `authorId` returns 400 (`should_return_400_when_the_author_id_is_not_a_uuid`)
+
+## `GET /api/v1/tweets/count?authorId=`
+
+`TweetControllerIntegrationTest.CountTweets`
+
+- Returns 200 `{"count": n}` with the author's tweets only (`should_return_200_with_the_number_of_tweets_of_the_author`)
+- The count drops by one after a delete (`should_return_the_count_one_lower_after_a_tweet_is_deleted`)
+- An unknown author returns `0` (`should_return_zero_when_the_author_is_unknown`)
+- A non-UUID `authorId` returns 400 (`should_return_400_when_the_author_id_is_not_a_uuid`)
+- A missing `authorId` returns 400 (`should_return_400_when_the_author_id_is_missing`)
+- A missing or malformed `X-User-Id` returns 400 (`Identity`)
 
 ## Concurrency
 

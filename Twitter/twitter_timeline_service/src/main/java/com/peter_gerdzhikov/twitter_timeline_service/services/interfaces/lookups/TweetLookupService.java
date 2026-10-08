@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetSummaryClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetPageClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetSummaryClientDTO;
 
 public interface TweetLookupService {
 
@@ -34,4 +35,19 @@ public interface TweetLookupService {
      *         when the tweet service doesn't answer within the read timeout
      */
     List<TweetSummaryClientDTO> findNewestByAuthor(UUID authorId, Instant since, int limit);
+
+    /**
+     * One page of the author's tweets, whole and newest first, with the tweet service's own cursor to the next.
+     * The tweet service counts no view for this read.
+     *
+     * @param cursor {@code null} for the first page, else the {@code nextCursor} of the previous page
+     * @param size   1 to 100, the tweet service's limit
+     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException
+     *         when the tweet service refuses the cursor
+     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException
+     *         when the tweet service can't be reached, answers another error or sends something unreadable
+     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException
+     *         when the tweet service doesn't answer within the read timeout
+     */
+    TweetPageClientDTO findPageByAuthor(UUID authorId, String cursor, int size);
 }

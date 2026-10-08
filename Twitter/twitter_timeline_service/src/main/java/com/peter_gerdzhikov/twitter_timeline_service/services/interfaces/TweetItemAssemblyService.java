@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 
 public interface TweetItemAssemblyService {

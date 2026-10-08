@@ -1,8 +1,8 @@
 package com.peter_gerdzhikov.twitter_tweet_service.utilities.mappers;
 
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetImageResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 

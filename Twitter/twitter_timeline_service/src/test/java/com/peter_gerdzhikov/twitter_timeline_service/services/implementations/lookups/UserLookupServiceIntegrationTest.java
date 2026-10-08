@@ -21,7 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;

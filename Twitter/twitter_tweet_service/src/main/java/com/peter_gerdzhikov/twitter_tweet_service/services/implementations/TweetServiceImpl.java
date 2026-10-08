@@ -19,9 +19,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetDeletedEventDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetImageContentResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetPageResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSummaryResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
@@ -41,6 +42,9 @@ import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxServ
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.ImageSignatureValidator;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.mappers.TweetMapper;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursor;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursorCodec;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.PageSizeValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -197,6 +201,30 @@ public class TweetServiceImpl implements TweetService {
     }
 
     @Override
+    public TweetPageResponseDTO findPageByAuthor(UUID authorId, String cursor, int size) {
+        PageSizeValidator.validate(size);
+        KeysetCursor position = cursor == null ? null : KeysetCursorCodec.decode(cursor);
+
+        List<Tweet> fetched = findOneMoreThanThePage(authorId, position, size);
+        boolean hasNextPage = fetched.size() > size;
+        List<Tweet> page = hasNextPage ? fetched.subList(0, size) : fetched;
+
+        return TweetPageResponseDTO
+                .builder()
+                .nextCursor(hasNextPage ? cursorAfter(page.getLast()) : null)
+                .items(page
+                        .stream()
+                        .map(TweetMapper::toResponse)
+                        .toList())
+                .build();
+    }
+
+    @Override
+    public long countByAuthor(UUID authorId) {
+        return tweetRepository.countByAuthorId(authorId);
+    }
+
+    @Override
     public TweetImageContentResponseDTO openImage(UUID tweetId, UUID imageId) {
         Tweet tweet = tweetRepository
                 .findById(tweetId)
@@ -214,6 +242,18 @@ public class TweetServiceImpl implements TweetService {
                 .contentType(image.getContentType())
                 .content(objectStorageService.get(image.getObjectKey()))
                 .build();
+    }
+
+    private List<Tweet> findOneMoreThanThePage(UUID authorId, KeysetCursor position, int size) {
+        if (position == null) {
+            return tweetRepository.findFirstPageByAuthor(authorId, size + 1);
+        }
+
+        return tweetRepository.findPageByAuthorAfter(authorId, position.getCreatedAt(), position.getId(), size + 1);
+    }
+
+    private String cursorAfter(Tweet lastOfThePage) {
+        return KeysetCursorCodec.encode(lastOfThePage.getCreatedAt(), lastOfThePage.getId());
     }
 
     /**

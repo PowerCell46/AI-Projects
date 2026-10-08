@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.twitter_timeline_service.DTOs.client;
+package com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.follows;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

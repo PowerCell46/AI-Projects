@@ -1,8 +1,8 @@
 package com.peter_gerdzhikov.twitter_timeline_service.utilities.mappers;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.TweetImageClientDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetImageClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.AuthorResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetImageResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;

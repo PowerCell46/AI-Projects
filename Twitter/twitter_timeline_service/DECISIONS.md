@@ -197,3 +197,14 @@ One entry per decision: what was chosen, what it was chosen over, and why.
 - **A tweet without `id`, `authorId` or `images`, a null item or a null body is an upstream failure (`502`).**
   `TweetLookupServiceImpl.findByIds` checks the answer instead of letting an NPE become a `500` with a stack trace.
   `UpstreamUnavailableException` gained a constructor without a cause for this.
+
+## One author's tweets (frontend step 27)
+
+- **`GET /api/v1/author-tweets/{authorId}`** pages the tweet service's `by-author/{id}/page` read and builds items with
+  `assembleFetched`, so an item equals a feed item. The author is looked up first (`404 Author not found.` before any
+  tweet is read, an unconfirmed account included); size defaults to 20, 1-100.
+- **The cursor is the tweet service's and is passed through.** This service can't read it, so a `400` from the tweet
+  service is turned into `InvalidCursorException` (`400 Invalid cursor.`) in `TweetLookupServiceImpl.findPageByAuthor`:
+  the size and the id are already valid, so only the cursor can cause one. Any other failure stays `502` / `504`.
+- **`DTOs/client` grouped** into `users`, `follows` and `tweets` (a 7th file would have broken the 5-file rule).
+

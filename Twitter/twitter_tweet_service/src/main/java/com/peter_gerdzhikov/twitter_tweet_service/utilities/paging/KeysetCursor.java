@@ -8,9 +8,9 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class ReplyCursor {
+public class KeysetCursor {
 
-    private final UUID replyId;
+    private final UUID id;
 
     private final Instant createdAt;
 }

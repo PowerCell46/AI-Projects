@@ -1,7 +1,9 @@
 package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.profiles;
 
+import java.time.LocalDate;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,9 +45,9 @@ public class ProfileServiceImpl implements ProfileService {
         User user = userRepository
                 .findById(userId)
                 .orElseThrow(UserNotFoundException::new);
-        user.setBio(blankToNull(request.getBio()));
-        user.setLocation(blankToNull(request.getLocation()));
-        user.setBirthdate(request.getBirthdate());
+        applyIfPresent(request.getBio(), user::setBio);
+        applyIfPresent(request.getLocation(), user::setLocation);
+        applyIfPresent(request.getBirthdate(), user::setBirthdate);
 
         return ProfileMapper.toResponse(user, false);
     }
@@ -53,6 +55,18 @@ public class ProfileServiceImpl implements ProfileService {
     private boolean isFollowedBy(UUID viewerId, User profile) {
         return !profile.getId().equals(viewerId)
                 && followRepository.existsByFollowerIdAndFollowingId(viewerId, profile.getId());
+    }
+
+    private void applyIfPresent(String value, Consumer<String> setter) {
+        if (value != null) {
+            setter.accept(blankToNull(value));
+        }
+    }
+
+    private void applyIfPresent(LocalDate value, Consumer<LocalDate> setter) {
+        if (value != null) {
+            setter.accept(value);
+        }
     }
 
     private String blankToNull(String value) {

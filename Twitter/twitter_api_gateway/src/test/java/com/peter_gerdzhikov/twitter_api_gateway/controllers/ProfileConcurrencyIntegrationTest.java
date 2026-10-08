@@ -2,7 +2,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -131,7 +131,7 @@ class ProfileConcurrencyIntegrationTest extends AbstractMinioIntegrationTest {
 
     private int editProfile(String cookie) throws Exception {
         return mockMvc
-                .perform(put("/api/v1/users/me")
+                .perform(patch("/api/v1/users/me")
                         .cookie(new Cookie(CookieFactory.COOKIE_NAME, cookie))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"bio\":\"edited bio\",\"location\":\"Sofia\"}"))

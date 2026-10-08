@@ -63,6 +63,8 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
 
     private static final String TWEET_DETAILS_PATH = "/api/v1/tweet-details/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
 
+    private static final String AUTHOR_TWEETS_PATH = "/api/v1/author-tweets/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+
     private static final String LIKE_PATH = LIKES_PATH + "/6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
 
     private static final String VIEWS_PATH = "/api/v1/views";
@@ -509,6 +511,59 @@ class TimelineRoutesIntegrationTest extends AbstractTimelineServiceIntegrationTe
         @Test
         void should_return_401_and_forward_nothing_when_there_is_no_cookie() {
             send(HttpMethod.GET, TWEET_DETAILS_PATH, null)
+                    .expectStatus().isUnauthorized();
+
+            assertNothingWasForwarded();
+        }
+    }
+
+    @Nested
+    class AuthorTweets {
+
+        @Test
+        void should_forward_a_get_with_the_path_query_and_status_unchanged_and_the_callers_identity_when_the_user_is_authenticated() {
+            UUID userId = UUID.randomUUID();
+            String pathWithQuery = AUTHOR_TWEETS_PATH + "?cursor=abc_-1&size=20";
+
+            send(HttpMethod.GET, pathWithQuery, cookieFor(userId))
+                    .expectStatus().isOk()
+                    .expectBody(String.class).isEqualTo(DOWNSTREAM_BODY);
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("GET", urlEqualTo(pathWithQuery))
+                    .withHeader(USER_ID_HEADER, equalTo(userId.toString())));
+        }
+
+        @Test
+        void should_replace_a_spoofed_x_user_id_with_the_jwt_subject_when_a_get_is_forwarded() {
+            UUID userId = UUID.randomUUID();
+
+            restTestClient.get()
+                    .uri(AUTHOR_TWEETS_PATH)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(userId))
+                    .header(USER_ID_HEADER, UUID.randomUUID().toString())
+                    .exchange()
+                    .expectStatus().isOk();
+
+            assertThat(forwardedUserIds()).containsExactly(userId.toString());
+        }
+
+        @Test
+        void should_not_forward_the_cookie_or_the_authorization_header_when_a_get_is_forwarded() {
+            restTestClient.get()
+                    .uri(AUTHOR_TWEETS_PATH)
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(UUID.randomUUID()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer should-never-leave-the-gateway")
+                    .exchange()
+                    .expectStatus().isOk();
+
+            TIMELINE_SERVICE_STUB.verifyThat(1, requestedFor("GET", urlEqualTo(AUTHOR_TWEETS_PATH))
+                    .withoutHeader(HttpHeaders.COOKIE)
+                    .withoutHeader(HttpHeaders.AUTHORIZATION));
+        }
+
+        @Test
+        void should_return_401_and_forward_nothing_when_there_is_no_cookie() {
+            send(HttpMethod.GET, AUTHOR_TWEETS_PATH, null)
                     .expectStatus().isUnauthorized();
 
             assertNothingWasForwarded();

@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_tweet_service.repositories;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -268,6 +269,93 @@ class TweetRepositoryIntegrationTest extends AbstractMongoIntegrationTest {
     }
 
     @Nested
+    class FindPagesByAuthor {
+
+        private static final Instant FIRST = Instant.parse("2026-03-01T00:00:00Z");
+
+        @Test
+        void should_return_the_newest_first_page_with_every_field_when_the_author_has_several() {
+            UUID authorId = UUID.randomUUID();
+            Tweet oldest = savedBy(authorId, FIRST.plusSeconds(10));
+            Tweet newest = savedBy(authorId, FIRST.plusSeconds(30));
+            Tweet middle = savedBy(authorId, FIRST.plusSeconds(20));
+
+            List<Tweet> found = tweetRepository.findFirstPageByAuthor(authorId, 2);
+
+            assertThat(found)
+                    .extracting(Tweet::getId)
+                    .containsExactly(newest.getId(), middle.getId());
+            assertThat(found.getFirst().getContent()).isEqualTo(oldest.getContent());
+            assertThat(found.getFirst().getAuthorId()).isEqualTo(authorId);
+        }
+
+        @Test
+        void should_continue_strictly_after_the_position_when_the_next_page_is_read() {
+            UUID authorId = UUID.randomUUID();
+            Tweet oldest = savedBy(authorId, FIRST.plusSeconds(10));
+            Tweet newest = savedBy(authorId, FIRST.plusSeconds(30));
+            Tweet middle = savedBy(authorId, FIRST.plusSeconds(20));
+
+            List<Tweet> found = tweetRepository.findPageByAuthorAfter(authorId, middle.getCreatedAt(), middle.getId(), 10);
+
+            assertThat(found)
+                    .extracting(Tweet::getId)
+                    .containsExactly(oldest.getId());
+            assertThat(found).doesNotContain(newest);
+        }
+
+        @Test
+        void should_walk_tweets_with_the_same_created_at_without_a_gap_or_a_repeat_when_paging_by_id() {
+            UUID authorId = UUID.randomUUID();
+            Instant sameInstant = FIRST.plusSeconds(10);
+            for (int i = 0; i < 5; i++) {
+                savedBy(authorId, sameInstant);
+            }
+            List<Tweet> all = tweetRepository.findFirstPageByAuthor(authorId, 10);
+            List<UUID> walked = new ArrayList<>();
+
+            List<Tweet> page = tweetRepository.findFirstPageByAuthor(authorId, 2);
+            while (!page.isEmpty()) {
+                walked.addAll(page.stream().map(Tweet::getId).toList());
+                Tweet last = page.getLast();
+                page = tweetRepository.findPageByAuthorAfter(authorId, last.getCreatedAt(), last.getId(), 2);
+            }
+
+            assertThat(walked).containsExactlyElementsOf(all.stream().map(Tweet::getId).toList());
+        }
+
+        @Test
+        void should_leave_out_the_tweets_of_other_authors() {
+            UUID authorId = UUID.randomUUID();
+            Tweet own = savedBy(authorId, FIRST);
+            savedBy(UUID.randomUUID(), FIRST.plusSeconds(5));
+
+            assertThat(tweetRepository.findFirstPageByAuthor(authorId, 10))
+                    .extracting(Tweet::getId)
+                    .containsExactly(own.getId());
+        }
+    }
+
+    @Nested
+    class CountByAuthorId {
+
+        @Test
+        void should_count_only_the_tweets_of_the_author() {
+            UUID authorId = UUID.randomUUID();
+            savedBy(authorId, TestDocuments.CREATED_AT);
+            savedBy(authorId, TestDocuments.CREATED_AT.plusSeconds(1));
+            savedBy(UUID.randomUUID(), TestDocuments.CREATED_AT);
+
+            assertThat(tweetRepository.countByAuthorId(authorId)).isEqualTo(2);
+        }
+
+        @Test
+        void should_return_zero_when_the_author_has_no_tweets() {
+            assertThat(tweetRepository.countByAuthorId(UUID.randomUUID())).isZero();
+        }
+    }
+
+    @Nested
     class Indexes {
 
         @Test
@@ -299,6 +387,27 @@ class TweetRepositoryIntegrationTest extends AbstractMongoIntegrationTest {
                             Filters.gte("createdAt", Date.from(Instant.parse("2026-03-01T00:00:00Z")))))
                     .sort(Sorts.orderBy(Sorts.descending("createdAt"), Sorts.descending("_id")))
                     .limit(50)
+                    .explain();
+
+            assertThat(plan.toJson())
+                    .contains("IXSCAN")
+                    .contains("ix_tweets_author_created_id")
+                    .doesNotContain("COLLSCAN");
+        }
+
+        @Test
+        void should_use_the_index_when_the_next_page_of_an_author_is_read() {
+            Document plan = mongoTemplate
+                    .getCollection("tweets")
+                    .find(Filters.and(
+                            Filters.eq("authorId", UUID.randomUUID()),
+                            Filters.or(
+                                    Filters.lt("createdAt", Date.from(Instant.parse("2026-03-01T00:00:00Z"))),
+                                    Filters.and(
+                                            Filters.eq("createdAt", Date.from(Instant.parse("2026-03-01T00:00:00Z"))),
+                                            Filters.lt("_id", UUID.randomUUID())))))
+                    .sort(Sorts.orderBy(Sorts.descending("createdAt"), Sorts.descending("_id")))
+                    .limit(21)
                     .explain();
 
             assertThat(plan.toJson())

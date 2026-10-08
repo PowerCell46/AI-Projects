@@ -91,6 +91,12 @@ code or its tests already say.
 - **`spring.servlet.multipart.enabled=true` is set explicitly** (step 25). The gateway-mvc starter otherwise sets
   it to `false` when unset, and the picture `PUT`s answered 500 on a real server. With it on, the starter's
   `GatewayMvcMultipartResolver` also skips parsing for proxied requests.
+- **`PATCH /api/v1/users/me` replaced the `PUT`** (frontend step 25). A missing or `null` field is kept (so a
+  birthdate can't be cleared), a blank bio or location clears it, values are stripped. Bio ≤ 160 and location ≤ 60
+  are counted in **code points after stripping** by `@MaxCodePoints`, not `@Size` (UTF-16 units), so the gateway and
+  the frontend agree on emoji. `PUT` answers 405.
+- **`User.location` is `varchar(60)`.** `ddl-auto=update` won't widen an existing column; local databases need
+  `ALTER TABLE users ALTER COLUMN location TYPE varchar(60);` (a fresh Testcontainers database is created at 60).
 
 ## Follows
 
@@ -165,3 +171,8 @@ code or its tests already say.
 - **`TweetServiceContractIntegrationTest` hands the real tweet-service container an `INTERNAL_API_SECRET`** (a fixed,
   test-only value). Since tweet service step 12 the image refuses to start without one, which the gateway's suite
   only showed at this step. No assertion changed.
+
+## The author-tweets route (frontend step 28)
+
+- **`/api/v1/author-tweets/*` joins the `timeline-service` route**, one path segment, with the same identity filters as
+  `tweet-details`: `X-User-Id` set from the JWT, a forged one replaced, the cookie and `Authorization` dropped.

@@ -29,8 +29,8 @@ import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.lookups.Us
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.replies.ReplyService;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.mappers.ReplyMapper;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.PageSizeValidator;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.ReplyCursor;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.ReplyCursorCodec;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursor;
+import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursorCodec;
 
 @Service
 public class ReplyServiceImpl implements ReplyService {
@@ -77,7 +77,7 @@ public class ReplyServiceImpl implements ReplyService {
     @Override
     public ReplyPageResponseDTO list(UUID tweetId, String cursor, int size) {
         PageSizeValidator.validate(size);
-        ReplyCursor position = cursor == null ? null : ReplyCursorCodec.decode(cursor);
+        KeysetCursor position = cursor == null ? null : KeysetCursorCodec.decode(cursor);
         if (!tweetRepository.existsById(tweetId)) {
             throw new TweetNotFoundException();
         }
@@ -185,12 +185,12 @@ public class ReplyServiceImpl implements ReplyService {
                 .orElseThrow(ReplyNotFoundException::new);
     }
 
-    private List<Reply> findOneMoreThanThePage(UUID tweetId, ReplyCursor position, int size) {
+    private List<Reply> findOneMoreThanThePage(UUID tweetId, KeysetCursor position, int size) {
         if (position == null) {
             return replyRepository.findFirstPage(tweetId, size + 1);
         }
 
-        return replyRepository.findPageAfter(tweetId, position.getCreatedAt(), position.getReplyId(), size + 1);
+        return replyRepository.findPageAfter(tweetId, position.getCreatedAt(), position.getId(), size + 1);
     }
 
     private Set<UUID> authorIdsOf(List<Reply> replies) {
@@ -201,7 +201,7 @@ public class ReplyServiceImpl implements ReplyService {
     }
 
     private String cursorAfter(Reply lastOfThePage) {
-        return ReplyCursorCodec.encode(lastOfThePage.getCreatedAt(), lastOfThePage.getId());
+        return KeysetCursorCodec.encode(lastOfThePage.getCreatedAt(), lastOfThePage.getId());
     }
 
     private void validateText(String text) {

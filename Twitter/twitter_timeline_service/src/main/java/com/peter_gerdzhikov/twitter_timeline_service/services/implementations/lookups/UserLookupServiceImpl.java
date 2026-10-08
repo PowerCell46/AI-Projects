@@ -12,7 +12,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
 

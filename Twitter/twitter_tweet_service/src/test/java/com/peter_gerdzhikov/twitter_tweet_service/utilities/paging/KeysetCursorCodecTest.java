@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
 
-class ReplyCursorCodecTest {
+class KeysetCursorCodecTest {
 
     private static final UUID ID = UUID.fromString("0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b");
 
@@ -26,7 +26,7 @@ class ReplyCursorCodecTest {
 
         @Test
         void should_produce_unpadded_base64url_of_epoch_micros_and_id() {
-            String cursor = ReplyCursorCodec.encode(TIMESTAMP, ID);
+            String cursor = KeysetCursorCodec.encode(TIMESTAMP, ID);
 
             String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
             assertThat(raw).isEqualTo("1767225600123456:" + ID);
@@ -39,23 +39,23 @@ class ReplyCursorCodecTest {
 
         @Test
         void should_return_the_same_position_when_the_cursor_was_encoded() {
-            ReplyCursor decoded = ReplyCursorCodec.decode(ReplyCursorCodec.encode(TIMESTAMP, ID));
+            KeysetCursor decoded = KeysetCursorCodec.decode(KeysetCursorCodec.encode(TIMESTAMP, ID));
 
             assertThat(decoded.getCreatedAt()).isEqualTo(TIMESTAMP);
-            assertThat(decoded.getReplyId()).isEqualTo(ID);
+            assertThat(decoded.getId()).isEqualTo(ID);
         }
 
         @Test
         void should_keep_microsecond_precision_when_the_instant_is_a_single_microsecond_past_a_second() {
             Instant instant = Instant.parse("2026-01-01T00:00:01.000001Z");
 
-            assertThat(ReplyCursorCodec.decode(ReplyCursorCodec.encode(instant, ID)).getCreatedAt()).isEqualTo(instant);
+            assertThat(KeysetCursorCodec.decode(KeysetCursorCodec.encode(instant, ID)).getCreatedAt()).isEqualTo(instant);
         }
 
         @ParameterizedTest
         @ValueSource(strings = {"", "not-a-cursor!", "====", "aGVsbG8"})
         void should_reject_input_that_is_not_a_cursor(String cursor) {
-            assertThatThrownBy(() -> ReplyCursorCodec.decode(cursor)).isInstanceOf(InvalidCursorException.class);
+            assertThatThrownBy(() -> KeysetCursorCodec.decode(cursor)).isInstanceOf(InvalidCursorException.class);
         }
 
         @ParameterizedTest
@@ -79,7 +79,7 @@ class ReplyCursorCodecTest {
                     .withoutPadding()
                     .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
 
-            assertThatThrownBy(() -> ReplyCursorCodec.decode(cursor)).isInstanceOf(InvalidCursorException.class);
+            assertThatThrownBy(() -> KeysetCursorCodec.decode(cursor)).isInstanceOf(InvalidCursorException.class);
         }
 
         @Test
@@ -89,7 +89,7 @@ class ReplyCursorCodecTest {
                     .encodeToString(("5:" + ID).getBytes(StandardCharsets.UTF_8));
 
             assertThat(padded).endsWith("=");
-            assertThatThrownBy(() -> ReplyCursorCodec.decode(padded)).isInstanceOf(InvalidCursorException.class);
+            assertThatThrownBy(() -> KeysetCursorCodec.decode(padded)).isInstanceOf(InvalidCursorException.class);
         }
     }
 }

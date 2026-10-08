@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.UserClientDTO;
+import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 
 public interface UserLookupService {
 

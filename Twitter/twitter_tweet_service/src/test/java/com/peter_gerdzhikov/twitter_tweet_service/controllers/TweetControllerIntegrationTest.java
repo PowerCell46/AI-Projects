@@ -10,8 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -1001,8 +1004,215 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
     }
 
+    @Nested
+    class InternalByAuthorPage {
+
+        private static final Instant FIRST = Instant.parse("2026-03-01T00:00:00Z");
+
+        @AfterEach
+        void resetClock() {
+            mutableClock.reset();
+        }
+
+        @Test
+        void should_return_200_with_the_tweet_body_shape_and_no_cursor_when_the_author_has_one_tweet() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            mutableClock.setInstant(FIRST);
+            JsonNode created = create(authorId, "page", image("a.png", TestImages.png()));
+
+            JsonNode body = findPage(authorId, null, "20", status().isOk());
+
+            assertThat(body.propertyNames()).containsExactlyInAnyOrder("nextCursor", "items");
+            assertThat(body.get("nextCursor").isNull()).isTrue();
+            assertThat(body.get("items")).hasSize(1);
+            assertThat(body.get("items").get(0)).isEqualTo(created);
+        }
+
+        @Test
+        void should_return_the_tweets_newest_first_when_the_author_has_several() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            String oldest = createAt(authorId, FIRST.plusSeconds(10));
+            String newest = createAt(authorId, FIRST.plusSeconds(30));
+            String middle = createAt(authorId, FIRST.plusSeconds(20));
+
+            JsonNode body = findPage(authorId, null, "20", status().isOk());
+
+            assertThat(idsIn(body.get("items"))).containsExactly(newest, middle, oldest);
+        }
+
+        @Test
+        void should_split_the_tweets_over_pages_and_end_without_a_cursor_when_the_size_is_smaller() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            String oldest = createAt(authorId, FIRST.plusSeconds(10));
+            String newest = createAt(authorId, FIRST.plusSeconds(30));
+            String middle = createAt(authorId, FIRST.plusSeconds(20));
+
+            JsonNode firstPage = findPage(authorId, null, "2", status().isOk());
+            JsonNode secondPage = findPage(authorId, firstPage.get("nextCursor").asString(), "2", status().isOk());
+
+            assertThat(idsIn(firstPage.get("items"))).containsExactly(newest, middle);
+            assertThat(idsIn(secondPage.get("items"))).containsExactly(oldest);
+            assertThat(secondPage.get("nextCursor").isNull()).isTrue();
+        }
+
+        @Test
+        void should_return_no_cursor_when_the_tweets_exactly_fill_the_last_page() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            createAt(authorId, FIRST.plusSeconds(10));
+            createAt(authorId, FIRST.plusSeconds(20));
+
+            JsonNode body = findPage(authorId, null, "2", status().isOk());
+
+            assertThat(body.get("items")).hasSize(2);
+            assertThat(body.get("nextCursor").isNull()).isTrue();
+        }
+
+        @Test
+        void should_not_repeat_or_skip_a_tweet_when_several_share_one_created_at() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            Set<String> created = new HashSet<>();
+            for (int i = 0; i < 5; i++) {
+                created.add(createAt(authorId, FIRST));
+            }
+
+            List<String> walked = new ArrayList<>();
+            String cursor = null;
+            do {
+                JsonNode page = findPage(authorId, cursor, "2", status().isOk());
+                walked.addAll(idsIn(page.get("items")));
+                cursor = page.get("nextCursor").isNull() ? null : page.get("nextCursor").asString();
+            } while (cursor != null);
+
+            assertThat(walked).hasSize(5).doesNotHaveDuplicates();
+            assertThat(walked).containsExactlyInAnyOrderElementsOf(created);
+        }
+
+        @Test
+        void should_leave_out_the_tweets_of_other_authors() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            String own = createAt(authorId, FIRST.plusSeconds(10));
+            createAt(UUID.randomUUID(), FIRST.plusSeconds(20));
+
+            JsonNode body = findPage(authorId, null, "20", status().isOk());
+
+            assertThat(idsIn(body.get("items"))).containsExactly(own);
+        }
+
+        @Test
+        void should_return_an_empty_page_when_the_author_has_no_tweets() throws Exception {
+            JsonNode body = findPage(UUID.randomUUID(), null, "20", status().isOk());
+
+            assertThat(body.get("items")).isEmpty();
+            assertThat(body.get("nextCursor").isNull()).isTrue();
+        }
+
+        @Test
+        void should_use_a_size_of_20_when_the_size_is_missing() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            for (int i = 0; i < 21; i++) {
+                createAt(authorId, FIRST.plusSeconds(i));
+            }
+
+            JsonNode body = mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH + "/by-author/" + authorId + "/page"))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString()
+                    .transform(objectMapper::readTree);
+
+            assertThat(body.get("items")).hasSize(20);
+            assertThat(body.get("nextCursor").isNull()).isFalse();
+        }
+
+        @Test
+        void should_not_require_the_user_id_header_and_leave_the_documents_unchanged() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            JsonNode created = create(authorId, "unchanged");
+            Tweet before = storedTweet(created);
+
+            findPage(authorId, null, "20", status().isOk());
+
+            assertThat(storedTweet(created)).usingRecursiveComparison().isEqualTo(before);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"1", "100"})
+        void should_return_200_when_the_size_is_at_the_edge_of_the_range(String size) throws Exception {
+            findPage(UUID.randomUUID(), null, size, status().isOk());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"0", "-1", "101", "many"})
+        void should_return_400_when_the_size_is_outside_1_to_100_or_not_a_number(String size) throws Exception {
+            findPage(UUID.randomUUID(), null, size, status().isBadRequest());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"not-a-cursor", "MTox", "bm9wZQ"})
+        void should_return_400_when_the_cursor_is_malformed(String cursor) throws Exception {
+            findPage(UUID.randomUUID(), cursor, "20", status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_the_author_id_is_not_a_uuid() throws Exception {
+            mockMvc
+                    .perform(get(INTERNAL_TWEETS_PATH + "/by-author/not-a-uuid/page"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    class CountTweets {
+
+        @Test
+        void should_return_200_with_the_number_of_tweets_of_the_author() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            create(authorId, "one");
+            create(authorId, "two");
+            create(UUID.randomUUID(), "someone else");
+
+            JsonNode body = count(authorId.toString(), UUID.randomUUID(), status().isOk());
+
+            assertThat(body.propertyNames()).containsExactly("count");
+            assertThat(body.get("count").asLong()).isEqualTo(2);
+        }
+
+        @Test
+        void should_return_the_count_one_lower_after_a_tweet_is_deleted() throws Exception {
+            UUID authorId = UUID.randomUUID();
+            create(authorId, "stays");
+            String deleted = create(authorId, "goes").get("id").asString();
+            delete(deleted, authorId, status().isNoContent());
+
+            JsonNode body = count(authorId.toString(), authorId, status().isOk());
+
+            assertThat(body.get("count").asLong()).isEqualTo(1);
+        }
+
+        @Test
+        void should_return_zero_when_the_author_is_unknown() throws Exception {
+            JsonNode body = count(UUID.randomUUID().toString(), UUID.randomUUID(), status().isOk());
+
+            assertThat(body.get("count").asLong()).isZero();
+        }
+
+        @Test
+        void should_return_400_when_the_author_id_is_not_a_uuid() throws Exception {
+            count("not-a-uuid", UUID.randomUUID(), status().isBadRequest());
+        }
+
+        @Test
+        void should_return_400_when_the_author_id_is_missing() throws Exception {
+            mockMvc
+                    .perform(get(TWEETS_PATH + "/count").header(USER_ID_HEADER, UUID.randomUUID().toString()))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
     static Stream<String> endpoints() {
         return Stream.of(
+                "GET /api/v1/tweets/count?authorId={id}",
                 "POST /api/v1/tweets",
                 "GET /api/v1/tweets/{id}",
                 "GET /api/v1/tweets/{id}/images/{imageId}",
@@ -1069,6 +1279,28 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
                 .perform(get(INTERNAL_TWEETS_PATH + "/by-author/" + authorId)
                         .param("since", since)
                         .param("limit", limit))
+                .andExpect(expected)
+                .andReturn());
+    }
+
+    private JsonNode findPage(UUID authorId, String cursor, String size, ResultMatcher expected) throws Exception {
+        MockHttpServletRequestBuilder request = get(INTERNAL_TWEETS_PATH + "/by-author/" + authorId + "/page")
+                .param("size", size);
+        if (cursor != null) {
+            request.param("cursor", cursor);
+        }
+
+        return json(mockMvc
+                .perform(request)
+                .andExpect(expected)
+                .andReturn());
+    }
+
+    private JsonNode count(String authorId, UUID callerId, ResultMatcher expected) throws Exception {
+        return json(mockMvc
+                .perform(get(TWEETS_PATH + "/count")
+                        .param("authorId", authorId)
+                        .header(USER_ID_HEADER, callerId.toString()))
                 .andExpect(expected)
                 .andReturn());
     }

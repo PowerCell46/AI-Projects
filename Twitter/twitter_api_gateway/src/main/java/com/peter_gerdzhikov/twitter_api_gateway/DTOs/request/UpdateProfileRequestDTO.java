@@ -2,8 +2,9 @@ package com.peter_gerdzhikov.twitter_api_gateway.DTOs.request;
 
 import java.time.LocalDate;
 
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.validation.MaxCodePoints;
+
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Size;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,10 +17,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateProfileRequestDTO {
 
-    @Size(max = 160)
+    @MaxCodePoints(160)
     private String bio;
 
-    @Size(max = 30)
+    @MaxCodePoints(60)
     private String location;
 
     @Past

@@ -6,9 +6,10 @@ import java.util.UUID;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetImageContentResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetResponseDTO;
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.TweetSummaryResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetImageContentResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetPageResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
+import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSummaryResponseDTO;
 
 public interface TweetService {
 
@@ -51,6 +52,21 @@ public interface TweetService {
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException
      */
     List<TweetSummaryResponseDTO> findNewestByAuthor(UUID authorId, Instant since, int limit);
+
+    /**
+     * Reads one page of the author's tweets, newest first, with every field of a tweet. Doesn't count a view.
+     *
+     * @param cursor the {@code nextCursor} of the previous page, or {@code null} for the first page
+     * @param size   between 1 and 100
+     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException
+     */
+    TweetPageResponseDTO findPageByAuthor(UUID authorId, String cursor, int size);
+
+    /**
+     * Counts the author's tweets; an author with none, or an unknown one, has {@code 0}.
+     */
+    long countByAuthor(UUID authorId);
 
     /**
      * Doesn't count a view.

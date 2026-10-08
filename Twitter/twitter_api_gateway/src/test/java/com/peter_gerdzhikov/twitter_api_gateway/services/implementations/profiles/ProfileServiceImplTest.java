@@ -156,11 +156,25 @@ class ProfileServiceImplTest {
         }
 
         @Test
-        void should_clear_the_fields_when_they_are_null_or_blank() {
+        void should_keep_the_fields_when_they_are_null() {
             User user = confirmedUser();
             user.setBio("old bio");
             user.setLocation("old location");
             user.setBirthdate(LocalDate.of(1990, 5, 17));
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+            profileService.updateProfile(USER_ID, new UpdateProfileRequestDTO());
+
+            assertThat(user.getBio()).isEqualTo("old bio");
+            assertThat(user.getLocation()).isEqualTo("old location");
+            assertThat(user.getBirthdate()).isEqualTo(LocalDate.of(1990, 5, 17));
+        }
+
+        @Test
+        void should_clear_only_the_sent_text_field_when_it_is_blank() {
+            User user = confirmedUser();
+            user.setBio("old bio");
+            user.setLocation("old location");
             when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
             UpdateProfileRequestDTO request = UpdateProfileRequestDTO.builder()
                     .bio("   ")
@@ -169,8 +183,7 @@ class ProfileServiceImplTest {
             profileService.updateProfile(USER_ID, request);
 
             assertThat(user.getBio()).isNull();
-            assertThat(user.getLocation()).isNull();
-            assertThat(user.getBirthdate()).isNull();
+            assertThat(user.getLocation()).isEqualTo("old location");
         }
 
         @Test
