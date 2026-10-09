@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
 
 class TimelineCursorCodecTest {
 

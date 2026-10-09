@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_timeline_service.services.implementations.feed;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -7,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -22,6 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,7 +49,7 @@ class FeedBackfillServiceImplTest {
 
     private static final Instant NOW = Instant.parse("2026-02-01T12:00:00Z");
 
-    private static final Instant SINCE = Instant.parse("2026-01-03T00:00:00.123456789Z");
+    private static final Instant SINCE = Instant.parse("2026-01-25T12:00:00Z");
 
     private static final Instant OLDEST_CREATED_AT = Instant.parse("2026-01-05T00:00:00Z");
 
@@ -101,6 +105,18 @@ class FeedBackfillServiceImplTest {
         }
 
         @Test
+        void should_refuse_to_start_when_the_backfill_size_is_above_the_tweet_service_limit() {
+            assertThatThrownBy(() -> newService(101))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("app.feed.backfill-size must not exceed 100");
+        }
+
+        @Test
+        void should_start_when_the_backfill_size_is_exactly_the_tweet_service_limit() {
+            assertThatCode(() -> newService(100)).doesNotThrowAnyException();
+        }
+
+        @Test
         void should_refuse_to_start_when_the_retention_is_not_positive() {
             assertThatThrownBy(() -> new FeedBackfillServiceImpl(
                     clock(), feedEntryRepository, tweetLookupService, followLookupService, eventValidationService,
@@ -114,13 +130,38 @@ class FeedBackfillServiceImplTest {
     class Backfill {
 
         @Test
-        void should_ask_for_the_newest_tweets_of_the_followee_since_the_retention_before_the_follow() {
+        void should_ask_for_the_newest_tweets_of_the_followee_since_the_retention_before_now() {
             givenTweets(new TweetSummaryClientDTO(TestIds.tweetId(), NEWEST_CREATED_AT));
             when(followLookupService.isFollowing(event.getFollowerId(), event.getFolloweeId())).thenReturn(true);
 
             feedBackfillService.backfill(event);
 
             verify(tweetLookupService).findNewestByAuthor(event.getFolloweeId(), SINCE, BACKFILL_SIZE);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"-1000000000-01-01T00:00:00Z", "1970-01-01T00:00:00Z", "+1000000000-12-31T23:59:59.999999999Z"})
+        void should_ask_since_the_retention_before_now_whatever_the_event_time_is(String occurredAt) {
+            event.setOccurredAt(Instant.parse(occurredAt));
+            givenTweets();
+
+            feedBackfillService.backfill(event);
+
+            verify(tweetLookupService).findNewestByAuthor(event.getFolloweeId(), SINCE, BACKFILL_SIZE);
+        }
+
+        @Test
+        void should_insert_no_more_than_the_backfill_size_when_the_tweet_service_answers_with_more() {
+            TweetSummaryClientDTO newest = new TweetSummaryClientDTO(TestIds.tweetId(), NEWEST_CREATED_AT);
+            TweetSummaryClientDTO middle = new TweetSummaryClientDTO(TestIds.tweetId(), NEWEST_CREATED_AT.minusSeconds(1));
+            TweetSummaryClientDTO oldest = new TweetSummaryClientDTO(TestIds.tweetId(), OLDEST_CREATED_AT);
+            givenTweets(newest, middle, oldest);
+            when(followLookupService.isFollowing(event.getFollowerId(), event.getFolloweeId())).thenReturn(true);
+
+            newService(2).backfill(event);
+
+            verify(feedEntryRepository, times(2)).insertIfAbsent(any(), any(), any(), any());
+            verify(feedEntryRepository, never()).insertIfAbsent(any(), eq(oldest.getId()), any(), any());
         }
 
         @Test
@@ -209,6 +250,17 @@ class FeedBackfillServiceImplTest {
             doThrow(new InvalidEventException("Invalid user.followed event.")).when(eventValidationService).validate(any(), any());
 
             assertThatThrownBy(() -> feedBackfillService.backfill(event)).isInstanceOf(InvalidEventException.class);
+
+            verifyNoInteractions(tweetLookupService, followLookupService, feedEntryRepository);
+        }
+
+        @Test
+        void should_reject_the_event_and_make_no_call_when_the_follower_and_the_followee_are_the_same_user() {
+            event.setFolloweeId(event.getFollowerId());
+
+            assertThatThrownBy(() -> feedBackfillService.backfill(event))
+                    .isInstanceOf(InvalidEventException.class)
+                    .hasMessageContaining("the same user");
 
             verifyNoInteractions(tweetLookupService, followLookupService, feedEntryRepository);
         }

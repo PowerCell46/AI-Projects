@@ -24,8 +24,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.views.TweetViewCount;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.views.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.views.TweetViewCountRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.views.ViewRecordingService;

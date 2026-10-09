@@ -32,9 +32,9 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetCli
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.likes.LikedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLike;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;

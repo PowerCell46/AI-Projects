@@ -8,6 +8,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -23,14 +26,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCallerIdentityException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.views.InvalidTweetIdsException;
 
 class GlobalExceptionHandlerTest {
 
@@ -186,6 +189,19 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(((ErrorResponseDTO) response.getBody()).getMessages())
                 .containsExactly("No resource found for this path.");
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void should_not_log_the_path_when_the_resource_is_unknown(CapturedOutput output) {
+        NoResourceFoundException e = new NoResourceFoundException(HttpMethod.GET, "/x\nWARN forged line", "x");
+
+        exceptionHandler.handleNoResourceFoundException(
+                e, new HttpHeaders(), HttpStatus.NOT_FOUND, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(output)
+                .contains("No resource found for a GET request.")
+                .doesNotContain("forged");
     }
 
     @Test

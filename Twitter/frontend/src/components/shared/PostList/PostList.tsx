@@ -1,5 +1,6 @@
 import type { PageRequest } from '../../../api/paging';
 import type { TweetItem, TweetPage } from '../../../api/tweetPage';
+import { usePostUpdates } from '../../../contexts/PostUpdatesContext';
 import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
 import { useMinuteClock } from '../../../hooks/useMinuteClock';
 import { bottomStateOf } from '../../../utils/bottomState';
@@ -37,6 +38,7 @@ function PostList({
     reloadEmptyKey,
 }: PostListProps) {
     const list = usePostList(fetchPage, ownPosts);
+    const { updates } = usePostUpdates();
     const now = useMinuteClock();
     const trackView = useViewTracking();
     const sentinelRef = useBottomSentinel(list.loadMore, `${list.items.length}-${list.status}`);
@@ -66,7 +68,10 @@ function PostList({
             <ul className="post-list">
                 {list.items.map((post) => (
                     <li key={post.id} data-tweet-id={post.id} ref={trackView}>
-                        <PostCell post={post} now={now} />
+                        <PostCell
+                            post={{ ...post, ...updates[post.id] }}
+                            now={now}
+                        />
                     </li>
                 ))}
             </ul>

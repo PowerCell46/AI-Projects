@@ -36,9 +36,8 @@ public class FeedFanOutServiceImpl implements FeedFanOutService {
         Instant tweetCreatedAt = event.getCreatedAt().truncatedTo(ChronoUnit.MICROS);
         AtomicInteger added = new AtomicInteger(addTo(List.of(event.getAuthorId()), event, tweetCreatedAt));
 
-        followerLookupService.forEachFollowerPage(
-                event.getAuthorId(),
-                followerIds -> added.addAndGet(addTo(followerIds, event, tweetCreatedAt)));
+        followerLookupService
+                .forEachFollowerPage(event.getAuthorId(), followerIds -> added.addAndGet(addTo(followerIds, event, tweetCreatedAt)));
 
         log.info("Fanned out tweet {} of author {} to {} feeds.", event.getTweetId(), event.getAuthorId(), added.get());
     }

@@ -4,7 +4,7 @@ Non-obvious calls made *during* implementation, the ones hard to re-derive from 
 lives in `PLAN.md`; conventions live in `CLAUDE.md`.
 
 One bullet per decision: what was chosen and why, in a line or two. Group by topic and keep the plan step in
-parentheses so references from `PLAN.md`, `TESTING.md` and the exploit reports still resolve. Skip anything the
+parentheses so references from `docs/TESTING.md` and the audits still resolve. Skip anything the
 code or its tests already say.
 
 ## Setup and test infrastructure
@@ -46,21 +46,14 @@ code or its tests already say.
 
 ## Email confirmation and outbox
 
-- **`ConfirmationRequestService` is shared by register and resend** (step 5). "Store a fresh token and queue the
-  event" is one unit, joining the caller's transaction.
-- **Confirm and resend live in `EmailConfirmationService`** (step 7), keeping the clock and cooldown out of
-  `AuthServiceImpl`.
 - **The token hash is SHA-256 over the UTF-8 bytes of the 43-character string** (step 5), not a decoded form, so it
   can't disagree with what the link carried.
 - **Resend reads the user before locking it** (step 7). A confirm committing in between can cost one extra email to
   a confirmed user. That is harmless and bounded by the cooldown.
-- **A token expiring exactly now is expired** (step 7): `expiresAt.isAfter(now)`. The cooldown mirrors it.
-- **Event JSON has no field order** (step 5). Jackson 3 sorts alphabetically; the contract is the set of names.
 - **The poll job's `initialDelay` equals its delay** (step 6). `fixedDelay` otherwise fires once at startup, which
   would drain rows mid-suite even with the test profile's 24h delay.
 - **A failed outbox row doesn't stop the batch** (step 6), so a poison row can't block newer ones. An
   `InterruptedException` restores the flag and counts as a failed attempt.
-- **The cleanup job logs the count; the service only deletes** (step 9), like the outbox publisher pair.
 
 ## Profiles and pictures
 
@@ -71,7 +64,6 @@ code or its tests already say.
   that must be read inside the transaction. `ProfileMapper` is static because upload and delete return the same shape.
 - **`@Past` on a birthdate uses Bean Validation's clock, not the `Clock` bean** (step 14), so the test clock doesn't
   move it. Today's date is rejected too.
-- **Length checks run on the raw string, before trimming** (step 14). A 160-character bio plus spaces is a 400.
 - **The upload body cap matches `PUT` on the two exact picture paths only** (step 15). `RequestBodySizeLimitFilter`
   runs before security, so any other method, path variant or trailing slash keeps the 8 KB cap. A mismatch fails
   small, never large. `UploadLimitsConfigurationTest` pins the derived multipart limits.
@@ -85,7 +77,7 @@ code or its tests already say.
 - **Routes are four explicit mappings, not `/me/{slot}`** (step 16), so the filter's exact-path match holds.
 - **Concurrent uploads to one slot are serialised by a row lock** (step 16 audit fix). `loadLockedUser` takes
   `UserRepository.lockById` first; without it parallel uploads left orphan rows and objects. The cost is that one
-  account's burst queues on the lock while holding pool connections (`SECURITY-AUDITS.md`, phase 2).
+  account's burst queues on the lock while holding pool connections (`docs/SECURITY-AUDITS.md`, phase 2).
 - **File serving reads the row, then streams the object, with no transaction** (step 17), so a download doesn't pin
   a connection. Any logged-in user can read any file id: ids are time-based UUIDs, not random, but the pictures are public anyway.
 - **`spring.servlet.multipart.enabled=true` is set explicitly** (step 25). The gateway-mvc starter otherwise sets
@@ -108,9 +100,6 @@ code or its tests already say.
   `@Check`, so only a fresh schema gets `ck_users_follow_counts_non_negative` (see the `ddl-auto` gap in `PLAN.md`).
 - **The fixed lock order uses `UUID.compareTo`, which is signed** (step 21). Any total order works, but a unit
   test's "larger" id must be `7fff…`, not `ffff…`.
-- **The self-follow check runs after the target lookup** (step 21), since the request carries only a username.
-  Nothing is written before the check.
-- **`followedByMe` is false on every response about your own profile** (step 22), without a query.
 - **List endpoints** (step 23):
   - `InvalidCursorException` and `InvalidPageSizeException` are both 400. The size is checked in the service, not
     with `@Min`/`@Max`, so the message is ours.
@@ -119,7 +108,6 @@ code or its tests already say.
   - Four repository queries, not one with a null cursor. Postgres breaks ties on unsigned UUID bytes, which differs
     from `UUID.compareTo`, so tests compare ids in `UUID.toString` order.
   - `followedByMe` on items is one `IN` query per page, skipped for an empty page.
-  - `FollowListService` keeps read paths out of `FollowServiceImpl`.
 - **Repeated `size=1&size=2` is a 200 with the first value** (phase 5 step 33), and a repeated `cursor` fails as
   invalid. The follow lists behave the same, and the tests pin it.
 - **The user-list after-cursor query uses the row value `(created_at, id) < (:c, :id)`** (phase 5 step 35), which
@@ -144,7 +132,7 @@ code or its tests already say.
   context only, and the image is built from `../twitter_tweet_service`, so the test assumes that layout.
 - **The like stub is a controller with no service** (frontend step 1). `PUT`/`DELETE /api/v1/likes/{tweetId}`
   answered 204 and stored nothing. Replaced by the timeline route in timeline step 32: `LikeController`, its test and
-  its `TESTING.md` section are deleted, and the three like paths are served by the timeline service.
+  its `docs/TESTING.md` section are deleted, and the three like paths are served by the timeline service.
 
 ## Internal API and events
 

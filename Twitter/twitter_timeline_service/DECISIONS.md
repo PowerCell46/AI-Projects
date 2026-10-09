@@ -121,8 +121,8 @@ One entry per decision: what was chosen, what it was chosen over, and why.
   the earlier deletes rolling back, not about the like delete itself.
 - **The phase 4 audit's findings are accepted, not fixed** (step 34). The Low (forged `X-User-Id` reads a private
   liked list and mints likes) and the Info (a forged `tweet.deleted` wipes likes) extend the existing "trusted header"
-  and "trusted topic" gaps and carry their triggers in `PLAN.md` and `SECURITY-AUDITS.md`. The raw report was condensed
-  into `SECURITY-AUDITS.md` and its file removed.
+  and "trusted topic" gaps and carry their triggers in `PLAN.md` and `docs/SECURITY-AUDITS.md`. The raw report was condensed
+  into `docs/SECURITY-AUDITS.md` and its file removed.
 
 ## Back-fill (frontend step 16)
 
@@ -132,11 +132,19 @@ One entry per decision: what was chosen, what it was chosen over, and why.
   across the two HTTP calls.
 - **One insert per tweet, through the existing statement.** Up to 50 `insertIfAbsent` calls, each its own
   transaction, not a new multi-tweet statement: cheap, already idempotent, harmless to re-run on a retry.
-  **Trigger:** the back-fill size grows past a few hundred, or follow volume shows in the database → one statement
-  over two arrays.
+  **Trigger:** the tweet service's 100 limit is raised and the size grows past a few hundred, or follow volume
+  shows in the database → one statement over two arrays.
 - **The undo bound is the clock's now.** When the follow is gone, the delete removes the follower's entries by that
   author up to now (cut to microseconds), including ones the author's own fan-out added meanwhile. It is the same
   delete `user.unfollowed` runs.
+- **The window starts at the clock's now minus the retention; the event's `occurredAt` is not read** (audit
+  2026-10-04, fixed 2026-10-09). The event time is not trusted: `Instant.MIN` threw and was retried ~4 minutes, a
+  far-past value skipped the 7-day window, and an entry older than the retention only waits for the next cleanup. For
+  a prompt event the difference is seconds. `occurredAt` stays `@NotNull` as part of the wire contract.
+- **A self-follow is an invalid event, and the size is capped by a constant, not a property** (same audit). The gateway
+  never emits a self-follow; a forged one made the undo delete the user's own entries, so it goes to the DLT without a
+  retry. `FEED_BACKFILL_SIZE` above 100 refuses to start, with the limit a constant as in the tweet service
+  (`MAX_TWEETS_PER_AUTHOR_READ`); a longer answer is cut to the size.
 
 ## Tests
 

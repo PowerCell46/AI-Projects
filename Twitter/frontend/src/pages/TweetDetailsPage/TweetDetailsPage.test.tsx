@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/http';
 import { createReply, deleteReply, fetchReplies, updateReply } from '../../api/replies';
 import { fetchTweetDetails } from '../../api/tweetDetails';
+import { PostUpdatesProvider } from '../../contexts/PostUpdatesContext';
 import { intersect } from '../../test/intersectionObserver';
 import { viewReporter } from '../../utils/viewReporter';
 import { ROUTES } from '../../routes';
@@ -113,10 +114,12 @@ const FEED_TEXT = 'the feed';
 function renderPage(entries: string[]) {
     return render(
         <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
-            <Routes>
-                <Route path={ROUTES.feed} element={<p>{FEED_TEXT}</p>} />
-                <Route path={ROUTES.tweet} element={<TweetDetailsPage tweetId={TWEET_ID} />} />
-            </Routes>
+            <PostUpdatesProvider>
+                <Routes>
+                    <Route path={ROUTES.feed} element={<p>{FEED_TEXT}</p>} />
+                    <Route path={ROUTES.tweet} element={<TweetDetailsPage tweetId={TWEET_ID} />} />
+                </Routes>
+            </PostUpdatesProvider>
         </MemoryRouter>,
     );
 }

@@ -85,18 +85,27 @@ export function newUser(): TestUser {
 }
 
 // Newest first, as Mailpit lists them.
-async function searchEmailsTo(email: string): Promise<MailpitMessageSummary[]> {
-    const query = encodeURIComponent(`to:"${email}"`);
+async function searchEmails(searchQuery: string): Promise<MailpitMessageSummary[]> {
+    const query = encodeURIComponent(searchQuery);
     const response = await fetch(`${MAILPIT_URL}/api/v1/search?query=${query}`);
     const searchResponse: MailpitSearchResponse = await response.json();
 
     return searchResponse.messages;
 }
 
-async function readConfirmationUrl(messageId: string): Promise<string> {
+async function searchEmailsTo(email: string): Promise<MailpitMessageSummary[]> {
+    return searchEmails(`to:"${email}"`);
+}
+
+async function readMessageText(messageId: string): Promise<string> {
     const response = await fetch(`${MAILPIT_URL}/api/v1/message/${messageId}`);
     const message: MailpitMessage = await response.json();
-    const confirmationUrlMatch = CONFIRMATION_URL_PATTERN.exec(message.Text);
+
+    return message.Text;
+}
+
+async function readConfirmationUrl(messageId: string): Promise<string> {
+    const confirmationUrlMatch = CONFIRMATION_URL_PATTERN.exec(await readMessageText(messageId));
 
     if (confirmationUrlMatch === null) {
         throw new Error('The confirmation email has no link in its text part.');
@@ -105,14 +114,13 @@ async function readConfirmationUrl(messageId: string): Promise<string> {
     return confirmationUrlMatch[0];
 }
 
-// The link in the newest confirmation email sent to this address. Waits until enough emails have arrived.
-export async function latestConfirmationUrl(email: string, minimumEmailCount = 1): Promise<string> {
+async function waitForEmails(searchQuery: string, minimumEmailCount: number): Promise<MailpitMessageSummary[]> {
     let emails: MailpitMessageSummary[] = [];
 
     await expect
         .poll(
             async () => {
-                emails = await searchEmailsTo(email);
+                emails = await searchEmails(searchQuery);
 
                 return emails.length;
             },
@@ -120,7 +128,21 @@ export async function latestConfirmationUrl(email: string, minimumEmailCount = 1
         )
         .toBeGreaterThanOrEqual(minimumEmailCount);
 
+    return emails;
+}
+
+// The link in the newest confirmation email sent to this address. Waits until enough emails have arrived.
+export async function latestConfirmationUrl(email: string, minimumEmailCount = 1): Promise<string> {
+    const emails = await waitForEmails(`to:"${email}"`, minimumEmailCount);
+
     return readConfirmationUrl(emails[0].ID);
+}
+
+// The text part of the newest email sent to this address with this subject. Waits until one has arrived.
+export async function latestEmailText(email: string, subject: string): Promise<string> {
+    const emails = await waitForEmails(`to:"${email}" subject:"${subject}"`, 1);
+
+    return readMessageText(emails[0].ID);
 }
 
 export async function confirmationEmailCount(email: string): Promise<number> {

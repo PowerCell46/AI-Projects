@@ -70,6 +70,7 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         long maxBytes = maxBytesFor(request);
+
         if (request.getContentLengthLong() > maxBytes) {
             log.warn("Rejected a request to '{}' declaring an oversized body.", request.getRequestURI());
             ErrorResponseWriter.write(response, objectMapper, HttpStatus.CONTENT_TOO_LARGE, RequestBodyTooLargeException.MESSAGE);
@@ -90,12 +91,10 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isPictureUpload(HttpServletRequest request) {
-        return HttpMethod.PUT.matches(request.getMethod())
-                && UPLOAD_PATHS.contains(request.getRequestURI());
+        return HttpMethod.PUT.matches(request.getMethod()) && UPLOAD_PATHS.contains(request.getRequestURI());
     }
 
     private boolean isTweetCreation(HttpServletRequest request) {
-        return HttpMethod.POST.matches(request.getMethod())
-                && TWEET_CREATE_PATH.equals(request.getRequestURI());
+        return HttpMethod.POST.matches(request.getMethod()) && TWEET_CREATE_PATH.equals(request.getRequestURI());
     }
 }

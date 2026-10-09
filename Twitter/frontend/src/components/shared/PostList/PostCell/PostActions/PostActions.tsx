@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { likeTweet, unlikeTweet } from '../../../../../api/likes';
 import { saveTweet, unsaveTweet } from '../../../../../api/savedTweets';
+import type { PostUpdate } from '../../../../../contexts/PostUpdatesContext';
 import { useOptimisticToggle } from '../../../../../hooks/useOptimisticToggle';
 import { tweetPath } from '../../../../../routes';
 import { formatCount } from '../../../../../utils/count';
@@ -15,6 +16,7 @@ interface PostActionsProps {
     likeCount: number;
     replyCount: number;
     isReplyLinked: boolean;
+    onChange?: (update: PostUpdate) => void;
 }
 
 function PostActions({
@@ -24,6 +26,7 @@ function PostActions({
     likeCount,
     replyCount,
     isReplyLinked,
+    onChange,
 }: PostActionsProps) {
     const like = useOptimisticToggle(
         isLikedInitially,
@@ -37,6 +40,21 @@ function PostActions({
     // The server's count already holds your like when the post loaded liked; a read taken mid-race can say 0 for a
     // post that is liked by you, so the shown count never goes below 0.
     const shownLikeCount = Math.max(0, likeCount - Number(isLikedInitially) + Number(like.isOn));
+
+    function handleLikeClick() {
+        const isLikedNext = !like.isOn;
+
+        like.toggle();
+        onChange?.({
+            likedByMe: isLikedNext,
+            likes: Math.max(0, likeCount - Number(isLikedInitially) + Number(isLikedNext)),
+        });
+    }
+
+    function handleSaveClick() {
+        onChange?.({ savedByMe: !save.isOn });
+        save.toggle();
+    }
 
     const replyContent = (
         <>
@@ -69,7 +87,7 @@ function PostActions({
                 data-action="like"
                 data-active={like.isOn}
                 aria-pressed={like.isOn}
-                onClick={like.toggle}
+                onClick={handleLikeClick}
             >
                 <span className="post-actions-icon">
                     <FillIcon shape="heart" isActive={like.isOn} />
@@ -83,7 +101,7 @@ function PostActions({
                 data-action="save"
                 data-active={save.isOn}
                 aria-pressed={save.isOn}
-                onClick={save.toggle}
+                onClick={handleSaveClick}
             >
                 <span className="post-actions-icon">
                     <FillIcon shape="bookmark" isActive={save.isOn} />

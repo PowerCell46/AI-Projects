@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -190,6 +192,23 @@ class UserConfirmationNotificationServiceImplTest {
             service.process(event);
 
             verify(mailDeliveryService).send(eq(event.getEmail()), anyString(), anyString(), anyString());
+        }
+    }
+
+    @Nested
+    class Constructor {
+
+        @ParameterizedTest
+        @ValueSource(longs = {0, -1, -604_800})
+        void should_fail_to_start_when_the_confirmation_sent_ttl_is_zero_or_negative(long ttlSeconds) {
+            Duration ttl = Duration.ofSeconds(ttlSeconds);
+
+            assertThrows(IllegalStateException.class, () -> new UserConfirmationNotificationServiceImpl(
+                    Clock.fixed(NOW, ZoneOffset.UTC),
+                    ttl,
+                    new MailEventValidationServiceImpl(VALIDATOR),
+                    new MailDispatchServiceImpl(mailInboxService, mailDeliveryService),
+                    new ConfirmationEmailRenderer("Europe/Sofia")));
         }
     }
 

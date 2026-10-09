@@ -1,20 +1,23 @@
 ## What this is
 
 The timeline service of the Twitter clone: everything about one user's relationship to tweets they didn't write -
-the feed (phase 1), saved tweets (phase 2), unique viewers per tweet (phase 3) and likes (phase 4: like, unlike,
-your own liked list, a public count on every post). It consumes `tweet.created`,
-`tweet.deleted` (tweet service), `user.followed` and `user.unfollowed` (gateway), and reads tweets and authors
-from the tweet service and the gateway's `/internal/v1/**` over HTTP. It knows nothing about authentication: the gateway
-(`../twitter_api_gateway`) proxies `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`, `/api/v1/likes/**` and `/api/v1/tweet-details/{tweetId}` (one tweet as a feed item, for the tweet page) to it and tells it
-who is calling through the `X-User-Id` header. `PLAN.md` is the backlog and the design: five phases (4 and 5 are likes and their UI), numbered
-steps with gates. Read it before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
+the feed, saved tweets, unique viewers per tweet and likes (like, unlike, your own liked list, a public count on every
+post). It consumes `tweet.created`, `tweet.deleted` (tweet service), `user.followed` and `user.unfollowed` (gateway), and
+reads tweets and authors from the tweet service and the gateway's `/internal/v1/**` over HTTP. It knows nothing about
+authentication: the gateway (`../twitter_api_gateway`) proxies `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`,
+`/api/v1/likes/**` and `/api/v1/tweet-details/{tweetId}` (one tweet as a feed item, for the tweet page) to it and tells it
+who is calling through the `X-User-Id` header.
+
+`PLAN.md` is the design in short, the open items and the accepted gaps with their triggers: five phases, all done, the
+per-step detail trimmed (it is in git history). Calls made *during* implementation go in `DECISIONS.md`, the test
+catalog is `docs/TESTING.md`, the `exploit-hunter` audits are `docs/SECURITY-AUDITS.md`.
 
 ## Running the project
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
 `../docker-compose.infra.yml` (the Twitter root, one level up) runs this service's own Postgres (`postgres-timeline`,
-host port **5433**) next to Kafka and the rest. For local dev: copy `../.env.example` to `../.env`, run
+host port **5433**) next to Kafka and the rest. For local dev: copy `../.env.example` to `../.env` (this service's own vars are also listed in `./.env.example`), run
 `docker compose -f docker-compose.infra.yml up -d` from the Twitter root, export the env (`set -a; . ../.env; set +a`), then
 `./mvnw spring-boot:run` serves the app on **:8083**. Other goals: `./mvnw clean install`, `./mvnw test`,
 `./mvnw verify`.
@@ -28,12 +31,10 @@ separate `*-test` starter per module. Copy the artifactId pattern already in `po
 the 3.x name, and verify any 3.x-era API before relying on it.
 
 There is no Spring Security here. "Who am I" is the `X-User-Id` header, read by the `@CurrentUserId` argument
-resolver; the service trusts it blindly, which is safe only while it is reachable through the gateway alone.
+resolver; the service trusts it blindly, which is safe only while it is reachable through the gateway alone
+(accepted gap).
 
 `open-in-view` is off: reads call other services over HTTP and must not hold a database connection meanwhile.
-
-Anything marked "as the gateway", "as the mail service" or "as the tweet service" in `PLAN.md` is ported from that
-project. Port from there, don't reinvent.
 
 ## Writing code
 
@@ -50,7 +51,8 @@ Hard rules - these hold whether or not the skill is loaded:
 - Endpoints live under `/api/v1`.
 - Anything that compares against "now" injects the `Clock` bean; never call `Instant.now()` in main code. Timestamps are truncated to microseconds (Postgres's precision) so they round-trip exactly; the list cursors are built from them.
 - Rows are only inserted or deleted, never edited: writes are native `INSERT ... ON CONFLICT DO NOTHING`, so a redelivered event or a double click changes nothing.
-- Adding, removing, or changing a scenario in any `*ControllerIntegrationTest` or `*ListenerIntegrationTest` updates `TESTING.md` in the same change - it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
+- **If you add, remove or change a scenario in any `*ControllerIntegrationTest` or `*ListenerIntegrationTest` → MUST update `docs/TESTING.md`** in the same change. It's hand-maintained, so it only stays trustworthy if edits to the tests carry an edit to the catalog.
+- **Any edit to a file in `docs/` MUST also update its `Last updated: YYYY-MM-DD` line** (top of the file) to the date of the edit.
 
 Root-level packages, under `com.peter_gerdzhikov.twitter_timeline_service`:
 - `/configurations` - Spring configuration
@@ -74,9 +76,7 @@ Root-level packages, under `com.peter_gerdzhikov.twitter_timeline_service`:
 
 - A behaviour change ships with its test change **in the same commit**.
 - **Never delete, `@Disabled`, or weaken an assertion to make a build pass without explicit approval** (except the catalog each phase enables step by step).
-- Adding, removing or changing any HTTP or listener scenario updates `TESTING.md` in the same change.
-- Never report a suite that didn't run (for example, no Docker) as passing.
-- **No step starts on a red or missing test, and each step ends green.** Nothing in phase *n+1* starts until phase *n*'s final gate passes.
+- **A step isn't done until its own tests are written and green; no step starts on a red or missing test.** Nothing in phase *n+1* starts until phase *n*'s final gate passes.
 - Tests are deterministic: no `Thread.sleep` (Awaitility with a bounded `atMost`), time from the mutable test clock, the retention job disabled in the test profile and invoked directly, fresh random user and tweet ids per test (`TestIds`), Kafka and DLT assertions filtered by the test's own key, negative async assertions via a sentinel event under the same key.
 - A phase exits on `mvn verify` green **3x in a row**. A single flaky run is a failure to investigate, not to retry.
 - Never log a payload, tweet text or the internal secret. Log `eventId`, `tweetId` and user ids.
@@ -103,17 +103,13 @@ Done = re-check touched files against any loaded skill's rules.
 - **After completing a task:** one or two sentences max — what changed and anything worth flagging. No listing every file touched, no restating the request.
 - **Auto-run builds and tests only for significant changes.** Run `./mvnw clean install` or `./mvnw test` ONLY WHEN the change is behavior-affecting or structurally meaningful: new or removed features, modified business logic, API/contract changes, dependency/build changes, or broader refactors. DO **NOT** run them for comment-only edits, formatting-only changes, typo fixes, or similarly tiny updates. If tests fail due to my change — fix them, then report. If the cause is unclear — stop and report immediately.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
-- **A step isn't done until its own tests are written and green.** No step starts on a red or missing test.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds the design and history, `DECISIONS.md` holds calls made *during* implementation.
 
 ### Autonomy
 
 - **NEVER IMPLEMENT ANYTHING UNLESS I EXPLICITLY TELL YOU TO IMPLEMENT.** This overrides everything below. A question ("can we do X?", "how would Y work?", "I don't like Z") is a request for discussion/a proposal — NOT a license to write, edit, or delete code. Propose the approach and wait. Only act when I use an explicit imperative ("implement", "do it", "go ahead", "write it", "apply", "proceed").
-- **Simple, well-scoped tasks** (fix this bug, add this field, refactor this method) — propose, then implement only on explicit go-ahead.
 - **Complex tasks** (architecture, new patterns, meaningful design options) — describe approach in 2-3 sentences, wait for approval, then implement. At the end of any plan, list unresolved questions concisely (grammar optional) — if any. Suggest a suitable skill if appropriate — see Skills section.
-- **Stuck mid-task** — stop and ask. Don't guess on hard prerequisites.
-- **Open-ended or vague task** — suggest `/grill-me` rather than interpreting unilaterally.
 
 ### Pushback and disagreement
 

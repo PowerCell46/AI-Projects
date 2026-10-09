@@ -26,14 +26,15 @@ import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSumm
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.NotTweetAuthorException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetImageNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetSinceOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ConflictRetrier;
@@ -55,6 +56,10 @@ public class TweetServiceImpl implements TweetService {
     private static final int MAX_IDS_PER_READ = 100;
 
     private static final int MAX_TWEETS_PER_AUTHOR_READ = 100;
+
+    private static final Instant EARLIEST_SINCE = Instant.EPOCH;
+
+    private static final Instant LATEST_SINCE = Instant.parse("9999-12-31T23:59:59Z");
 
     private final Clock clock;
 
@@ -191,6 +196,10 @@ public class TweetServiceImpl implements TweetService {
     public List<TweetSummaryResponseDTO> findNewestByAuthor(UUID authorId, Instant since, int limit) {
         if (limit < 1 || limit > MAX_TWEETS_PER_AUTHOR_READ) {
             throw new TweetLimitOutOfRangeException(MAX_TWEETS_PER_AUTHOR_READ);
+        }
+
+        if (since.isBefore(EARLIEST_SINCE) || since.isAfter(LATEST_SINCE)) {
+            throw new TweetSinceOutOfRangeException(EARLIEST_SINCE, LATEST_SINCE);
         }
 
         return tweetRepository

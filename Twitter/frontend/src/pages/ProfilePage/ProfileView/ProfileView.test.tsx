@@ -6,6 +6,7 @@ import { fetchAuthorTweets } from '../../../api/authorTweets';
 import type { TweetItem } from '../../../api/tweetPage';
 import { followUser, unfollowUser } from '../../../api/users';
 import { useAuth } from '../../../contexts/AuthContext';
+import { PostUpdatesProvider } from '../../../contexts/PostUpdatesContext';
 import { advance } from '../../../test/stepFlowHelpers';
 import { tweetItem } from '../../../test/tweetItem';
 import { userProfile } from '../../../test/userProfile';
@@ -43,27 +44,29 @@ function viewTree(
 ) {
     return (
         <MemoryRouter>
-            <Routes>
-                <Route
-                    element={<Outlet context={{
-                        ownPosts,
-                        followChangeCount: 0,
-                        onFollowChanged,
-                        onProfilePictureChanged: vi.fn(),
-                    }} />}
-                >
+            <PostUpdatesProvider>
+                <Routes>
                     <Route
-                        path="*"
-                        element={(
-                            <ProfileView
-                                profile={{ ...PROFILE, ...changes }}
-                                serverTweetCount={25}
-                                onProfileSaved={vi.fn()}
-                            />
-                        )}
-                    />
-                </Route>
-            </Routes>
+                        element={<Outlet context={{
+                            ownPosts,
+                            followChangeCount: 0,
+                            onFollowChanged,
+                            onProfilePictureChanged: vi.fn(),
+                        }} />}
+                    >
+                        <Route
+                            path="*"
+                            element={(
+                                <ProfileView
+                                    profile={{ ...PROFILE, ...changes }}
+                                    serverTweetCount={25}
+                                    onProfileSaved={vi.fn()}
+                                />
+                            )}
+                        />
+                    </Route>
+                </Routes>
+            </PostUpdatesProvider>
         </MemoryRouter>
     );
 }

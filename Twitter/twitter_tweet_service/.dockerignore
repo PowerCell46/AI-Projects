@@ -1,0 +1,16 @@
+# The Dockerfile only needs .mvn/, mvnw, pom.xml and src/
+target/
+docs/
+*.md
+mvnw.cmd
+
+.env
+.env.*
+
+.git
+.gitignore
+.gitattributes
+
+.idea
+.vscode
+*.iml

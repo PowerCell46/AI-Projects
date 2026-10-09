@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.savedtweets.SavedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.savedtweets.SavedTweetService;
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.CurrentUserId;
+import com.peter_gerdzhikov.twitter_timeline_service.utilities.web.CurrentUserId;
 
 import lombok.RequiredArgsConstructor;
 

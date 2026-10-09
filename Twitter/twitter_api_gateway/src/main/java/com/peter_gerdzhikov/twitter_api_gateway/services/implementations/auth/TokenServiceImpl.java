@@ -34,7 +34,8 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public String mint(User user) {
         Instant issuedAt = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet claims = JwtClaimsSet
+                .builder()
                 .subject(user.getId().toString())
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())

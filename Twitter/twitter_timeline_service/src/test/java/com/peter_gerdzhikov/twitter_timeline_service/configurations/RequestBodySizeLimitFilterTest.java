@@ -14,7 +14,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import tools.jackson.databind.json.JsonMapper;
 
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.BodySizeLimitingRequestWrapper;
+import com.peter_gerdzhikov.twitter_timeline_service.utilities.web.BodySizeLimitingRequestWrapper;
 
 class RequestBodySizeLimitFilterTest {
 

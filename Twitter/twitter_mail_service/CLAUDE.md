@@ -1,7 +1,7 @@
 ## What this is
 
 The email leg of the Twitter clone. Consumes the gateway's `user.confirmation-requested` and `user.followed`
-topics (contracts in `../twitter_api_gateway/EVENTS.md`), renders an HTML + text email from a classpath
+topics (contracts in `../twitter_api_gateway/docs/EVENTS.md`), renders an HTML + text email from a classpath
 template and sends it over SMTP. A Redis inbox dedupes, so a Kafka redelivery never sends the same email twice,
 short of a crash between send and mark.
 
@@ -20,6 +20,10 @@ run `docker compose -f docker-compose.infra.yml up -d kafka redis mailpit` from 
 Gmail; to send to Mailpit instead (UI on `localhost:8025`) set
 `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, so nothing real gets sent.
 Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`.
+
+**Start the gateway first.** It owns the main topics and creates them with 3 partitions. Started earlier, this service
+auto-creates them with 1, and its consumers see the other 2 only after a metadata refresh, about 5 minutes later, so
+emails arrive that late. `../docker-compose.yml` already orders it (`depends_on: gateway`).
 
 Tests use **Testcontainers only** - no embedded fakes for Kafka, Redis or SMTP. A running Docker daemon is a
 hard prerequisite.
@@ -47,7 +51,8 @@ Hard rules - these hold whether or not the skill is loaded:
 - Anything that compares against "now" injects the `Clock` bean; never call `Instant.now()` in main code.
 - Never log the payload, the address or the token - only `eventId`, user ids and the SMTP code.
 - **No `Thread.sleep` in tests.** Async assertions use Awaitility with an explicit `atMost` and a short poll interval.
-- Adding, removing, or changing a scenario in any `*ListenerIntegrationTest` or `SmtpUnreachableIntegrationTest` updates `TESTING.md` in the same change - it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
+- **If you add, remove or change a scenario in any `*ListenerIntegrationTest` or `SmtpUnreachableIntegrationTest` → MUST update `docs/TESTING.md`** in the same change. It's hand-maintained, so it only stays trustworthy if edits to the tests carry an edit to the catalog.
+- **Any edit to a file in `docs/` MUST also update its `Last updated: YYYY-MM-DD` line** (top of the file) to the date of the edit.
 
 Root-level packages, under `com.peter_gerdzhikov.twitter_mail_service`:
 - `/configurations` - Kafka consumers, error handling, DLT topics, Redis script bean, clock

@@ -2,6 +2,8 @@ package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follo
 
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,6 +54,17 @@ class FollowEmailRendererTest {
         FollowEmailRenderer productionRenderer = new FollowEmailRenderer("https://twitter.example.com");
 
         RenderedEmail rendered = productionRenderer.render("ana", "bob");
+
+        assertTrue(rendered.getHtml().contains("href=\"https://twitter.example.com/feed\""));
+        assertTrue(rendered.getText().contains("https://twitter.example.com/feed"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://twitter.example.com/", "https://twitter.example.com//"})
+    void should_not_double_the_slash_in_the_feed_link_when_the_base_url_ends_with_one(String baseUrl) {
+        FollowEmailRenderer slashRenderer = new FollowEmailRenderer(baseUrl);
+
+        RenderedEmail rendered = slashRenderer.render("ana", "bob");
 
         assertTrue(rendered.getHtml().contains("href=\"https://twitter.example.com/feed\""));
         assertTrue(rendered.getText().contains("https://twitter.example.com/feed"));

@@ -19,8 +19,7 @@ public class ConfirmationEmailRenderer {
 
     private static final String EXPIRES_AT_TOKEN = "EXPIRES_AT";
 
-    private static final DateTimeFormatter EXPIRES_AT_FORMATTER =
-            DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm zzz", Locale.ENGLISH);
+    private static final DateTimeFormatter EXPIRES_AT_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm zzz", Locale.ENGLISH);
 
     private static final String CONFIRMATION_URL_TOKEN = "CONFIRMATION_URL";
 

@@ -36,8 +36,8 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClien
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.feed.FeedResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;

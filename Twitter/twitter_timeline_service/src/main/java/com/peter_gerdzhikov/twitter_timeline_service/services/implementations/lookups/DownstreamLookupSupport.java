@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.DownstreamFailures;
+import com.peter_gerdzhikov.twitter_timeline_service.utilities.downstream.DownstreamFailures;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

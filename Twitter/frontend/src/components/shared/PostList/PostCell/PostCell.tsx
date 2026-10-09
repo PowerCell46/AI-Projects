@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { TweetItem } from '../../../../api/tweetPage';
+import type { PostUpdate } from '../../../../contexts/PostUpdatesContext';
 import { profilePath, tweetPath } from '../../../../routes';
 import { stripBidiControls } from '../../../../utils/bidi';
 import { hasTextSelection, isInsideElement } from '../../../../utils/clickTarget';
@@ -18,9 +19,10 @@ interface PostCellProps {
     post: TweetItem;
     now: Date;
     isClickable?: boolean;
+    onChange?: (update: PostUpdate) => void;
 }
 
-function PostCell({ post, now, isClickable = true }: PostCellProps) {
+function PostCell({ post, now, isClickable = true, onChange }: PostCellProps) {
     const navigate = useNavigate();
     const { author } = post;
     const body = stripBidiControls(post.content);
@@ -52,12 +54,14 @@ function PostCell({ post, now, isClickable = true }: PostCellProps) {
             {body && <p className="post-cell-body" dir="auto">{body}</p>}
             <PostImages tweetId={post.id} images={post.images} />
             <PostActions
+                key={`${post.likedByMe}-${post.likes}-${post.savedByMe}`}
                 tweetId={post.id}
                 isSavedInitially={post.savedByMe}
                 isLikedInitially={post.likedByMe}
                 likeCount={post.likes}
                 replyCount={post.replyCount}
                 isReplyLinked={isClickable}
+                onChange={onChange}
             />
         </article>
     );

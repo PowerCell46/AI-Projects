@@ -52,13 +52,14 @@ public class FeedEntryCleanupServiceImpl implements FeedEntryCleanupService {
 
         log.info(
                 "Removed tweet {} from {} feeds and {} saved lists, with its {} views and {} likes.",
-                event.getTweetId(), removedFromFeeds, removedFromSavedLists, removedViews, removedLikes);
+                event.getTweetId(), removedFromFeeds, removedFromSavedLists, removedViews, removedLikes
+        );
     }
 
     @Override
     public void onUserUnfollowed(UserUnfollowedEventDTO event) {
-        eventValidationService.validate(
-                event, "user.unfollowed event " + event.getEventId() + " for follower " + event.getFollowerId());
+        eventValidationService
+                .validate(event, "user.unfollowed event " + event.getEventId() + " for follower " + event.getFollowerId());
 
         // Microseconds are what Postgres compares against, so the bound is cut to them rather than rounded up.
         int removed = feedEntryRepository.deleteByUnfollow(

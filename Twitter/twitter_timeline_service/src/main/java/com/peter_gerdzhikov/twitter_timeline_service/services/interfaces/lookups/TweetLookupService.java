@@ -42,7 +42,7 @@ public interface TweetLookupService {
      *
      * @param cursor {@code null} for the first page, else the {@code nextCursor} of the previous page
      * @param size   1 to 100, the tweet service's limit
-     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException
+     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException
      *         when the tweet service refuses the cursor
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException
      *         when the tweet service can't be reached, answers another error or sends something unreadable

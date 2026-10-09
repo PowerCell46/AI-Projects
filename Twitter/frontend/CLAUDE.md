@@ -105,6 +105,11 @@ profile → tweet → Back reloads the profile from the top.
   Opened from `/saved` or `/liked`, Back reloads that list (only the feed and People stay mounted). The page scrolls
   itself to the top on open; `useTabScrollMemory` keeps the leaving tab's position for the way back, and coming back
   plays no enter animation.
+- Back from details keeps the feed's cells in step: `PostUpdatesProvider` (in `Shell`, `src/contexts`) holds what the
+  details page changed per post (like state and count, save, reply count) and `PostList` lays it over the loaded
+  posts; `PostCell` re-keys `PostActions` when the like or save values change, so its toggles start from the new
+  values. **Shortcut:** the updates are kept until the shell unmounts, so a later reload of a list shows them over
+  the server's newer numbers.
 - The back link goes `navigate(-1)` when the router's `location.key` is not `default`, else to `/feed`.
 - Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a

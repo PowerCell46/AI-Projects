@@ -16,7 +16,7 @@ public interface ReplyService {
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.CallerUnknownException
-     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException
+     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException
@@ -30,7 +30,7 @@ public interface ReplyService {
      * @param cursor {@code null} for the first page
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException
-     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException
+     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException
      */

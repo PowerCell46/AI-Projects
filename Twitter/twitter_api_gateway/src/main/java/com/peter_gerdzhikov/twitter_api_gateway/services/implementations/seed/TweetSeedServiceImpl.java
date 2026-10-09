@@ -58,7 +58,10 @@ public class TweetSeedServiceImpl implements TweetSeedService {
 
     private final RestClient restClient;
 
-    public TweetSeedServiceImpl(@Value("${app.tweet-service.url}") String tweetServiceUrl, RestClient.Builder builder) {
+    public TweetSeedServiceImpl(
+            @Value("${app.tweet-service.url}") String tweetServiceUrl,
+            RestClient.Builder builder
+    ) {
         this.restClient = builder
                 .baseUrl(tweetServiceUrl)
                 .build();

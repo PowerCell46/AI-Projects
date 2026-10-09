@@ -994,6 +994,21 @@ class TweetControllerIntegrationTest extends AbstractMinioIntegrationTest {
             findByAuthor(UUID.randomUUID(), since, "50", status().isBadRequest());
         }
 
+        @ParameterizedTest
+        @ValueSource(strings = {"1970-01-01T00:00:00Z", "9999-12-31T23:59:59Z"})
+        void should_return_200_when_since_is_at_the_edge_of_the_range(String since) throws Exception {
+            findByAuthor(UUID.randomUUID(), since, "50", status().isOk());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"1969-12-31T23:59:59Z", "+10000-01-01T00:00:00Z", "+292278994-08-17T07:12:56Z"})
+        void should_return_400_when_since_is_outside_1970_to_9999(String since) throws Exception {
+            JsonNode body = findByAuthor(UUID.randomUUID(), since, "50", status().isBadRequest());
+
+            assertThat(body.get("messages").get(0).asString())
+                    .isEqualTo("Provide a since between 1970-01-01T00:00:00Z and 9999-12-31T23:59:59Z.");
+        }
+
         @Test
         void should_return_400_when_the_author_id_is_not_a_uuid() throws Exception {
             mockMvc

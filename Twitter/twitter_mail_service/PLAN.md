@@ -1,13 +1,13 @@
 # Twitter Mail Service: plan
 
 Sends Twitter's emails. It consumes the gateway's `user.confirmation-requested` and `user.followed` topics
-(contracts in `../twitter_api_gateway/EVENTS.md`) and sends each email over SMTP, deduped in Redis. It is a port of
+(contracts in `../twitter_api_gateway/docs/EVENTS.md`) and sends each email over SMTP, deduped in Redis. It is a port of
 `../../SignalFlow/signal_flow_mail_service`; port from there rather than reinventing. Designed via `/grill-me` on
 2026-10-01 (Q1–Q12 below).
 
 **Status: both phases are built** — 1, the confirmation email (steps 1–9, 2026-10-01), and 2, the follow email
-(steps 10–13, 2026-10-02). What is left is under **Left open**. The full original plan, with per-step gates and
-scenario lists, was trimmed on 2026-10-02; the scenarios live on in `TESTING.md`.
+(steps 10–13, 2026-10-02). Nothing is left open. The full original plan, with per-step gates and
+scenario lists, was trimmed on 2026-10-02; the scenarios live on in `docs/TESTING.md`.
 
 **Hard rule for any further step:** no step starts on a red or missing test, and each step ends green. A phase exits
 on `mvn verify` green 3× in a row.
@@ -65,7 +65,7 @@ Testcontainers only (Kafka, Redis, Mailpit with `--smtp-allowed-recipients '.*@e
 an address outside that domain), a spied `JavaMailSender` to count attempts, and a mutable clock. Docker is
 required. Tests are deterministic: bounded Awaitility and no `Thread.sleep`; unique ids and `<uuid>@example.com`
 recipients; a negative assertion uses a sentinel record under the same Kafka key; DLT assertions filter by the
-test's own key; TTLs are read with Redis `TTL`. `TESTING.md` lists every e2e scenario and is kept by hand.
+test's own key; TTLs are read with Redis `TTL`. `docs/TESTING.md` lists every e2e scenario and is kept by hand.
 
 ## Steps built
 
@@ -79,40 +79,17 @@ test's own key; TTLs are read with Redis `TTL`. `TESTING.md` lists every e2e sce
 | 6 | Confirmation pipeline | 2026-10-01 |
 | 7 | Failures and DLT | 2026-10-01 |
 | 8 | Playwright e2e on real emails (Q10, Q12) | 2026-10-01 |
-| 9 | Phase 1 hardening (`SECURITY-AUDITS.md`) | 2026-10-01 |
+| 9 | Phase 1 hardening (`docs/SECURITY-AUDITS.md`) | 2026-10-01 |
 | 10 | Follow test catalog | 2026-10-02 |
 | 11 | Follow template and `FollowEmailRenderer` | 2026-10-02 |
 | 12 | Follow pipeline and Kafka (the Mailpit look check was waived) | 2026-10-02 |
-| 13 | Phase 2 hardening (`SECURITY-AUDITS.md`) | 2026-10-02 |
+| 13 | Phase 2 hardening (`docs/SECURITY-AUDITS.md`) | 2026-10-02 |
 
 ---
 
 ## Left open
 
-Not plan steps; things the build left behind. Each needs a decision or a small job.
-
-1. **The follow email's look is unapproved.** Step 12's gate asked for a look in Mailpit and you waived it. The tests
-   check the content, not the rendering. To check: run `docker compose up -d kafka redis mailpit`, start the service
-   with `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, make one user follow
-   another, and open `localhost:8025`.
-2. **Start order leaves 1-partition topics (decision pending).** Started before the gateway, the mail service's
-   listeners auto-create both topics with 1 partition; the gateway then grows them to 3, and the consumers only see
-   the new partitions after their metadata refresh, about 5 minutes. A confirmation email was delayed that long on
-   2026-10-02. Options: start the gateway first and document it (recommended, no code); declare the two main topics
-   here too (contradicts "declares only the DLT topics" and duplicates the gateway's partition config); set a shorter
-   `metadata.max.age.ms` (only shrinks the delay).
-3. **No Playwright test for the follow email.** The e2e suite covers only the confirmation link, and phase 2 exited
-   on `mvn verify`, so the follow path has never run through gateway → Kafka → mail service → Mailpit in compose.
-   Add one spec to `../e2e`: two users, a follow through the API, and the "`<name>` followed you" email read from
-   Mailpit by recipient.
-4. **Stale gateway docs.** `../twitter_api_gateway/CLAUDE.md` ("the follow email is phase 2") and
-   `../twitter_api_gateway/PLAN.md` ("Left: the mail service's follow email") should say it is built.
-5. **Nothing from this work is committed.** `twitter_mail_service/` is untracked, and `../.env.example`,
-   `../PLAN.md`, `../CLAUDE.md`, `../docker-compose.yml`, `../e2e/**` and the frontend docs are modified. Only the
-   gateway's `user.followed` change is committed (`85019be`).
-6. **`APP_BASE_URL` with a trailing slash gives `//feed`.** `.env.example` says not to end it with a slash;
-   nothing enforces it. Decide: strip it in `FollowEmailRenderer`, or leave it documented.
-7. **`CONFIRMATION_MAIL_SENT_TTL` is not checked.** The follow window now fails startup when zero or negative (`SECURITY-AUDITS.md`); the confirmation TTL has the same hole.
+Nothing. The follow email's look was never reviewed in Mailpit (step 12's gate, waived); accepted as is.
 
 ## Out of scope
 
@@ -127,22 +104,22 @@ Not plan steps; things the build left behind. Each needs a decision or a small j
 - **Blocking retries hold a partition** for up to about 4 minutes while SMTP is down. **Trigger:** latency
   complaints → `@RetryableTopic`, with a schedule that covers outages. One recipient can cause it, not only an
   outage: an account on a domain that always answers `4xx` holds the partition its `followeeId` hashes to for about
-  242s per follow event (`SECURITY-AUDITS.md`, phase 2).
+  242s per follow event (`docs/SECURITY-AUDITS.md`, phase 2).
 - **Redis AOF is `everysec`**, so a crash can lose about 1s of dedupe keys, which can only cause duplicates.
   **Permanent.**
 - **No DLT replay tool (Q8).** Dead-lettered records are only logged. **Trigger:** the first dead-lettered record
   someone wants delivered → port SignalFlow's `dlt-replay` profile.
 - **`confirmationUrl`, `followeeEmail` and both usernames are trusted as sent (Q7).** A writer to Kafka could make
   the account send any link or email any address, and can read the follow graph and recipient addresses from
-  `user.followed` and its DLT (`SECURITY-AUDITS.md`). **Trigger:** Kafka reachable beyond a private network → a prefix check
+  `user.followed` and its DLT (`docs/SECURITY-AUDITS.md`). **Trigger:** Kafka reachable beyond a private network → a prefix check
   against `CONFIRMATION_LINK_BASE_URL`, plus Kafka TLS/SASL (the gateway's existing gap).
 - **Gmail sending quota** (about 500 recipients a day), shared by both emails. **Trigger:** it is hit → SignalFlow's
   quota pause-and-resume, including the `5.4.5`-is-transient fix.
 - **No volume cap on follow emails.** The 24h window stops repeats for one pair, not fan-out: one account that
-  follows N users, or N accounts that follow one user, send N emails (`SECURITY-AUDITS.md`). The cap belongs on the gateway's
+  follows N users, or N accounts that follow one user, send N emails (`docs/SECURITY-AUDITS.md`). The cap belongs on the gateway's
   follow endpoint (its "no rate limiting" gap). **Trigger:** abuse, or the Gmail quota is hit.
 - **A failed send leaves no window.** A recipient whose mailbox bounces is retried on every new follow event, so a
-  follow/unfollow loop costs one SMTP attempt, one bounce and one DLT record each (`SECURITY-AUDITS.md`). **Trigger:** bounce
+  follow/unfollow loop costs one SMTP attempt, one bounce and one DLT record each (`docs/SECURITY-AUDITS.md`). **Trigger:** bounce
   complaints or a sender-reputation hit → a short negative window after a permanent failure.
 - **No unsubscribe or opt-out for follow emails**, and no `List-Unsubscribe`. **Trigger:** a complaint, or
   approaching the bulk-sender thresholds → a notification setting in the gateway plus a signed one-click link.

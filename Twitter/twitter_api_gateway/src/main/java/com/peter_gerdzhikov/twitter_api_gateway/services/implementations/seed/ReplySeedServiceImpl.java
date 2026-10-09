@@ -53,7 +53,10 @@ public class ReplySeedServiceImpl implements ReplySeedService {
 
     private final RestClient restClient;
 
-    public ReplySeedServiceImpl(@Value("${app.tweet-service.url}") String tweetServiceUrl, RestClient.Builder builder) {
+    public ReplySeedServiceImpl(
+            @Value("${app.tweet-service.url}") String tweetServiceUrl,
+            RestClient.Builder builder
+    ) {
         this.restClient = builder
                 .baseUrl(tweetServiceUrl)
                 .build();

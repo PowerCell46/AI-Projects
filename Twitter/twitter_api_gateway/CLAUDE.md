@@ -1,29 +1,29 @@
 ## What this is
 
 The single front door of the Twitter clone — it owns users and **all** access rules. One deployable, not a
-gateway plus a separate user service. `PLAN.md` is the backlog and the design: four ordered phases
-(auth + email confirmation → profile with MinIO → follows → tweet routing), each with numbered steps and gates. Read it
-before starting a task. Calls made *during* implementation go in `DECISIONS.md`.
+gateway plus a separate user service. Phases 1–5 are built; `PLAN.md` holds the accepted gaps (with triggers) and what
+is out of scope. Calls made *during* implementation go in `DECISIONS.md`.
 
-From phase 4 the gateway also **routes** `/api/v1/tweets/**` to `../twitter_tweet_service` (Spring Cloud Gateway
-MVC, `TWEET_SERVICE_URL`), stripping caller identity headers and adding `X-User-Id` from the JWT. It holds no tweet
-code. The tweet service's design lives in `../twitter_tweet_service/PLAN.md`. `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`, `/api/v1/likes/**`, `/api/v1/tweet-details/*` and `/api/v1/author-tweets/*` are routed the same way
-to `../twitter_timeline_service` (`TIMELINE_SERVICE_URL`); both routes share `CallerIdentityFilters`.
+It also **routes** (Spring Cloud Gateway MVC): `/api/v1/tweets/**` to `../twitter_tweet_service`
+(`TWEET_SERVICE_URL`), and the feed, saved-tweets, views, likes, tweet-details and author-tweets routes to
+`../twitter_timeline_service` (`TIMELINE_SERVICE_URL`). Both share `CallerIdentityFilters`: strip caller identity
+headers, add `X-User-Id` from the JWT. No tweet or timeline code lives here; their designs are in those projects'
+`PLAN.md`.
 
 It also serves `/internal/v1/**` (follower ids and user lookups for `../twitter_timeline_service`). Those routes sit on
 the public port and are permitted by the JWT chain; `InternalApiSecretFilter` is their only guard: a missing or wrong
 `X-Internal-Secret` answers 404, and `INTERNAL_API_SECRET` (no default, 32+ bytes) must be set or the app won't start.
 Never log the secret. The timeline service's plan (`../twitter_timeline_service/PLAN.md`) owns these steps.
 
-The mail service is a separate project (`../twitter_mail_service`; the confirmation email is built, the follow
-email is phase 2). This service ends at "the event is on Kafka"; the contract it produces is `EVENTS.md`.
+The mail service is a separate project (`../twitter_mail_service`) and sends the confirmation and follow emails. This
+service ends at "the event is on Kafka"; the contract it produces is `docs/EVENTS.md`.
 
 ## Running the project
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
-`../docker-compose.infra.yml` (the Twitter root, one level up) runs **Postgres and Kafka**; MinIO joins in phase 2.
-For local dev: copy `../.env.example` to `../.env` and set `JWT_SECRET`, run `docker compose -f docker-compose.infra.yml up -d` from the
+`../docker-compose.infra.yml` (the Twitter root, one level up) runs the infrastructure; the gateway needs **Postgres,
+Kafka and MinIO**. For local dev: copy `../.env.example` to `../.env` and set `JWT_SECRET`, run `docker compose -f docker-compose.infra.yml up -d` from the
 Twitter root, export the env (`set -a; . ../.env; set +a`), then `./mvnw spring-boot:run` serves the app on
 **:8080**. Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`.
 
@@ -31,17 +31,9 @@ Tests use **Testcontainers**, never embedded fakes — a running Docker daemon i
 
 ## Demo data
 
-`DataSeedRunner` runs after startup and, when the `users` table is empty, seeds 12 confirmed users
-(`stiliyan@seed.local` ..., one shared password, `SEED_PASSWORD`, default `Password123`), their profile pictures,
-about a third of all possible follows between them (fixed random seed, through `FollowService`, so counts, outbox
-events and timeline back-fill are real), 3 tweets each (POST to the tweet service with `X-User-Id`), 0 to 3 replies per tweet from other users and likes
-(PUT to the timeline service, each user likes about 30% of the others' tweets).
-Pictures: drop `<username>.png|jpg|jpeg|webp` into `seed-images/` (`SEED_PICTURES_DIR`; see its README; the full
-compose stack mounts it read-only). Users without a file keep the default avatar.
-The seed runs on a background thread (the timeline service only starts once this app is healthy, so the likes retry
-for about three minutes), after `MinioBucketInitializer`. Images over `MAX_UPLOAD_FILE_BYTES` (5 MB) are skipped with a
-warning. `SEED_ENABLED=false` turns the seeder off; tests and the e2e stack do.
-Follow emails go to the `@seed.local` addresses, so run the mail service against Mailpit locally.
+`DataSeedRunner` seeds 12 confirmed users, follows, tweets, replies, likes and profile pictures after startup when the
+`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). How it works, the pictures and
+the passwords: `seed-images/README.md`.
 
 ## Spring Boot 4
 
@@ -53,7 +45,7 @@ the 3.x name, and verify any 3.x-era API before relying on it.
 an OAuth provider. `NimbusJwtEncoder`/`NimbusJwtDecoder` mint and verify over one shared HS256 secret, because
 the gateway is the only verifier.
 
-The reference implementation for anything marked "as SignalFlow" in `PLAN.md` is
+The auth basics (password rules, `access_token` cookie, error handler, body-size filter) were ported from
 `../../SignalFlow/signal_flow_api_gateway`. Port from there, don't reinvent.
 
 ## Writing code
@@ -71,7 +63,9 @@ Hard rules — these hold whether or not the skill is loaded:
 - Endpoints live under `/api/v1`.
 - Authorization never reads the DB — "who am I" comes from the JWT claims alone. Endpoints that read *resources* (profiles, follows) hit the DB because that is their job.
 - Anything that compares against "now" injects the `Clock` bean; never call `Instant.now()` in main code.
-- Adding, removing, or changing a scenario in any HTTP-layer e2e suite (`*ControllerIntegrationTest`) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
+- **If you change tests → MUST update `docs/TESTING.md`** in the same change. It catalogs the HTTP-layer e2e scenarios (`*ControllerIntegrationTest`) and is hand-maintained, so it only stays trustworthy if edits to the tests carry an edit to the catalog.
+- **If you change anything Kafka-related** (topic, key, payload in `/DTOs/event`, when an event is emitted) **→ MUST update `docs/EVENTS.md`** if the contract changed.
+- **Any edit to a file in `docs/` MUST also update its `Last updated: YYYY-MM-DD` line** (top of the file) to the date of the edit.
 
 Root-level packages, under `com.peter_gerdzhikov.twitter_api_gateway`:
 - `/configurations` — Spring configuration
@@ -100,8 +94,6 @@ Root-level packages, under `com.peter_gerdzhikov.twitter_api_gateway`:
 
 - A behaviour change ships with its test change **in the same commit**.
 - **Never delete, `@Disabled`, or weaken an assertion to make a build pass without explicit approval.**
-- Adding, removing or changing any HTTP-layer scenario updates `TESTING.md` in the same change.
-- Never report a suite that didn't run (for example, no Docker) as passing.
 - **No step starts on a red or missing test, and each step ends green.** Nothing in phase *n+1* starts until phase *n*'s final gate passes.
 - Tests are deterministic: no `Thread.sleep` (Awaitility with a bounded timeout), time from the mutable test clock, scheduled jobs disabled in the test profile and invoked directly, unique data per test via `TestUsers`, Kafka assertions filtered by the test's own `userId`.
 - A phase exits on `mvn verify` green **3× in a row**. A single flaky run is a failure to investigate, not to retry.
@@ -128,7 +120,6 @@ Done = re-check touched files against any loaded skill's rules.
 - **After completing a task:** one or two sentences max — what changed and anything worth flagging. No listing every file touched, no restating the request.
 - **Auto-run builds and tests only for significant changes.** Run `./mvnw clean install` or `./mvnw test` ONLY WHEN the change is behavior-affecting or structurally meaningful: new or removed features, modified business logic, API/contract changes, dependency/build changes, or broader refactors. DO **NOT** run them for comment-only edits, formatting-only changes, typo fixes, or similarly tiny updates. If tests fail due to my change — fix them, then report. If the cause is unclear — stop and report immediately.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
-- **A step isn't done until its own tests are written and green.** No step starts on a red or missing test.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
 - **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
 

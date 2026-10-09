@@ -1,17 +1,27 @@
 import { act, render as renderWithoutRouter, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageRequest } from '../../../api/paging';
 import type { TweetItem, TweetPage } from '../../../api/tweetPage';
+import { PostUpdatesProvider, usePostUpdates } from '../../../contexts/PostUpdatesContext';
 import { IntersectionObserverDouble, intersect, observersWatching } from '../../../test/intersectionObserver';
 import PostList from './PostList';
 
 
-// Every cell holds a router link, so each render sits in a router; the wrapper survives `rerender`.
+function Wrapper({ children }: { children: ReactNode }) {
+    return (
+        <MemoryRouter>
+            <PostUpdatesProvider>{children}</PostUpdatesProvider>
+        </MemoryRouter>
+    );
+}
+
+// Every cell holds a router link and the list reads the shell's post updates, so each render sits in both; the
+// wrapper survives `rerender`.
 function render(list: ReactElement) {
-    return renderWithoutRouter(list, { wrapper: MemoryRouter });
+    return renderWithoutRouter(list, { wrapper: Wrapper });
 }
 
 
@@ -1405,3 +1415,41 @@ describe('reloading an empty list', () => {
     });
 });
 
+
+
+describe('updates reported from the details page', () => {
+    function ReportButton() {
+        const { reportUpdate } = usePostUpdates();
+
+        return (
+            <button
+                type="button"
+                onClick={() => reportUpdate('a', { likedByMe: true, likes: 8, replyCount: 5 })}
+            >
+                REPORT
+            </button>
+        );
+    }
+
+    it('should_show_the_reported_like_and_reply_counts_on_the_post_when_the_details_changed_them', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+
+        await act(async () => {
+            render(
+                <>
+                    <ReportButton />
+                    <PostList fetchPage={fetchPage} endText={END_TEXT} emptyText={EMPTY_TEXT} />
+                </>,
+            );
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'REPORT' }));
+
+        const article = screen.getByRole('article');
+
+        const likeButton = within(article).getByRole('button', { name: /Like/ });
+
+        expect(likeButton.textContent).toContain('8');
+        expect(likeButton.getAttribute('aria-pressed')).toBe('true');
+        expect(within(article).getByRole('link', { name: /Replies/ }).textContent).toContain('5');
+    });
+});

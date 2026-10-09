@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { MouseEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PostCell from '../../components/shared/PostList/PostCell/PostCell';
 import { useViewTracking } from '../../components/shared/PostList/useViewTracking';
 import PostListStatus from '../../components/shared/PostListStatus/PostListStatus';
 import type { BottomState } from '../../components/shared/PostListStatus/PostListStatus';
+import { usePostUpdates } from '../../contexts/PostUpdatesContext';
 import { useMinuteClock } from '../../hooks/useMinuteClock';
 import { ROUTES } from '../../routes';
 import ReplyThread from './ReplyThread/ReplyThread';
@@ -36,6 +37,8 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
     const details = useTweetDetails(tweetId);
     const thread = useReplyThread(tweetId);
     const now = useMinuteClock();
+    const { reportUpdate } = usePostUpdates();
+    const reportedCountChangeRef = useRef(0);
     const trackView = useViewTracking();
     const hasEntryBehind = location.key !== FIRST_ENTRY_KEY;
     // Your sends and deletes move the count at once; the server's count is read when the page opens.
@@ -48,6 +51,16 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
     useEffect(() => {
         window.scrollTo({ top: 0 });
     }, [tweetId]);
+
+    // The feed and People stay mounted under this page, so what you changed here is handed to them for the way back.
+    useEffect(() => {
+        if (thread.countChange === reportedCountChangeRef.current || !details.post) {
+            return;
+        }
+
+        reportedCountChangeRef.current = thread.countChange;
+        reportUpdate(tweetId, { replyCount: details.post.replyCount + thread.countChange });
+    }, [thread.countChange, details.post, tweetId, reportUpdate]);
 
     // With nothing behind the page, the link's own address (the feed) is the way out.
     function handleBackClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -69,7 +82,12 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
             {post ? (
                 <>
                     <div data-tweet-id={post.id} ref={trackView}>
-                        <PostCell post={post} now={now} isClickable={false} />
+                        <PostCell
+                            post={post}
+                            now={now}
+                            isClickable={false}
+                            onChange={(update) => reportUpdate(tweetId, update)}
+                        />
                     </div>
                     <ReplyThread tweetId={tweetId} postAuthorId={post.author.id} replyCount={post.replyCount} thread={thread} now={now} />
                 </>

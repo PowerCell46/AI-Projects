@@ -26,7 +26,8 @@ public class TweetRoutesConfiguration {
 
     @Bean
     public RouterFunction<ServerResponse> tweetServiceRoutes(@Value("${app.tweet-service.url}") String tweetServiceUrl) {
-        return CallerIdentityFilters.forwardAsTheAuthenticatedUser(route("tweet-service")
+        return CallerIdentityFilters
+                .forwardAsTheAuthenticatedUser(route("tweet-service")
                         .route(path(TWEETS_PATH), http())
                         .before(uri(tweetServiceUrl)))
                 .build();

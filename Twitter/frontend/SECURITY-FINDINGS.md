@@ -5,7 +5,7 @@
 **Scope:** `Twitter/frontend/src` (auth flow, feed, saved posts, compose modal with image upload, likes, view
 reporting), `index.html`, `vite.config.ts`, `npm audit`. Where the SPA trusts the backend (picture URLs, image
 content types, cookie flags, CSRF posture, views endpoint) the gateway, tweet service and timeline service code was
-read to confirm the contract; those services have their own audits. Builds on `twitter_mail_service/SECURITY-AUDITS.md`, which
+read to confirm the contract; those services have their own audits. Builds on `twitter_mail_service/docs/SECURITY-AUDITS.md`, which
 predates the feed, compose, likes, saved and views code; that code is the new ground here.
 
 No Critical, High or Medium findings. Two Low and two Informational. Nothing here is exploitable today without a
@@ -189,7 +189,7 @@ path-segment hardening already recorded as finding 3 is still open and is extend
 `followers.ts`), `utils/ownPost.ts`, `routes.ts` and `App.tsx`; plus a fresh pass over `index.html`, `vite.config.ts`,
 the confirm-token flow and the 401 plumbing in `api/http.ts`. To confirm what the SPA relies on, the gateway's
 `TimelineRoutesConfiguration` / `CallerIdentityFilters` and the timeline service's `LikeController`, `LikeServiceImpl`
-and `LikeRecordingServiceImpl` were read; they have their own audit (`twitter_timeline_service/SECURITY-AUDITS.md`).
+and `LikeRecordingServiceImpl` were read; they have their own audit (`twitter_timeline_service/docs/SECURITY-AUDITS.md`).
 `npm audit`: found 0 vulnerabilities (the registry was reachable). Not run: the Docker stack and a browser, so
 nothing below was exercised against a live gateway.
 
@@ -240,7 +240,7 @@ below is unchanged.
 - **Request amplification from the heart button:** `useOptimisticToggle` keeps one request in flight per post and
   sends the last wanted value only if it differs from the last confirmed one. A script can still call the endpoint
   directly. There is no rate limit on likes, each `PUT` costing one tweet-service call and a log line; this is already
-  recorded as an accepted gap in `docs/likes-design.md` and `twitter_timeline_service/SECURITY-AUDITS.md`, so it is not
+  recorded as an accepted gap in `docs/likes-design.md` and `twitter_timeline_service/docs/SECURITY-AUDITS.md`, so it is not
   repeated as a finding.
 - **CSRF:** `PUT` and `DELETE` on a cookie session depend on the same `SameSite=Strict`, `HttpOnly` cookie as every
   other call (see 2026-10-04); unchanged by the likes routes.
@@ -263,7 +263,7 @@ below is unchanged.
 `useTabVisits`), with the code they call: `api/replies.ts`, `api/tweetDetails.ts`, `api/tweetPage.ts`,
 `api/endpoints.ts`, `hooks/useOpenTweetId.ts`, `routes.ts`, `useViewTracking`. The tweet service's `ReplyController`
 and `ReplyServiceImpl` were read to confirm what the SPA relies on; they have their own audit
-(`twitter_tweet_service/SECURITY-FINDINGS.md`). `npm audit`: found 0 vulnerabilities. Not run: the Docker stack and a
+(`twitter_tweet_service/docs/SECURITY-AUDITS.md`). `npm audit`: found 0 vulnerabilities. Not run: the Docker stack and a
 browser, so the demonstration below is the URL arithmetic only, not a request against a live gateway.
 
 No Critical, High or Medium findings. One Low is new, and it changes the premise of finding 3.

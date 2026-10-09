@@ -41,4 +41,3 @@ public class CookieBearerTokenResolver implements BearerTokenResolver {
                 .orElse(null);
     }
 }
-

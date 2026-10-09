@@ -7,6 +7,7 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 public class FollowEmailRenderer {
@@ -28,7 +29,7 @@ public class FollowEmailRenderer {
     private final EmailTemplate emailTemplate;
 
     public FollowEmailRenderer(@Value("${app.mail.app-base-url}") String appBaseUrl) {
-        this.feedUrl = appBaseUrl + FEED_PATH;
+        this.feedUrl = StringUtils.trimTrailingCharacter(appBaseUrl, '/') + FEED_PATH;
         this.emailTemplate = new EmailTemplate(
                 HTML_TEMPLATE_PATH,
                 TEXT_TEMPLATE_PATH,

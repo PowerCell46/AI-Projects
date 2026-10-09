@@ -16,7 +16,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LoginRequestDTO {
 
-    // TODO: Add a javadoc explaining that's email or username
+    /**
+     * Either the account's email or its username.
+     */
     @NotBlank
     @Size(max = 254)
     private String identifier;

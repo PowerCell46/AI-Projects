@@ -33,14 +33,15 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageS
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.EmptyTweetException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.NotTweetAuthorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TooManyImagesException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetIdsOutOfRangeException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetImageNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetContentTooLongException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetLimitOutOfRangeException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.NotTweetAuthorException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetImageNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetSinceOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException;
 
@@ -79,6 +80,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(TweetLimitOutOfRangeException.class)
     public ResponseEntity<ErrorResponseDTO> handleTweetLimitOutOfRange(TweetLimitOutOfRangeException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(TweetSinceOutOfRangeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTweetSinceOutOfRange(TweetSinceOutOfRangeException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 

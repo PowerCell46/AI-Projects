@@ -112,8 +112,8 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private RuntimeException duplicateFor(DataIntegrityViolationException e) {
-        String constraintName = constraintNameOf(e);
+    private RuntimeException duplicateFor(DataIntegrityViolationException ex) {
+        String constraintName = constraintNameOf(ex);
         if (User.EMAIL_CONSTRAINT.equals(constraintName)) {
             return new DuplicateEmailException();
         }
@@ -122,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
             return new DuplicateUsernameException();
         }
 
-        return e;
+        return ex;
     }
 
     private String constraintNameOf(Throwable throwable) {

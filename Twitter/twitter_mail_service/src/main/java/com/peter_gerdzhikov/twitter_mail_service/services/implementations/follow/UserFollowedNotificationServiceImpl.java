@@ -11,6 +11,7 @@ import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.Ma
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailEventValidationService;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.OutgoingMail;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.follow.UserFollowedNotificationService;
+import com.peter_gerdzhikov.twitter_mail_service.utilities.Durations;
 
 @Service
 public class UserFollowedNotificationServiceImpl implements UserFollowedNotificationService {
@@ -33,7 +34,7 @@ public class UserFollowedNotificationServiceImpl implements UserFollowedNotifica
             MailDispatchService mailDispatchService,
             FollowEmailRenderer followEmailRenderer
     ) {
-        this.window = requirePositive(window);
+        this.window = Durations.requirePositive(window, "app.mail-inbox.follow-window");
         this.mailEventValidationService = mailEventValidationService;
         this.mailDispatchService = mailDispatchService;
         this.followEmailRenderer = followEmailRenderer;
@@ -55,14 +56,6 @@ public class UserFollowedNotificationServiceImpl implements UserFollowedNotifica
                 .recipient(event.getFolloweeEmail())
                 .sentTtl(window)
                 .build());
-    }
-
-    private Duration requirePositive(Duration window) {
-        if (window.isZero() || window.isNegative()) {
-            throw new IllegalStateException("app.mail-inbox.follow-window must be positive, but was " + window + ".");
-        }
-
-        return window;
     }
 
     private String ids(UserFollowedEventDTO event) {

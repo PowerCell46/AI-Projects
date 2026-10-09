@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class FeedRetentionJob {
+public class FeedRetentionJob { // TODO: Add short java doc what this chron job does
 
     private final FeedRetentionService feedRetentionService;
 

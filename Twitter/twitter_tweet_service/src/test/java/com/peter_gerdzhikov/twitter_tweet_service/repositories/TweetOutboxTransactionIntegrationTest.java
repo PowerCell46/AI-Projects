@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.peter_gerdzhikov.twitter_tweet_service.configurations.MongoConfiguration;
+import com.peter_gerdzhikov.twitter_tweet_service.configurations.mongo.MongoConfiguration;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;

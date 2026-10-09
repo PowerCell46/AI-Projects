@@ -21,7 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.mongodb.MongoException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
 
 class ConflictRetrierImplTest {
 

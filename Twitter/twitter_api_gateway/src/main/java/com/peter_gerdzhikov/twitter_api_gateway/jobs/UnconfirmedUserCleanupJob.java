@@ -8,7 +8,11 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.Unconfi
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// TODO: Add a javadoc explaining what this class does
+/**
+ * Scheduled job that hard-deletes accounts which never confirmed their email within the retention window, so
+ * abandoned sign-ups don't hold a username or email forever. The schedule comes from
+ * {@code app.users.unconfirmed-cleanup.cron} and {@code app.users.unconfirmed-cleanup.zone}.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor

@@ -21,7 +21,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.CallerUnknownExcept
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ConflictRetrier;

@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.CurrentUserIdArgumentResolver;
+import com.peter_gerdzhikov.twitter_timeline_service.utilities.web.CurrentUserIdArgumentResolver;
 
 import lombok.RequiredArgsConstructor;
 

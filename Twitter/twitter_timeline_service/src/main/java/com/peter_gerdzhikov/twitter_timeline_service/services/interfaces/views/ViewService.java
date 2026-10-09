@@ -12,7 +12,7 @@ public interface ViewService {
      * tweet service doesn't know are dropped silently; repeated ids count once.
      *
      * @param tweetIds 1 to 50 ids, counted as sent
-     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException
+     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.views.InvalidTweetIdsException
      *         when the list is missing, empty, too long or holds a {@code null}
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException
      *         when the tweet service can't be reached; nothing is recorded
@@ -27,7 +27,7 @@ public interface ViewService {
      * nothing.
      *
      * @param tweetIds 1 to 100 ids, counted as sent
-     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException
+     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.views.InvalidTweetIdsException
      *         when the list is missing, empty, too long or holds a {@code null}
      */
     Map<UUID, Long> getViews(List<UUID> tweetIds);

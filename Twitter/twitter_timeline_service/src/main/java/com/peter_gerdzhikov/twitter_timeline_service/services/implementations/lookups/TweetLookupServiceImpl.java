@@ -19,7 +19,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetCli
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetPageClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetSummaryClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 

@@ -7,7 +7,7 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
 
 /**
  * The opaque keyset cursor of every list here: a timestamp and a tweet id, which the list is ordered by.

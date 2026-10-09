@@ -22,7 +22,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetPag
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.TweetItemResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.authortweets.AuthorTweetsResponseDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;

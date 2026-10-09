@@ -12,6 +12,7 @@ import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.Ma
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailEventValidationService;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.OutgoingMail;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.confirmation.UserConfirmationNotificationService;
+import com.peter_gerdzhikov.twitter_mail_service.utilities.Durations;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,7 +42,7 @@ public class UserConfirmationNotificationServiceImpl implements UserConfirmation
             ConfirmationEmailRenderer confirmationEmailRenderer
     ) {
         this.clock = clock;
-        this.sentTtl = sentTtl;
+        this.sentTtl = Durations.requirePositive(sentTtl, "app.mail-inbox.confirmation-sent-ttl");
         this.mailEventValidationService = mailEventValidationService;
         this.mailDispatchService = mailDispatchService;
         this.confirmationEmailRenderer = confirmationEmailRenderer;

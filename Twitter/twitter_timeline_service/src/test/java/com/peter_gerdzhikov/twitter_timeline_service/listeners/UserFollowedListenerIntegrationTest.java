@@ -14,16 +14,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
+import com.peter_gerdzhikov.twitter_timeline_service.support.MutableClock;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 class UserFollowedListenerIntegrationTest extends AbstractListenerIntegrationTest {
@@ -33,6 +37,14 @@ class UserFollowedListenerIntegrationTest extends AbstractListenerIntegrationTes
     private static final Instant NEWER = FOLLOWED_AT.minus(Duration.ofHours(1));
 
     private static final Instant OLDER = FOLLOWED_AT.minus(Duration.ofDays(2));
+
+    @Autowired
+    private MutableClock clock;
+
+    @AfterEach
+    void resetTheClock() {
+        clock.reset();
+    }
 
     @Nested
     class Backfill {
@@ -72,10 +84,11 @@ class UserFollowedListenerIntegrationTest extends AbstractListenerIntegrationTes
         }
 
         @Test
-        void should_ask_for_the_newest_fifty_tweets_since_seven_days_before_the_follow() {
+        void should_ask_for_the_newest_fifty_tweets_since_seven_days_before_now() {
             UUID followerId = TestIds.userId();
             UUID followeeId = TestIds.userId();
             UUID tweetId = TestIds.tweetId();
+            clock.setInstant(FOLLOWED_AT);
             stubTweetsByAuthor(followeeId, List.of(new AuthorTweet(tweetId, NEWER)));
             stubFollowExists(followerId, followeeId);
 
@@ -85,6 +98,44 @@ class UserFollowedListenerIntegrationTest extends AbstractListenerIntegrationTes
             TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(tweetsByAuthorPath(followeeId))
                     .withQueryParam("since", equalTo(FOLLOWED_AT.minus(Duration.ofDays(7)).toString()))
                     .withQueryParam("limit", equalTo("50")));
+        }
+
+        @Test
+        void should_still_ask_since_seven_days_before_now_when_the_event_time_is_far_in_the_past() {
+            UUID followerId = TestIds.userId();
+            UUID followeeId = TestIds.userId();
+            UUID tweetId = TestIds.tweetId();
+            clock.setInstant(FOLLOWED_AT);
+            stubTweetsByAuthor(followeeId, List.of(new AuthorTweet(tweetId, NEWER)));
+            stubFollowExists(followerId, followeeId);
+
+            publish(USER_FOLLOWED_TOPIC, followeeId.toString(), userFollowedJson(followerId, followeeId, Instant.MIN));
+            awaitFeedHolds(followerId, tweetId);
+
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(tweetsByAuthorPath(followeeId))
+                    .withQueryParam("since", equalTo(FOLLOWED_AT.minus(Duration.ofDays(7)).toString())));
+        }
+
+        @Test
+        void should_insert_no_more_than_fifty_tweets_when_the_tweet_service_answers_with_more() {
+            UUID followerId = TestIds.userId();
+            UUID sentinelFollowerId = TestIds.userId();
+            UUID followeeId = TestIds.userId();
+            List<AuthorTweet> fiftyOne = IntStream
+                    .range(0, 51)
+                    .mapToObj(minutesAgo -> new AuthorTweet(TestIds.tweetId(), NEWER.minus(Duration.ofMinutes(minutesAgo))))
+                    .toList();
+            stubTweetsByAuthor(followeeId, fiftyOne);
+            stubFollowExists(followerId, followeeId);
+            stubFollowExists(sentinelFollowerId, followeeId);
+
+            publish(USER_FOLLOWED_TOPIC, followeeId.toString(), userFollowedJson(followerId, followeeId, FOLLOWED_AT));
+            publish(USER_FOLLOWED_TOPIC, followeeId.toString(), userFollowedJson(sentinelFollowerId, followeeId, FOLLOWED_AT));
+            awaitFeedHolds(sentinelFollowerId, fiftyOne.get(49).getId());
+
+            assertThat(tweetIdsInFeedOf(followerId))
+                    .hasSize(50)
+                    .doesNotContain(fiftyOne.get(50).getId());
         }
 
         @Test
@@ -264,6 +315,25 @@ class UserFollowedListenerIntegrationTest extends AbstractListenerIntegrationTes
             verify(feedBackfillService, times(2)).backfill(any(UserFollowedEventDTO.class));
             TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(tweetsByAuthorPath(followeeId)));
             assertThat(tweetIdsInFeedOf(followerId)).isEmpty();
+        }
+
+        @Test
+        void should_dead_letter_without_retry_or_a_downstream_call_and_keep_the_feed_when_the_user_follows_themselves() {
+            UUID userId = TestIds.userId();
+            UUID sentinelFollowerId = TestIds.userId();
+            UUID ownTweetId = TestIds.tweetId();
+            UUID sentinelTweetId = TestIds.tweetId();
+            seedEntry(userId, ownTweetId, userId, OLDER);
+            stubTweetsByAuthor(userId, List.of(new AuthorTweet(sentinelTweetId, NEWER)));
+            stubFollowExists(sentinelFollowerId, userId);
+
+            publish(USER_FOLLOWED_TOPIC, userId.toString(), userFollowedJson(userId, userId, FOLLOWED_AT));
+            publish(USER_FOLLOWED_TOPIC, userId.toString(), userFollowedJson(sentinelFollowerId, userId, FOLLOWED_AT));
+            awaitFeedHolds(sentinelFollowerId, sentinelTweetId);
+
+            awaitDltRecordForKey(USER_FOLLOWED_DLT_TOPIC, userId.toString());
+            TWEET_SERVICE_STUB.verifyThat(1, getRequestedFor(tweetsByAuthorPath(userId)));
+            assertThat(tweetIdsInFeedOf(userId)).containsExactly(ownTweetId);
         }
     }
 }

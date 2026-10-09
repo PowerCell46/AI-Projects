@@ -1,6 +1,6 @@
 package com.peter_gerdzhikov.twitter_timeline_service.utilities.paging;
 
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 
 /**
  * The page size every list here accepts: 1 to 100.

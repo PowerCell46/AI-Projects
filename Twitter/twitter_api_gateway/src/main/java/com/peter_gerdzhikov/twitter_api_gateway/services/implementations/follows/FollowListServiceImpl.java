@@ -63,7 +63,8 @@ public class FollowListServiceImpl implements FollowListService {
         boolean hasNext = rows.size() > size;
         List<Follow> pageRows = hasNext ? rows.subList(0, size) : rows;
 
-        return FollowListResponseDTO.builder()
+        return FollowListResponseDTO
+                .builder()
                 .items(toItems(viewerId, pageRows, memberOf))
                 .nextCursor(hasNext ? cursorAfter(pageRows.getLast()) : null)
                 .build();

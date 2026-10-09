@@ -61,8 +61,7 @@ public class FollowServiceImpl implements FollowService {
         User target = resolveTarget(followerId, targetUsername);
         Instant now = clock.instant();
 
-        int inserted = followRepository.insertIfAbsent(
-                UUID.randomUUID(), followerId, target.getId(), now.truncatedTo(ChronoUnit.MICROS));
+        int inserted = followRepository.insertIfAbsent(UUID.randomUUID(), followerId, target.getId(), now.truncatedTo(ChronoUnit.MICROS));
         if (inserted == 1) {
             adjustCounts(followerId, target.getId(), ADDED);
             outboxService.enqueue(followedTopic, target.getId().toString(), newFollowedEvent(followerId, target, now));
@@ -86,6 +85,7 @@ public class FollowServiceImpl implements FollowService {
                 .findByUsernameNormalized(targetUsername.toLowerCase(Locale.ROOT))
                 .filter(User::isEnabled)
                 .orElseThrow(UserNotFoundException::new);
+
         if (target.getId().equals(followerId)) {
             throw new SelfFollowException();
         }

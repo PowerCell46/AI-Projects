@@ -22,7 +22,7 @@ touching any `.ts`/`.tsx`/`.css`.
 | Phase | Scope | Done | Audit |
 |---|---|---|---|
 | 2 | Feed (steps 1–13) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04" |
-| 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
+| 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `docs/SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
 
 | 4 | Profile API (steps 25–29) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08" |
 | 5 | Profile UI (steps 30–40) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08 (profile page ...)" |
@@ -189,7 +189,7 @@ steps 18–23 build the UI on top.
   8 UI journeys, Q38); `mvn verify` green 3× in the tweet service (267), the gateway (844) and the timeline service
   (496). Scenario lists: the backend `TESTING.md` files; the frontend and e2e specs.
 - **Audit:** no Critical or High; two Mediums found and fixed, the Lows are under Left open
-  (`SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)", and `SECURITY-AUDITS.md` in the
+  (`SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)", and `docs/SECURITY-AUDITS.md` in the
   gateway, and the audit reports in the tweet and timeline services). Closed: phase 2's "A new user can't follow anyone" and the gateway's "No
   frontend caller yet".
 - **Waived:** step 24's visual check (see Left open).
@@ -351,19 +351,18 @@ No question needed re-asking.
   `views.spec.ts` exceed 120 columns.
 - **Phase 3 audit (2026-10-04):** two Mediums found and fixed in step 24 (the tweet service's by-author sort defeated its
   index; the timeline read a gateway `404` for a wrong secret as "unfollowed" and deleted the back-fill, so the follow
-  check now answers `200 {"following": ...}`). Still open, all Low unless noted:
+  check now answers `200 {"following": ...}`). The tweet service's `since` `500` was fixed on 2026-10-09
+  (`twitter_tweet_service/docs/SECURITY-AUDITS.md`). Still open, all Low unless noted:
   - **Frontend (`SECURITY-FINDINGS.md` #5):** `usePagedList` follows a cursor with no progress check, so a server that
     returns empty pages with a cursor that never advances, or no `nextCursor`, makes it refetch forever. Not reachable
     against the real gateway.
-  - **Tweet service** (`twitter_tweet_service/SECURITY-AUDITS.md`): a `since` outside `java.util.Date`'s range
-    answers `500` and logs a stack trace.
-  - **Timeline** (`twitter_timeline_service/SECURITY-AUDITS.md`): a retry after an unfollow re-inserts rows and a
+  - **Timeline** (`twitter_timeline_service/docs/SECURITY-AUDITS.md`): a retry after an unfollow re-inserts rows and a
     dead-lettered event leaves them; no per-pair dampening of follow toggling (2 internal calls + 50 commits per
     event); `FEED_BACKFILL_SIZE` above 100 starts and then dead-letters every follow; events that can never succeed are
     retried ~4 minutes each; a far-past `occurredAt` skips the 7-day window; a forged self-follow event deletes the
     user's own tweets from their feed; a malformed event's text reaches the error log; the poison-event tests cover
     only a missing `occurredAt`.
-  - **Gateway:** nothing found on the follow check (`twitter_api_gateway/SECURITY-AUDITS.md`).
+  - **Gateway:** nothing found on the follow check (`twitter_api_gateway/docs/SECURITY-AUDITS.md`).
 - **Phase 4 audit (2026-10-08, `SECURITY-FINDINGS.md`):** Medium logged as a gap (above); open Lows: `PATCH /users/me`
   accepts a `birthdate` outside Postgres's range and `\u0000` in `bio` / `location`, which fail as a `409` / `500` instead
   of `400` (add a lower bound and a control-character check); the birthdate is visible to every logged-in user

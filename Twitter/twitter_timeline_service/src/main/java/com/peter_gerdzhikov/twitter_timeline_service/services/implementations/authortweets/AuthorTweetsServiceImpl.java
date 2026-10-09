@@ -34,6 +34,7 @@ public class AuthorTweetsServiceImpl implements AuthorTweetsService {
         UserClientDTO author = userLookupService
                 .findByIds(List.of(authorId))
                 .get(authorId);
+
         if (author == null) {
             throw new AuthorNotFoundException();
         }

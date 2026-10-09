@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import type { PublishedTweet } from '../../../api/tweets';
 import type { TweetItem } from '../../../api/tweetPage';
 import { useAuth } from '../../../contexts/AuthContext';
+import { PostUpdatesProvider } from '../../../contexts/PostUpdatesContext';
 import { useActiveTab } from '../../../hooks/useActiveTab';
 import { toOwnPost } from '../../../utils/ownPost';
 import { TABS } from '../../../utils/tabs';
@@ -57,7 +58,7 @@ function Shell() {
     };
 
     return (
-        <>
+        <PostUpdatesProvider>
             <div className="shell" data-signing-out={isSigningOut}>
                 <div className="shell-top">
                     <Header
@@ -72,7 +73,7 @@ function Shell() {
                 </main>
             </div>
             {isComposing && <ComposeModal onClose={closeCompose} onPublished={handlePublished} />}
-        </>
+        </PostUpdatesProvider>
     );
 }
 

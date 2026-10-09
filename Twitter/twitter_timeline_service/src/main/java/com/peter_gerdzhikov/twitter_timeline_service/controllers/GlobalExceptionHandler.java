@@ -22,14 +22,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCallerIdentityException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidPageSizeException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidTweetIdsException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.views.InvalidTweetIdsException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -150,7 +150,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleNoResourceFoundException(
             NoResourceFoundException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        log.warn("No resource found for {} '{}'.", e.getHttpMethod(), e.getResourcePath());
+        log.warn("No resource found for a {} request.", e.getHttpMethod());
         return ResponseEntity
                 .status(status)
                 .headers(headers)

@@ -35,7 +35,10 @@ public class LikeSeedServiceImpl implements LikeSeedService {
 
     private final RestClient restClient;
 
-    public LikeSeedServiceImpl(@Value("${app.timeline-service.url}") String timelineServiceUrl, RestClient.Builder builder) {
+    public LikeSeedServiceImpl(
+            @Value("${app.timeline-service.url}") String timelineServiceUrl,
+            RestClient.Builder builder
+    ) {
         this.restClient = builder
                 .baseUrl(timelineServiceUrl)
                 .build();
