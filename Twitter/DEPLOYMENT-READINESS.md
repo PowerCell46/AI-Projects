@@ -7,21 +7,23 @@ commit `70fea9d` unless marked, so check them before relying on a line number. E
 
 ## Before the first deployment
 
-These come from this session's changes; none has been run against a live stack.
+Verified 2026-10-10 on `main` (`09849c2`, pushed).
 
-- [ ] **Cold-start the full stack with two gateways (S).** `docker compose up -d --build` (and the prod overlay): check
-  that both `gateway` and `gateway-2` become healthy, exactly one of them seeds, nginx serves requests through both, and
-  the other services reach `gateway:8080`. Only the compose rendering and the gateway unit/integration tests were run.
-- [ ] **Run the e2e suite (S).** It was not run after any change today (79 specs; builds four images).
-- [ ] **Add the four `SEED_PASSWORD_<NAME>` values to `.env`** (`STILIYAN`, `KRISTIAN`, `GOSHO`, `GABI`), different from each
-  other, 12-72 bytes with a lowercase letter, an uppercase letter and a digit. The gateway refuses to start without them
-  while seeding is on.
-- [ ] **Investigate the flaky `MinioConfigurationTest` (S).** `should_give_up_on_a_minio_that_accepts_the_connection_but_never_answers`
-  failed in about two of three isolated runs (`SocketException: Socket closed` instead of `SocketTimeoutException`) and
-  passed in full runs. The gateway rule treats a flaky run as a failure to investigate.
+- [x] **Cold-start the full stack with two gateways.** All services healthy on empty volumes; only `gateway` seeded (12
+  users, 53 follows, 36 tweets, 58 replies, 141 likes), `gateway-2` logged "Skipped seeding: another instance is
+  seeding"; the `gateway` alias resolves to both gateways. Not run: the prod overlay (needs `PUBLIC_URL`, `MAIL_HOST`,
+  certificates) and a per-gateway request count. An old `twitter_mongo_data` volume from before the Mongo auth change
+  must be wiped (`docker compose down -v`), or Mongo reports `UserNotFound: mongo_admin`.
+- [x] **Run the e2e suite.** 79 of 79 passed (50 s). A cold `npm test` still times out in `global-setup.ts:17` (300 s)
+  while building the four images: run `docker compose -p twitter-e2e -f docker-compose.e2e.yml build` first, or raise it.
+- [x] **Add the four `SEED_PASSWORD_<NAME>` values to `.env`**, plus `MONGO_ROOT_PASSWORD`, `MONGO_APP_PASSWORD` and
+  `MONGO_KEYFILE_SECRET`. Generated locally; set your own for production.
+- [x] **Flaky `MinioConfigurationTest`.** The test asserted a `SocketTimeoutException` root cause, but OkHttp closes the
+  socket when the timeout fires, so the root cause is `SocketException` or `SocketTimeoutException`. It now accepts
+  both and keeps the 5 s bound. Gateway `mvn verify` green 3 times in a row (948 tests).
 - [ ] **Copy the seed photos to the production host** (`twitter_api_gateway/seed-images/`, yours to replace). Files over
-  5,242,880 bytes are skipped with a WARN.
-- [ ] **Commit and merge.** Almost everything in this branch is uncommitted; `main` is two commits behind this branch.
+  5,242,880 bytes are skipped with a WARN: `stiliyan.jpg` and `gosho.jpg` currently are.
+- [x] **Commit and merge.** Merged to `main` and pushed.
 
 ## Accepted gaps to revisit
 
