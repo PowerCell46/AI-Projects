@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import ErrorBoundary from './components/shared/ErrorBoundary/ErrorBoundary';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
@@ -15,10 +16,12 @@ if (!rootElement) {
 createRoot(rootElement)
     .render(
         <StrictMode>
-            <AuthProvider>
-                <BrowserRouter>
-                    <App />
-                </BrowserRouter>
-            </AuthProvider>
+            <ErrorBoundary>
+                <AuthProvider>
+                    <BrowserRouter>
+                        <App />
+                    </BrowserRouter>
+                </AuthProvider>
+            </ErrorBoundary>
         </StrictMode>,
     );

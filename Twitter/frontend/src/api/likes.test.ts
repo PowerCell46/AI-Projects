@@ -19,6 +19,7 @@ describe('likeTweet', () => {
             {
                 method: 'PUT',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -41,6 +42,7 @@ describe('unlikeTweet', () => {
             {
                 method: 'DELETE',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -65,6 +67,7 @@ describe('fetchLikedTweets', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });

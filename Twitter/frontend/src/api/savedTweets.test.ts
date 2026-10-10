@@ -28,6 +28,7 @@ describe('fetchSavedTweets', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -72,6 +73,7 @@ describe('saveTweet', () => {
             {
                 method: 'PUT',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -97,6 +99,7 @@ describe('unsaveTweet', () => {
             {
                 method: 'DELETE',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });

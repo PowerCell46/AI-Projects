@@ -140,6 +140,63 @@ describe('save', () => {
     });
 });
 
+describe('reporting to the caller', () => {
+    it('should_report_the_like_and_then_the_old_value_when_the_like_request_fails', async () => {
+        const onChange = vi.fn();
+        vi.mocked(likeTweet).mockRejectedValue(new Error('The request failed.'));
+        renderActions({
+            likeCount: 3,
+            onChange,
+        });
+
+        await userEvent.click(likeButton());
+
+        expect(onChange.mock.calls).toEqual([
+            [{ likedByMe: true, likes: 4 }],
+            [{ likedByMe: false, likes: 3 }],
+        ]);
+    });
+
+    it('should_report_the_unlike_and_then_the_old_value_when_the_unlike_request_fails', async () => {
+        const onChange = vi.fn();
+        vi.mocked(unlikeTweet).mockRejectedValue(new Error('The request failed.'));
+        renderActions({
+            likeCount: 3,
+            isLikedInitially: true,
+            onChange,
+        });
+
+        await userEvent.click(likeButton());
+
+        expect(onChange.mock.calls).toEqual([
+            [{ likedByMe: false, likes: 2 }],
+            [{ likedByMe: true, likes: 3 }],
+        ]);
+    });
+
+    it('should_report_the_save_and_then_the_old_value_when_the_save_request_fails', async () => {
+        const onChange = vi.fn();
+        vi.mocked(saveTweet).mockRejectedValue(new Error('The request failed.'));
+        renderActions({ onChange });
+
+        await userEvent.click(saveButton());
+
+        expect(onChange.mock.calls).toEqual([
+            [{ savedByMe: true }],
+            [{ savedByMe: false }],
+        ]);
+    });
+
+    it('should_report_only_the_click_when_the_request_succeeds', async () => {
+        const onChange = vi.fn();
+        renderActions({ onChange });
+
+        await userEvent.click(saveButton());
+
+        expect(onChange.mock.calls).toEqual([[{ savedByMe: true }]]);
+    });
+});
+
 describe('last click wins', () => {
     it('should_send_the_unsave_after_the_save_when_the_bookmark_is_clicked_twice_while_saving', async () => {
         let finishSaving = () => {};

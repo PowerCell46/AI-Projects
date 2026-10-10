@@ -164,6 +164,13 @@ function shownReplyCount(): string {
 }
 
 describe('loading the page', () => {
+    it('should_move_focus_to_the_page_heading_when_the_page_opens', async () => {
+        renderPage([`/tweets/${TWEET_ID}`]);
+        await advance(1);
+
+        expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Post' }));
+    });
+
     it('should_show_the_post_without_making_it_clickable_when_the_details_read_succeeds', async () => {
         renderPage([`/tweets/${TWEET_ID}`]);
         await advance(1);

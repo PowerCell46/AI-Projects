@@ -54,6 +54,7 @@ describe('publishTweet', () => {
         expect(fetchMock.mock.calls[0][1]).toMatchObject({
             method: 'POST',
             credentials: 'include',
+            signal: expect.any(AbortSignal),
         });
         expect(sentForm().get('content')).toBe('hello');
         expect(sentForm().getAll('images')).toEqual([first, second]);
@@ -122,6 +123,7 @@ describe('fetchTweetCount', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });

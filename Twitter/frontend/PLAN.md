@@ -329,8 +329,7 @@ No question needed re-asking.
 
 - Visual check of the auth screens at 720 px and 320 px, reduced motion on and off.
 - Footer `/login` ↔ `/register` switch remounts instead of animating (brief §5 of the auth design).
-- `<meta name="referrer" content="same-origin">` before any deployment (exploit report #1, Low).
-- CSP and self-hosted fonts with the first deployment (exploit report #2, Low).
+- Done 2026-10-10: the referrer meta, a CSP in nginx and self-hosted fonts (the CSP and referrer finding).
 - E2E with motion on (optional).
 
 ## Left open
@@ -342,8 +341,6 @@ No question needed re-asking.
 - **Step 12 gate waived (2026-10-04):** the visual check at 1440 / 600 / 320 px, reduced motion on and off, and iPhone
   Safari (thumb reach of `POST`, compose keyboard, safe areas) was not signed off; the user will raise design and
   scalability follow-ups later.
-- **No CSP and no referrer policy (Low, `SECURITY-FINDINGS.md` #1, same as exploit report #1/#2 of 2026-10-01):**
-  `<meta name="referrer" content="same-origin">` now; a CSP and self-hosted fonts with the first deployment.
 - **Gateway session cookie `Secure` defaults to off (Low, `SECURITY-FINDINGS.md` #2):** default to `true` before any
   deployment.
 - **Path segments are not encoded in `ENDPOINTS` (Informational, #3).**

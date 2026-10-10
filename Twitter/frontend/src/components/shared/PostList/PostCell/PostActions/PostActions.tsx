@@ -28,27 +28,32 @@ function PostActions({
     isReplyLinked,
     onChange,
 }: PostActionsProps) {
+    // A failed request puts the toggle back, so what was reported for the click is reported again with the old value.
     const like = useOptimisticToggle(
         isLikedInitially,
         (shouldLike) => (shouldLike ? likeTweet(tweetId) : unlikeTweet(tweetId)),
+        (failedValue) => onChange?.(likeUpdate(!failedValue)),
     );
     const save = useOptimisticToggle(
         isSavedInitially,
         (shouldSave) => (shouldSave ? saveTweet(tweetId) : unsaveTweet(tweetId)),
+        (failedValue) => onChange?.({ savedByMe: !failedValue }),
     );
 
     // The server's count already holds your like when the post loaded liked; a read taken mid-race can say 0 for a
     // post that is liked by you, so the shown count never goes below 0.
     const shownLikeCount = Math.max(0, likeCount - Number(isLikedInitially) + Number(like.isOn));
 
-    function handleLikeClick() {
-        const isLikedNext = !like.isOn;
+    function likeUpdate(isLiked: boolean): PostUpdate {
+        return {
+            likedByMe: isLiked,
+            likes: Math.max(0, likeCount - Number(isLikedInitially) + Number(isLiked)),
+        };
+    }
 
+    function handleLikeClick() {
         like.toggle();
-        onChange?.({
-            likedByMe: isLikedNext,
-            likes: Math.max(0, likeCount - Number(isLikedInitially) + Number(isLikedNext)),
-        });
+        onChange?.(likeUpdate(!like.isOn));
     }
 
     function handleSaveClick() {

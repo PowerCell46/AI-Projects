@@ -36,6 +36,7 @@ describe('fetchUserProfile', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -112,6 +113,7 @@ describe('updateProfile', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ location: 'Plovdiv' }),
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -187,6 +189,7 @@ describe('fetchPeople', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -293,6 +296,7 @@ describe('followUser', () => {
             {
                 method: 'PUT',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -348,6 +352,7 @@ describe('unfollowUser', () => {
             {
                 method: 'DELETE',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });

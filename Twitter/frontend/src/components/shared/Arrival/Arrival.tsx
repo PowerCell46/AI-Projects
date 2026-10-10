@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useFocusOnMount } from '../../../hooks/useFocusOnMount';
 import './Arrival.css';
 
 
@@ -12,12 +12,8 @@ interface ArrivalProps {
 }
 
 function Arrival({ eyebrow, headline, detail, isAlarm = false, children }: ArrivalProps) {
-    const headlineRef = useRef<HTMLHeadingElement>(null);
-
     // The step form is gone, so focus would fall to the page; the headline announces the new state instead.
-    useEffect(() => {
-        headlineRef.current?.focus();
-    }, []);
+    const headlineRef = useFocusOnMount<HTMLHeadingElement>();
 
     return (
         <section className="arrival" data-alarm={isAlarm}>

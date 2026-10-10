@@ -12,7 +12,17 @@ interface AvatarProps {
 function Avatar({ pictureUrl, size = 'small' }: AvatarProps) {
     const picture = useProfilePictureSource(pictureUrl);
 
-    return <img className="avatar" data-size={size} src={picture.src} onError={picture.onError} alt="" />;
+    return (
+        <img
+            className="avatar"
+            data-size={size}
+            src={picture.src}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={picture.onError}
+        />
+    );
 }
 
 export default Avatar;

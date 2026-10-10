@@ -123,3 +123,7 @@ profile → tweet → Back reloads the profile from the top.
   the server's count read on open plus the posts you published after it opened (`useOwnProfilePosts`).
 - **Shortcut (Q48):** after a new photo only the masthead and the header avatar update (`onProfilePictureChanged`
   through `Shell`'s outlet context). Posts already on screen keep the old picture until a reload.
+- The error boundary (`ErrorBoundary`, decided 2026-10-10) is the one class component allowed, because React has no hook
+  that catches a render error. `main.tsx` wraps the whole app in it; the fallback (`SIGNAL LOST` and a `RELOAD` button)
+  uses no router or auth, since the crash may be in either. It catches render errors only: a failed event handler or
+  request is not one.

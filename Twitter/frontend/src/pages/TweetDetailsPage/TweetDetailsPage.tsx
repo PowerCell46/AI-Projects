@@ -6,6 +6,7 @@ import { useViewTracking } from '../../components/shared/PostList/useViewTrackin
 import PostListStatus from '../../components/shared/PostListStatus/PostListStatus';
 import type { BottomState } from '../../components/shared/PostListStatus/PostListStatus';
 import { usePostUpdates } from '../../contexts/PostUpdatesContext';
+import { useFocusOnMount } from '../../hooks/useFocusOnMount';
 import { useMinuteClock } from '../../hooks/useMinuteClock';
 import { ROUTES } from '../../routes';
 import ReplyThread from './ReplyThread/ReplyThread';
@@ -34,6 +35,7 @@ interface TweetDetailsPageProps {
 function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
     const navigate = useNavigate();
     const location = useLocation();
+    const headingRef = useFocusOnMount<HTMLHeadingElement>();
     const details = useTweetDetails(tweetId);
     const thread = useReplyThread(tweetId);
     const now = useMinuteClock();
@@ -74,7 +76,7 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
 
     return (
         <>
-            <h1 className="sr-only">Post</h1>
+            <h1 ref={headingRef} className="sr-only" tabIndex={-1}>Post</h1>
             <Link to={ROUTES.feed} className="tweet-details-back" onClick={handleBackClick}>
                 <span className="tweet-details-back-arrow" aria-hidden="true" />
                 {BACK_LABEL}

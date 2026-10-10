@@ -18,6 +18,7 @@ describe('reportViews', () => {
             body: JSON.stringify({ tweetIds: ['tweet-1', 'tweet-2'] }),
             keepalive: false,
             credentials: 'include',
+            signal: expect.any(AbortSignal),
         });
     });
 

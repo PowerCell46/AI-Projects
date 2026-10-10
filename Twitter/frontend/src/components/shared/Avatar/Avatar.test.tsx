@@ -47,6 +47,15 @@ describe('Avatar', () => {
         expect(avatarOf(container).getAttribute('src')).toBe('http://localhost/api/v1/files/pic-2');
     });
 
+    it('should_load_the_picture_lazily_and_decode_it_off_the_main_thread', () => {
+        const { container } = render(<Avatar pictureUrl={PICTURE_URL} />);
+
+        const avatar = avatarOf(container);
+
+        expect(avatar.getAttribute('loading')).toBe('lazy');
+        expect(avatar.getAttribute('decoding')).toBe('async');
+    });
+
     it('should_leave_the_picture_without_alt_text_because_the_username_is_beside_it', () => {
         const { container } = render(<Avatar pictureUrl={PICTURE_URL} />);
 

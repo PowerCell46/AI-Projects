@@ -58,6 +58,7 @@ describe('successful calls', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(request),
             credentials: 'include',
+            signal: expect.any(AbortSignal),
         });
     });
 
@@ -78,6 +79,7 @@ describe('successful calls', () => {
                     password: 'Abcdefg1',
                 }),
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             }),
         );
     });
@@ -92,6 +94,7 @@ describe('successful calls', () => {
             {
                 method: 'POST',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -107,6 +110,7 @@ describe('successful calls', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });

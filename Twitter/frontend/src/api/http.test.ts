@@ -9,6 +9,7 @@ installFetchStub();
 
 afterEach(() => {
     setUnauthorizedHandler(null);
+    vi.restoreAllMocks();
 });
 
 async function catchApiError(call: () => Promise<unknown>): Promise<ApiError> {
@@ -39,6 +40,7 @@ describe('send', () => {
             {
                 method: 'PUT',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -83,6 +85,44 @@ describe('send', () => {
 
         expect(error.status).toBe(0);
         expect(error.messages).toEqual([]);
+    });
+
+    it('should_give_a_normal_request_30_seconds_before_giving_up', async () => {
+        const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+        respondWith(204);
+
+        await send(
+            REQUEST_URL,
+            { method: 'GET' },
+        );
+
+        expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+    });
+
+    it('should_give_an_upload_120_seconds_before_giving_up', async () => {
+        const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+        respondWith(204);
+
+        await send(
+            REQUEST_URL,
+            {
+                method: 'POST',
+                body: new FormData(),
+            },
+        );
+
+        expect(timeoutSpy).toHaveBeenCalledWith(120_000);
+    });
+
+    it('should_reject_with_status_0_when_the_request_times_out', async () => {
+        fetchMock.mockRejectedValueOnce(new DOMException('The operation timed out.', 'TimeoutError'));
+
+        const error = await catchApiError(() => send(
+            REQUEST_URL,
+            { method: 'GET' },
+        ));
+
+        expect(error.status).toBe(0);
     });
 
     it('should_not_call_the_unauthorized_handler_when_the_response_is_401', async () => {

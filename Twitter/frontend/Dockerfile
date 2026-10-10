@@ -23,7 +23,7 @@ FROM nginxinc/nginx-unprivileged:1.29-alpine
 # not copied: docker-compose.prod.yml mounts it over default.conf
 COPY nginx/gateway.conf nginx/default.conf /etc/nginx/conf.d/
 
-COPY nginx/app.conf /etc/nginx/snippets/app.conf
+COPY nginx/app.conf nginx/security-headers.conf /etc/nginx/snippets/
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 

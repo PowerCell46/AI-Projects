@@ -51,6 +51,7 @@ describe('fetchReplies', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -102,6 +103,7 @@ describe('createReply', () => {
                 headers: JSON_HEADERS,
                 body: JSON.stringify({ content: 'hello' }),
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -141,6 +143,7 @@ describe('updateReply', () => {
                 headers: JSON_HEADERS,
                 body: JSON.stringify({ content: 'changed' }),
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
@@ -163,6 +166,7 @@ describe('deleteReply', () => {
             {
                 method: 'DELETE',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });

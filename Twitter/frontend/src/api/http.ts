@@ -8,6 +8,11 @@ const NETWORK_FAILURE_STATUS = 0;
 
 const UNAUTHORIZED_STATUS = 401;
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
+// Image uploads are up to 20 MB, which a slow connection cannot send in the normal time.
+const UPLOAD_TIMEOUT_MS = 120_000;
+
 const JSON_HEADERS = {
     'Content-Type': 'application/json',
 };
@@ -61,6 +66,11 @@ export async function readJson<T>(response: Response): Promise<T> {
     return await response.json() as T;
 }
 
+function timeoutFor(init: RequestInit): number {
+    return init.body instanceof FormData ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+}
+
+// A request that never answers would leave its list or button waiting forever; the timeout makes it a network failure.
 export async function send(url: string, init: RequestInit): Promise<Response> {
     let response: Response;
 
@@ -68,6 +78,7 @@ export async function send(url: string, init: RequestInit): Promise<Response> {
         response = await fetch(url, {
             ...init,
             credentials: 'include',
+            signal: AbortSignal.timeout(timeoutFor(init)),
         });
 
     } catch {

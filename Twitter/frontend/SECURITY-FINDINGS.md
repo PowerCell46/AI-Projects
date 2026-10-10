@@ -8,10 +8,9 @@ content types, cookie flags, CSRF posture, views endpoint) the gateway, tweet se
 read to confirm the contract; those services have their own audits. Builds on `twitter_mail_service/docs/SECURITY-AUDITS.md`, which
 predates the feed, compose, likes, saved and views code; that code is the new ground here.
 
-No Critical, High or Medium findings. Two Low and two Informational. Nothing here is exploitable today without a
-second fault elsewhere.
+2 findings fixed or confirmed not a hole (1, 4); the open ones (2, 3) are kept privately.
 
-### 1. Low — no Content-Security-Policy and no referrer policy (still open from 2026-10-01)
+### 1. Low — no Content-Security-Policy and no referrer policy (fixed 2026-10-10; was open from 2026-10-01)
 - **Location:** `index.html` (no CSP, no `<meta name="referrer">`, Google Fonts `<link>`).
 - **Mechanism:** the SPA and the API share one origin (relative `/api/...`, cookie auth). If any script were ever
   injected, there is no CSP to limit it, and the cookie is `HttpOnly` so the damage would be actions as the user,
@@ -21,31 +20,12 @@ second fault elsewhere.
 - **Demonstration:** `curl -sI http://localhost:5173/ | grep -i content-security-policy` returns nothing. In an
   older or policy-configured browser, open `http://localhost:5173/confirm?token=abc` and read the `Referer` on the
   `fonts.googleapis.com` request in DevTools, Network.
-- **Suggested fix (not applied):** add `<meta name="referrer" content="same-origin">` now; when the app gets a
-  server or Caddy, send a CSP and self-host the fonts so `style-src 'self'` works.
+- **Fix (applied 2026-10-10):** `<meta name="referrer" content="same-origin">` in `index.html`; the fonts are served
+  from `public/fonts`; `nginx/security-headers.conf` sends a CSP (`script-src 'self'`, `style-src 'self'` plus inline
+  style attributes, `img-src 'self' blob:`), `Referrer-Policy` and `nosniff` on the pages, `/assets/` and `/fonts/`.
+  Checked in Chromium against the built image: no violations, no request to another origin. HSTS is sent since 2026-10-10.
 
-### 2. Low — session cookie `Secure` flag defaults to off (gateway)
-- **Location:** `twitter_api_gateway/src/main/resources/application.properties:27`
-  (`app.cookie.secure=${COOKIE_SECURE:false}`), used in `utilities/CookieFactory.java:41`.
-- **Mechanism:** the flag fails open: a production deploy that forgets `COOKIE_SECURE=true` sends the JWT cookie
-  over plain HTTP too. `HttpOnly` and `SameSite=Strict` are set correctly. Noted while tracing the trust boundary
-  the frontend relies on, and recorded here because the SPA has no way to detect or compensate for it.
-- **Demonstration:** start the gateway without `COOKIE_SECURE`, then
-  `curl -si -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"identifier":"u","password":"P@ssw0rd1"}' | grep -i set-cookie`
-  shows the cookie without `Secure`.
-- **Suggested fix (not applied):** default to `true` and let local dev opt out with `COOKIE_SECURE=false`.
-
-### 3. Informational — resource ids are interpolated into URL paths without encoding
-- **Location:** `src/api/endpoints.ts` (`savedTweet`, `like`, `tweetImage`, `backendPath`); compare `user`, which
-  uses `encodeURIComponent`.
-- **Mechanism:** `tweetId` and `imageId` come from the server's JSON, and `backendPath` prefixes `BASE_URL` to a
-  server-built path (`/api/v1/files/` + UUID, `ProfileMapper.java:11`). No user input reaches them, so there is no
-  path traversal or off-origin image today. If a future endpoint let a user set one of these values, `../` or a
-  leading `//host` would go straight into a request or an `<img src>`.
-- **Demonstration:** none that works against the current backend. In a test, `ENDPOINTS.like('../../auth/logout')`
-  returns `/api/v1/likes/../../auth/logout`.
-- **Suggested fix (not applied):** encode path segments, and have `backendPath` reject anything that does not start
-  with a single `/`.
+### 2. (moved out of the public repo, 2026-10-10)
 
 ### 4. Informational — route guards and client-side upload checks are UX, not enforcement
 - **Location:** `ProtectedRoute.tsx`; `src/utils/composeChecks.ts` (`checkPickedImage`).
@@ -82,8 +62,6 @@ second fault elsewhere.
 - **Secrets:** none in `src/`; `dist/` is gitignored.
 - **Injection (server-side), caching races, ReDoS:** no server-side code in this package. The only client regexes
   (`bidi.ts`, `avatar.ts`, `validation.ts`) are linear.
-- **Account enumeration** (409 on register, 403 on unconfirmed login) is unchanged from the 2026-10-01 report and
-  not repeated here.
 
 ## Audit — 2026-10-04 (phase 3: tab row, People, follow)
 
@@ -97,46 +75,9 @@ outlet context. The gateway's `UserController`/`FollowController`/`UserListServi
 `ProfileMapper`, `RegisterRequestDTO` and `UpdateProfileRequestDTO` were read to confirm what the SPA can rely on;
 they have their own audits. `npm audit`: found 0 vulnerabilities (the registry was reachable). `npm test`: 866 passed.
 
-No Critical, High or Medium findings. One Low and zero Informational findings are new; the picture-URL and
-path-segment hardening already recorded as finding 3 is still open and is extended below.
+1 finding (5) moved out; it is kept privately.
 
-### 5. Low — `usePagedList` follows a cursor with no progress check, so a stuck or malformed page response loops forever
-- **Location:** `src/hooks/usePagedList.ts:44` (`while (!hasAddedItems && !isEndRef.current)`) and `:57`
-  (`isEndRef.current = page.nextCursor === null`). Used by the People list, the feed and saved posts.
-- **Mechanism:** the rule "an empty or all-duplicate page with a cursor is followed at once" has no limit and no
-  check that the cursor moved. Requests run back to back, one per round trip, with no delay, until the component
-  unmounts or the response finally adds an item. Two ways to trigger it: (a) a response with `items: []` (or only ids
-  already loaded) and a non-null `nextCursor` that does not advance; (b) a response that omits `nextCursor`.
-  `undefined === null` is false, so the list does not end, `pageUrl` sends no `cursor`, and the first page is asked
-  for again, forever. Both panels stay mounted while hidden (`TabPanels`), so the loop keeps running on the other
-  tab and each iteration also re-renders the list state. It is client-side only and needs a faulty backend or a
-  proxy that rewrites the JSON: the gateway as written emits `nextCursor: null` explicitly (no `NON_NULL` inclusion
-  in the project) and its keyset cursors always advance (`UserListServiceImpl`, `FeedServiceImpl`). So this is
-  missing defence in depth, not a hole today, but a backend bug here turns every open tab into a request flood
-  against the authenticated endpoints and pins one CPU core.
-- **Demonstration:** a throwaway vitest file (outside `src/`, deleted afterwards) rendered the hook with a fetcher
-  that waits one timer tick per call and, to stop the run, returns `nextCursor: null` after the 300th call.
-  Case (a), `{items: [], nextCursor: 'same'}`: 300 requests during one mount with no user action. Case (b),
-  `{items: [{id: 'a'}], nextCursor: undefined}`: one request on mount, then 300 after a single `loadMore()`. With the
-  fetcher answering immediately (no timer tick) and never stopping, the vitest worker aborted with SIGABRT (memory
-  exhaustion), which is the same loop without a network between the iterations.
-- **Suggested fix (not applied):** cap the follow-up loop (for example 5 consecutive pages that add nothing, then
-  show the failed state with TRY AGAIN) and stop when the new cursor equals the one just sent; treat a missing
-  `nextCursor` as `null` (`page.nextCursor ?? null`), or reject a response whose `nextCursor` is not a string or null.
-
-### Update to finding 3 (still open): picture URLs and path segments in the new People code
-- `fetchPeople` and `fetchUserProfile` run every server-supplied `profilePictureUrl` through `toPictureUrl`, which is
-  `BASE_URL + path` with no check, and `Avatar` puts the result in `<img src>`. Another user's value reaches the
-  card, so the exposure is wider than before, but the gateway builds it from a file id (`ProfileMapper.urlOf`,
-  `/api/v1/files/` + UUID) and a user cannot set the string, so it is still not exploitable. Checked in a vitest
-  scratch file: `toPictureUrl('//evil.example/p.png')` returns `//evil.example/p.png` and
-  `toPictureUrl('https://evil.example/p.png')` returns `https://evil.example/p.png` when `VITE_BASE_API_URL` is empty
-  (the default). A `javascript:` value in `img src` does not run script in current browsers.
-- `ENDPOINTS.follow` and `ENDPOINTS.user` do use `encodeURIComponent`: `ENDPOINTS.follow('a/b?c#d')` gives
-  `/api/v1/users/a%2Fb%3Fc%23d/follow`. It leaves `.` and `..` alone (`ENDPOINTS.follow('..')` is
-  `/api/v1/users/../follow`, which the browser collapses to `/api/v1/follow`), but a username that short or made of
-  dots cannot exist: `RegisterRequestDTO` allows only `^[A-Za-z0-9_]{3,15}$`, and `matches()` semantics reject a
-  trailing newline. Same fix as finding 3: have `backendPath` accept only a single leading `/`.
+### 5. (moved out of the public repo, 2026-10-10)
 
 ## Considered, clean or not applicable (phase 3)
 - **Stored XSS through bio or username:** `bio` is attacker-controlled free text (`UpdateProfileRequestDTO`, up to 160
@@ -193,25 +134,7 @@ and `LikeRecordingServiceImpl` were read; they have their own audit (`twitter_ti
 `npm audit`: found 0 vulnerabilities (the registry was reachable). Not run: the Docker stack and a browser, so
 nothing below was exercised against a live gateway.
 
-No new findings of any severity. The new code adds no raw-HTML, URL, storage or redirect sink, and every old finding
-below is unchanged.
-
-### Status of earlier findings (re-checked today)
-- **1 (Low, CSP and referrer policy): still open.** `index.html` still has no CSP, no `<meta name="referrer">` and the
-  Google Fonts `<link>` is unchanged. Re-read today, not re-run in a browser.
-- **2 (Low, `COOKIE_SECURE` defaults to false): still open.** `application.properties:27` is still
-  `app.cookie.secure=${COOKIE_SECURE:false}`.
-- **3 (Informational, unencoded path segments / `backendPath`): still open and one call wider.** The new
-  `ENDPOINTS.like(tweetId)` interpolates the id the same way as `savedTweet` and `tweetImage`
-  (`${API_V1}/likes/${tweetId}`). The id comes from the server's JSON (`TweetItem.id`), the timeline service binds it
-  as a `UUID` path variable, and a user cannot choose it, so it is the same "no user input reaches it today" case.
-  Same fix: encode the segment.
-- **5 (Low, `usePagedList` has no progress check): still open, and `/liked` is a fourth consumer.** The loop at
-  `usePagedList.ts:44` and `:57` is unchanged. `LikedPage` passes `fetchLikedTweets` to `PostList`, so a response with
-  `items: []` and a non-advancing `nextCursor`, or one that omits `nextCursor`, now also loops on the liked list. The
-  backend as written emits an explicit `nextCursor: null` and its cursor is `TimelineCursorCodec.encode(likedAt,
-  tweetId)` of the last row, which always advances, so there is still no trigger today. Fixing the hook fixes all
-  four lists.
+No findings of its own; the open earlier ones are kept privately.
 
 ## Considered, clean or not applicable (phase 5)
 - **XSS and markup injection through the new fields:** `likes` and `likedByMe` are numbers and booleans. The count
@@ -237,11 +160,6 @@ below is unchanged.
 - **Existence oracle:** `PUT /likes/{tweetId}` answers 404 for an unknown tweet and 204 for a known one. Tweet ids are
   random UUIDs and tweets have no private visibility in this app, so it reveals nothing a signed-in user could not
   already read. Not a finding.
-- **Request amplification from the heart button:** `useOptimisticToggle` keeps one request in flight per post and
-  sends the last wanted value only if it differs from the last confirmed one. A script can still call the endpoint
-  directly. There is no rate limit on likes, each `PUT` costing one tweet-service call and a log line; this is already
-  recorded as an accepted gap in `twitter_timeline_service/docs/SECURITY-AUDITS.md`, so it is not
-  repeated as a finding.
 - **CSRF:** `PUT` and `DELETE` on a cookie session depend on the same `SameSite=Strict`, `HttpOnly` cookie as every
   other call (see 2026-10-04); unchanged by the likes routes.
 - **Confirm token:** `confirm(token)` sends the token in a JSON `POST` body (`api/auth.ts:57`), not a `GET`, and
@@ -266,7 +184,7 @@ and `ReplyServiceImpl` were read to confirm what the SPA relies on; they have th
 (`twitter_tweet_service/docs/SECURITY-AUDITS.md`). `npm audit`: found 0 vulnerabilities. Not run: the Docker stack and a
 browser, so the demonstration below is the URL arithmetic only, not a request against a live gateway.
 
-No Critical, High or Medium findings. One Low is new, and it changes the premise of finding 3.
+1 finding fixed (6); the open ones are kept privately.
 
 ### 6. Low — the `/tweets/:tweetId` address is spliced into API paths without encoding (client-side path traversal)
 - **Location:** `src/hooks/useOpenTweetId.ts:9` (reads the route param), `src/api/endpoints.ts` (`tweetDetails`,
@@ -279,8 +197,7 @@ No Critical, High or Medium findings. One Low is new, and it changes the premise
   the second adds `/replies`; the response is only parsed as a post (a different shape ends in the `failed` state and
   nothing is displayed or sent anywhere); the cookie is `SameSite=Strict`, and I found no `GET` endpoint with a side
   effect; and the reply writes (`POST`/`PUT`/`DELETE`) only run after the details call returned a valid post, which
-  needs a real tweet id. It is the same class as finding 3, but that finding's premise ("no user input reaches them
-  today") no longer holds for `tweetId`. The server side holds: the tweet service binds `tweetId` and `replyId` as
+  needs a real tweet id. `tweetId` is user input that reaches API paths. The server side holds: the tweet service binds `tweetId` and `replyId` as
   `UUID` path variables, so a non-UUID segment is a 400 there.
 - **Demonstration:** `matchPath('/tweets/:tweetId', pathname)` (react-router 7, run in node against `node_modules`),
   then the URL the browser would request:
@@ -291,18 +208,10 @@ No Critical, High or Medium findings. One Low is new, and it changes the premise
   `GET /api/v1/users/me` in DevTools, Network (not run here).
 - **Suggested fix (not applied):** encode every path segment in `ENDPOINTS` (`encodeURIComponent`, as `user` and
   `follow` already do), or reject a `tweetId` that is not a UUID in `useOpenTweetId` and show `POST NOT FOUND`.
-  Together with finding 3's `backendPath` check, this closes the whole class.
 - **Status: fixed 2026-10-07.** `useOpenTweetId` returns the id only when it is a UUID, and `TabPanels` redirects any
   other `/tweets/...` address to `/feed` (a bare `..` cannot be neutralised by encoding: the URL parser treats `%2E%2E` as
-  a dot segment too). `ENDPOINTS` also encodes every id segment now (`api/endpoints.test.ts`), which closes finding 3's
-  path part for ids; its `backendPath` part stays informational. Tests: `TabPanels.test.tsx`
+  a dot segment too). `ENDPOINTS` also encodes every id segment now (`api/endpoints.test.ts`), which closes the path part for ids. Tests: `TabPanels.test.tsx`
   (`should_open_the_feed_when_the_tweet_id_is_not_a_uuid`), `endpoints.test.ts`.
-
-### Update to finding 5 (still open): the reply thread is a fifth `usePagedList` consumer
-`useReplyThread` passes `fetchReplies` to `usePagedList`, so a response with `items: []` and a non-advancing
-`nextCursor`, or one that omits `nextCursor`, now also loops on the details page. The backend as written emits an
-explicit `nextCursor: null` and `ReplyCursorCodec.encode(createdAt, id)` of the last row always advances, so there is no
-trigger today. Fixing the hook fixes all five lists.
 
 ## Considered, clean or not applicable (tweet details, post cell, tab panels)
 - **XSS and markup injection:** reply bodies, post bodies and usernames reach the DOM only as React text children
@@ -314,20 +223,11 @@ trigger today. Fixing the hook fixes all five lists.
   reply cannot inject markup either.
 - **Bidi spoofing in replies:** `ReplyCell` runs the body through `stripBidiControls` and sets `dir="auto"`, as `PostCell`
   does for posts, so an RTL-override reply cannot reorder the username or the EDIT/DELETE buttons next to it.
-- **Open redirect / SSRF:** `navigate(tweetPath(post.id))`, the reply `Link` and the BACK link only build
-  `/tweets/<server id>` or `ROUTES.feed`; the prefix is fixed, so a server id cannot make a `//host` target. `navigate(-1)` is
-  used only when the router has an earlier entry of this app. `<img src>` is `ENDPOINTS.tweetImage(tweetId, image.id)`
-  (fixed prefix plus ids from the server) or the avatar path from `toPictureUrl` (finding 3's note applies).
 - **Authorization / IDOR on replies:** `canEdit` and `canDelete` in `ReplyCell` only decide which buttons show. The
   server decides: `updateContentIfAuthor(replyId, tweetId, callerId, ...)` is one conditional write, and `delete` allows
   the reply's author or the post's author and answers `ReplyNotFoundException` (404) otherwise, so there is no
   "exists but forbidden" oracle. The caller id comes from the gateway's `X-User-Id`, never from the body. A forged
   `PUT`/`DELETE` from another account is refused (code read, not run).
-- **Resource limits:** the 280-character cap and the empty check run in `canPublish` in the browser and again in
-  `ReplyServiceImpl.validateText` (code points of the stripped text). There is no rate limit on creating replies; it is
-  already an accepted gap (`twitter_tweet_service/PLAN.md:242`), so it is not repeated.
-  `ReplyComposer` and `ReplyEditor` allow one request in flight (`isSending`, `isSaving`); `ReplyCell` ignores a second
-  delete while `isDeleting`.
 - **Caching and state races:** the page keeps `sentReplies`, `editedReplies` and `removedReplyIds` in memory only; the
   `<section key={openTweetId}>` in `TabPanels` remounts the page per post, so one post's replies, drafts and removed ids do
   not carry into another. `useTweetDetails` drops a response that lands after unmount (`isCancelled`). The like and
@@ -337,16 +237,11 @@ trigger today. Fixing the hook fixes all five lists.
 - **View counting:** `data-tweet-id={post.id}` comes from the server response, and the reporter deduplicates ids per
   page and per viewer on the server (see 2026-10-04). Finding 6 cannot be used to report a chosen id: a post must parse
   as a post first.
-- **Tab panels:** `useTabScrollMemory` and `useTabVisits` handle only numbers, the `TabId` union and DOM events. No
-  storage, URL, network or markup sink. `useActiveTab` and `useOpenTweetId` read `pathname` only (no query, no hash).
-  Hidden tab pages stay mounted; their effect on request volume is finding 5.
 - **Information disclosure:** failure paths show fixed strings (`Couldn't send. Try again.`, `POST NOT FOUND`, ...).
   Server messages are not rendered on this page (`describeSendFailure` ignores `ApiError.messages`).
 - **Injection (server-side), CSRF, secrets, dependencies, caching of untrusted keys, ReDoS:** none new here. CSRF rests
   on the `SameSite=Strict` cookie as before, now also covering `POST`/`PUT`/`DELETE` on replies. The regexes touched
   are `bidi.ts` and none are new. `npm audit`: 0 vulnerabilities.
-- **Still open, unchanged, outside this scope:** findings 1 (no CSP or referrer policy in `index.html`) and 2
-  (`COOKIE_SECURE` defaults to false) were not re-checked in this pass.
 
 ## Audit — 2026-10-08 (profile page, profile links, `users.ts` / `tweets.ts` / `authorTweets.ts`)
 
@@ -363,11 +258,6 @@ No new findings. Nothing here is exploitable today.
   `follow(username)`. `ProfilePage` also refuses to call the API unless the address matches `USERNAME_PATTERN`
   (`/^[A-Za-z0-9_]{3,15}$/`, anchored, no backtracking), so `/users/..%2F..` shows USER NOT FOUND without a request.
   `fetchTweetCount` builds its query with `URLSearchParams`.
-- **Finding 5 (`usePagedList` follows a cursor with no progress check): still open, one more consumer.** `ProfileTweets`
-  passes `fetchAuthorTweets` to `PostList`, which uses `usePagedList`. The backend only returns a cursor when a next
-  page exists (`TweetServiceImpl.findPageByAuthor`), so it does not loop today.
-- **Findings 1 and 2 (no CSP or referrer policy; `Secure` cookie flag): not re-checked here.** `index.html` is unchanged
-  in this scope.
 
 ### Considered, clean or not applicable (profile UI)
 - **XSS / markup injection:** `bio`, `location`, `username` and tweet content are all rendered as React text nodes
@@ -389,8 +279,7 @@ No new findings. Nothing here is exploitable today.
   `credentials: 'include'`; the cookie is `SameSite=Strict`, so a cross-site page cannot send it (CSRF as before).
   Server refusal text reaches the DOM only as text. Client-side length limits mirror the server and are UX only; the
   server enforces them.
-- **Information disclosure:** the SPA's `UserProfile` type leaves out `birthdate`, but the gateway still sends it to
-  every logged-in viewer; see finding 3 in `../SECURITY-FINDINGS.md`, which is where it is fixed. `email` shown in the
-  edit sheet comes from the signed-in user's own session.
+- **Information disclosure:** the SPA's `UserProfile` type leaves out `birthdate`. `email` shown in the edit sheet
+  comes from the signed-in user's own session.
 - **Injection (server-side), SSRF, secrets, dependencies, caching, races:** no sinks in these files. No new
   dependencies were added.

@@ -37,6 +37,7 @@ describe('fetchTweetDetails', () => {
             {
                 method: 'GET',
                 credentials: 'include',
+                signal: expect.any(AbortSignal),
             },
         );
     });
