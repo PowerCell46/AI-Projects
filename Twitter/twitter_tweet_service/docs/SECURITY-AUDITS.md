@@ -28,7 +28,7 @@ reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md`
   calls from input; update and delete match `_id` and `authorId` in the write itself; image type comes from the
   bytes, images are never decoded, storage keys are random UUIDs; error bodies are fixed strings, `/actuator/env`
   is 404 and health shows only status; `.env` is git-ignored, MinIO keys have no default, the container is non-root.
-  Dependencies were not scanned: run an advisory scan before any deployment.
+  Dependencies were scanned on 2026-10-10 (see the end of this file).
 
 ## By-author read (2026-10-04)
 
@@ -67,4 +67,13 @@ frontend beyond one grep (no `innerHTML` or `dangerouslySetInnerHTML` in `fronte
   cursors are `400`); with 300,000 replies on one tweet a deep page examined 21 keys; edit matches `_id`, `tweetId`
   and `authorId` in the write; the only outbound call is the gateway at a configured URL with UUID ids; error bodies
   are fixed strings and `/actuator` shows `health` only; `INTERNAL_API_SECRET` has no default and a 32-byte floor.
-  Dependencies were not scanned.
+  Dependencies were scanned on 2026-10-10 (see the end of this file).
+
+## Dependency scan (2026-10-10)
+
+`osv-scanner` (Docker image `ghcr.io/google/osv-scanner`) over the four `pom.xml` files and both `package-lock.json`
+files found 71 advisories (10 Critical, 34 High, 24 Medium, 3 Low) in `tomcat-embed-core` 11.0.24, `jackson-core` and
+`jackson-databind` 2.21.5 and 3.1.5, `lz4-java` 1.10.1 and, in the tweet service, `bcprov-jdk18on` 1.84. All were fixed by
+raising the versions in each `pom.xml` (Tomcat 11.0.25, Jackson 2.21.7 and 3.1.7, lz4-java 1.11.4, BouncyCastle 1.85), and
+a second scan reported no issues. Reachability was not assessed. Nothing runs the scan automatically yet, so repeat it
+before each deployment.

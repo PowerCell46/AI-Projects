@@ -4,8 +4,8 @@ Last updated: 2026-10-09
 
 The `exploit-hunter` audits of the timeline service, one section per audit, condensed from the original per-audit
 reports (dates are the audit dates; the tweet details report was merged in on 2026-10-09). Each "accepted" or "open"
-item is listed in `PLAN.md` under its accepted gaps or left-open section, with a trigger. Dependencies were not scanned
-for CVEs in any audit.
+item is listed in `PLAN.md` under its accepted gaps or left-open section, with a trigger. Dependencies were scanned for
+CVEs on 2026-10-10 (see the end of this file).
 
 | Audited | Scope | Result |
 | --- | --- | --- |
@@ -150,3 +150,12 @@ mapper and the gateway route.
   bodies are fixed strings and the response carries no email; the service sets no cache entries and the response holds
   per-viewer flags; the endpoint returns JSON, sets no cookies and no raw-HTML sink in `frontend/src` consumes it; the
   route is behind `authenticated()` and wrong methods are `405`.
+
+## Dependency scan (2026-10-10)
+
+`osv-scanner` (Docker image `ghcr.io/google/osv-scanner`) over the four `pom.xml` files and both `package-lock.json`
+files found 71 advisories (10 Critical, 34 High, 24 Medium, 3 Low) in `tomcat-embed-core` 11.0.24, `jackson-core` and
+`jackson-databind` 2.21.5 and 3.1.5, `lz4-java` 1.10.1 and, in the tweet service, `bcprov-jdk18on` 1.84. All were fixed by
+raising the versions in each `pom.xml` (Tomcat 11.0.25, Jackson 2.21.7 and 3.1.7, lz4-java 1.11.4, BouncyCastle 1.85), and
+a second scan reported no issues. Reachability was not assessed. Nothing runs the scan automatically yet, so repeat it
+before each deployment.

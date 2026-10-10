@@ -35,7 +35,7 @@ is in place with its test, and each "accepted" item is listed in `PLAN.md` under
 - **Clean:** all queries bind parameters; no outbound requests or redirects from input; the only resource route
   is `/me`; HS256 is pinned and `alg=none` or tampered tokens are 401; the token is read from the cookie only; bodies
   are capped for declared and chunked sizes; error bodies are fixed strings; actuator exposes only `health`; no CORS.
-  No dependency CVE scan was run.
+  Dependencies were scanned on 2026-10-10 (see the end of this file).
 
 ## Phase 2: pictures and files
 
@@ -114,3 +114,12 @@ leaks nothing in error text, and costs one unique-index lookup (0.012 ms).
 This audit ran against the `204`/`404` behaviour. The endpoint now answers `200 {"following": true|false}` (see
 `DECISIONS.md`, "Internal API and events"), which keeps the guard's 404 as the only meaning of a wrong secret or
 a missing route; the checks above still hold.
+
+## Dependency scan (2026-10-10)
+
+`osv-scanner` (Docker image `ghcr.io/google/osv-scanner`) over the four `pom.xml` files and both `package-lock.json`
+files found 71 advisories (10 Critical, 34 High, 24 Medium, 3 Low) in `tomcat-embed-core` 11.0.24, `jackson-core` and
+`jackson-databind` 2.21.5 and 3.1.5, `lz4-java` 1.10.1 and, in the tweet service, `bcprov-jdk18on` 1.84. All were fixed by
+raising the versions in each `pom.xml` (Tomcat 11.0.25, Jackson 2.21.7 and 3.1.7, lz4-java 1.11.4, BouncyCastle 1.85), and
+a second scan reported no issues. Reachability was not assessed. Nothing runs the scan automatically yet, so repeat it
+before each deployment.

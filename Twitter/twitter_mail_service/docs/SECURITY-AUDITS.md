@@ -49,7 +49,7 @@ The only untrusted-input entry point is the Kafka topics; the service has no HTT
   stripped; every HTML value goes through `HtmlUtils.htmlEscape` in one pass; Redis keys are `mail:confirmation:` plus
   a typed `UUID` and the release script takes `KEYS`/`ARGV`; Redis and Mailpit bind `127.0.0.1`, Redis needs a
   password, `.env` is git-ignored, the container is non-root; `email` ≤ 254, `confirmationUrl` ≤ 2048, no regex over
-  free text. Dependency CVEs were not scanned (every version comes from the Spring Boot 4.1.1 BOM).
+  free text. Dependencies were scanned on 2026-10-10 (see the end of this file).
 
 ## Phase 2: follow email
 
@@ -80,3 +80,12 @@ The only untrusted-input entry point is the Kafka topics; the service has no HTT
   key is two typed UUIDs and the value is `SENT`, so no collision with another pair or a `mail:confirmation:` key; the
   claim is one atomic `SET NX` and the pair key is directional; the follow logs hold ids, the violated field and the
   exception class (0 lines with an address or `token=` in the full log); the DTO caps email at 254 and usernames at 15.
+
+## Dependency scan (2026-10-10)
+
+`osv-scanner` (Docker image `ghcr.io/google/osv-scanner`) over the four `pom.xml` files and both `package-lock.json`
+files found 71 advisories (10 Critical, 34 High, 24 Medium, 3 Low) in `tomcat-embed-core` 11.0.24, `jackson-core` and
+`jackson-databind` 2.21.5 and 3.1.5, `lz4-java` 1.10.1 and, in the tweet service, `bcprov-jdk18on` 1.84. All were fixed by
+raising the versions in each `pom.xml` (Tomcat 11.0.25, Jackson 2.21.7 and 3.1.7, lz4-java 1.11.4, BouncyCastle 1.85), and
+a second scan reported no issues. Reachability was not assessed. Nothing runs the scan automatically yet, so repeat it
+before each deployment.

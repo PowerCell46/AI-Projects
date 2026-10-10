@@ -53,12 +53,6 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
   metadata. Strip it before `put`. Documented trigger: "before any public deployment" (`twitter_tweet_service/PLAN.md:61`,
   `twitter_api_gateway/PLAN.md:52`).
 
-- [ ] **No dependency vulnerability scan has ever run (S).** All four services' `docs/SECURITY-AUDITS.md` say
-  "dependencies were not scanned" (tweet `:30,69`, mail `:52`, gateway `:34`, timeline `:7`). There is no
-  dependency-check, osv-scanner or dependabot config. Run OWASP dependency-check or osv-scanner on Spring Boot 4.1.1,
-  minio 9.0.3 and okhttp 5.3.2 (`okhttp-jvm` is a hardcoded version in **both** the gateway pom, `:62-64`, and the
-  tweet pom, `:53-55`).
-
 ### Operations
 
 - [ ] **Schema is managed by `ddl-auto=update` with no migrations (M).**
@@ -498,7 +492,7 @@ re-counted.
 
 1. **Repo hygiene:** the root `.env.example` rewrite and the dangling doc references.
 2. **Reliability:** the health/management settings.
-3. **Hardening:** Mongo/Kafka/MinIO/Postgres accounts, EXIF stripping, avatar resizing, CVE scan, Flyway baseline.
+3. **Hardening:** Mongo/Kafka/MinIO/Postgres accounts, EXIF stripping, avatar resizing, Flyway baseline.
 4. **Frontend robustness:** request timeout/abort (and 429 if a proxy ever sends one), error boundary decision,
    per-route titles and focus, avatar `loading`/`decoding`, `index.html` meta, CSP, self-hosted fonts, favicon, the
    `PostActions` rollback gap.
