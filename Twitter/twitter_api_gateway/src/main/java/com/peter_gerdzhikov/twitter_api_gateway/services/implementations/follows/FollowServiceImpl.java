@@ -61,11 +61,17 @@ public class FollowServiceImpl implements FollowService {
         User target = resolveTarget(followerId, targetUsername);
         Instant now = clock.instant();
 
-        int inserted = followRepository.insertIfAbsent(UUID.randomUUID(), followerId, target.getId(), now.truncatedTo(ChronoUnit.MICROS));
-        if (inserted == 1) {
-            adjustCounts(followerId, target.getId(), ADDED);
+        if (insertFollow(followerId, target, now)) {
             outboxService.enqueue(followedTopic, target.getId().toString(), newFollowedEvent(followerId, target, now));
         }
+    }
+
+    @Override
+    @Transactional
+    public void followWithoutEvent(UUID followerId, String targetUsername) {
+        User target = resolveTarget(followerId, targetUsername);
+
+        insertFollow(followerId, target, clock.instant());
     }
 
     @Override
@@ -78,6 +84,17 @@ public class FollowServiceImpl implements FollowService {
             adjustCounts(followerId, targetId, REMOVED);
             outboxService.enqueue(unfollowedTopic, followerId.toString(), newUnfollowedEvent(followerId, targetId));
         }
+    }
+
+    private boolean insertFollow(UUID followerId, User target, Instant now) {
+        int inserted = followRepository.insertIfAbsent(UUID.randomUUID(), followerId, target.getId(), now.truncatedTo(ChronoUnit.MICROS));
+        if (inserted == 0) {
+            return false;
+        }
+
+        adjustCounts(followerId, target.getId(), ADDED);
+
+        return true;
     }
 
     private User resolveTarget(UUID followerId, String targetUsername) {

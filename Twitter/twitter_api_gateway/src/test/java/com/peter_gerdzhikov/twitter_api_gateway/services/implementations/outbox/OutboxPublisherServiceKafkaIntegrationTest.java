@@ -23,6 +23,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -72,6 +74,9 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
 
     @Autowired
     private OutboxRepository outboxRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Autowired
     private OutboxPublisherService outboxPublisherService;
@@ -197,9 +202,12 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
         OutboxPublisherServiceImpl publisherWhileKafkaIsDown = new OutboxPublisherServiceImpl(
                 batchSize, maxAttempts, Duration.ofSeconds(5), outboxRepository, new KafkaTemplate<>(unreachable));
 
+        // The hand-built publisher has no @Transactional proxy, and its row locks need the transaction one poll runs in
+        TransactionTemplate onePoll = new TransactionTemplate(transactionManager);
+
         try {
             for (int poll = 0; poll < polls; poll++) {
-                publisherWhileKafkaIsDown.publishPending();
+                onePoll.executeWithoutResult(status -> publisherWhileKafkaIsDown.publishPending());
             }
 
         } finally {

@@ -32,15 +32,15 @@ and hiding people the caller already follows.
 ## Accepted gaps — revisit when the named trigger lands
 - **One `enabled` flag means "confirmed"; no roles/admin.** Trigger: first ban, or moderation features.
 - **No rate limiting** except the resend cooldown (login capped only by bcrypt-12; register, uploads, follows and the
-  tweet routes unthrottled). Trigger: abuse, or a second instance.
+  tweet routes unthrottled). Trigger: abuse.
 - **Register leaks whether an email/username exists** (explicit `409`s). Login's `403` reveals "unconfirmed" only to
   someone holding the password.
 - **Squatting:** a pending account holds an email/handle up to 7 days plus cleanup; a real owner clicking the
   squatter's link confirms an account the squatter controls. Trigger: password reset exists, or first report.
 - **Email and live confirmation token travel through Kafka in plaintext.** Trigger: Kafka exposed → TLS/SASL.
-- **Outbox is at-least-once** (the mail service dedupes on `eventId`); **no row-claiming** in the poller (trigger:
-  second instance → `SKIP LOCKED`); **`FAILED` rows need manual handling** (trigger: first one that matters).
-- **Scheduled jobs run on every instance.** Trigger: second instance → ShedLock/advisory lock.
+- **Outbox is at-least-once** (the mail service dedupes on `eventId`); **`FAILED` rows need manual handling**
+  (trigger: first one that matters). Two instances are covered since 2026-10-10: the poller claims rows with
+  `SKIP LOCKED`, and the cleanup job and the seeder take a Postgres advisory lock (see `DECISIONS.md`).
 - **Dev compose has default credentials and plaintext Kafka** (ports bound to `127.0.0.1`). Trigger: any shared
   environment.
 - **Log lines can carry attacker-chosen or personal text** (unknown-path WARN, constraint-violation WARN with email).
@@ -48,7 +48,7 @@ and hiding people the caller already follows.
 - **`ddl-auto=update`, no migrations.** Trigger: second environment or first destructive change → Flyway.
 - **JWT 1h, no refresh, no revocation.** Trigger: hourly logouts annoy, or need to kill sessions.
 - **Orphan MinIO objects** when the post-commit delete of an old object fails. Trigger: storage growth → sweep job.
-- **Images stored as uploaded: no resize, EXIF (incl. GPS) retained.** Trigger: before any public deployment.
+- **Images stored as uploaded: no resize, EXIF (incl. GPS) retained.** Decision 2026-10-10: accepted, no stripping or resizing is planned, including for a public deployment. Anyone who can load an image also gets its EXIF (GPS, camera model).
 - **Images (profile and tweet) are proxied through the gateway.** Trigger: image traffic dominates → presigned URLs/CDN.
 - **Any logged-in user can fetch any file id** (all files are profile images). Trigger: first private media type.
 - **No restrictive `Content-Security-Policy` on served files** (phase 2 audit, Low; not exploitable while only
@@ -60,7 +60,7 @@ and hiding people the caller already follows.
 - **Hot-row contention on a popular account's counters.** Trigger: measurable follow latency → sharded counters.
 - **No counter reconciliation job** (`@Check >= 0` catches only negative drift). Trigger: any observed drift.
 - **Any logged-in user can page through every confirmed account** (phase 5), with each person's `followersCount`;
-  profiles were already readable by username, and this makes them enumerable. Trigger: abuse, or a second instance →
+  profiles were already readable by username, and this makes them enumerable. Trigger: abuse →
   rate limit on `GET /api/v1/users`.
 - **No popularity ordering** (phase 5): newest first, because counters move while a reader pages and would repeat
   or skip people. Trigger: newest-first stops being useful → a ranked list from a snapshot or a stored score, which

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.client.SeededTweetClientDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.configurations.SeedProperties;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.follows.FollowService;
@@ -41,6 +43,13 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.TweetSe
 class DataSeedServiceImplTest {
 
     private static final String PASSWORD = "Str0ng-seed-password";
+
+    private static final Map<String, String> REAL_PEOPLE_PASSWORDS = Map.of(
+            "stiliyan", "Stiliyan-0wn-password",
+            "kristian", "Kristian-0wn-password",
+            "gosho", "Gosho-0wn-password",
+            "gabi", "Gabi-0wn-password"
+    );
 
     @Mock
     private FollowService followService;
@@ -71,8 +80,15 @@ class DataSeedServiceImplTest {
     }
 
     private DataSeedServiceImpl newSeedService(String password) {
+        return newSeedService(password, REAL_PEOPLE_PASSWORDS);
+    }
+
+    private DataSeedServiceImpl newSeedService(String password, Map<String, String> realPeoplePasswords) {
+        SeedProperties seedProperties = new SeedProperties();
+        seedProperties.setPasswords(realPeoplePasswords);
+
         return new DataSeedServiceImpl(
-                password, followService, userRepository, passwordEncoder,
+                password, seedProperties, followService, userRepository, passwordEncoder,
                 likeSeedService, replySeedService, tweetSeedService, profilePictureSeedService);
     }
 
@@ -111,6 +127,28 @@ class DataSeedServiceImplTest {
 
             assertThatThrownBy(() -> newSeedService(weakPassword))
                     .hasMessageNotContaining(weakPassword);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"stiliyan", "kristian", "gosho", "gabi"})
+        void should_refuse_to_start_when_a_real_persons_password_is_missing(String username) {
+            Map<String, String> missingOne = new HashMap<>(REAL_PEOPLE_PASSWORDS);
+            missingOne.remove(username);
+
+            assertThatThrownBy(() -> newSeedService(PASSWORD, missingOne))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("SEED_PASSWORD_" + username.toUpperCase());
+        }
+
+        @Test
+        void should_refuse_to_start_when_a_real_persons_password_is_weak() {
+            Map<String, String> weakOne = new HashMap<>(REAL_PEOPLE_PASSWORDS);
+            weakOne.put("gosho", "weak");
+
+            assertThatThrownBy(() -> newSeedService(PASSWORD, weakOne))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("SEED_PASSWORD_GOSHO")
+                    .hasMessageNotContaining("weak");
         }
 
         @ParameterizedTest
@@ -158,17 +196,18 @@ class DataSeedServiceImplTest {
         }
 
         @Test
-        void should_follow_through_the_follow_service_without_following_oneself() {
+        void should_follow_without_queueing_any_event_and_without_following_oneself() {
             List<User> saved = stubEmptyDatabase();
 
             seedService.seedIfEmpty();
 
             ArgumentCaptor<UUID> followerIds = ArgumentCaptor.captor();
             ArgumentCaptor<String> targets = ArgumentCaptor.captor();
-            verify(followService, atLeastOnce()).follow(followerIds.capture(), targets.capture());
+            verify(followService, atLeastOnce()).followWithoutEvent(followerIds.capture(), targets.capture());
             Map<UUID, String> namesById = saved
                     .stream()
                     .collect(Collectors.toMap(User::getId, User::getUsername));
+            verify(followService, never()).follow(any(), anyString());
             for (int i = 0; i < targets.getAllValues().size(); i++) {
                 assertThat(namesById.get(followerIds.getAllValues().get(i)))
                         .isNotEqualTo(targets.getAllValues().get(i));
@@ -214,6 +253,26 @@ class DataSeedServiceImplTest {
             seedService.seedIfEmpty();
 
             verify(replySeedService).seedReplies(userIdsOf(saved), tweets);
+        }
+
+        @Test
+        void should_hash_each_real_persons_own_password_and_the_shared_one_for_everyone_else() {
+            stubEmptyDatabase();
+            when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "hash:" + invocation.getArgument(0));
+
+            seedService.seedIfEmpty();
+
+            ArgumentCaptor<List<User>> saved = ArgumentCaptor.captor();
+            verify(userRepository).saveAll(saved.capture());
+            Map<String, String> hashesByUsername = saved.getValue()
+                    .stream()
+                    .collect(Collectors.toMap(User::getUsername, User::getPassword));
+            for (String realPerson : DataSeedServiceImpl.REAL_PEOPLE) {
+                assertThat(hashesByUsername.get(realPerson))
+                        .isEqualTo("hash:" + REAL_PEOPLE_PASSWORDS.get(realPerson.toLowerCase()));
+            }
+            assertThat(hashesByUsername.get("Hristo")).isEqualTo("hash:" + PASSWORD);
+            assertThat(hashesByUsername.get("Gabi2")).isEqualTo("hash:" + PASSWORD);
         }
 
         private List<UUID> userIdsOf(List<User> users) {

@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
@@ -61,6 +62,7 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
     }
 
     @Override
+    @Transactional
     public int publishPending() {
         List<Outbox> pending = outboxRepository.findByStatusOrderByCreatedAtAsc(
                 OutboxStatus.PENDING,

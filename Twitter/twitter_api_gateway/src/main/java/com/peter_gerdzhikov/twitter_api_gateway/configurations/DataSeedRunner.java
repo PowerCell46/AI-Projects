@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.twitter_api_gateway.configurations;
 
+import java.util.Optional;
+
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -7,6 +9,8 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockKey;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.DataSeedService;
 
 import lombok.RequiredArgsConstructor;
@@ -17,7 +21,8 @@ import lombok.extern.slf4j.Slf4j;
  * and after the bucket exists. The seeding itself goes on a background thread: the other services only start
  * once this one is healthy, and the seed waits for the timeline service to take its likes.
  * The bean exists only when {@code app.seed.enabled} is true. Tests set it to false: they start from an empty
- * database on purpose, and without the bean the seed password is not required.
+ * database on purpose, and without the bean the seed password is not required. With several instances on one
+ * database the first to take the advisory lock seeds and the others skip.
  */
 @Slf4j
 @Component
@@ -28,6 +33,8 @@ public class DataSeedRunner implements ApplicationRunner {
 
     private final DataSeedService dataSeedService;
 
+    private final AdvisoryLockService advisoryLockService;
+
     @Override
     public void run(ApplicationArguments args) {
         Thread.ofPlatform()
@@ -37,7 +44,15 @@ public class DataSeedRunner implements ApplicationRunner {
 
     private void seed() {
         try {
-            if (!dataSeedService.seedIfEmpty()) {
+            Optional<Boolean> seeded = advisoryLockService.runIfUnlocked(
+                    AdvisoryLockKey.DATA_SEED,
+                    dataSeedService::seedIfEmpty
+            );
+
+            if (seeded.isEmpty()) {
+                log.info("Skipped seeding: another instance is seeding.");
+
+            } else if (!seeded.get()) {
                 log.info("Skipped seeding: the database already has users.");
             }
 

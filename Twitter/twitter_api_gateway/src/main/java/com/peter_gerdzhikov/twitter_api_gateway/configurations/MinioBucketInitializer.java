@@ -1,8 +1,11 @@
 package com.peter_gerdzhikov.twitter_api_gateway.configurations;
 
+import java.util.Set;
+
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
+import io.minio.errors.ErrorResponseException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -13,12 +16,15 @@ import org.springframework.stereotype.Component;
 
 /**
  * Runs first of all runners: the data seeder uploads pictures into the bucket this creates.
- * Fails startup when MinIO is unreachable: an app that can't store pictures should not report healthy.
+ * Fails startup when MinIO is unreachable: an app that can't store pictures should not report healthy. Two instances
+ * starting together can both find the bucket missing; the one that loses the race carries on.
  */
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MinioBucketInitializer implements ApplicationRunner {
+
+    private static final Set<String> BUCKET_CREATED_BY_ANOTHER_INSTANCE = Set.of("BucketAlreadyOwnedByYou", "BucketAlreadyExists");
 
     private final String bucket;
 
@@ -44,7 +50,17 @@ public class MinioBucketInitializer implements ApplicationRunner {
                 .builder()
                 .bucket(bucket)
                 .build();
-        minioClient.makeBucket(makeArgs);
-        log.info("Created MinIO bucket {}.", bucket);
+
+        try {
+            minioClient.makeBucket(makeArgs);
+            log.info("Created MinIO bucket {}.", bucket);
+
+        } catch (ErrorResponseException ex) {
+            if (!BUCKET_CREATED_BY_ANOTHER_INSTANCE.contains(ex.errorResponse().code())) {
+                throw ex;
+            }
+
+            log.info("MinIO bucket {} was created by another instance meanwhile.", bucket);
+        }
     }
 }

@@ -15,6 +15,12 @@ public interface FollowService {
     void follow(UUID followerId, String targetUsername);
 
     /**
+     * The same as {@link #follow}, except that no {@code user.followed} event is queued, so nobody is emailed and no
+     * feed is back-filled. For the demo data seeder only: its follows exist before any tweet does.
+     */
+    void followWithoutEvent(UUID followerId, String targetUsername);
+
+    /**
      * Idempotent: unfollowing someone not followed changes nothing. Same failures as {@link #follow}. A
      * {@code user.unfollowed} event is queued only when a follow row was actually removed.
      */

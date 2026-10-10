@@ -2,8 +2,10 @@ package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.seed;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -14,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.client.SeededTweetClientDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.configurations.SeedProperties;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.follows.FollowService;
@@ -36,6 +39,12 @@ public class DataSeedServiceImpl implements DataSeedService {
             "Stiliyan", "Kristian", "Kristyian", "Gosho", "Gabi", "Gabi2",
             "Hristo", "Bobkata", "Atanas", "Stanimir", "Bogdan", "Kaloyan"
     );
+
+    /**
+     * The demo users that are real people: each one has a password of their own (SEED_PASSWORD_<NAME>), because the
+     * shared password is the same for anyone who has seen it.
+     */
+    static final List<String> REAL_PEOPLE = List.of("Stiliyan", "Kristian", "Gosho", "Gabi");
 
     private static final long RANDOM_SEED = 2026;
 
@@ -63,10 +72,13 @@ public class DataSeedServiceImpl implements DataSeedService {
 
     private final TweetSeedService tweetSeedService;
 
+    private final Map<String, String> passwordsOfRealPeople;
+
     private final ProfilePictureSeedService profilePictureSeedService;
 
     public DataSeedServiceImpl(
             @Value("${app.seed.password}") String password,
+            SeedProperties seedProperties,
             FollowService followService,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -75,7 +87,8 @@ public class DataSeedServiceImpl implements DataSeedService {
             TweetSeedService tweetSeedService,
             ProfilePictureSeedService profilePictureSeedService
     ) {
-        this.password = requireStrongPassword(password);
+        this.password = requireStrongPassword(password, "app.seed.password", "SEED_PASSWORD");
+        this.passwordsOfRealPeople = requireRealPeoplePasswords(seedProperties.getPasswords());
         this.followService = followService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -109,42 +122,63 @@ public class DataSeedServiceImpl implements DataSeedService {
     }
 
     /**
-     * The demo users are real accounts with well-known usernames, so their shared password has to be a secret of
+     * The demo users are real accounts with well-known usernames, so their passwords have to be secrets of
      * the deployment. The message never carries the value. BCrypt reads at most 72 bytes.
      */
-    private static String requireStrongPassword(String password) {
+    private static String requireStrongPassword(String password, String property, String environmentVariable) {
         boolean tooShort = password.length() < MIN_PASSWORD_LENGTH;
         boolean tooLong = password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES;
 
         if (tooShort || tooLong || !PASSWORD_CLASSES.matcher(password).matches()) {
             throw new IllegalStateException((
-                    "app.seed.password (SEED_PASSWORD) must be at least %d characters and at most %d bytes, "
+                    "%s (%s) must be at least %d characters and at most %d bytes, "
                             + "with a lowercase letter, an uppercase letter and a digit.")
-                    .formatted(MIN_PASSWORD_LENGTH, MAX_PASSWORD_BYTES));
+                    .formatted(property, environmentVariable, MIN_PASSWORD_LENGTH, MAX_PASSWORD_BYTES));
         }
 
         return password;
     }
 
+    private static Map<String, String> requireRealPeoplePasswords(Map<String, String> configured) {
+        Map<String, String> passwords = new LinkedHashMap<>();
+
+        for (String username : REAL_PEOPLE) {
+            String key = username.toLowerCase(Locale.ROOT);
+            String environmentVariable = "SEED_PASSWORD_" + username.toUpperCase(Locale.ROOT);
+
+            passwords.put(username, requireStrongPassword(
+                    configured.getOrDefault(key, ""), "app.seed.passwords." + key, environmentVariable));
+        }
+
+        return passwords;
+    }
+
     private List<User> newUsers() {
-        // One hash for all of them: the password is shared, and bcrypt is slow on purpose.
-        String encodedPassword = passwordEncoder.encode(password);
+        // One hash for everyone on the shared password, because bcrypt is slow on purpose; a real person gets their own
+        String encodedSharedPassword = passwordEncoder.encode(password);
 
         return USERNAMES
                 .stream()
                 .map(username -> User.builder()
                         .bio(BIO)
                         .username(username)
-                        .password(encodedPassword)
+                        .password(encodedPasswordOf(username, encodedSharedPassword))
                         .email(username.toLowerCase(Locale.ROOT) + "@" + EMAIL_DOMAIN)
                         .enabled(true)
                         .build())
                 .toList();
     }
 
+    private String encodedPasswordOf(String username, String encodedSharedPassword) {
+        String ownPassword = passwordsOfRealPeople.get(username);
+
+        return ownPassword == null ? encodedSharedPassword : passwordEncoder.encode(ownPassword);
+    }
+
     /**
-     * Goes through the follow service, so counts, outbox events and the timeline back-fill behave as they
-     * do for real follows. The fixed random seed gives the same graph on every fresh database.
+     * Goes through the follow service, so the counts behave as they do for real follows, but queues no event: the
+     * mail service would email an {@code @seed.local} address for each one, and the tweets that the timeline would
+     * back-fill do not exist yet. The fixed random seed gives the same graph on every fresh database.
      */
     private int seedFollows(List<User> users) {
         Random random = new Random(RANDOM_SEED);
@@ -158,7 +192,7 @@ public class DataSeedServiceImpl implements DataSeedService {
             }
         }
 
-        pairs.forEach(pair -> followService.follow(pair[0].getId(), pair[1].getUsername()));
+        pairs.forEach(pair -> followService.followWithoutEvent(pair[0].getId(), pair[1].getUsername()));
 
         return pairs.size();
     }

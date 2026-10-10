@@ -182,3 +182,19 @@ code or its tests already say.
 
 - **`/api/v1/author-tweets/*` joins the `timeline-service` route**, one path segment, with the same identity filters as
   `tweet-details`: `X-User-Id` set from the JWT, a forged one replaced, the cookie and `Authorization` dropped.
+
+## Two gateway instances (2026-10-10)
+
+- **The deployment runs two gateways on one Postgres, behind nginx round robin.** Nothing else in the gateway keeps
+  per-instance state: sessions are JWT cookies and the resend cooldown is a column.
+- **The outbox poller claims its batch with `FOR UPDATE SKIP LOCKED`** (`@Lock(PESSIMISTIC_WRITE)` plus the lock
+  timeout hint `-2`) inside one transaction per poll. The locks live while the batch is sent, so a poll holds a
+  connection for up to `batch-size` times `send-timeout` in the worst case.
+- **The cleanup job and the seeder take a session-level Postgres advisory lock** (`AdvisoryLockService`) on a
+  connection of their own, held until the action ends; Postgres frees it if the instance dies. Advisory locks over
+  ShedLock: no new dependency or table for two jobs. The seeder holds it for the whole seed, so the second instance
+  skips, and if it starts later it finds users and skips anyway.
+- **`MinioBucketInitializer` accepts `BucketAlreadyOwnedByYou` and `BucketAlreadyExists`** from `makeBucket`, because
+  both instances can find the bucket missing on a cold start.
+- **The second instance is `gateway-2` in compose**, with the network alias `gateway`, so the other services' calls
+  to `http://gateway:8080` and the frontend's nginx both reach both instances. Not run end to end yet.

@@ -75,6 +75,43 @@ class FollowServiceImplTest {
     }
 
     @Nested
+    class FollowWithoutEvent {
+
+        @Test
+        void should_insert_the_follow_and_update_the_counts_without_queueing_an_event() {
+            givenConfirmedTarget("target", LARGER_ID);
+            givenInsertReturns(SMALLER_ID, LARGER_ID, 1);
+
+            followService.followWithoutEvent(SMALLER_ID, "target");
+
+            verify(userRepository).addToFollowingCount(SMALLER_ID, 1);
+            verify(userRepository).addToFollowersCount(LARGER_ID, 1);
+            verifyNoInteractions(outboxService);
+        }
+
+        @Test
+        void should_not_touch_the_counters_when_the_follow_already_existed() {
+            givenConfirmedTarget("target", LARGER_ID);
+            givenInsertReturns(SMALLER_ID, LARGER_ID, 0);
+
+            followService.followWithoutEvent(SMALLER_ID, "target");
+
+            verify(userRepository, never()).addToFollowingCount(any(), anyLong());
+            verifyNoInteractions(outboxService);
+        }
+
+        @Test
+        void should_throw_when_the_user_follows_themselves() {
+            givenConfirmedTarget("me", SMALLER_ID);
+
+            assertThatThrownBy(() -> followService.followWithoutEvent(SMALLER_ID, "me"))
+                    .isInstanceOf(SelfFollowException.class);
+
+            verifyNoInteractions(outboxService);
+        }
+    }
+
+    @Nested
     class Follow {
 
         @Test

@@ -32,8 +32,8 @@ Tests use **Testcontainers**, never embedded fakes — a running Docker daemon i
 ## Demo data
 
 `DataSeedRunner` seeds 12 confirmed users, follows, tweets, replies, likes and profile pictures after startup when the
-`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). `SEED_PASSWORD` has no default
-and is checked at startup. How it works, the pictures and the passwords: `seed-images/README.md`.
+`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). `SEED_PASSWORD` and the four
+`SEED_PASSWORD_<NAME>` (the real people) have no default and are checked at startup. How it works, the pictures and the passwords: `seed-images/README.md`.
 
 ## Spring Boot 4
 
