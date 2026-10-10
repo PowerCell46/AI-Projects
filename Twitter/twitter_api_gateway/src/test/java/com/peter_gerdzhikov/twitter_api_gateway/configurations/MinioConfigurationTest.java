@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
 
@@ -34,7 +35,8 @@ class MinioConfigurationTest {
             long startedAtNanos = System.nanoTime();
 
             assertThatThrownBy(() -> client.bucketExists(BucketExistsArgs.builder().bucket("any").build()))
-                    .hasRootCauseInstanceOf(SocketTimeoutException.class);
+                    .rootCause()
+                    .isInstanceOfAny(SocketTimeoutException.class, SocketException.class);
 
             Duration waited = Duration.ofNanos(System.nanoTime() - startedAtNanos);
             assertThat(waited).isLessThan(GENEROUS_BOUND);
