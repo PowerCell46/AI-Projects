@@ -3,27 +3,18 @@
 Last updated: 2026-10-10
 
 The `exploit-hunter` audits of the tweet service, one section per audit, condensed from the original per-audit
-reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md` under its accepted gaps, with a trigger.
+reports (dates are the audit dates). Findings that are still open or accepted are kept privately.
 
 | Audited | Scope | Result |
 | --- | --- | --- |
-| 2026-09-30 | The five `/api/v1/tweets` routes, outbox publisher, MinIO, Mongo (end of step 9) | 4 accepted (1 High if reachable, 2 Low, 1 Info) |
+| 2026-09-30 | The five `/api/v1/tweets` routes, outbox publisher, MinIO, Mongo (end of step 9) | 4 findings accepted; kept privately |
 | 2026-10-04 | `GET /internal/v1/tweets/by-author/{authorId}` (frontend phase 3) | 1 Medium and 1 Low fixed |
 | 2026-10-07 | Phase 2: the four reply routes, cursor, conflict retrier, gateway user lookup (step 22) | 1 Low and 1 Info fixed |
 
 ## Tweet routes (2026-09-30)
 
-- **Any caller who reaches port 8081 can act as any user (Low while only the gateway reaches it, High if anything else
-  can), accepted.** Compose publishes no port for this service (the prod overlay publishes only the frontend). Identity is the
-  `X-User-Id` header, trusted as sent, and `getHeader` returns the first value, so a proxy that appends instead of
-  replacing would let a client value win. Safe only while the gateway strips `X-User-*` and sets one header (verified
-  in gateway phase 4).
-- **A large `content` text part is buffered in memory (Low), accepted.** The create cap is 21 MB and a non-file part
-  has none of its own; Spring reads it into a `String` before `strip()` and the 280 code-point check reject it.
-- **Up to 10 file parts are parsed before the 4-image limit applies (Low), accepted.** Tomcat's default part cap is
-  10; the count check runs in the service. Bounded write amplification, nothing persisted.
-- **Text keeps control and bidirectional characters (Low, informational), accepted.** JSON output encodes them, so
-  only a consumer that renders `content` unescaped is exposed.
+4 findings accepted; they are kept privately.
+
 - **Clean:** Mongo queries use typed ids and fixed field names, and a log-forging probe stayed one line; no outbound
   calls from input; update and delete match `_id` and `authorId` in the write itself; image type comes from the
   bytes, images are never decoded, storage keys are random UUIDs; error bodies are fixed strings, `/actuator/env`
@@ -45,8 +36,7 @@ reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md`
   1970-01-01 to 9999-12-31 now answers 400 in the `limit` shape; parameterized e2e test (`DECISIONS.md`).
 - **Clean:** the response is exactly `{id, createdAt}` and at most 100 items; every bad `limit` and `since` is a 400
   (epoch millis refused by design); no string reaches the Mongo query; the gateway does not forward `/internal/**`
-  (404 with or without its secret); only `GET` is allowed; error text carries no internals. No auth on `/internal/**`
-  is by design (the `X-User-Id` gap), protected by network isolation only.
+  (404 with or without its secret); only `GET` is allowed; error text carries no internals.
 
 ## Replies (2026-10-07)
 

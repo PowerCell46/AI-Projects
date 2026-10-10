@@ -1,14 +1,14 @@
 # Security audits
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 The `exploit-hunter` audits of the mail service, one section per phase, condensed from the original per-audit reports
 (dates are the audit dates). Each "accepted" item is listed in `PLAN.md` under its accepted gaps, with a trigger.
 
 | Phase | Audited | Scope | Result |
 | --- | --- | --- | --- |
-| 1 | 2026-10-01 | Confirmation-email path: consumer, validation, Redis inbox, rendering, SMTP, DLT, health, compose, Dockerfile | 4 fixed (1 Medium, 3 Low), 3 accepted (2 Low, 1 Info) |
-| 2 | 2026-10-02 | Follow-email path: consumer, pair-keyed window, renderer, shared dispatch, second DLT | 1 Low fixed, 2 Medium, 1 Low and 1 Info accepted |
+| 1 | 2026-10-01 | Confirmation-email path: consumer, validation, Redis inbox, rendering, SMTP, DLT, health, compose, Dockerfile | 4 findings fixed; the open ones are kept privately. |
+| 2 | 2026-10-02 | Follow-email path: consumer, pair-keyed window, renderer, shared dispatch, second DLT | 1 finding fixed; the open ones are kept privately. |
 
 The only untrusted-input entry point is the Kafka topics; the service has no HTTP surface beyond
 `GET /actuator/health`.
@@ -33,17 +33,6 @@ The only untrusted-input entry point is the Kafka topics; the service has no HTT
   DLT and only a permanent SMTP rejection logged. The notification service now logs a WARN with `eventId`, `userId`
   and the violated field names and messages, never the values (a test checks the address and token stay out). A
   malformed-JSON record has no id to log, so it shows only in the DLT.
-- **`/actuator/health` shows details to anyone who reaches port 8082 (Low), accepted.** `show-details=always` returns
-  the working directory, free disk and the Redis version; no compose file publishes 8082. Trigger: reachable from
-  outside the internal network → `when-authorized` with a security starter, or bind the management port to loopback.
-- **Fixed dev and e2e credentials and floating base-image tags (Low), accepted.** the e2e compose ships a fixed
-  Redis password (`twitter-e2e-redis-secret`), `Dockerfile` uses `eclipse-temurin:25-jdk` / `25-jre`, and the e2e Postgres is published on
-  `5452:5432` on every interface (a leftover from before this service). Same posture as the gateway and tweet
-  service. Trigger: any shared environment → generated secrets, pinned digests, no published e2e Postgres port.
-- **A deserialization failure carries the raw payload in a Kafka header (Info), accepted.** Spring Kafka stores the
-  bytes and the Jackson message in `springDeserializerExceptionValue`; the recoverer publishes the original bytes to
-  the DLT anyway, so there is no extra exposure, and no log line carries it (the full `mvn verify` log was grepped for
-  `@example.com` and `token=`). The DLT is internal and must hold the payload to be replayable.
 - **Clean:** logs carry only `eventId`, `userId`, the exception class and the SMTP code, and the delivery exceptions
   have no cause (a test asserts a recipient never reaches their message); the subject is a constant with CR/LF
   stripped; every HTML value goes through `HtmlUtils.htmlEscape` in one pass; Redis keys are `mail:confirmation:` plus
@@ -53,27 +42,10 @@ The only untrusted-input entry point is the Kafka topics; the service has no HTT
 
 ## Phase 2: follow email
 
-- **One account can make the service send a follow email to every user, with no volume cap (Medium), accepted.** The
-  24h window stops a repeat for one pair, nothing else: an account that follows N users sends N emails from the single
-  Gmail sender, and follow emails share the daily quota (about 500 recipients) with confirmation emails, so once it is
-  spent new sign-ups get no mail. Registration is unthrottled at the gateway. The cap belongs on the gateway's follow
-  endpoint (its "no rate limiting" gap). Trigger: abuse, or the quota is hit.
-- **A failed send leaves no window (Low), accepted.** The window is written only after a successful send, so a
-  recipient whose mailbox answers a permanent `550` is retried on every new follow event: a follow/unfollow loop from
-  a second account costs one SMTP attempt, one bounce and one DLT record each, and bounces hurt sender reputation.
-  Trigger: bounce complaints → a short negative window after a permanent failure.
-- **A recipient that answers with a temporary SMTP error stalls its partition for about 4 minutes per event
-  (Medium), accepted.** Blocking retries (2s doubling to 60s, 8 retries) hold the partition 242s. One account on a
-  domain that always answers `4xx` holds the partition its `followeeId` hashes to, and a follow/unfollow stream keeps
-  it blocked for everyone else on it. Same root as the "blocking retries" gap. Trigger: latency complaints →
-  `@RetryableTopic`.
 - **A zero or negative `FOLLOW_MAIL_WINDOW` silently turned the 24h dedupe into a 5-minute one (Low), fixed.** Redis
   refuses a zero expiry, the dispatch service swallowed the failure, and only the claim key's 5m TTL remained.
   Both notification services now throw `IllegalStateException` at startup through `Durations.requirePositive`, for
   this window and for `CONFIRMATION_MAIL_SENT_TTL`, which had the same hole (a `Constructor` test in each).
-- **The `user.followed` topic and its DLT hold the social graph and the followee's email in plaintext (Info),
-  accepted.** Kafka has no TLS or SASL; the gateway's existing gap, restated. Trigger: Kafka reachable beyond a
-  private network.
 - **Clean:** the subject holds a username matching `^[A-Za-z0-9_]{3,15}$` over the whole value (25 validation cases,
   CR/LF stripped again in delivery); both usernames and the feed URL are escaped in the HTML part and the only link is
   `APP_BASE_URL` + `/feed`, from configuration; the email carries only public and the recipient's own data; the Redis

@@ -59,7 +59,7 @@ to replies; images, likes, saves or views on replies; notifications; live update
 - **No edit window and no edit history.** **Trigger:** misuse of edits → a 1h window and/or stored versions.
 - **Images can't be edited**; delete and repost instead.
 - **Orphan MinIO objects** when a best-effort delete fails. **Trigger:** noticeable storage growth → a sweep job.
-- **Images stored as uploaded: no resize, EXIF (including GPS) retained.** **Trigger:** before any public deployment.
+- **Images stored as uploaded: no resize, EXIF (including GPS) retained.** **Decision 2026-10-10: accepted, no stripping or resizing is planned**, including for a public deployment. Anyone who can load an image also gets its EXIF (GPS, camera model).
 - **Any caller can fetch any tweet image** by id (all tweets are public). **Trigger:** private accounts or media.
 - **No rate limiting on tweeting or replies.** **Trigger:** abuse, or a second instance.
 - **Outbox is at-least-once**, has **no row-claiming** (trigger: second instance → claim with `findAndModify` on a
