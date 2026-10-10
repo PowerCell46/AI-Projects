@@ -1,150 +1,47 @@
-# Deployment readiness review
+# Deployment readiness: what is left
 
-First written 2026-10-09 and re-verified the same day against commit `70fea9d`. Branch: `seed-demo-data` (two commits
-ahead of `main`, both pushed to `origin/seed-demo-data`).
+Updated 2026-10-10. Everything fixed or decided in the review is gone from this file; it lives in the code, the compose
+files, the README and each service's `DECISIONS.md`. Branch: `seed-demo-data`. The `path:line` references below are for
+commit `70fea9d` unless marked, so check them before relying on a line number. Effort: **S** (under half a day), **M**
+(about a day or two), **L** (more than that).
 
-Scope: the whole system: `twitter_api_gateway`, `twitter_tweet_service`, `twitter_timeline_service`,
-`twitter_mail_service`, `frontend/`, `e2e/`, the compose files, the Dockerfiles and the docs.
+## Before the first deployment
 
-How this version was made: five read-only reviewers re-checked every item of the first version against `70fea9d`
-(P0 and infra, P1 bugs and security, frontend and e2e, docs, backend code). The lead re-ran the builds and tests.
-Every `path:line` below is for `70fea9d`. Items marked "carried over" were not re-checked in this pass.
+These come from this session's changes; none has been run against a live stack.
 
-## Verdict
+- [ ] **Cold-start the full stack with two gateways (S).** `docker compose up -d --build` (and the prod overlay): check
+  that both `gateway` and `gateway-2` become healthy, exactly one of them seeds, nginx serves requests through both, and
+  the other services reach `gateway:8080`. Only the compose rendering and the gateway unit/integration tests were run.
+- [ ] **Run the e2e suite (S).** It was not run after any change today (79 specs; builds four images).
+- [ ] **Add the four `SEED_PASSWORD_<NAME>` values to `.env`** (`STILIYAN`, `KRISTIAN`, `GOSHO`, `GABI`), different from each
+  other, 12-72 bytes with a lowercase letter, an uppercase letter and a digit. The gateway refuses to start without them
+  while seeding is on.
+- [ ] **Investigate the flaky `MinioConfigurationTest` (S).** `should_give_up_on_a_minio_that_accepts_the_connection_but_never_answers`
+  failed in about two of three isolated runs (`SocketException: Socket closed` instead of `SocketTimeoutException`) and
+  passed in full runs. The gateway rule treats a flaky run as a failure to investigate.
+- [ ] **Copy the seed photos to the production host** (`twitter_api_gateway/seed-images/`, yours to replace). Files over
+  5,242,880 bytes are skipped with a WARN.
+- [ ] **Commit and merge.** Almost everything in this branch is uncommitted; `main` is two commits behind this branch.
 
-The code is in good shape. What is missing is the layer between "works in dev compose" and "deployable", and what is
-left of it is below. Everything fixed, accepted or decided in this review (the four P0 items and the first P1 items) is
-gone from this file: it lives in the code, the compose files, the README and each service's `DECISIONS.md`.
+## Accepted gaps to revisit
 
-| Check | Result |
-| --- | --- |
-| Gateway tests (`./mvnw -B verify`) | 920 pass, 0 failures, 0 skipped |
-| Tweet service tests | 490 pass |
-| Timeline service tests | 731 pass |
-| Mail service tests | 245 pass |
-| Maven warnings, all four services | none (no `[WARNING]` line in any of the logs) |
-| Frontend `tsc -b` | clean |
-| Frontend lint (oxlint, `--deny-warnings`) | exit 0, no output |
-| Frontend unit tests | 1153 pass |
-| Frontend build | OK; main JS 333 kB (104 kB gzip), CSS 44 kB; `dist/` holds only the html, css and js files (no source maps) |
-| `npm audit` in `frontend/` and `e2e/`, with and without dev | 0 vulnerabilities in all four runs |
-| e2e suite | not run in this pass (it builds four images and starts the whole stack). 79 specs, reviewed statically |
-
-Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more than that).
-
-## P1: fix before deployment
-
-### Security
-
-- [ ] **Data stores and accounts (S/M).**
-  - Mongo has no auth or keyfile (`docker-compose.infra.yml:126` runs `--replSet rs0 --bind_ip_all`) and
-    `directConnection=true` is hardcoded in compose (`docker-compose.yml:55`), so there is no replica-set failover and
-    no `serverSelectionTimeoutMS` (default 30 s). `rs.initiate` uses `localhost:27017` (infra `:142`). Have compose read
-    `${MONGODB_URI}` with credentials, `authSource`, `replicaSet` and short timeouts.
-  - Kafka is single-node PLAINTEXT with no auth (infra `:58-62`). The apps connect as the Postgres superuser
-    (`docker-compose.yml:22-23`, infra `:8-9` and, for the timeline, `:31-32`) and as MinIO root (infra `:106-107`),
-    and MinIO runs as `user: "0:0"` (infra `:100`) with no comment. Create app roles and MinIO service accounts scoped
-    to the two buckets.
-  - Redis has `--requirepass` (infra `:152`) but no `maxmemory` against a 128 MB limit (infra `:161`).
-  - The infra ports (Postgres, Kafka, MinIO and its console, Mongo, Redis) are still published on `127.0.0.1` in the
-    prod overlay. Only local users can reach them; reset them in `docker-compose.prod.yml` if you want none.
-
-- [ ] **EXIF/GPS is kept on every uploaded image (M).** Nothing in the gateway or tweet main code re-encodes or strips
-  metadata. Strip it before `put`. Documented trigger: "before any public deployment" (`twitter_tweet_service/PLAN.md:61`,
-  `twitter_api_gateway/PLAN.md:52`).
-
-### Operations
-
-- [ ] **Schema is managed by `ddl-auto=update` with no migrations (M).**
-  - Gateway `application.properties:16` and timeline `:18`; neither has Flyway. `@Check` constraints are never added to
-    existing tables; column widening is manual (gateway `DECISIONS.md:90`, `@Check` at `:99-100`). In the timeline
-    service the primary-key column order depends on Hibernate's attribute-name ordering
-    (`twitter_timeline_service/DECISIONS.md:54`), so drift would be silent.
-  - Both documented triggers ("a second environment", gateway `PLAN.md:49`, timeline `PLAN.md:111`) are met.
-  - Fix: Flyway baseline V1 from the current schema, then `ddl-auto=validate`, before any production data exists.
-  - Tweet service: `auto-index-creation=true` (`application.properties:19`) fails startup on an index conflict, so
-    later index changes need a manual migration.
-
-- [ ] **Runtime settings are at Spring Boot defaults in every service (S).** The health and management settings still differ across services:
-  - Tweet health covers Mongo only; mail has no Kafka listener indicator; no liveness/readiness groups are
-    enabled; management settings differ across services (mail sets `show-details=always`, `application.properties:80`;
-    the timeline sets only `exposure.include`, `:106`; gateway and tweet set nothing).
-
-- [ ] **Kafka topics have no single owner (S).** Topics are created by four services' `KafkaTopicConfiguration` beans
-  while broker auto-create stays on, and DLT replicas are hardcoded to 1 (mail `KafkaTopicConfiguration.java:16`,
-  timeline `configurations/kafka/KafkaTopicConfiguration.java:17`). Consider one owner for topics.
-
-- [ ] **No CI/CD and no backups (M/L).**
-  - There is no `.github` directory, no `.gitlab-ci.yml`, and `git ls-files` finds no pipeline file. All poms are
-    `0.0.1-SNAPSHOT`, and there is no image tagging scheme.
-  - Tests need Docker and Testcontainers. A pipeline should run: `npm ci`, build, lint, test, `npm audit --omit=dev`,
-    the Maven suites, image build and push, a dependency scan, then e2e. The e2e config has no CI mode
-    (`playwright.config.ts` has `retries: 0`, `reporter: 'html'` and no `forbidOnly`; add `forbidOnly`, `retries: 1`, a
-    non-opening reporter, and screenshot/video on failure).
-  - Add backup jobs and restore tests for the two Postgres databases, Mongo and MinIO.
-  - The frontend image, its nginx config and `docker-compose.prod.yml` were checked by hand, not by a test: the e2e
-    suite still runs the Vite dev server (`playwright.config.ts:19-24`), so a smoke project against the production
-    stack can be added. Certificate issue and renewal are manual (the README says how); an ACME client is not part of
-    the stack.
-
-- [ ] **Logging and monitoring (S/M).** Plain-text logs, no compose `logging:` rotation (json-file is unbounded), no
-  Micrometer registry or tracing, and nothing alerts on a dead-lettered record. The gateway
-  and the tweet service answer `DEGRADED` on `/actuator/health` while outbox rows are `FAILED`, but nothing watches it and
-  there is no metric. Fix: `logging.structured.format.console=ecs`, a Prometheus registry, rotation in compose.
-
-### Frontend
-
-- [ ] **Avatars load full-size originals (S frontend, M backend).**
-  - `components/shared/Avatar/Avatar.tsx:15` has no `loading="lazy"` or `decoding="async"` (`loading="lazy"` appears
-    only in `PostImages.tsx:24`). Avatars show at 30-84 px in every post cell and People card, while uploads can be
-    5 MB (seed images 1.4-7.4 MB, up to 6016×6016) and the backend does no resizing (documented trigger "before public
-    deployment", gateway `PLAN.md:132`).
-  - Fix: both attributes on `Avatar` now; thumbnail plus full variant on upload (or presigned URLs / a CDN) in the
-    backend.
-
-- [ ] **No request timeout or abort, and no 429 handling (S).**
-  - `api/http.ts:64-82` is a bare `fetch` with `credentials` and no signal; `AbortSignal`, `AbortController` and `429`
-    appear nowhere in non-test source (the only 429 is `utils/authErrors.test.ts:93`, mapped to "signal lost"). A hung
-    request leaves `usePagedList.isFetchingRef` true, so the list shows "FETCHING MORE" forever and optimistic toggles
-    stay in flight. (No rate limit is planned, so this stack sends no 429; a proxy in front could.)
-  - Fix: `AbortSignal.timeout(...)` in `send` that throws `ApiError(0)`, plus a 429 message.
-
-- [ ] **No error boundary (S, needs a decision).** Any render-time throw leaves a blank page (`main.tsx` has only
-  `StrictMode`; no `ErrorBoundary`, `componentDidCatch`, `getDerivedStateFromError` or `errorElement` anywhere). An
-  error boundary needs a class component or a new dependency, which conflicts with the "functional components only"
-  hard rule in the root `CLAUDE.md`.
-
-- [ ] **No per-route titles and no focus move on route change (S-M).** `index.html:13` has one static `<title>` and
-  `document.title` is set nowhere. Opening details or a profile only calls `window.scrollTo`
-  (`TweetDetailsPage.tsx:52`, `ProfilePage.tsx:29`), so focus stays on the now-hidden clicked element. The `h1`s on
-  Feed, People, Post and Profile are `sr-only` with no `tabIndex`. Add a `useDocumentTitle` hook and focus the page
-  `h1` (`tabIndex={-1}`, as `Arrival.tsx:19,25` already does).
-
-- [ ] **`index.html` and the pre-deployment items you deferred (S-M).**
-  - `frontend/PLAN.md:332-333` and `frontend/SECURITY-FINDINGS.md:14-24` deferred these "before any deployment":
-    `<meta name="referrer">`, a CSP and self-hosted fonts.
-  - CSP shape: scripts are all external, so `script-src 'self'` works. You need `style-src-attr 'unsafe-inline'`
-    (inline `style=` in `TabRow.tsx:80`, `Horizon.tsx:22`, `Ruler.tsx:23`) and `img-src 'self' blob:`
-    (`createObjectURL` in `useImageAttachments.ts:53` and `usePhotoPick.ts:51`).
-  - Put the CSP, HSTS (the TLS server does not send it yet) and other response headers in `frontend/nginx/app.conf` and
-    repeat them in each `location` there that sets `add_header`, because nginx does not inherit `add_header` into a
-    location that sets its own. `app.conf` is shared by the dev and the TLS server.
-  - Google Fonts (`index.html:7-12`) sends visitor IPs to Google, a GDPR concern for an EU deployment.
-  - The favicon (`index.html:4`) is `public/Twitter-Logo.png`: 684,454 bytes, 1383×1137 RGBA, declared
-    `type="image/svg+xml"`, referenced nowhere else, and a dark-navy bird on transparent, nearly invisible on dark tabs.
-    Ship small square icons (32/180/512 px) with correct MIME types.
-  - Missing meta: referrer, CSP, description, `theme-color`, apple-touch-icon, manifest.
-  - Branding: it is the classic Twitter bird under the title "Twitter". That is a trademark decision for you before
-    going public.
+- DLT replication factor is hardcoded to 1 (mail `KafkaTopicConfiguration.java:16`, timeline `:17`): make it a property
+  when a second Kafka broker arrives.
+- The mail service does not filter `@seed.local`: a later real follow of a demo user would email that address.
+- No Kafka listener health indicator; the compose healthchecks hit `/actuator/health`, so a `DEGRADED` outbox does not
+  fail them.
+- Plain http between containers (one host, accepted); the seed photos and demo passwords are yours to manage.
+- Git history still holds the old audit documents (including `70fea9d`), and each service's `PLAN.md` / `DECISIONS.md`
+  still lists accepted gaps, several now pointing at stubs in the audit files (for example gateway `PLAN.md:82-85`,
+  mail `PLAN.md:108-123`, timeline `PLAN.md:58`, `DECISIONS.md:122-125`, tweet `PLAN.md:70`, frontend `PLAN.md:81,344,353,356`).
+  Clean those references up or accept them; a history rewrite needs a force-push.
+- Open and accepted security findings now live in the git-ignored `security-private/`.
 
 ## P2: cleanup
 
 ### Docs
 
-- Gateway `docs/SECURITY-AUDITS.md` was last updated 2026-10-04 (`:3`) and predates the seeder, PATCH profile, likes and
-  author-tweets. The 2026-10-08 audit of PATCH and author-tweets lives only in root `SECURITY-FINDINGS.md`, and no
-  document audits the seeder. Gateway `DECISIONS.md` still has 47 "step N" references although `PLAN.md` was trimmed to
-  a phase table (some of them are frontend-plan steps).
+- Gateway `DECISIONS.md` still has 47 "step N" references although `PLAN.md` was trimmed to a phase table (some of them are frontend-plan steps).
 - Timeline docs: `CLAUDE.md:7-9` omits `/api/v1/author-tweets/*` (route at `AuthorTweetsController.java:19`); `PLAN.md:43`
   only says "tweets by ids, tweets by author" and the `/page` read is named only in code
   (`TweetLookupServiceImpl.java:36`); `DECISIONS.md`'s 43 "step N" references point nowhere because the steps were
@@ -167,16 +64,10 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
 - `frontend/PLAN.md` (32,184 bytes) and `DECISIONS.md` (34,884 bytes) record the same step-by-step results and
   `DECISIONS.md` holds superseded decisions (for example "POST button has no handler yet", `:50`). Mark them
   historical or trim.
-- `frontend/exploit-report-2026-10-01.md` (tracked, 5,076 bytes): no secrets, but it is superseded and lists weaknesses
-  in a public repo. Its findings 1-2 are tracked as `frontend/SECURITY-FINDINGS.md:14` (#1, "still open from
-  2026-10-01"; the first version wrongly said root #1) and 3-4 by the gateway accepted gap (`PLAN.md:36`) and
-  `frontend/SECURITY-FINDINGS.md:50`, so the overlap is complete. It is cited only by `frontend/PLAN.md:332,333,345`.
-  Fold it into `SECURITY-FINDINGS.md` as "Audit 2026-10-01" or delete it (git history keeps it).
 - Root `PLAN.md` is slightly stale after the trim: `:9-10` still says "gateway phase 4 may start", `:25` cites the
   `user.followed` change (`85019be`) as news, and `:27` says the timeline has "three phases" while describing phases 4-5.
-- Root `README.md` (117 lines) never mentions the seeder, its 12 `@seed.local` users, `Password123`, `seed-images`, or the
-  e2e ports and prerequisites (`:106-108` says only `npm test` in `e2e/`, and there is
-  no `e2e/README.md`). `seed-images/README.md` now documents the seeder but still ends with a dated to-do list
+- Root `README.md` does not describe the seeder's 12 `@seed.local` users or the e2e ports and prerequisites (it says
+  only `npm test` in `e2e/`, and there is no `e2e/README.md`). `seed-images/README.md` now documents the seeder but still ends with a dated to-do list
   ("Still to add or fix (as of 2026-10-08)").
 - `.claude/skills/java-junit` is the only tracked file under `.claude`, while the other skills are global
   (`~/.claude/skills` has `java-code-style` and `frontend-code-style` but no `java-junit`). All four service `CLAUDE.md`
@@ -231,7 +122,7 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
 - Project rule breaks:
   - `Instant.now()` in main code: `ErrorResponseWriter.java:34` in all three services (tweet `utilities/`, timeline and
     gateway `utilities/web/`), `GlobalExceptionHandler` (timeline `:185`, tweet `:273`, gateway `:259`), and
-    `twitter_api_gateway/.../auth/TokenServiceImpl.java:36` (not in the first version).
+    `twitter_api_gateway/.../auth/TokenServiceImpl.java:36`.
   - The `ErrorResponseWriter` Javadoc (`:18`) in tweet and timeline mentions `AuthenticationEntryPoint` although there
     is no Spring Security there (the gateway copy is accurate).
   - One TODO comment is left, in the timeline: `jobs/FeedRetentionJob.java:14` ("Add short java doc what this chron job
@@ -277,10 +168,10 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
   constraints). `MailInboxServiceIntegrationTest.java:46` asserts TTLs against Redis wall-clock windows (290-300 s).
 - Gateway: `email_confirmation_tokens.user_id` has no index (`EmailConfirmationToken.java:36-40` has only the
   `token_hash` unique constraint); no reserved usernames (`RegisterRequestDTO.java:28` is only a regex); avatars served
-  at original size (see P1); root `SECURITY-FINDINGS.md` #2 and #3 are still open (`UpdateProfileRequestDTO.java:20-27`
+  at original size (accepted); two profile findings are still open, kept in `security-private/` (`UpdateProfileRequestDTO.java:20-27`
   has `@Past` only, no birthdate lower bound, and `MaxCodePointsValidator` does not reject NUL; `ProfileMapper.java:24`
   still returns the birthdate to every logged-in user).
-- Style, grouped (chain and field-order counts are from the first pass, not recounted): about 26 one-line multi-call
+- Style, grouped (chain and field-order counts are old and not recounted): about 26 one-line multi-call
   chains in gateway main (`configurations/routing/CallerIdentityFilters.java:58`, `utilities/follows/FollowCursorCodec.java:50`)
   and about 230 in its tests, about 30 in tweet, about 15 in timeline, about 10 in mail; gateway packages with more
   than 5 files (`configurations` 6, `services/{implementations,interfaces}/auth` 6 each; tests: `controllers` 15,
@@ -294,14 +185,10 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
 
 ### Code (frontend)
 
-- **The committed `PostUpdatesContext` work.** It is finished and coherent. Two gaps remain:
-  - `PostActions.tsx:44-57` reports to `onChange` immediately, and `useOptimisticToggle` is called without `onFailure`
-    (`:31-38`), although the hook supports it (`hooks/useOptimisticToggle.ts:16,43`, tested at
-    `useOptimisticToggle.test.tsx:158-188`; only `usePersonFollow.ts:40` passes it). After a failed like or save
-    request, Back shows an action that never happened. Pass `onFailure` that re-reports the old value.
+- **The committed `PostUpdatesContext` work.** It is finished and coherent. A failed like or save now re-reports the old
+  value (fixed 2026-10-10, with tests in `PostActions.test.tsx`). Two small gaps remain:
   - Test coverage is one overlay test in `PostList.test.tsx:1419-1454` (like state, like count and reply count after
-    `reportUpdate`; not saves, not the toggles after the re-key). `PostActions.test.tsx` has no `onChange` test,
-    `PostCell.test.tsx` has no re-key test, and `TweetDetailsPage.test.tsx` only wraps the page in the provider
+    `reportUpdate`; not saves, not the toggles after the re-key). `PostCell.test.tsx` has no re-key test, and `TweetDetailsPage.test.tsx` only wraps the page in the provider
     (`:117-122`) with no reporting assertion.
   - Minor: `oxlint-disable` at `PostUpdatesContext.tsx:40` has no explanatory comment, unlike `AuthContext.tsx:122-123`.
 - People card goes stale after following on a profile: `usePersonFollow` state is local to `PersonCard` (`:28`) and
@@ -311,7 +198,7 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
   accept it, record it.
 - 46 of 88 `font-size` declarations (80 plain rem values, 6 `clamp()`, `100%` and `0.34em`) across 37 CSS files are
   below 0.75rem, in 27 files, down to 0.46875rem (`Ruler.css:25,39`); another 14 are exactly 0.75rem. Many are the
-  9.5 px mono labels. (The first version counted rem values only: "46 of 80 in 27 files".)
+  9.5 px mono labels.
 - Visible-label rule: inputs use `sr-only` labels (`StepInput.tsx:34`, `ReplyTextField.tsx:58`); the visible question
   heading serves as the prompt, but the hard rule says "visible labels".
 - Delete the stray untracked folder `frontend/src/components/shared/Shell/Header/UserMenu/node_modules/` (git-ignored,
@@ -376,8 +263,7 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
   `KafkaConsumerConfiguration` are near-copies in mail and timeline (the DLT `KafkaTemplate`s are never closed in
   either: mail `:108`, timeline `:144`). `Instant.now(clock).truncatedTo(MILLIS)` appears six times, all in the tweet
   service (`TweetServiceImpl:151,294,367`, `OutboxServiceImpl:38`, `ReplyServiceImpl:106,147`); the timeline and gateway
-  use `MICROS` variants (`LikeServiceImpl:54`, `SavedTweetServiceImpl:51`, `FollowServiceImpl:64`). The first version
-  said "six times in three services". Under your "build only what is used" rule this is a decision, not an automatic
+  use `MICROS` variants (`LikeServiceImpl:54`, `SavedTweetServiceImpl:51`, `FollowServiceImpl:64`). Under your "build only what is used" rule this is a decision, not an automatic
   task.
 - **Other.**
   - Timeline: DLT replication factor hardcoded to 1 (`KafkaTopicConfiguration.java:17`; mail does the same at `:16`);
@@ -397,105 +283,3 @@ Legend: effort **S** (under half a day), **M** (about a day or two), **L** (more
   in one consumer group, `twitter-mail-service`, so a rebalance in one reaches the other. Give each its own group, as the
   timeline service's listeners have (`groupId = "${spring.kafka.consumer.group-id}-<topic>"`), if rebalances there ever
   become a problem.
-
-## Decisions needed before planning
-
-- **Deployment target.** The prod overlay, the secrets handling and the proxy assume Docker Compose on one host. Is that
-  right, or Kubernetes / a PaaS? Startup order (compose `depends_on` is currently what keeps topic creation and the
-  seeder from racing) depends on it too. The root `PLAN.md` already plans nginx in front of two gateway instances;
-  before that, the gateway needs `SKIP LOCKED` in the outbox poller and a lock (ShedLock) on
-  `UnconfirmedUserCleanupJob`: both are recorded as accepted gaps with a "second instance" trigger in
-  `twitter_api_gateway/PLAN.md`, so two instances are unsafe today.
-- **The demo users.** The seeder stays on in production (decided 2026-10-10), but two things are open. All 12 accounts
-  share one password, so anyone who knows it can log in as each of them: give the real people (Gabi, Kristian, Gosho,
-  Stiliyan) their own passwords, or drop their accounts from the seed. Their follows (53 with the fixed random seed)
-  publish `user.followed` events, so over real SMTP the mail service tries up to 53 emails to `@seed.local` addresses on
-  the first production start: suppress them in the seeder, or skip `@seed.local` in the mail service.
-- **The seed photos.** They are local only and git-ignored (decided 2026-10-10), so they have to be copied onto the
-  production host (compose mounts `twitter_api_gateway/seed-images/` read-only) or the seeded users keep the default
-  avatar. `stiliyan.jpg` (7.4 MB) and `gosho.jpg` (5.5 MB) are over the 5,242,880 byte upload cap and are skipped with a
-  WARN on every start, and six users have no file at all (hristo, bobkata, atanas, stanimir, bogdan, kaloyan). The photos
-  are full camera originals with their EXIF (the camera model is in `gosho.jpg`), they show real people by name, and on
-  a public deployment they are served to everyone: make sure those people agree.
-- **Plain http between containers.** The gateway's internal secret travels over `http://gateway:8080` inside the Docker
-  network, with no TLS. Accepted 2026-10-10: one host and nothing else on that network. Revisit it with the deployment
-  target.
-- **Error boundary.** Allow one class component (or a library) as the exception to "functional only"?
-- **Branding.** The classic Twitter bird and the name "Twitter" on a public deployment.
-- **Documents in a public repo.** This file, `SECURITY-FINDINGS.md` and the exploit report list weaknesses, and the
-  repo is public. The first version of this file was committed and pushed in `70fea9d`, so it is already in the public
-  history. Decide what stays in git.
-
-## What is in good shape (do not touch)
-
-Carried over from the first pass; this update did not re-check these claims except where a number is marked as
-re-counted.
-
-- **Cross-service consistency.** Spring Boot 4.1.1 and Java 25 are identical in all four poms and match the
-  `eclipse-temurin:25` Dockerfiles; Maven wrapper 3.9.16 is identical everywhere. Event DTO field names, types and keys
-  match `EVENTS.md` and the consumers. Internal HTTP paths, DTOs and headers (`/internal/v1`, `X-Internal-Secret`,
-  `X-User-Id`) agree between callers and callees.
-- **Tests.** Deterministic: no `Thread.sleep`, `@Disabled`, `.only`, `.skip`, random ids or `waitFor` in the unit and
-  integration suites (mutable clock, `TestIds`, fixed seeds), no assertion-free tests. `TESTING.md` matches the test
-  names in tweet, timeline and mail, apart from the stale lines listed in P2. e2e has no `waitForTimeout` or
-  `networkidle`, 79 specs (re-counted: auth 10, backfill 2, feed-ui 15, feed 3, follow-email 1, likes 5, people-ui 8,
-  people 2, profile-ui 11, profile 9, replies-ui 4, replies 5, saved-tweets 3, views 1; no `.skip`, `.fixme` or
-  `.only`), parallel-safe (UUID users), selectors mostly by role/label, isolated project name with `down -v` teardown.
-- **Persistence.** All queries are bounded and page-limited, no N+1 (fetch joins and projections), needed indexes
-  exist and match the queries issued (tweet `{authorId, createdAt -1, _id -1}`, replies, outbox; timeline: every SQL
-  statement has an index). Mongo writes for tweet, reply and outbox share one transaction. Published outbox rows are
-  deleted, so the collection does not grow. Consumers are idempotent (`INSERT … ON CONFLICT DO NOTHING`);
-  `tweet.deleted` is one transaction with a retry test; like/view counter lock ordering is correct.
-- **Security basics.** The gateway strips every `X-User-*` header, the cookie and `Authorization`, then sets `X-User-Id`
-  from the verified JWT; cookie flags other than `Secure` are sound; JWT validation is sound; secrets are scoped (the
-  timeline holds the gateway secret only on the gateway client, 32-byte check); no secrets or PII in logs; header
-  injection, HTML escaping, STARTTLS with server identity checks and SMTP timeouts all check out in the mail service;
-  upload validation (magic bytes, 5 MB per file, 4 images, body cap on every route); actuator exposes `health` only;
-  error bodies are fixed messages.
-- **Frontend.** No `innerHTML`, web storage, open-redirect params, `target=_blank` or hardcoded origins; ids are gated;
-  every timer, listener and object URL is cleaned up; pagination uses a generation counter; 401 handling works;
-  optimistic rollback exists for like, save and follow; no dead files, unused CSS classes, console calls, TODOs or
-  commented-out code; icon-only buttons are labelled and reduced motion is handled. Style conformance is high: 0
-  violations for semicolons, `} else/catch`, `as`/`!`/`any` outside `src/api`, raw colors outside `index.css`, class
-  or arrow components, and touch targets under 44 px.
-- **Repo.** `.env` is untracked and its key set is a subset of `.env.example`; no secrets found in git history; no
-  tracked `.DS_Store`, `.idea` or `target`; all text files are LF; no `dist/` or e2e artifacts tracked. The new
-  per-service `.env.example` files hold blank values only.
-- **Containers.** All four images run as non-root with multi-stage builds, cached dependency layers and wget
-  healthchecks. Compose has restart policies, resource limits, healthchecks and loopback-only ports; the PG18 volume
-  path is correct; image tags are pinned.
-
-## Branch and working tree
-
-- `seed-demo-data` is 2 commits ahead of `main` (`0e301de`, the seeder, and `70fea9d`, the package and docs
-  reorganisation), both pushed to `origin/seed-demo-data`, not merged.
-- Uncommitted (2026-10-10): all the work of this review, across the four services, the frontend, the compose files, the
-  `.env.example` files and the docs. New files: `docker-compose.prod.yml`, `frontend/Dockerfile`,
-  `frontend/.dockerignore`, `frontend/nginx/`, `Durations` in the timeline service, `BaseUrls` and
-  `SmtpCredentialsValidator` in the mail service, `OutboxHealthIndicator` in the gateway and the tweet service, and the
-  tests for them. Nothing was committed or pushed.
-- Untracked and git-ignored: the 6 seed photos in `twitter_api_gateway/seed-images/`.
-
-## How much of this was verified
-
-- **Run directly (this pass):** the four Maven suites (`./mvnw -B verify`), the frontend `tsc`, lint, unit tests (twice),
-  build, `npm audit` (with and without dev) and `npm outdated`, `npm audit` in `e2e/`, `gh repo view` (the repo is
-  public), and Docker and port availability.
-- **Read from code by the reviewers** (not run): everything else, with `path:line` evidence as given above, at
-  `70fea9d`. Nothing was tried against a running stack, and the e2e suite was not run.
-- **Carried over from the first pass, not re-run:** the EXIF findings and the "What is in good shape" section.
-- **Unverified claims:** the Kafka volume path (checked against upstream trunk, not the 4.3.1 image), the multipart
-  500 in the tweet service, the e2e setup timeout, the unused pom dependencies (confirm with `mvn dependency:analyze`),
-  the exact startup behaviour when optional `.env.example` keys are copied as empty values.
-
-## Suggested order
-
-1. **Repo hygiene:** the root `.env.example` rewrite and the dangling doc references.
-2. **Reliability:** the health/management settings.
-3. **Hardening:** Mongo/Kafka/MinIO/Postgres accounts, EXIF stripping, avatar resizing, Flyway baseline.
-4. **Frontend robustness:** request timeout/abort (and 429 if a proxy ever sends one), error boundary decision,
-   per-route titles and focus, avatar `loading`/`decoding`, `index.html` meta, CSP, self-hosted fonts, favicon, the
-   `PostActions` rollback gap.
-5. **Operations:** CI/CD, backups, structured logs and metrics, production smoke test in e2e.
-6. **Cleanup and pending style work:** the remaining docs pile, dead code and pom dependencies, test isolation, the
-   migration pass, then the root-scaling refactor with its visual check.

@@ -25,13 +25,21 @@ Compose refuses to start while a required value is empty. Fill in at least:
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` (the gateway's Postgres)
 - `TIMELINE_DATASOURCE_USERNAME`, `TIMELINE_DATASOURCE_PASSWORD` (the timeline service's Postgres; `TIMELINE_POSTGRES_DB` is optional)
 - `REDIS_PASSWORD`
+- `MONGO_ROOT_PASSWORD`, `MONGO_APP_PASSWORD`, `MONGO_KEYFILE_SECRET` (Mongo needs a login: the tweet service uses its own
+  `tweet_service` user. Generate the passwords with `openssl rand -hex 24` and the keyfile secret with
+  `openssl rand -base64 48 | tr -d '\n'`)
 - `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` (the secret needs 8+ characters)
 - `JWT_SECRET` and `INTERNAL_API_SECRET` (32+ bytes each; the gateway and timeline service refuse to start without them)
 - `MAIL_FROM` (a valid email address; the mail service refuses to start without it)
 - `SEED_PASSWORD` (the shared password of the 12 demo users; the gateway refuses to start without a strong one, 12-72
   bytes with a lowercase letter, an uppercase letter and a digit, unless `SEED_ENABLED=false`). Generate one with
   `openssl rand -base64 18`. It has no default because this repo is public
+- `SEED_PASSWORD_STILIYAN`, `SEED_PASSWORD_KRISTIAN`, `SEED_PASSWORD_GOSHO`, `SEED_PASSWORD_GABI` (one password each for
+  the four demo users that are real people, same rules, required unless `SEED_ENABLED=false`)
 - `COOKIE_SECURE=false` if you open the app over plain HTTP in Safari; the cookie is `Secure` by default
+
+Mongo creates its users only on an empty data volume. An existing `mongo_data` volume from before the login was added has
+none, so the tweet service cannot connect: run `docker compose down -v` (this deletes the data) or create the users by hand.
 
 The remaining lines in `.env.example` are optional and fall back to the defaults in each service's
 `application.properties`. Leave an optional line out of `.env` entirely rather than setting it empty, because an
@@ -84,8 +92,8 @@ docker compose down            # stop, keep the data
 docker compose down -v         # stop and delete the data
 ```
 
-The first build downloads the Maven dependencies and takes a few minutes. Only the gateway is published, on
-`http://localhost:8080`; the other services are reachable inside the compose network only. The infra ports above
+The first build downloads the Maven dependencies and takes a few minutes. The stack runs two gateway instances (`gateway` and `gateway-2`) on one database; the first is published on
+`http://localhost:8080`, and the frontend's nginx balances over both; the other services are reachable inside the compose network only. The infra ports above
 stay published too.
 
 - Containers reach each other by service name (`kafka:9092`, `postgres-api-gateway`, `mongo`, ...). The `environment` block of
@@ -121,8 +129,8 @@ Before the first start:
 
 - Put in `.env`: the secrets from Setup, `PUBLIC_URL` (the public https origin, no trailing slash; the links in emails
   are built from it), and `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` and `MAIL_FROM` for your SMTP server (add
-  `MAIL_PORT` if it is not 587). Compose stops and names whatever is missing. `SEED_PASSWORD` is needed unless
-  `SEED_ENABLED=false`.
+  `MAIL_PORT` if it is not 587). Compose stops and names whatever is missing. `SEED_PASSWORD` and the four
+  `SEED_PASSWORD_<NAME>` are needed unless `SEED_ENABLED=false`.
 - Put the certificate in `certs/fullchain.pem` and `certs/privkey.pem` (`certs/` is git-ignored). Both must be readable
   by uid 101, the user nginx runs as. After renewing, run `docker compose -f docker-compose.yml -f
   docker-compose.prod.yml restart frontend`.

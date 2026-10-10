@@ -9,7 +9,7 @@ or lint rule enforces them — hold them by hand. Applies to hand-written and AI
 
 Hard rules — these hold whether or not the skill is loaded:
 
-- Functional components only. No class components.
+- Functional components only. No class components, except `ErrorBoundary` (`src/components/shared/ErrorBoundary`): React has no hook that catches a render error.
 - Keep components small; one component per file, co-located `<Name>.css` next to `<Name>.tsx`.
 - API access lives in `/src/api` (one module per resource, base URL from `VITE_BASE_API_URL`).
   Components never hardcode origins or ports.

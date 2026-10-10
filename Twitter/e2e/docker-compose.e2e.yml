@@ -72,6 +72,8 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics come only from the services' NewTopic beans (producer owns its topics, consumer its dead-letter topics), so a typo in a topic name fails loudly instead of creating a stray topic
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
     deploy:
       resources:
         limits:

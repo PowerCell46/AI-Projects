@@ -31,7 +31,7 @@ services:
     healthcheck:
       test: !override ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
 
-  gateway:
+  gateway: &gateway-prod
     env_file: !reset []
     ports: !reset []
     environment:
@@ -40,10 +40,17 @@ services:
       SEED_ENABLED: ${SEED_ENABLED:-true}
       # Checked at startup when seeding is on (12-72 bytes with a lowercase letter, an uppercase letter and a digit)
       SEED_PASSWORD: ${SEED_PASSWORD:-}
+      SEED_PASSWORD_STILIYAN: ${SEED_PASSWORD_STILIYAN:-}
+      SEED_PASSWORD_KRISTIAN: ${SEED_PASSWORD_KRISTIAN:-}
+      SEED_PASSWORD_GOSHO: ${SEED_PASSWORD_GOSHO:-}
+      SEED_PASSWORD_GABI: ${SEED_PASSWORD_GABI:-}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY must be set}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY must be set}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?INTERNAL_API_SECRET must be set}
       CONFIRMATION_LINK_BASE_URL: ${PUBLIC_URL:?PUBLIC_URL must be set to the public https origin}/confirm
+
+  gateway-2:
+    <<: *gateway-prod
 
   tweet-service:
     env_file: !reset []
@@ -78,4 +85,6 @@ services:
       redis:
         condition: service_healthy
       gateway:
+        condition: service_healthy
+      gateway-2:
         condition: service_healthy

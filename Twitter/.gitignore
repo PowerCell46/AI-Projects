@@ -9,6 +9,10 @@ certs/
 twitter_api_gateway/seed-images/*
 !twitter_api_gateway/seed-images/README.md
 
+# Open and accepted security findings: the repo is public, and a committed file cannot be removed from history.
+# The tracked audit documents keep only what is fixed
+security-private/
+
 # Editor / OS
 .idea
 .vscode/

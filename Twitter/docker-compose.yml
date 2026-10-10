@@ -13,52 +13,67 @@ x-service: &service
   # and ports below point at the compose network even when .env holds the localhost values for running on the host
   env_file: .env
 
+x-gateway: &gateway
+  <<: *service
+  build: ./twitter_api_gateway
+  environment:
+    SERVER_PORT: 8080
+    API_GATEWAY_DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/${POSTGRES_DB:-twitter_api_gateway_db}
+    API_GATEWAY_DATASOURCE_USERNAME: ${POSTGRES_USER}
+    API_GATEWAY_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    MINIO_URL: http://minio:9000
+    TWEET_SERVICE_URL: http://tweet-service:8081
+    TIMELINE_SERVICE_URL: http://timeline-service:8083
+  # The demo users' profile pictures (see seed-images/README.md); read once, on the first start
+  volumes:
+    - ./twitter_api_gateway/seed-images:/app/seed-images:ro
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 1024M
+  healthcheck:
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/actuator/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 40s
+  depends_on:
+    postgres-api-gateway:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+
 services:
   # Only the gateway and the frontend publish ports. Keep it so: the tweet and timeline services trust the X-User-Id
   # header from whoever reaches them, and only the gateway should. Never add `ports:` to tweet-service,
   # timeline-service or mail-service
+  #
+  # Two gateway instances share one database: the second is the same service under another name (YAML merge), and also
+  # answers to the name `gateway`, so Docker's DNS spreads the services' calls over both and the frontend's nginx
+  # balances round robin over both addresses. Every gateway job takes a database lock, so only one instance runs it
   gateway:
-    <<: *service
-    build: ./twitter_api_gateway
+    <<: *gateway
     ports:
       - "127.0.0.1:8080:8080"
-    environment:
-      SERVER_PORT: 8080
-      API_GATEWAY_DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/${POSTGRES_DB:-twitter_api_gateway_db}
-      API_GATEWAY_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      API_GATEWAY_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      MINIO_URL: http://minio:9000
-      TWEET_SERVICE_URL: http://tweet-service:8081
-      TIMELINE_SERVICE_URL: http://timeline-service:8083
-    # The demo users' profile pictures (see seed-images/README.md); read once, on the first start
-    volumes:
-      - ./twitter_api_gateway/seed-images:/app/seed-images:ro
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 1024M
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
-    depends_on:
-      postgres-api-gateway:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
+
+  gateway-2:
+    <<: *gateway
+    networks:
+      default:
+        aliases:
+          - gateway
 
   tweet-service:
     <<: *service
     build: ./twitter_tweet_service
     environment:
       SERVER_PORT: 8081
-      MONGODB_URI: mongodb://mongo:27017/twitter_tweet_service_db?directConnection=true
+      # The password goes into a URI as it is: use letters and digits only (openssl rand -hex 24)
+      MONGODB_URI: mongodb://tweet_service:${MONGO_APP_PASSWORD:?MONGO_APP_PASSWORD must be set}@mongo:27017/twitter_tweet_service_db?authSource=twitter_tweet_service_db&directConnection=true
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MINIO_URL: http://minio:9000
       GATEWAY_INTERNAL_URL: http://gateway:8080
@@ -108,6 +123,8 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
+      gateway-2:
+        condition: service_healthy
       tweet-service:
         condition: service_healthy
 
@@ -145,6 +162,8 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
+      gateway-2:
+        condition: service_healthy
 
   # The SPA and the /api proxy to the gateway, on one origin (see frontend/nginx/; docker-compose.prod.yml adds https). It has no env_file: it holds no secrets.
   # Port 5173 on loopback matches the default CONFIRMATION_LINK_BASE_URL and APP_BASE_URL, so the emailed links open here
@@ -166,4 +185,6 @@ services:
       start_period: 5s
     depends_on:
       gateway:
+        condition: service_healthy
+      gateway-2:
         condition: service_healthy
