@@ -1,10 +1,15 @@
 # Events produced by twitter_api_gateway
 
-Last updated: 2026-10-04
+Last updated: 2026-10-10
 
 Delivery is **at-least-once**: a crash between the Kafka ack and the outbox row delete publishes the row
 twice. Consumers dedupe on `eventId`. Values are JSON strings with no type headers. JSON property order is
 not part of the contract.
+
+The poller sends a batch oldest first and stops at the first row Kafka cannot take, so an outage of any length delays
+events without losing or reordering them (no attempt is counted for it). A row Kafka refuses for its own content (too
+large, an invalid topic) is retried `OUTBOX_MAX_ATTEMPTS` times (3) and then marked `FAILED`, and the batch goes on
+past it. `/actuator/health` answers `DEGRADED` (still HTTP 200) while any row is `FAILED`. See "Failed rows" at the end.
 
 ## `user.confirmation-requested`
 
@@ -89,4 +94,18 @@ payload.
 | `occurredAt` | ISO-8601 instant | When the follow row was removed. A consumer drops only what the followee posted at or before this time. |
 
 No email or username is carried.
+
+## Failed rows
+
+A `FAILED` row is an event that will not be published on its own. Read the log first (`Kafka rejected outbox row ... for
+topic ...` names the cause: a retry of a row Kafka refuses for its own content fails the same way), fix the cause, then
+requeue the rows:
+
+```
+docker compose exec postgres-api-gateway psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "update outbox set status = 'PENDING', attempts = 0 where status = 'FAILED'"
+```
+
+A requeued row is published after the events that came after it, so a consumer can see it out of order. To drop a row
+instead, delete it: `delete from outbox where status = 'FAILED'`.
 

@@ -1,6 +1,6 @@
 # E2E test catalog
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 Scope: HTTP-layer tests only - full stack through `DispatcherServlet` against Testcontainers Mongo, Kafka
 and MinIO. Repository, unit and concurrency tests exercise real Mongo too but skip the HTTP layer, so they're
@@ -252,3 +252,10 @@ All groups are enabled (steps 15-17). Scope as above: HTTP layer only.
 - 10 creates racing the tweet delete: no reply left for the tweet, the tweet gone (`Creates.should_leave_no_reply_and_no_tweet_when_ten_creates_race_the_tweet_delete`)
 - Two deletes of one reply: one 204, one 404, count down by 1 (`Deletes.should_answer_one_204_and_one_404_and_decrement_once_when_two_deletes_overlap`)
 - Create/delete churn on one tweet: `replyCount` equals the documents left (`Churn.should_end_with_a_reply_count_equal_to_the_documents_left_when_creates_and_deletes_churn`)
+
+## Outbox publisher and health (not HTTP-layer, listed for completeness)
+
+- `OutboxPublisherServiceImplTest` (unit, 2026-10-10): a message Kafka refuses for its own content (too large, invalid topic, also when `send` throws and when the failure is wrapped) counts an attempt and goes `FAILED` at the limit; anything else (a Kafka timeout, a network error, an authorization error, a send timeout, an interrupt) leaves the message `PENDING` with no attempt counted, however many polls find Kafka down; the batch stops at the first message Kafka cannot take and goes on past a rejected one; the interrupt flag is restored
+- `OutboxPublisherServiceKafkaIntegrationTest.Outages` (real Kafka, 2026-10-10): a message stays `PENDING` with no attempt counted while the producer cannot reach a broker (more polls than `max-attempts`) and is published, then deleted, once Kafka is back (`should_keep_a_message_pending_with_no_attempt_counted_while_kafka_is_unreachable_then_publish_it_when_kafka_is_back`); a message for an invalid topic is `FAILED` after `max-attempts` polls while the message after it is published on the first (`should_mark_a_rejected_message_failed_after_the_max_attempts_and_still_publish_the_messages_after_it`)
+- `OutboxHealthIndicatorTest` and `OutboxHealthIntegrationTest` (2026-10-10): `UP` with no `FAILED` message; `DEGRADED` with the count otherwise; `GET /actuator/health` answers 200 with `status: DEGRADED` while a `FAILED` message exists (`should_report_degraded_with_http_200_when_an_outbox_message_is_failed`)
+

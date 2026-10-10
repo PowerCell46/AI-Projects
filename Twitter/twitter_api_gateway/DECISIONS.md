@@ -52,8 +52,26 @@ code or its tests already say.
   a confirmed user. That is harmless and bounded by the cooldown.
 - **The poll job's `initialDelay` equals its delay** (step 6). `fixedDelay` otherwise fires once at startup, which
   would drain rows mid-suite even with the test profile's 24h delay.
-- **A failed outbox row doesn't stop the batch** (step 6), so a poison row can't block newer ones. An
-  `InterruptedException` restores the flag and counts as a failed attempt.
+- **A row Kafka cannot take stops the batch and costs no attempt; only a row Kafka refuses for its own content counts
+  one** (2026-10-10, replaces the step 6 rule that every failed row counted and the batch went on). Counting every
+  failure meant an outage of about 30 s (3 attempts, 3 s apart) turned every pending row `FAILED` for good, and going on
+  after a failure let a later event overtake an earlier one. Now a timeout, a network or leader error, an authorization
+  error or an interrupt (the flag is still restored) leaves the row `PENDING` and ends the poll; the next poll tries it
+  first. Only `RecordTooLargeException`, `RecordBatchTooLargeException` and `InvalidTopicException`, found anywhere in the
+  cause chain, count an attempt (3 by default, then `FAILED`) and the batch goes on past that row, so a poison row never
+  blocks newer ones for long. A whitelist rather than "everything that is not retriable": an error that is not the row's
+  fault (credentials, ACLs, an idempotence reset) would otherwise burn every row's attempts, while here the rows just wait
+  and the WARN lines say why. `KafkaTemplate.send` reports an unreachable broker and a bad topic by throwing
+  `KafkaException("Send failed")` from the call itself, not through the future, so both paths are caught.
+- **The producer gives up before the poller does** (2026-10-10). `max.block.ms` 5 s, `request.timeout.ms` 5 s and
+  `delivery.timeout.ms` 8 s, under `app.outbox.send-timeout` (10 s). Left at their defaults (60 s and 2 min) a down
+  broker blocked `send()` for a minute per row, and a record the poller had already given up on could still be delivered
+  later, a duplicate once its row was retried. `OUTBOX_SEND_TIMEOUT` must stay above 8 s for the same reason.
+- **`FAILED` rows turn the health status to `DEGRADED`, not `DOWN`** (2026-10-10). `DOWN` would fail the container
+  health check, and the frontend, timeline and mail services wait for a healthy gateway to start, so one stuck row could
+  keep the whole stack from coming up. `DEGRADED` is a custom status ranked between `OUT_OF_SERVICE` and `UP`
+  (`management.endpoint.health.status.order`; a status missing from that list is ignored) and answers HTTP 200.
+  Requeueing is a manual statement, in `docs/EVENTS.md`.
 
 ## Profiles and pictures
 

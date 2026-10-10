@@ -10,8 +10,11 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import lombok.Value;
 
@@ -19,6 +22,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEven
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetDeletedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
+import com.peter_gerdzhikov.twitter_timeline_service.support.MutableClock;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 /**
@@ -33,6 +37,19 @@ class FeedConcurrencyIntegrationTest extends AbstractListenerIntegrationTest {
     private static final int RACE_ROUNDS = 20;
 
     private static final int FOLLOWERS_PER_PAGE = 4;
+
+    @Autowired
+    private MutableClock clock;
+
+    @BeforeEach
+    void pinTheClockNextToTheTweets() {
+        clock.setInstant(TWEET_CREATED_AT.plusSeconds(1));
+    }
+
+    @AfterEach
+    void resetTheClock() {
+        clock.reset();
+    }
 
     @Nested
     class SameEventTwice {

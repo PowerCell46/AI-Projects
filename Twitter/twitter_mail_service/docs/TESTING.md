@@ -1,6 +1,6 @@
 # E2E test catalog
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 Scope: the Kafka-to-SMTP pipeline only - `UserConfirmationRequestedListenerIntegrationTest` and
 `UserFollowedListenerIntegrationTest` (real Kafka, Redis and Mailpit containers, a spied `JavaMailSender`) and
@@ -87,6 +87,11 @@ Window
 - A re-follow (new `eventId`, same pair) inside the window sends one email in total; the sentinel is another
   follower of the same followee (same Kafka key)
   (`should_send_one_email_in_total_when_the_same_pair_follows_again_inside_the_window`)
+- A follow older than the window sends nothing and leaves no Redis key; the sentinel is another follower of the same
+  followee (same Kafka key)
+  (`should_send_nothing_and_leave_no_redis_key_when_the_follow_is_older_than_the_window`)
+- A follow exactly one window old is still sent
+  (`should_send_the_email_when_the_follow_is_exactly_one_window_old`)
 - Two followers of the same followee send two emails
   (`should_send_two_emails_when_two_followers_follow_the_same_followee`)
 - One follower following two followees sends two emails

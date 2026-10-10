@@ -2,12 +2,17 @@ package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follo
 
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@ExtendWith(OutputCaptureExtension.class)
 class FollowEmailRendererTest {
 
     private static final String FEED_URL = "http://localhost:5173/feed";
@@ -77,5 +82,26 @@ class FollowEmailRendererTest {
         assertFalse(rendered.getHtml().contains("<b>ana</b>"));
         assertTrue(rendered.getHtml().contains("&lt;b&gt;ana&lt;/b&gt; (@&lt;b&gt;ana&lt;/b&gt;)"));
         assertTrue(rendered.getText().contains("<b>ana</b> (@<b>ana</b>)"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "localhost:5173", "twitter.example.com", "ftp://twitter.example.com"})
+    void should_fail_to_start_when_the_base_url_is_not_an_absolute_http_url(String baseUrl) {
+        assertThrows(IllegalStateException.class, () -> new FollowEmailRenderer(baseUrl));
+    }
+
+    @Test
+    void should_warn_when_the_base_url_is_plain_http_on_another_host(CapturedOutput output) {
+        new FollowEmailRenderer("http://twitter.example.com");
+
+        assertTrue(output.getOut().contains("app.mail.app-base-url is plain http outside localhost"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://twitter.example.com", "http://localhost:5173"})
+    void should_not_warn_when_the_base_url_is_https_or_localhost(String baseUrl, CapturedOutput output) {
+        new FollowEmailRenderer(baseUrl);
+
+        assertFalse(output.getOut().contains("plain http"));
     }
 }

@@ -1,11 +1,17 @@
 # Events produced by twitter_tweet_service
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 Delivery is **at-least-once**: a crash between the Kafka ack and the outbox message delete publishes the
 message twice. Consumers dedupe on `eventId`. Values are JSON strings with no type headers. JSON property order
 is not part of the contract. Events are written to the outbox in the same Mongo transaction as the tweet
 change, so an event exists exactly when its change does, and the job sends them within a few seconds.
+
+The poller sends a batch oldest first and stops at the first message Kafka cannot take, so an outage of any length
+delays events without losing or reordering them (no attempt is counted for it). A message Kafka refuses for its own
+content (too large, an invalid topic) is retried `OUTBOX_MAX_ATTEMPTS` times (3) and then marked `FAILED`, and the batch
+goes on past it. `/actuator/health` answers `DEGRADED` (still HTTP 200) while any message is `FAILED`. See "Failed
+messages" at the end.
 
 Both topics are keyed by `tweetId`, so all events of one tweet land on one partition, in order. There is no
 `tweet.updated` event: nothing consumes tweet text yet.
@@ -62,3 +68,18 @@ Both topics are keyed by `tweetId`, so all events of one tweet land on one parti
 
 A consumer can see `tweet.deleted` before `tweet.created` has been processed only if it reads the two topics
 independently: ordering is guaranteed per topic and key, not across topics.
+
+## Failed messages
+
+A `FAILED` message is an event that will not be published on its own. Read the log first (`Kafka rejected outbox message
+... for topic ...` names the cause: a retry of a message Kafka refuses for its own content fails the same way), fix the
+cause, then requeue the messages:
+
+```
+docker compose exec mongo mongosh twitter_tweet_service_db \
+  --eval 'db.outbox.updateMany({ status: "FAILED" }, { $set: { status: "PENDING", attempts: 0 } })'
+```
+
+A requeued message is published after the events that came after it, so a consumer can see it out of order. To drop
+one instead, delete it: `db.outbox.deleteMany({ status: "FAILED" })`.
+

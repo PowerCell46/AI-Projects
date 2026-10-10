@@ -8,7 +8,7 @@ still-open items are under "Carried over" below. The replies UI and the tweet pa
 `../twitter_tweet_service/PLAN.md` (steps 23-30), built 2026-10-07.
 
 Visual sources of truth: phase 2 `feed-design.md` (removed in `95d594a`; `git show 95d594a^:./feed-design.md` from this
-folder), phase 3 `feed-design-addition.md`. This plan records where the build departs from or extends a brief;
+folder), phase 3 `feed-design-addition.md` (removed in `8238824`; `git show 8238824^:./feed-design-addition.md`). This plan records where the build departs from or extends a brief;
 everything not mentioned here is built as the brief says.
 
 Steps that touch other projects are marked **[tweet]**, **[gateway]**, **[timeline]** or **[e2e]**. They follow that
@@ -103,8 +103,8 @@ complete; phase 5 built the UI on it.
 - **No display names (Q51);** phase 2's gap holds.
 - **Shortcut: no rate limit on the proxied read routes** (audit 2026-10-08, Medium; `SECURITY-FINDINGS.md`). One
   `author-tweets` request with `size=100` fans out to three services and four queries, and `/tweets/count` counts every
-  tweet of an author; the feed has the same exposure. **Trigger:** before any public deployment → a per-user limit at
-  the gateway on all proxied read routes.
+  tweet of an author; the feed has the same exposure. **Decision (2026-10-10):** no rate limiting is planned. **Trigger:** abuse or load → a per-user
+  limit at the gateway on all proxied read routes.
 
 ### Out of scope (phases 4–5)
 
@@ -143,7 +143,7 @@ Questions that needed re-asking: Q51 (the first wording used the brief's terms "
 
 ## Phase 3 — Tab row, People, back-fill on follow ✅ **Done** (2026-10-04)
 
-Brief: `feed-design-addition.md` (§-numbers below). Inputs: the gateway's phase 5 handoff
+Brief: `feed-design-addition.md`, in git history (§-numbers below). Inputs: the gateway's phase 5 handoff
 (`../twitter_api_gateway/PLAN.md`) and the timeline service's gap "No back-fill on follow", whose trigger ("following
 someone feels like nothing happened") this phase would make real (Q24). Steps 14–17 make back-fill work through the API;
 steps 18–23 build the UI on top.
@@ -304,7 +304,7 @@ No question needed re-asking.
 
   Fixtures gain an image upload in `postTweet`. The e2e stack rebuilds the gateway and timeline images (steps 1–2).
 - **Manual gates:** visual check against the brief at 1440, 600 and 320 px, reduced motion on and off; iPhone
-  Safari via `LAN-DEV-SERVER.md` (thumb reach of `POST`, compose keyboard, safe areas).
+  Safari (thumb reach of `POST`, compose keyboard, safe areas).
 - **Exit:** `npm run build`, `npm run lint`, `npm test` clean; `npx playwright test` green **3× in a row** from a
   fresh stack; both backend projects' `mvn verify` green 3×.
 
@@ -341,7 +341,7 @@ No question needed re-asking.
   `.person-card-followers` still at `0.59375rem`.
 - **Step 12 gate waived (2026-10-04):** the visual check at 1440 / 600 / 320 px, reduced motion on and off, and iPhone
   Safari (thumb reach of `POST`, compose keyboard, safe areas) was not signed off; the user will raise design and
-  scalability follow-ups later. `LAN-DEV-SERVER.md`, which `CLAUDE.md` points to, does not exist.
+  scalability follow-ups later.
 - **No CSP and no referrer policy (Low, `SECURITY-FINDINGS.md` #1, same as exploit report #1/#2 of 2026-10-01):**
   `<meta name="referrer" content="same-origin">` now; a CSP and self-hosted fonts with the first deployment.
 - **Gateway session cookie `Secure` defaults to off (Low, `SECURITY-FINDINGS.md` #2):** default to `true` before any
@@ -373,7 +373,7 @@ No question needed re-asking.
   long test titles in `e2e/tests/people-ui.spec.ts` and `backfill.spec.ts`, like the older specs.
 - **Step 24 gate waived (2026-10-04):** the visual check (1440 / 600 / 320 px, reduced motion on and off, indicator travel, panel entrance, card grid,
   button row below 600 px, `UNFOLLOW?` / `TRY AGAIN` not resizing the card) was not signed off.
-  `LAN-DEV-SERVER.md` still doesn't exist, so the iPhone check needs it written first or is waived.
+  The iPhone check was waived.
 
 ## Out of scope
 

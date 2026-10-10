@@ -31,7 +31,9 @@ describe('validateField', () => {
             'two@@signs.com',
             'a@b.c',
             'space in@mail.com',
-            'dotted@sub.example.com',
+            'a@.example.com',
+            'a@example..com',
+            'a@example.com.',
             `${'a'.repeat(250)}@b.com`,
         ])('should_reject_the_malformed_email_%s', (email) => {
             expect(validateField('register', 'email', email)).toBe(EMAIL_MESSAGE);
@@ -40,6 +42,10 @@ describe('validateField', () => {
         it.each([
             'peter@example.com',
             'first.last+tag@sub-domain.org',
+            'dotted@sub.example.com',
+            'ana@mail.company.com',
+            'x@fmi.uni-sofia.bg',
+            'y@example.co.uk',
         ])('should_accept_the_email_%s', (email) => {
             expect(validateField('register', 'email', email)).toBeNull();
         });

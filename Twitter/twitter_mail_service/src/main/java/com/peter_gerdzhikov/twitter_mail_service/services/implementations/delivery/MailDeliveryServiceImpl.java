@@ -4,6 +4,7 @@ import java.util.function.Function;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
 import org.eclipse.angus.mail.smtp.SMTPAddressFailedException;
@@ -34,7 +35,7 @@ public class MailDeliveryServiceImpl implements MailDeliveryService {
     private final JavaMailSender mailSender;
 
     public MailDeliveryServiceImpl(@Value("${app.mail.from}") String fromAddress, JavaMailSender mailSender) {
-        this.fromAddress = fromAddress;
+        this.fromAddress = requireValidAddress(fromAddress);
         this.mailSender = mailSender;
     }
 
@@ -53,6 +54,20 @@ public class MailDeliveryServiceImpl implements MailDeliveryService {
 
         } catch (MessagingException | MailException e) {
             throw classify(e);
+        }
+    }
+
+    /**
+     * Fails without the value or the parse failure, which would echo whatever was typed into the log.
+     */
+    private static String requireValidAddress(String fromAddress) {
+        try {
+            new InternetAddress(fromAddress, true).validate();
+
+            return fromAddress;
+
+        } catch (AddressException e) {
+            throw new IllegalStateException("app.mail.from (MAIL_FROM) must be a valid email address.");
         }
     }
 

@@ -17,6 +17,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.EventVa
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedBackfillService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
+import com.peter_gerdzhikov.twitter_timeline_service.utilities.Durations;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,7 +56,7 @@ public class FeedBackfillServiceImpl implements FeedBackfillService {
         this.tweetLookupService = tweetLookupService;
         this.followLookupService = followLookupService;
         this.eventValidationService = eventValidationService;
-        this.retention = requirePositive(retention);
+        this.retention = Durations.requirePositive(retention, "app.feed.retention");
         this.backfillSize = requireAtMostTweetServiceLimit(requirePositive(backfillSize));
     }
 
@@ -114,14 +115,6 @@ public class FeedBackfillServiceImpl implements FeedBackfillService {
         log.warn("Dropping user.followed event {}: user {} cannot follow themselves.", event.getEventId(), event.getFollowerId());
 
         throw new InvalidEventException("Invalid user.followed event " + event.getEventId() + ": the follower and the followee are the same user.");
-    }
-
-    private Duration requirePositive(Duration retention) {
-        if (retention.isZero() || retention.isNegative()) {
-            throw new IllegalStateException("app.feed.retention must be positive, but was " + retention + ".");
-        }
-
-        return retention;
     }
 
     private int requirePositive(int backfillSize) {

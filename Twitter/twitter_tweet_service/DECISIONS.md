@@ -68,6 +68,23 @@ One entry per decision: what was chosen, what it was chosen over, and why.
 - **A failed attempt is saved back with `save`** (step 9). That is an upsert on an assigned id: safe with one
   instance, but a second could resurrect a message the other just deleted. Covered by the "no row-claiming" accepted
   gap in `PLAN.md`.
+- **A message Kafka cannot take stops the batch and costs no attempt; only a message Kafka refuses for its own content
+  counts one** (2026-10-10, replaces counting every failure and going on). Counting every failure meant an outage of
+  about 30 s (3 attempts, 3 s apart) turned every pending message `FAILED` for good, and going on after a failure let a
+  later event overtake an earlier one. Now a timeout, a network or leader error, an authorization error or an interrupt
+  (the flag is still restored) leaves the message `PENDING` and ends the poll. Only `RecordTooLargeException`,
+  `RecordBatchTooLargeException` and `InvalidTopicException`, found anywhere in the cause chain, count an attempt (3 by
+  default, then `FAILED`) and the batch goes on past that message. A whitelist rather than "everything that is not
+  retriable", so an error that is not the message's fault cannot burn every message's attempts. `KafkaTemplate.send`
+  reports an unreachable broker and a bad topic by throwing `KafkaException("Send failed")` from the call itself, not
+  through the future, so both paths are caught. Same rule and tests as the gateway's outbox.
+- **The producer gives up before the poller does** (2026-10-10). `max.block.ms` 5 s, `request.timeout.ms` 5 s and
+  `delivery.timeout.ms` 8 s, under `app.outbox.send-timeout` (10 s), so a record the poller abandoned cannot still be
+  delivered later. `OUTBOX_SEND_TIMEOUT` must stay above 8 s.
+- **`FAILED` messages turn the health status to `DEGRADED`, not `DOWN`** (2026-10-10), so the container health check keeps
+  passing and the services that wait for a healthy tweet service still start. The custom status needs
+  `management.endpoint.health.status.order` or it is ignored; HTTP stays 200. Requeueing is a manual statement, in
+  `docs/EVENTS.md`.
 
 ## Tests
 

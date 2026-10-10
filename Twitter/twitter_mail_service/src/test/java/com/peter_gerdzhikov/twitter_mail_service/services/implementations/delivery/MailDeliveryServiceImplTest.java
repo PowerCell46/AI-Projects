@@ -35,6 +35,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.TransientMailDeliveryException;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -68,6 +69,32 @@ class MailDeliveryServiceImplTest {
     void setUp() {
         message = new MimeMessage(Session.getInstance(new Properties()));
         mailDeliveryService = new MailDeliveryServiceImpl(FROM_ADDRESS, mailSender);
+    }
+
+    @Nested
+    class Constructor {
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", "   ", "twitter", "twitter@", "@example.com", "twi tter@example.com", "twitter@@example.com"})
+        void should_fail_to_start_when_the_sender_is_not_an_email_address(String fromAddress) {
+            assertThrows(IllegalStateException.class, () -> new MailDeliveryServiceImpl(fromAddress, mailSender));
+        }
+
+        @Test
+        void should_not_echo_the_sender_in_the_failure() {
+            IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                    () -> new MailDeliveryServiceImpl("typo-sender", mailSender));
+
+            assertTrue(thrown.getMessage().contains("MAIL_FROM"));
+            assertFalse(thrown.getMessage().contains("typo-sender"));
+            assertNull(thrown.getCause());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"twitter@example.com", "Twitter <twitter@example.com>", "twitter+noreply@mail.example.co.uk"})
+        void should_start_when_the_sender_is_a_valid_address(String fromAddress) {
+            assertDoesNotThrow(() -> new MailDeliveryServiceImpl(fromAddress, mailSender));
+        }
     }
 
     @Nested

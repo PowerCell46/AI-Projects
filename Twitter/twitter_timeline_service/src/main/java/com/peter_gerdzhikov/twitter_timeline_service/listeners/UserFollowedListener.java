@@ -16,6 +16,7 @@ public class UserFollowedListener {
 
     @KafkaListener(
             topics = "${app.kafka.user-followed.name}",
+            groupId = "${spring.kafka.consumer.group-id}-user-followed",
             containerFactory = "userFollowedListenerContainerFactory"
     )
     public void onMessage(UserFollowedEventDTO event) {

@@ -11,7 +11,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -19,6 +22,8 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -39,6 +44,10 @@ class FeedFanOutServiceImplTest {
 
     private static final Instant CREATED_AT_IN_MICROS = Instant.parse("2026-01-01T00:00:00.123456Z");
 
+    private static final Instant NOW = CREATED_AT.plusSeconds(60);
+
+    private static final Duration RETENTION = Duration.ofDays(7);
+
     private FeedFanOutServiceImpl feedFanOutService;
 
     private TweetCreatedEventDTO event;
@@ -54,7 +63,7 @@ class FeedFanOutServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        feedFanOutService = new FeedFanOutServiceImpl(feedEntryRepository, followerLookupService, eventValidationService);
+        feedFanOutService = newService(RETENTION);
         event = TweetCreatedEventDTO
                 .builder()
                 .eventId(UUID.randomUUID())
@@ -62,6 +71,44 @@ class FeedFanOutServiceImplTest {
                 .authorId(TestIds.userId())
                 .createdAt(CREATED_AT)
                 .build();
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1, -604_800})
+    void should_refuse_to_start_when_the_retention_is_not_positive(long retentionSeconds) {
+        Duration retention = Duration.ofSeconds(retentionSeconds);
+
+        assertThatThrownBy(() -> newService(retention))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.feed.retention must be positive");
+    }
+
+    @Test
+    void should_skip_the_lookup_and_the_inserts_when_the_tweet_is_older_than_the_retention() {
+        event.setCreatedAt(NOW.minus(RETENTION).minusSeconds(1));
+
+        feedFanOutService.fanOut(event);
+
+        verify(eventValidationService).validate(eq(event), any());
+        verifyNoInteractions(feedEntryRepository, followerLookupService);
+    }
+
+    @Test
+    void should_fan_out_when_the_tweet_is_exactly_as_old_as_the_retention() {
+        event.setCreatedAt(NOW.minus(RETENTION));
+
+        feedFanOutService.fanOut(event);
+
+        verify(feedEntryRepository).insertIfAbsent(any(), eq(event.getTweetId()), eq(event.getAuthorId()), any());
+    }
+
+    @Test
+    void should_still_reject_an_invalid_event_when_the_tweet_is_older_than_the_retention() {
+        event.setCreatedAt(NOW.minus(RETENTION).minusSeconds(1));
+        InvalidEventException invalid = new InvalidEventException("Invalid tweet.created event.");
+        doThrow(invalid).when(eventValidationService).validate(eq(event), any());
+
+        assertThatThrownBy(() -> feedFanOutService.fanOut(event)).isSameAs(invalid);
     }
 
     @Test
@@ -143,6 +190,11 @@ class FeedFanOutServiceImplTest {
         });
 
         assertThatThrownBy(() -> feedFanOutService.fanOut(event)).isSameAs(failure);
+    }
+
+    private FeedFanOutServiceImpl newService(Duration retention) {
+        return new FeedFanOutServiceImpl(
+                Clock.fixed(NOW, ZoneOffset.UTC), feedEntryRepository, followerLookupService, eventValidationService, retention);
     }
 
     @SafeVarargs

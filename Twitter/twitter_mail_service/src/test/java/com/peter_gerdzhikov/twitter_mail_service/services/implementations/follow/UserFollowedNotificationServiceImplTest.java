@@ -1,7 +1,9 @@
 package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follow;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import jakarta.validation.Validation;
@@ -41,6 +43,10 @@ class UserFollowedNotificationServiceImplTest {
 
     private static final Duration WINDOW = Duration.ofHours(24);
 
+    private static final Instant OCCURRED_AT = Instant.parse("2026-10-01T12:00:00Z");
+
+    private static final Instant NOW = OCCURRED_AT.plusSeconds(60);
+
     private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
 
     @Mock
@@ -54,6 +60,7 @@ class UserFollowedNotificationServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new UserFollowedNotificationServiceImpl(
+                Clock.fixed(NOW, ZoneOffset.UTC),
                 WINDOW,
                 new MailEventValidationServiceImpl(VALIDATOR),
                 new MailDispatchServiceImpl(mailInboxService, mailDeliveryService),
@@ -116,6 +123,38 @@ class UserFollowedNotificationServiceImplTest {
             verifyNoInteractions(mailDeliveryService);
             verify(mailInboxService, never()).markSent(anyString(), eq(WINDOW));
         }
+
+        @Test
+        void should_skip_without_touching_the_inbox_when_the_follow_is_older_than_the_window() {
+            UserFollowedEventDTO event = anEvent(UUID.randomUUID(), UUID.randomUUID());
+            event.setOccurredAt(NOW.minus(WINDOW).minusSeconds(1));
+
+            service.process(event);
+
+            verifyNoInteractions(mailInboxService, mailDeliveryService);
+        }
+
+        @Test
+        void should_send_when_the_follow_is_exactly_one_window_old() {
+            UserFollowedEventDTO event = anEvent(UUID.randomUUID(), UUID.randomUUID());
+            event.setOccurredAt(NOW.minus(WINDOW));
+            when(mailInboxService.claim(anyString(), anyString())).thenReturn(ClaimResult.CLAIMED);
+
+            service.process(event);
+
+            verify(mailDeliveryService).send(anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void should_send_when_the_follow_is_in_the_future_because_of_clock_skew() {
+            UserFollowedEventDTO event = anEvent(UUID.randomUUID(), UUID.randomUUID());
+            event.setOccurredAt(NOW.plusSeconds(30));
+            when(mailInboxService.claim(anyString(), anyString())).thenReturn(ClaimResult.CLAIMED);
+
+            service.process(event);
+
+            verify(mailDeliveryService).send(anyString(), anyString(), anyString(), anyString());
+        }
     }
 
     @Nested
@@ -127,6 +166,7 @@ class UserFollowedNotificationServiceImplTest {
             Duration window = Duration.ofSeconds(windowSeconds);
 
             assertThrows(IllegalStateException.class, () -> new UserFollowedNotificationServiceImpl(
+                    Clock.fixed(NOW, ZoneOffset.UTC),
                     window,
                     new MailEventValidationServiceImpl(VALIDATOR),
                     new MailDispatchServiceImpl(mailInboxService, mailDeliveryService),
@@ -153,7 +193,7 @@ class UserFollowedNotificationServiceImplTest {
                 .eventId(UUID.randomUUID())
                 .followerId(followerId)
                 .followeeId(followeeId)
-                .occurredAt(Instant.parse("2026-10-01T12:00:00Z"))
+                .occurredAt(OCCURRED_AT)
                 .followeeEmail("bob@example.com")
                 .followerUsername("ana")
                 .followeeUsername("bob")

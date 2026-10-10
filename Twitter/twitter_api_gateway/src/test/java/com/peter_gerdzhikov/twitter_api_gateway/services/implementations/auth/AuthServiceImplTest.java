@@ -22,6 +22,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.LoginRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.RegisterRequestDTO;
@@ -51,11 +53,15 @@ class AuthServiceImplTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
+    private PlatformTransactionManager transactionManager;
+
+    @Mock
     private ConfirmationRequestService confirmationRequestService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(userRepository, passwordEncoder, confirmationRequestService);
+        authService = new AuthServiceImpl(
+                userRepository, passwordEncoder, new TransactionTemplate(transactionManager), confirmationRequestService);
     }
 
     @Nested
@@ -93,6 +99,27 @@ class AuthServiceImplTest {
             InOrder order = inOrder(userRepository, confirmationRequestService);
             order.verify(userRepository).saveAndFlush(result);
             order.verify(confirmationRequestService).requestConfirmation(result);
+        }
+
+        @Test
+        void should_hash_the_password_before_the_transaction_starts() {
+            stubSaveEchoingTheUser();
+
+            authService.register(request(EMAIL, USERNAME));
+
+            InOrder order = inOrder(passwordEncoder, transactionManager);
+            order.verify(passwordEncoder).encode(PASSWORD);
+            order.verify(transactionManager).getTransaction(any());
+        }
+
+        @Test
+        void should_not_open_a_transaction_when_a_pre_check_fails() {
+            when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
+
+            assertThatThrownBy(() -> authService.register(request(EMAIL, USERNAME)))
+                    .isInstanceOf(DuplicateEmailException.class);
+
+            verify(transactionManager, never()).getTransaction(any());
         }
 
         @Test

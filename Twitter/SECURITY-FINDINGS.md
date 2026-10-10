@@ -15,7 +15,7 @@ No Critical or High findings. The identity path is sound: the gateway strips eve
   seq 1 500 | xargs -P50 -I{} curl -s -o /dev/null -b "access_token=$JWT" \
     "http://localhost:8080/api/v1/author-tweets/$AUTHOR?size=100"
   ```
-- **Recommendation:** per-user rate limit at the gateway on the proxied read routes.
+- **Recommendation:** per-user rate limit at the gateway on the proxied read routes. **Status:** accepted 2026-10-10, no rate limiting is planned.
 
 ### 2. `PATCH /users/me` accepts values the database rejects (Low)
 

@@ -12,4 +12,6 @@ import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 public interface OutboxMessageRepository extends MongoRepository<OutboxMessage, UUID> {
 
     List<OutboxMessage> findByStatusOrderByCreatedAtAsc(OutboxStatus status, Pageable pageable);
+
+    long countByStatus(OutboxStatus status);
 }

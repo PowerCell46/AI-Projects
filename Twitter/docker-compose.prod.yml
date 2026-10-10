@@ -1,0 +1,81 @@
+# Production overlay on docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# What it changes:
+#   - kafka-ui and mailpit only start with --profile dev, and mail goes to the SMTP server named in .env
+#   - no service gets the whole .env: each one lists the variables it reads, so a compromised mail service does not
+#     hold the JWT secret or the MinIO keys
+#   - the frontend serves https on 443 (and redirects 80) with the certificate in ./certs, and the gateway is no longer
+#     published, so nginx is the only way in
+#   - the cookie is Secure, and the links in emails point at PUBLIC_URL
+#
+# Each ${X:?...} must be set in .env (compose reads .env for these values without handing it to the containers).
+# A setting that is not listed keeps the default in the service's application.properties; to change one, add it to
+# that service's environment below.
+
+services:
+  kafka-ui:
+    profiles: [dev]
+
+  mailpit:
+    profiles: [dev]
+
+  frontend:
+    ports: !override
+      - "80:8080"
+      - "443:8443"
+    # tls.conf replaces the plain-http server; fullchain.pem and privkey.pem must be readable by uid 101 (nginx)
+    volumes:
+      - ./frontend/nginx/tls.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    healthcheck:
+      test: !override ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+
+  gateway:
+    env_file: !reset []
+    ports: !reset []
+    environment:
+      COOKIE_SECURE: "true"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      SEED_ENABLED: ${SEED_ENABLED:-true}
+      # Checked at startup when seeding is on (12-72 bytes with a lowercase letter, an uppercase letter and a digit)
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY must be set}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY must be set}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?INTERNAL_API_SECRET must be set}
+      CONFIRMATION_LINK_BASE_URL: ${PUBLIC_URL:?PUBLIC_URL must be set to the public https origin}/confirm
+
+  tweet-service:
+    env_file: !reset []
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY must be set}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY must be set}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?INTERNAL_API_SECRET must be set}
+
+  timeline-service:
+    env_file: !reset []
+    environment:
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?INTERNAL_API_SECRET must be set}
+      TIMELINE_DATASOURCE_USERNAME: ${TIMELINE_DATASOURCE_USERNAME:?TIMELINE_DATASOURCE_USERNAME must be set}
+      TIMELINE_DATASOURCE_PASSWORD: ${TIMELINE_DATASOURCE_PASSWORD:?TIMELINE_DATASOURCE_PASSWORD must be set}
+
+  mail-service:
+    env_file: !reset []
+    environment:
+      MAIL_HOST: ${MAIL_HOST:?MAIL_HOST must be set to your SMTP server}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_USERNAME: ${MAIL_USERNAME:?MAIL_USERNAME must be set}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD must be set}
+      MAIL_FROM: ${MAIL_FROM:?MAIL_FROM must be set}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      APP_BASE_URL: ${PUBLIC_URL:?PUBLIC_URL must be set to the public https origin}
+    # The base file also waits for mailpit, which does not run here
+    depends_on: !override
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy

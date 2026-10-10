@@ -1,12 +1,15 @@
 package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.seed;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true")
 public class DataSeedServiceImpl implements DataSeedService {
 
     static final String EMAIL_DOMAIN = "seed.local";
@@ -35,9 +39,15 @@ public class DataSeedServiceImpl implements DataSeedService {
 
     private static final long RANDOM_SEED = 2026;
 
+    private static final int MAX_PASSWORD_BYTES = 72;
+
+    private static final int MIN_PASSWORD_LENGTH = 12;
+
     private static final double FOLLOW_PROBABILITY = 0.35;
 
     private static final String BIO = "Demo account created by the database seeder.";
+
+    private static final Pattern PASSWORD_CLASSES = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$");
 
     private final String password;
 
@@ -65,7 +75,7 @@ public class DataSeedServiceImpl implements DataSeedService {
             TweetSeedService tweetSeedService,
             ProfilePictureSeedService profilePictureSeedService
     ) {
-        this.password = password;
+        this.password = requireStrongPassword(password);
         this.followService = followService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -96,6 +106,24 @@ public class DataSeedServiceImpl implements DataSeedService {
         likeSeedService.seedLikes(userIds, tweets);
 
         return true;
+    }
+
+    /**
+     * The demo users are real accounts with well-known usernames, so their shared password has to be a secret of
+     * the deployment. The message never carries the value. BCrypt reads at most 72 bytes.
+     */
+    private static String requireStrongPassword(String password) {
+        boolean tooShort = password.length() < MIN_PASSWORD_LENGTH;
+        boolean tooLong = password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES;
+
+        if (tooShort || tooLong || !PASSWORD_CLASSES.matcher(password).matches()) {
+            throw new IllegalStateException((
+                    "app.seed.password (SEED_PASSWORD) must be at least %d characters and at most %d bytes, "
+                            + "with a lowercase letter, an uppercase letter and a digit.")
+                    .formatted(MIN_PASSWORD_LENGTH, MAX_PASSWORD_BYTES));
+        }
+
+        return password;
     }
 
     private List<User> newUsers() {

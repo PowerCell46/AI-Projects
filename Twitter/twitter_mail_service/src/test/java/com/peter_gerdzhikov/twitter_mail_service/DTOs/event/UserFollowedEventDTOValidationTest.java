@@ -25,7 +25,11 @@ class UserFollowedEventDTOValidationTest {
             "a b@example.com",
             " a@example.com",
             "a@@example.com",
-            "a@localhost"
+            "a@localhost",
+            "a@.example.com",
+            "a@example..com",
+            "a@example.com.",
+            "a@example.c"
     })
     void should_reject_a_followee_email_that_could_inject_headers_or_recipients(String email) {
         UserFollowedEventDTO event = anEvent(email, "ana", "bob");
@@ -47,6 +51,19 @@ class UserFollowedEventDTOValidationTest {
         UserFollowedEventDTO event = anEvent("a@example.com", "ana", username);
 
         assertTrue(hasViolationOn(event, "followeeUsername"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "ana@mail.company.com",
+            "x@fmi.uni-sofia.bg",
+            "y@example.co.uk",
+            "a@a.b.c.d.example.org"
+    })
+    void should_accept_a_followee_email_with_a_subdomain_or_a_second_level_domain(String email) {
+        UserFollowedEventDTO event = anEvent(email, "ana", "bob");
+
+        assertTrue(VALIDATOR.validate(event).isEmpty());
     }
 
     @Test

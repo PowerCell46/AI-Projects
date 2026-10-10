@@ -16,6 +16,7 @@ public class UserUnfollowedListener {
 
     @KafkaListener(
             topics = "${app.kafka.user-unfollowed.name}",
+            groupId = "${spring.kafka.consumer.group-id}-user-unfollowed",
             containerFactory = "userUnfollowedListenerContainerFactory"
     )
     public void onMessage(UserUnfollowedEventDTO event) {

@@ -7,7 +7,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.LoginRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.RegisterRequestDTO;
@@ -32,25 +32,23 @@ public class AuthServiceImpl implements AuthService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final TransactionTemplate transactionTemplate;
+
     private final ConfirmationRequestService confirmationRequestService;
 
+    /**
+     * Hashes outside the transaction: bcrypt is slow on purpose, and inside it each registration would hold a
+     * database connection for the whole hash.
+     */
     @Override
-    @Transactional
     public User register(RegisterRequestDTO request) {
         String email = request.getEmail().toLowerCase(Locale.ROOT);
         String username = request.getUsername();
         rejectTakenEmailOrUsername(email, username);
 
-        User user = User.builder()
-                .username(username)
-                .email(email)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .build();
-        User saved = saveUser(user);
-        confirmationRequestService.requestConfirmation(saved);
+        String passwordHash = passwordEncoder.encode(request.getPassword());
 
-        log.info("Registered new user '{}'.", saved.getId());
-        return saved;
+        return transactionTemplate.execute(status -> saveAndRequestConfirmation(email, username, passwordHash));
     }
 
     @Override
@@ -87,6 +85,19 @@ public class AuthServiceImpl implements AuthService {
         passwordEncoder.encode(password);
 
         return new InvalidCredentialsException();
+    }
+
+    private User saveAndRequestConfirmation(String email, String username, String passwordHash) {
+        User user = User.builder()
+                .username(username)
+                .email(email)
+                .password(passwordHash)
+                .build();
+        User saved = saveUser(user);
+        confirmationRequestService.requestConfirmation(saved);
+
+        log.info("Registered new user '{}'.", saved.getId());
+        return saved;
     }
 
     private void rejectTakenEmailOrUsername(String email, String username) {

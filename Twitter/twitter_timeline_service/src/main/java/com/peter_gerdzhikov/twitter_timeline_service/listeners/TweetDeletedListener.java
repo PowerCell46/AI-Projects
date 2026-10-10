@@ -16,6 +16,7 @@ public class TweetDeletedListener {
 
     @KafkaListener(
             topics = "${app.kafka.tweet-deleted.name}",
+            groupId = "${spring.kafka.consumer.group-id}-tweet-deleted",
             containerFactory = "tweetDeletedListenerContainerFactory"
     )
     public void onMessage(TweetDeletedEventDTO event) {

@@ -63,6 +63,10 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # The image's default heap is 1 GB (-Xmx1G -Xms1G), the whole 1024M limit below; off-heap memory then gets the container killed
+      KAFKA_HEAP_OPTS: -Xms512m -Xmx512m
+      # The image's default log.dirs is /tmp/kraft-combined-logs, outside the kafka_data volume, so topics and offsets were lost when the container was recreated
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
     deploy:
       resources:
         limits:

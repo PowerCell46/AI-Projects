@@ -240,7 +240,7 @@ below is unchanged.
 - **Request amplification from the heart button:** `useOptimisticToggle` keeps one request in flight per post and
   sends the last wanted value only if it differs from the last confirmed one. A script can still call the endpoint
   directly. There is no rate limit on likes, each `PUT` costing one tweet-service call and a log line; this is already
-  recorded as an accepted gap in `docs/likes-design.md` and `twitter_timeline_service/docs/SECURITY-AUDITS.md`, so it is not
+  recorded as an accepted gap in `twitter_timeline_service/docs/SECURITY-AUDITS.md`, so it is not
   repeated as a finding.
 - **CSRF:** `PUT` and `DELETE` on a cookie session depend on the same `SameSite=Strict`, `HttpOnly` cookie as every
   other call (see 2026-10-04); unchanged by the likes routes.
@@ -325,7 +325,7 @@ trigger today. Fixing the hook fixes all five lists.
   `PUT`/`DELETE` from another account is refused (code read, not run).
 - **Resource limits:** the 280-character cap and the empty check run in `canPublish` in the browser and again in
   `ReplyServiceImpl.validateText` (code points of the stripped text). There is no rate limit on creating replies; it is
-  already an accepted gap (`replies-design.md:169`, `twitter_tweet_service/PLAN.md:242`), so it is not repeated.
+  already an accepted gap (`twitter_tweet_service/PLAN.md:242`), so it is not repeated.
   `ReplyComposer` and `ReplyEditor` allow one request in flight (`isSending`, `isSaving`); `ReplyCell` ignores a second
   delete while `isDeleting`.
 - **Caching and state races:** the page keeps `sentReplies`, `editedReplies` and `removedReplyIds` in memory only; the

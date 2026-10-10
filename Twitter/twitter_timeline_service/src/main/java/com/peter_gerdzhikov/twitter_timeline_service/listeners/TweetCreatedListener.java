@@ -16,6 +16,7 @@ public class TweetCreatedListener {
 
     @KafkaListener(
             topics = "${app.kafka.tweet-created.name}",
+            groupId = "${spring.kafka.consumer.group-id}-tweet-created",
             containerFactory = "tweetCreatedListenerContainerFactory"
     )
     public void onMessage(TweetCreatedEventDTO event) {

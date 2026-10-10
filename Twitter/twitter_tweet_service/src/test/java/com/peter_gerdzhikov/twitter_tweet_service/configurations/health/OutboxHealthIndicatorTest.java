@@ -1,0 +1,44 @@
+package com.peter_gerdzhikov.twitter_tweet_service.configurations.health;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.Status;
+
+import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
+import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
+
+@ExtendWith(MockitoExtension.class)
+class OutboxHealthIndicatorTest {
+
+    @Mock
+    private OutboxMessageRepository outboxMessageRepository;
+
+    @InjectMocks
+    private OutboxHealthIndicator indicator;
+
+    @Test
+    void should_report_up_when_no_message_is_failed() {
+        when(outboxMessageRepository.countByStatus(OutboxStatus.FAILED)).thenReturn(0L);
+
+        Health health = indicator.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+    }
+
+    @Test
+    void should_report_degraded_with_the_failed_count_when_messages_are_failed() {
+        when(outboxMessageRepository.countByStatus(OutboxStatus.FAILED)).thenReturn(3L);
+
+        Health health = indicator.health();
+
+        assertThat(health.getStatus().getCode()).isEqualTo("DEGRADED");
+        assertThat(health.getDetails()).containsEntry("failedMessages", 3L);
+    }
+}

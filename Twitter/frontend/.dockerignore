@@ -1,0 +1,12 @@
+# The Dockerfile only needs package*.json, index.html, the tsconfigs, vite.config.ts, public/ and src/
+# (src/ keeps its tests: `tsc -b` in the build type-checks them)
+node_modules
+**/node_modules
+dist
+*.md
+
+.env
+.env.*
+
+.idea
+.vscode

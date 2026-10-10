@@ -70,12 +70,12 @@ public abstract class AbstractKafkaE2ETestSupport extends AbstractRedisIntegrati
                 .build();
     }
 
-    protected static UserFollowedEventDTO aValidFollowEvent(UUID followerId, UUID followeeId, String followeeEmail) {
+    protected static UserFollowedEventDTO aValidFollowEvent(UUID followerId, UUID followeeId, String followeeEmail, Instant occurredAt) {
         return UserFollowedEventDTO.builder()
                 .eventId(UUID.randomUUID())
                 .followerId(followerId)
                 .followeeId(followeeId)
-                .occurredAt(Instant.parse("2026-10-01T12:00:00Z"))
+                .occurredAt(occurredAt)
                 .followeeEmail(followeeEmail)
                 .followerUsername("ana")
                 .followeeUsername("bob")

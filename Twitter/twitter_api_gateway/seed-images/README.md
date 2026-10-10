@@ -1,5 +1,10 @@
 Profile pictures for the seeded demo users.
 
+**The images are not in git.** They are photos of real people and the repo is public, so `.gitignore` keeps everything
+in this folder except this README out. A fresh clone has no pictures: copy them into this folder on every machine that
+should show them, including the production host (the compose files mount the folder read-only). Without them the
+seeded users keep the default avatar.
+
 Drop an image here named after a username (png, jpg, jpeg or webp; the name is case-insensitive). On the first
 start with an empty database the seeder uploads each one as that user's profile picture. A user without an image
 keeps the default avatar. **Every image must be under 5 MB** (`MAX_UPLOAD_FILE_BYTES`); a larger one is skipped
@@ -26,8 +31,9 @@ All the names the seeder looks for:
 
 `DataSeedRunner` runs after startup and, when the `users` table is empty, seeds:
 
-- 12 confirmed users (`stiliyan@seed.local`, ...) with one shared password (`SEED_PASSWORD`, default `Password123`)
-  and their profile pictures.
+- 12 confirmed users (`stiliyan@seed.local`, ...) with one shared password and their profile pictures. `SEED_PASSWORD`
+  has no default, and the gateway refuses to start unless it is 12-72 bytes with a lowercase letter, an uppercase
+  letter and a digit.
 - About a third of all possible follows between them (fixed random seed, through `FollowService`, so counts, outbox
   events and timeline back-fill are real).
 - 3 tweets each (POST to the tweet service with `X-User-Id`), 0 to 3 replies per tweet from other users, and likes

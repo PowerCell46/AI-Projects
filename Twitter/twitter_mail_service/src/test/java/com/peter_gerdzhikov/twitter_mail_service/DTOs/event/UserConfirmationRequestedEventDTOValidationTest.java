@@ -33,7 +33,11 @@ class UserConfirmationRequestedEventDTOValidationTest {
             "\"a@b\"@example.com",
             "a@[127.0.0.1]",
             "a@localhost",
-            "a%b@example.com"
+            "a%b@example.com",
+            "a@.example.com",
+            "a@example..com",
+            "a@example.com.",
+            "a@example.c"
     })
     void should_reject_an_email_the_gateway_would_not_accept_or_that_could_inject_headers_or_recipients(String email) {
         UserConfirmationRequestedEventDTO event = anEvent(email, "ana_k");
@@ -47,6 +51,19 @@ class UserConfirmationRequestedEventDTOValidationTest {
         UserConfirmationRequestedEventDTO event = anEvent("a@example.com", username);
 
         assertTrue(hasViolationOn(event, "username"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "ana@mail.company.com",
+            "x@fmi.uni-sofia.bg",
+            "y@example.co.uk",
+            "a@a.b.c.d.example.org"
+    })
+    void should_accept_an_email_with_a_subdomain_or_a_second_level_domain(String email) {
+        UserConfirmationRequestedEventDTO event = anEvent(email, "ana_k");
+
+        assertTrue(VALIDATOR.validate(event).isEmpty());
     }
 
     @Test

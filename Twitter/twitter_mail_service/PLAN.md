@@ -21,12 +21,13 @@ on `mvn verify` green 3× in a row.
   security starter. SignalFlow's OWASP sanitizer and jsoup are left out (nothing here renders untrusted HTML).
 - **Infra (root `../docker-compose.yml`):** `redis` (`--appendonly yes`, required `REDIS_PASSWORD`) and `mailpit`
   (SMTP `127.0.0.1:1025`, UI `127.0.0.1:8025`), both bound to `127.0.0.1`.
-- **SMTP defaults are Gmail (Q9):** `smtp.gmail.com:587`, auth and STARTTLS on, 10s timeouts. `MAIL_FROM` has no
-  default, so the app refuses to start without it. To send to Mailpit, point `MAIL_HOST/PORT/SMTP_AUTH/SMTP_STARTTLS`
+- **SMTP defaults are Gmail (Q9):** `smtp.gmail.com:587`, auth and STARTTLS on, 10s timeouts. `MAIL_FROM` and
+  `APP_BASE_URL` have no default, so the app refuses to start without them, with a `MAIL_FROM` that is not an address, or
+  with auth on and no `MAIL_USERNAME` / `MAIL_PASSWORD`. To send to Mailpit, point `MAIL_HOST/PORT/SMTP_AUTH/SMTP_STARTTLS`
   at it by hand.
 - **The pipeline is written once and shared by both emails (Q11):**
   - `MailInboxService`: the Redis note that an email was sent. `claim(key, token)` → `CLAIMED`/`ALREADY_SENT`/`HELD`
-    (`SET NX` of `PROCESSING:<token>`, claim TTL 5m); `markSent(key, ttl)`; `release(key, token)` is a
+    (`SET NX` of `PROCESSING:<token>`, claim TTL 2m); `markSent(key, ttl)`; `release(key, token)` is a
     compare-and-delete Lua script.
   - `MailEventValidationService` and `MailDispatchService` (+ `OutgoingMail`): bean validation, and claim → send →
     mark sent, releasing the claim and rethrowing on a failed send. A failed `markSent` is logged only. Extracted

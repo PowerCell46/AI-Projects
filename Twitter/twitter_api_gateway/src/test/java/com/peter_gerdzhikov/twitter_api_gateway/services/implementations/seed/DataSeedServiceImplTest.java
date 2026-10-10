@@ -1,6 +1,8 @@
 package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.seed;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
@@ -19,6 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,6 +39,8 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.TweetSe
 
 @ExtendWith(MockitoExtension.class)
 class DataSeedServiceImplTest {
+
+    private static final String PASSWORD = "Str0ng-seed-password";
 
     @Mock
     private FollowService followService;
@@ -61,9 +67,62 @@ class DataSeedServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        seedService = new DataSeedServiceImpl(
-                "Password123", followService, userRepository, passwordEncoder,
+        seedService = newSeedService(PASSWORD);
+    }
+
+    private DataSeedServiceImpl newSeedService(String password) {
+        return new DataSeedServiceImpl(
+                password, followService, userRepository, passwordEncoder,
                 likeSeedService, replySeedService, tweetSeedService, profilePictureSeedService);
+    }
+
+    @Nested
+    @DisplayName("constructor")
+    class Constructor {
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "",
+                "Short1aA",
+                "Password123",
+                "NoDigitsInThisPassword",
+                "nouppercase-or-digit-here",
+                "NOLOWERCASE1234567",
+                "12345678901234567890"
+        })
+        void should_refuse_to_start_when_the_password_is_weak(String weakPassword) {
+            assertThatThrownBy(() -> newSeedService(weakPassword))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("SEED_PASSWORD");
+        }
+
+        @Test
+        void should_refuse_to_start_when_the_password_is_longer_than_bcrypt_reads() {
+            String tooLong = "Aa1" + "x".repeat(70);
+
+            assertThatThrownBy(() -> newSeedService(tooLong))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("72 bytes");
+        }
+
+        @Test
+        void should_not_put_the_password_in_the_message_when_it_is_refused() {
+            String weakPassword = "Weak1Pw";
+
+            assertThatThrownBy(() -> newSeedService(weakPassword))
+                    .hasMessageNotContaining(weakPassword);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "Aa1xxxxxxxxx",
+                "Passw0rd-with-symbols-!?#",
+                "Aa1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        })
+        void should_accept_the_password_when_it_is_long_enough_and_has_all_three_classes(String strongPassword) {
+            assertThatCode(() -> newSeedService(strongPassword))
+                    .doesNotThrowAnyException();
+        }
     }
 
     @Nested

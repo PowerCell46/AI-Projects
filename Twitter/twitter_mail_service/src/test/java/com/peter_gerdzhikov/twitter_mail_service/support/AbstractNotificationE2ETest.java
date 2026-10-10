@@ -115,7 +115,7 @@ public abstract class AbstractNotificationE2ETest extends AbstractMailpitIntegra
      * follower, under the same Kafka key (the followee id) and so on the same partition, to its own recipient.
      */
     protected UserFollowedEventDTO awaitFollowSentinelProcessed(UUID followeeId) {
-        UserFollowedEventDTO sentinel = aValidFollowEvent(UUID.randomUUID(), followeeId, uniqueRecipient());
+        UserFollowedEventDTO sentinel = aValidFollowEvent(UUID.randomUUID(), followeeId, uniqueRecipient(), mutableClock.instant());
         publish(USER_FOLLOWED_TOPIC, followeeId.toString(), toJson(sentinel));
 
         awaitEmail(sentinel.getFolloweeEmail());

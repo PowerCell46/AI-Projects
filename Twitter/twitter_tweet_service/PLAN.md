@@ -53,7 +53,8 @@ to replies; images, likes, saves or views on replies; notifications; live update
 
 - **The service trusts `X-User-Id` blindly.** Anyone who reaches port 8081 can act as any user; mitigated by the gateway
   re-setting the header and the port being private. It also holds `INTERNAL_API_SECRET`. **Trigger:** reachable by
-  anything but the gateway (any shared or deployed network) → a shared internal secret, or mTLS.
+  anything but the gateway (a published port, a broader gateway route, a service on the network that is not trusted)
+  → a shared internal secret, or mTLS. A private Docker network on one host does not trigger it.
 - **No `tweet.updated` event.** **Trigger:** the first consumer that stores tweet text (search, timeline cache).
 - **No edit window and no edit history.** **Trigger:** misuse of edits → a 1h window and/or stored versions.
 - **Images can't be edited**; delete and repost instead.

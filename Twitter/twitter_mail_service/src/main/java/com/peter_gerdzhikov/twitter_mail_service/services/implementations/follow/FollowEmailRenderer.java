@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.twitter_mail_service.services.implementations.follo
 
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.EmailTemplate;
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
+import com.peter_gerdzhikov.twitter_mail_service.utilities.BaseUrls;
 import java.util.Map;
 import java.util.Set;
 
@@ -9,6 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class FollowEmailRenderer {
 
@@ -29,6 +33,12 @@ public class FollowEmailRenderer {
     private final EmailTemplate emailTemplate;
 
     public FollowEmailRenderer(@Value("${app.mail.app-base-url}") String appBaseUrl) {
+        BaseUrls.requireAbsoluteHttpUrl(appBaseUrl, "app.mail.app-base-url");
+
+        if (BaseUrls.isPlainHttpOutsideLocalhost(appBaseUrl)) {
+            log.warn("app.mail.app-base-url is plain http outside localhost, so the link in the follow email is not protected.");
+        }
+
         this.feedUrl = StringUtils.trimTrailingCharacter(appBaseUrl, '/') + FEED_PATH;
         this.emailTemplate = new EmailTemplate(
                 HTML_TEMPLATE_PATH,

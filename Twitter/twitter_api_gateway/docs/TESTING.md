@@ -1,6 +1,6 @@
 # E2E test catalog
 
-Last updated: 2026-10-08
+Last updated: 2026-10-10
 
 Scope: HTTP-layer tests only — full stack through `DispatcherServlet` against Testcontainers Postgres and
 Kafka (and MinIO from phase 2). Repository, unit and concurrency tests exercise real Postgres too but skip the
@@ -587,3 +587,7 @@ All enabled (steps 32 and 33). Not part of the e2e catalog above.
 - `UserListServiceImplTest.ListUsers` (enabled, step 33): size checked before cursor, bad cursor rejected before any query, first-page vs after-cursor query, caller id passed on, `size + 1` rows sliced, cursor from the last returned row, null cursor on the last page, `followedByMe` query skipped for an empty page
 - `ProfileMapperTest` `toUserListItem_*` (enabled, step 33): all six fields set, missing picture and bio map to `null`
 - `PageSizeValidatorTest` (enabled, step 33): 1 and 100 accepted; 0, -1 and 101 rejected
+- `OutboxPublisherServiceImplTest` (unit, 2026-10-10): a row Kafka refuses for its own content (too large, invalid topic, also when `send` throws and when the failure is wrapped) counts an attempt and goes `FAILED` at the limit; anything else (a Kafka timeout, a network error, an authorization error, a send timeout, an interrupt) leaves the row `PENDING` with no attempt counted, however many polls find Kafka down; the batch stops at the first row Kafka cannot take and goes on past a rejected one; the interrupt flag is restored
+- `OutboxPublisherServiceKafkaIntegrationTest` (real Kafka, 2026-10-10): a row stays `PENDING` with no attempt counted while the producer cannot reach a broker (more polls than `max-attempts`) and is published, then deleted, once Kafka is back (`should_keep_a_row_pending_with_no_attempt_counted_while_kafka_is_unreachable_then_publish_it_when_kafka_is_back`); a row for an invalid topic is `FAILED` after `max-attempts` polls while the row after it is published on the first (`should_mark_a_rejected_row_failed_after_the_max_attempts_and_still_publish_the_rows_after_it`)
+- `OutboxHealthIndicatorTest` and `OutboxHealthIntegrationTest` (2026-10-10): `UP` with no `FAILED` row; `DEGRADED` with the count otherwise; `GET /actuator/health` answers 200 with `status: DEGRADED` while a `FAILED` row exists (`should_report_degraded_with_http_200_when_an_outbox_row_is_failed`)
+

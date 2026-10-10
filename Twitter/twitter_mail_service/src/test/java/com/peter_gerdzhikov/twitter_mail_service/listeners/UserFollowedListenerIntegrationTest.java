@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.twitter_mail_service.listeners;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -10,6 +11,7 @@ import tools.jackson.databind.JsonNode;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_mail_service.support.AbstractNotificationE2ETest;
@@ -27,10 +29,13 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
     private static final String FOLLOWER_LINE = "ana (@ana) is now following you.";
 
+    @Value("${app.mail-inbox.follow-window}")
+    private Duration followWindow;
+
     @Test
     void should_send_one_email_to_the_followee_with_the_follower_in_the_subject() {
         String recipient = uniqueRecipient();
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, mutableClock.instant());
 
         publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
 
@@ -45,7 +50,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     @Test
     void should_render_the_html_part_with_the_greeting_follower_line_and_feed_link() {
         String recipient = uniqueRecipient();
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, mutableClock.instant());
 
         publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
 
@@ -58,7 +63,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     @Test
     void should_render_the_text_part_with_the_same_content_as_the_html_part() {
         String recipient = uniqueRecipient();
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, mutableClock.instant());
 
         publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
 
@@ -70,7 +75,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
     @Test
     void should_mark_the_pair_key_sent_with_a_ttl_within_the_follow_window() {
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient());
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient(), mutableClock.instant());
         String redisKey = followRedisKey(event.getFollowerId(), event.getFolloweeId());
 
         publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
@@ -88,7 +93,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     @Test
     void should_send_only_one_email_when_the_same_record_is_published_twice() {
         String recipient = uniqueRecipient();
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, mutableClock.instant());
         String key = event.getFolloweeId().toString();
         String json = toJson(event);
 
@@ -104,8 +109,8 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
         String recipient = uniqueRecipient();
         UUID followerId = UUID.randomUUID();
         UUID followeeId = UUID.randomUUID();
-        UserFollowedEventDTO firstFollow = aValidFollowEvent(followerId, followeeId, recipient);
-        UserFollowedEventDTO refollow = aValidFollowEvent(followerId, followeeId, recipient);
+        UserFollowedEventDTO firstFollow = aValidFollowEvent(followerId, followeeId, recipient, mutableClock.instant());
+        UserFollowedEventDTO refollow = aValidFollowEvent(followerId, followeeId, recipient, mutableClock.instant());
 
         publish(USER_FOLLOWED_TOPIC, followeeId.toString(), toJson(firstFollow));
         publish(USER_FOLLOWED_TOPIC, followeeId.toString(), toJson(refollow));
@@ -118,8 +123,8 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     void should_send_two_emails_when_two_followers_follow_the_same_followee() {
         String recipient = uniqueRecipient();
         UUID followeeId = UUID.randomUUID();
-        UserFollowedEventDTO firstFollow = aValidFollowEvent(UUID.randomUUID(), followeeId, recipient);
-        UserFollowedEventDTO secondFollow = aValidFollowEvent(UUID.randomUUID(), followeeId, recipient);
+        UserFollowedEventDTO firstFollow = aValidFollowEvent(UUID.randomUUID(), followeeId, recipient, mutableClock.instant());
+        UserFollowedEventDTO secondFollow = aValidFollowEvent(UUID.randomUUID(), followeeId, recipient, mutableClock.instant());
 
         publish(USER_FOLLOWED_TOPIC, followeeId.toString(), toJson(firstFollow));
         publish(USER_FOLLOWED_TOPIC, followeeId.toString(), toJson(secondFollow));
@@ -130,14 +135,39 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     @Test
     void should_send_two_emails_when_one_follower_follows_two_followees() {
         UUID followerId = UUID.randomUUID();
-        UserFollowedEventDTO firstFollow = aValidFollowEvent(followerId, UUID.randomUUID(), uniqueRecipient());
-        UserFollowedEventDTO secondFollow = aValidFollowEvent(followerId, UUID.randomUUID(), uniqueRecipient());
+        UserFollowedEventDTO firstFollow = aValidFollowEvent(followerId, UUID.randomUUID(), uniqueRecipient(), mutableClock.instant());
+        UserFollowedEventDTO secondFollow = aValidFollowEvent(followerId, UUID.randomUUID(), uniqueRecipient(), mutableClock.instant());
 
         publish(USER_FOLLOWED_TOPIC, firstFollow.getFolloweeId().toString(), toJson(firstFollow));
         publish(USER_FOLLOWED_TOPIC, secondFollow.getFolloweeId().toString(), toJson(secondFollow));
 
         awaitEmailCount(firstFollow.getFolloweeEmail(), 1);
         awaitEmailCount(secondFollow.getFolloweeEmail(), 1);
+    }
+
+    @Test
+    void should_send_nothing_and_leave_no_redis_key_when_the_follow_is_older_than_the_window() {
+        String recipient = uniqueRecipient();
+        Instant tooOld = mutableClock.instant().minus(followWindow).minusSeconds(1);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, tooOld);
+
+        publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
+        awaitFollowSentinelProcessed(event.getFolloweeId());
+
+        assertNoEmail(recipient);
+        assertFalse(redisTemplate.hasKey(followRedisKey(event.getFollowerId(), event.getFolloweeId())));
+        verify(javaMailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void should_send_the_email_when_the_follow_is_exactly_one_window_old() {
+        String recipient = uniqueRecipient();
+        Instant atTheEdge = mutableClock.instant().minus(followWindow);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, atTheEdge);
+
+        publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
+
+        awaitEmail(recipient);
     }
 
     @Test
@@ -155,7 +185,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
     @Test
     void should_dead_letter_a_missing_follower_id_without_retries() {
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient());
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient(), mutableClock.instant());
         event.setFollowerId(null);
 
         assertDeadLetteredWithoutRetries(event);
@@ -163,14 +193,14 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
     @Test
     void should_dead_letter_a_blank_followee_email_without_retries() {
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), "");
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), "", mutableClock.instant());
 
         assertDeadLetteredWithoutRetries(event);
     }
 
     @Test
     void should_dead_letter_a_follower_username_outside_the_pattern_without_retries() {
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient());
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient(), mutableClock.instant());
         event.setFollowerUsername("a-b");
 
         assertDeadLetteredWithoutRetries(event);
@@ -178,7 +208,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
     @Test
     void should_dead_letter_a_followee_username_outside_the_pattern_without_retries() {
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient());
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), uniqueRecipient(), mutableClock.instant());
         event.setFolloweeUsername("a-b");
 
         assertDeadLetteredWithoutRetries(event);
@@ -187,7 +217,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     @Test
     void should_dead_letter_after_exactly_one_attempt_and_release_the_claim_when_the_recipient_gets_a_permanent_smtp_rejection() {
         String disallowedRecipient = UUID.randomUUID() + "@not-example.org";
-        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), disallowedRecipient);
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), disallowedRecipient, mutableClock.instant());
         String redisKey = followRedisKey(event.getFollowerId(), event.getFolloweeId());
 
         publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));

@@ -12,4 +12,6 @@ import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 public interface OutboxRepository extends JpaRepository<Outbox, UUID> {
 
     List<Outbox> findByStatusOrderByCreatedAtAsc(OutboxStatus status, Pageable pageable);
+
+    long countByStatus(OutboxStatus status);
 }

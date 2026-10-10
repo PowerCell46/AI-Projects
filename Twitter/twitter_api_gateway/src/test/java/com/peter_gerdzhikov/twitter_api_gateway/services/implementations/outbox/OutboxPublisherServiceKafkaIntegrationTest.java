@@ -6,17 +6,22 @@ import static org.awaitility.Awaitility.await;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -40,6 +45,12 @@ import com.peter_gerdzhikov.twitter_api_gateway.support.TestUsers;
 class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegrationTest {
 
     private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(20);
+
+    @Value("${app.outbox.max-attempts}")
+    private int maxAttempts;
+
+    @Value("${app.outbox.batch-size}")
+    private int batchSize;
 
     @Value("${app.kafka.user-confirmation-requested.name}")
     private String topicName;
@@ -95,6 +106,39 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
     }
 
     @Test
+    void should_keep_a_row_pending_with_no_attempt_counted_while_kafka_is_unreachable_then_publish_it_when_kafka_is_back() {
+        String key = UUID.randomUUID().toString();
+        Outbox row = outboxRepository.save(pendingRow(key, "{}"));
+
+        publishWhileKafkaIsUnreachable(maxAttempts + 2);
+
+        Outbox afterTheOutage = outboxRepository.findById(row.getId()).orElseThrow();
+        assertThat(afterTheOutage.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(afterTheOutage.getAttempts()).isZero();
+
+        outboxPublisherService.publishPending();
+
+        assertThat(recordForKey(key).value()).isEqualTo("{}");
+        assertThat(outboxRepository.findById(row.getId())).isEmpty();
+    }
+
+    @Test
+    void should_mark_a_rejected_row_failed_after_the_max_attempts_and_still_publish_the_rows_after_it() {
+        Outbox rejected = outboxRepository.save(pendingRowOn("not a valid topic name", UUID.randomUUID().toString(), "{}"));
+        String healthyKey = UUID.randomUUID().toString();
+        outboxRepository.save(pendingRow(healthyKey, "{}"));
+
+        for (int poll = 0; poll < maxAttempts; poll++) {
+            outboxPublisherService.publishPending();
+        }
+
+        Outbox afterwards = outboxRepository.findById(rejected.getId()).orElseThrow();
+        assertThat(afterwards.getStatus()).isEqualTo(OutboxStatus.FAILED);
+        assertThat(afterwards.getAttempts()).isEqualTo(maxAttempts);
+        assertThat(recordForKey(healthyKey)).isNotNull();
+    }
+
+    @Test
     void should_put_the_registration_event_on_the_topic_keyed_by_the_user_id() throws Exception {
         TestUser credentials = TestUsers.unique();
         User user = authService.register(RegisterRequestDTO.builder()
@@ -132,12 +176,35 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
     }
 
     private Outbox pendingRow(String key, String payload) {
+        return pendingRowOn(topicName, key, payload);
+    }
+
+    private Outbox pendingRowOn(String topic, String key, String payload) {
         return Outbox.builder()
-                .topic(topicName)
+                .topic(topic)
                 .messageKey(key)
                 .payload(payload)
                 .status(OutboxStatus.PENDING)
                 .build();
+    }
+
+    private void publishWhileKafkaIsUnreachable(int polls) {
+        DefaultKafkaProducerFactory<String, String> unreachable = new DefaultKafkaProducerFactory<>(Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1",
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.MAX_BLOCK_MS_CONFIG, 300));
+        OutboxPublisherServiceImpl publisherWhileKafkaIsDown = new OutboxPublisherServiceImpl(
+                batchSize, maxAttempts, Duration.ofSeconds(5), outboxRepository, new KafkaTemplate<>(unreachable));
+
+        try {
+            for (int poll = 0; poll < polls; poll++) {
+                publisherWhileKafkaIsDown.publishPending();
+            }
+
+        } finally {
+            unreachable.destroy();
+        }
     }
 
     private ConsumerRecord<String, String> recordForKey(String key) {

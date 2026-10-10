@@ -5,8 +5,7 @@ running and testing this app.
 
 The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`), the feed
 (`/feed`, `/saved`, `/liked`), the People list (`/users`), a post's details with its replies (`/tweets/:tweetId`) and profiles (`/users/:username`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
-co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual briefs: `AuthenticationViewsDesigns.md`
-(auth), `feed-design.md` (feed, in git history), `feed-design-addition.md` (tab row, People), `profile-view-design.md` (profile).
+co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual brief for the profile: `profile-view-design.md`. The earlier briefs (auth, feed, tab row and People) are in git history.
 
 `/feed`, `/users`, `/saved` and `/liked` sit behind `ProtectedRoute` in one layout route, `Shell` (header, tab row, compose modal,
 `<Outlet>`). `/feed` (TWEETS) and `/users` (PEOPLE) share one more layout route, `TabPanels`, which renders both pages as
@@ -33,13 +32,16 @@ profile → tweet → Back reloads the profile from the top.
 
 - `npm install`, then `npm run dev`: the dev server on `:5173`. `/api` is proxied to the gateway on `:8080`, or to
   `GATEWAY_URL` when set. Start the gateway first (see `../twitter_api_gateway/CLAUDE.md`).
+- The built app: `docker compose up -d --build frontend` from the Twitter root (with the gateway) serves `dist/` through
+  nginx on `127.0.0.1:5173`, the dev server's port. `nginx/` serves the SPA with an `index.html` fallback (the
+  deep links `/confirm`, `/users/:name`, `/tweets/:id`), proxies only `/api/` to the gateway, and allows bodies up to
+  21 MB. The cookie is `SameSite=Strict` and the gateway has no CORS, so the SPA and `/api` must stay on one origin.
 - Local confirmation links: the gateway queues the link in its `outbox` table and the mail service
   (`../twitter_mail_service`) emails it. Start `redis` and `mailpit` from the Twitter root, run the mail service
   with `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, and read the email at
   `http://localhost:8025`. Without the mail service, read the link from the table:
   `select payload::jsonb->>'confirmationUrl' from outbox order by created_at desc limit 1;`. The base is
   `CONFIRMATION_LINK_BASE_URL` in `../.env` (`http://localhost:5173/confirm`).
-- On a phone: `LAN-DEV-SERVER.md`.
 
 ## Checks
 

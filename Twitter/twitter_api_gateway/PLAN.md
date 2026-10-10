@@ -43,7 +43,6 @@ and hiding people the caller already follows.
 - **Scheduled jobs run on every instance.** Trigger: second instance → ShedLock/advisory lock.
 - **Dev compose has default credentials and plaintext Kafka** (ports bound to `127.0.0.1`). Trigger: any shared
   environment.
-- **`COOKIE_SECURE` defaults to `false`.** Trigger: first deployment.
 - **Log lines can carry attacker-chosen or personal text** (unknown-path WARN, constraint-violation WARN with email).
   Trigger: logs shipped to a shared system.
 - **`ddl-auto=update`, no migrations.** Trigger: second environment or first destructive change → Flyway.

@@ -1,8 +1,8 @@
 # Test catalog
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
-Scope: HTTP-layer (`*ControllerIntegrationTest`) and listener (`*ListenerIntegrationTest`) tests only - the
+Scope: HTTP-layer (`*ControllerIntegrationTest`) and listener (`*ListenerIntegrationTest`) tests, plus the Kafka consumer-group test - the
 full stack against Testcontainers Postgres and Kafka, with WireMock standing in for the gateway's internal API
 and the tweet service. Unit, repository, client and concurrency tests are not listed here.
 
@@ -78,6 +78,10 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 - The author and every follower, across several follower pages, get one entry (`should_create_an_entry_for_the_author_and_every_follower_when_a_tweet_is_created_across_several_follower_pages`)
 - Each entry stores the author and the exact tweet time; added in step 8 (`should_store_the_author_and_the_tweet_time_in_each_entry_when_a_tweet_is_created`)
 - A redelivered event adds nothing (`should_add_nothing_when_the_same_event_is_redelivered`)
+- A tweet older than the retention adds no entry and costs no gateway call; a newer event under the same key (the
+  sentinel) still lands (`should_add_nothing_and_ask_the_gateway_for_nothing_when_the_tweet_is_older_than_the_retention`).
+  The class pins the mutable clock one second after `TWEET_CREATED_AT`, because the fixed tweet time would otherwise
+  be older than the retention against the real clock
 
 `Retries`
 
@@ -97,7 +101,7 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 - Every entry for the tweet is removed (`should_remove_every_entry_of_the_tweet_when_it_is_deleted`)
 - Other tweets are untouched (`should_leave_other_tweets_untouched_when_a_tweet_is_deleted`)
 - A repeated delete is a no-op (`should_do_nothing_when_the_same_delete_is_repeated`)
-- A delete before the create leaves orphan entries in the feeds; that the feed then skips them is the `MissingData` scenarios of `GET /api/v1/feed`, since the endpoint doesn't exist yet (`should_leave_orphan_entries_when_the_delete_arrives_before_the_create`)
+- A delete before the create leaves orphan entries in the feeds; that the feed then skips them is the `MissingData` scenarios of `GET /api/v1/feed`, since the endpoint doesn't exist yet (`should_leave_orphan_entries_when_the_delete_arrives_before_the_create`; it pins the mutable clock next to the tweet time, because the fan-out skips a tweet older than the retention)
 
 ### `user.unfollowed`
 
@@ -156,6 +160,13 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 - An entry exactly at the cutoff stays - the bound is strict (`should_keep_an_entry_exactly_at_the_cutoff_when_the_job_runs`) - added in step 10
 - Entries delete once the clock moves past the retention (`should_delete_entries_that_age_past_the_retention_when_the_clock_moves_on`) - added in step 10
 - Nothing is deleted when no entry is old enough (`should_delete_nothing_when_no_entry_is_old_enough`) - added in step 10
+
+### Consumer groups
+
+`KafkaListenerGroupsIntegrationTest` - the shared application context against the real broker, read through the Kafka admin client.
+
+- Each of the four listeners reads only its own topic, in its own group `<group-id>-<topic>`; checked from the members'
+  assignments, one case per listener (`should_read_only_its_own_topic_in_its_own_group_when_the_listener_has_started`)
 
 ## Phase 2 - Saved tweets
 

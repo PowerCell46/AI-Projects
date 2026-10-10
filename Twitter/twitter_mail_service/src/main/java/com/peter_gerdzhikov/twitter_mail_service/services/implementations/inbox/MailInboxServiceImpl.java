@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
+import com.peter_gerdzhikov.twitter_mail_service.utilities.Durations;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,7 +33,7 @@ public class MailInboxServiceImpl implements MailInboxService {
             StringRedisTemplate redisTemplate,
             RedisScript<Long> releaseMailClaimScript
     ) {
-        this.claimTtl = claimTtl;
+        this.claimTtl = Durations.requirePositive(claimTtl, "app.mail-inbox.claim-ttl");
         this.redisTemplate = redisTemplate;
         this.releaseMailClaimScript = releaseMailClaimScript;
     }

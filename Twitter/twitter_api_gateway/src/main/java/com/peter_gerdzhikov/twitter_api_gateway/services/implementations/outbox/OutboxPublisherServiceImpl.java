@@ -6,8 +6,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.common.errors.InvalidTopicException;
+import org.apache.kafka.common.errors.RecordBatchTooLargeException;
+import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +25,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class OutboxPublisherServiceImpl implements OutboxPublisherService {
+
+    /**
+     * What Kafka refuses because of the row itself, so sending it again can never work. Anything else (a broker down,
+     * a timeout, a leader election, an authorization problem) is not the row's fault and must not use up its attempts.
+     */
+    private static final List<Class<? extends Throwable>> ROW_SPECIFIC_FAILURES = List.of(
+            RecordTooLargeException.class,
+            RecordBatchTooLargeException.class,
+            InvalidTopicException.class
+    );
 
     private final int batchSize;
 
@@ -55,8 +69,14 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
         int published = 0;
 
         for (Outbox row : pending) {
-            if (!trySend(row)) {
-                recordFailure(row);
+            SendOutcome outcome = trySend(row);
+
+            if (outcome == SendOutcome.RETRY_LATER) {
+                break;
+            }
+
+            if (outcome == SendOutcome.REJECTED) {
+                recordRejection(row);
                 continue;
             }
 
@@ -67,32 +87,63 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
         return published;
     }
 
-    private boolean trySend(Outbox row) {
+    private SendOutcome trySend(Outbox row) {
         try {
             kafkaTemplate
                     .send(row.getTopic(), row.getMessageKey(), row.getPayload())
                     .get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
-            return true;
+
+            return SendOutcome.SENT;
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Interrupted while sending outbox row {}.", row.getId(), e);
-            return false;
+            log.warn("Interrupted while sending outbox row {}; it stays pending.", row.getId(), e);
 
-        } catch (ExecutionException | TimeoutException e) {
-            log.warn("Sending outbox row {} to topic {} failed.", row.getId(), row.getTopic(), e);
-            return false;
+            return SendOutcome.RETRY_LATER;
+
+        } catch (ExecutionException | TimeoutException | KafkaException e) {
+            if (isRowSpecific(e)) {
+                log.warn("Kafka rejected outbox row {} for topic {}.", row.getId(), row.getTopic(), e);
+
+                return SendOutcome.REJECTED;
+            }
+
+            log.warn("Kafka did not take outbox row {} for topic {}; it and the rest of the batch stay pending.",
+                    row.getId(), row.getTopic(), e);
+
+            return SendOutcome.RETRY_LATER;
         }
     }
 
-    private void recordFailure(Outbox row) {
+    private boolean isRowSpecific(Throwable failure) {
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            Throwable candidate = current;
+
+            if (ROW_SPECIFIC_FAILURES.stream().anyMatch(type -> type.isInstance(candidate))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void recordRejection(Outbox row) {
         row.setAttempts(row.getAttempts() + 1);
 
         if (row.getAttempts() >= maxAttempts) {
             row.setStatus(OutboxStatus.FAILED);
-            log.warn("Outbox row {} failed {} times and is left for manual inspection.", row.getId(), row.getAttempts());
+            log.warn("Outbox row {} was rejected {} times and is marked FAILED until someone requeues it.", row.getId(), row.getAttempts());
         }
 
         outboxRepository.save(row);
+    }
+
+    private enum SendOutcome {
+
+        SENT,
+
+        RETRY_LATER,
+
+        REJECTED
     }
 }

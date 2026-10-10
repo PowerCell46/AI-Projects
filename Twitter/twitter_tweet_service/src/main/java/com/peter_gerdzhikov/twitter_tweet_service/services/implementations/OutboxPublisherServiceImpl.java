@@ -6,8 +6,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.common.errors.InvalidTopicException;
+import org.apache.kafka.common.errors.RecordBatchTooLargeException;
+import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +25,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class OutboxPublisherServiceImpl implements OutboxPublisherService {
+
+    /**
+     * What Kafka refuses because of the message itself, so sending it again can never work. Anything else (a broker
+     * down, a timeout, a leader election, an authorization problem) is not the message's fault and must not use up
+     * its attempts.
+     */
+    private static final List<Class<? extends Throwable>> MESSAGE_SPECIFIC_FAILURES = List.of(
+            RecordTooLargeException.class,
+            RecordBatchTooLargeException.class,
+            InvalidTopicException.class
+    );
 
     private final int batchSize;
 
@@ -55,8 +70,14 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
         int published = 0;
 
         for (OutboxMessage message : pending) {
-            if (!trySend(message)) {
-                recordFailure(message);
+            SendOutcome outcome = trySend(message);
+
+            if (outcome == SendOutcome.RETRY_LATER) {
+                break;
+            }
+
+            if (outcome == SendOutcome.REJECTED) {
+                recordRejection(message);
                 continue;
             }
 
@@ -67,35 +88,63 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
         return published;
     }
 
-    private boolean trySend(OutboxMessage message) {
+    private SendOutcome trySend(OutboxMessage message) {
         try {
             kafkaTemplate
                     .send(message.getTopic(), message.getMessageKey(), message.getPayload())
                     .get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
-            return true;
+            return SendOutcome.SENT;
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Interrupted while sending outbox message {}.", message.getId(), e);
+            log.warn("Interrupted while sending outbox message {}; it stays pending.", message.getId(), e);
 
-            return false;
+            return SendOutcome.RETRY_LATER;
 
-        } catch (ExecutionException | TimeoutException e) {
-            log.warn("Sending outbox message {} to topic {} failed.", message.getId(), message.getTopic(), e);
+        } catch (ExecutionException | TimeoutException | KafkaException e) {
+            if (isMessageSpecific(e)) {
+                log.warn("Kafka rejected outbox message {} for topic {}.", message.getId(), message.getTopic(), e);
 
-            return false;
+                return SendOutcome.REJECTED;
+            }
+
+            log.warn("Kafka did not take outbox message {} for topic {}; it and the rest of the batch stay pending.",
+                    message.getId(), message.getTopic(), e);
+
+            return SendOutcome.RETRY_LATER;
         }
     }
 
-    private void recordFailure(OutboxMessage message) {
+    private boolean isMessageSpecific(Throwable failure) {
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            Throwable candidate = current;
+
+            if (MESSAGE_SPECIFIC_FAILURES.stream().anyMatch(type -> type.isInstance(candidate))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void recordRejection(OutboxMessage message) {
         message.setAttempts(message.getAttempts() + 1);
 
         if (message.getAttempts() >= maxAttempts) {
             message.setStatus(OutboxStatus.FAILED);
-            log.warn("Outbox message {} failed {} times and is left for manual inspection.", message.getId(), message.getAttempts());
+            log.warn("Outbox message {} was rejected {} times and is marked FAILED until someone requeues it.", message.getId(), message.getAttempts());
         }
 
         outboxMessageRepository.save(message);
+    }
+
+    private enum SendOutcome {
+
+        SENT,
+
+        RETRY_LATER,
+
+        REJECTED
     }
 }

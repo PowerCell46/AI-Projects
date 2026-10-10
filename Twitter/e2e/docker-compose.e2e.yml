@@ -195,6 +195,7 @@ services:
       MAIL_SMTP_AUTH: "false"
       MAIL_SMTP_STARTTLS: "false"
       MAIL_FROM: twitter-e2e@example.com
+      APP_BASE_URL: http://localhost:5273
     deploy:
       resources:
         limits:

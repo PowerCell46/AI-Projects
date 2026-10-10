@@ -1,7 +1,7 @@
 # Twitter Timeline Service — plan
 
 Everything about one user's relationship to tweets they didn't write: the feed, saved tweets, unique viewers per tweet
-and likes. Designed in two interviews (`/grill-me` 2026-10-03, `/plan-backend` 2026-10-05, spec `../docs/likes-design.md`).
+and likes. Designed in two interviews (`/grill-me` 2026-10-03, `/plan-backend` 2026-10-05; the spec, `docs/likes-design.md`, is in git history at `8238824^`).
 
 **Status: all five phases are built.** The full original plan (step gates, phase sections, test lists, interview record)
 was trimmed on 2026-10-09; it lives in git history (`git log -- PLAN.md`). Scenarios are in `docs/TESTING.md`, calls made

@@ -1,4 +1,4 @@
-# The full stack: the infra from docker-compose.infra.yml plus the four services, built from their Dockerfiles.
+# The full stack: the infra from docker-compose.infra.yml plus the four services and the frontend, built from their Dockerfiles.
 # For local development with the services run from the IDE, start only the infra:
 #   docker compose -f docker-compose.infra.yml up -d
 include:
@@ -6,11 +6,17 @@ include:
 
 x-service: &service
   restart: unless-stopped
+  # Compose's default 10 s would SIGKILL a service while it drains requests; the services wait up to 30 s
+  # (spring.lifecycle.timeout-per-shutdown-phase). The mail service also has a send in flight whose claim would outlive the process
+  stop_grace_period: 40s
   # The shared secrets and tunables. The environment block of each service wins over this file, so the hosts
   # and ports below point at the compose network even when .env holds the localhost values for running on the host
   env_file: .env
 
 services:
+  # Only the gateway and the frontend publish ports. Keep it so: the tweet and timeline services trust the X-User-Id
+  # header from whoever reaches them, and only the gateway should. Never add `ports:` to tweet-service,
+  # timeline-service or mail-service
   gateway:
     <<: *service
     build: ./twitter_api_gateway
@@ -117,6 +123,8 @@ services:
       MAIL_PORT: 1025
       MAIL_SMTP_AUTH: "false"
       MAIL_SMTP_STARTTLS: "false"
+      # The service has no default: the follow email links here. A value in .env still wins
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
     deploy:
       resources:
         limits:
@@ -135,5 +143,27 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_healthy
+      gateway:
+        condition: service_healthy
+
+  # The SPA and the /api proxy to the gateway, on one origin (see frontend/nginx/; docker-compose.prod.yml adds https). It has no env_file: it holds no secrets.
+  # Port 5173 on loopback matches the default CONFIRMATION_LINK_BASE_URL and APP_BASE_URL, so the emailed links open here
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5173:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    depends_on:
       gateway:
         condition: service_healthy

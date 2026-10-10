@@ -12,17 +12,29 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.apache.kafka.common.errors.InvalidTopicException;
+import org.apache.kafka.common.errors.NetworkException;
+import org.apache.kafka.common.errors.NotLeaderOrFollowerException;
+import org.apache.kafka.common.errors.RecordBatchTooLargeException;
+import org.apache.kafka.common.errors.RecordTooLargeException;
+import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
@@ -87,11 +99,12 @@ class OutboxPublisherServiceImplTest {
         assertThat(page.getValue().getPageNumber()).isZero();
     }
 
-    @Test
-    void should_increment_attempts_and_keep_the_message_pending_when_the_send_fails() {
+    @ParameterizedTest
+    @MethodSource("failuresOfTheMessageItself")
+    void should_count_an_attempt_and_keep_the_message_pending_when_kafka_rejects_the_message(Throwable failure) {
         OutboxMessage message = pendingMessage(0, "some-key");
         givenPending(message);
-        givenSendFails();
+        givenSendFailsWith(failure);
 
         int published = publisher.publishPending();
 
@@ -103,10 +116,10 @@ class OutboxPublisherServiceImplTest {
     }
 
     @Test
-    void should_mark_the_message_failed_when_the_send_fails_at_the_last_attempt() {
+    void should_mark_the_message_failed_when_kafka_rejects_it_at_the_last_attempt() {
         OutboxMessage message = pendingMessage(MAX_ATTEMPTS - 1, "some-key");
         givenPending(message);
-        givenSendFails();
+        givenSendFailsWith(new RecordTooLargeException("too large"));
 
         publisher.publishPending();
 
@@ -115,25 +128,72 @@ class OutboxPublisherServiceImplTest {
         verify(outboxMessageRepository).save(message);
     }
 
+    @ParameterizedTest
+    @MethodSource("failuresOfKafkaItself")
+    void should_leave_the_message_pending_and_uncounted_when_kafka_cannot_take_it(Throwable failure) {
+        OutboxMessage message = pendingMessage(MAX_ATTEMPTS - 1, "some-key");
+        givenPending(message);
+        givenSendFailsWith(failure);
+
+        int published = publisher.publishPending();
+
+        assertThat(published).isZero();
+        assertThat(message.getAttempts()).isEqualTo(MAX_ATTEMPTS - 1);
+        assertThat(message.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        verify(outboxMessageRepository, never()).save(any());
+        verify(outboxMessageRepository, never()).delete(any());
+    }
+
     @Test
-    void should_count_a_send_timeout_as_a_failed_attempt() {
+    void should_leave_the_message_pending_and_uncounted_when_the_send_times_out() {
         OutboxMessage message = pendingMessage(0, "some-key");
         givenPending(message);
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(new CompletableFuture<>());
 
         publisher.publishPending();
 
-        assertThat(message.getAttempts()).isEqualTo(1);
+        assertThat(message.getAttempts()).isZero();
+        verify(outboxMessageRepository, never()).save(any());
         verify(outboxMessageRepository, never()).delete(any());
     }
 
     @Test
-    void should_keep_publishing_the_rest_of_the_batch_after_one_message_fails() {
+    void should_never_use_up_the_attempts_of_a_message_however_many_polls_find_kafka_down() {
+        OutboxMessage message = pendingMessage(0, "some-key");
+        givenPending(message);
+        givenSendFailsWith(new TimeoutException("Topic not present in metadata after 5000 ms."));
+
+        for (int poll = 0; poll < MAX_ATTEMPTS * 4; poll++) {
+            publisher.publishPending();
+        }
+
+        assertThat(message.getAttempts()).isZero();
+        assertThat(message.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        verify(outboxMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void should_stop_the_batch_and_leave_the_later_messages_unsent_when_kafka_cannot_take_one() {
         OutboxMessage failing = pendingMessage(0, "failing-key");
-        OutboxMessage healthy = pendingMessage(0, "healthy-key");
-        givenPending(failing, healthy);
+        OutboxMessage later = pendingMessage(0, "later-key");
+        givenPending(failing, later);
         when(kafkaTemplate.send(anyString(), eq("failing-key"), anyString()))
-                .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("broker down")));
+                .thenReturn(CompletableFuture.failedFuture(new TimeoutException("broker down")));
+
+        int published = publisher.publishPending();
+
+        assertThat(published).isZero();
+        verify(kafkaTemplate, never()).send(anyString(), eq("later-key"), anyString());
+        verify(outboxMessageRepository, never()).delete(any());
+    }
+
+    @Test
+    void should_keep_publishing_the_rest_of_the_batch_after_one_message_is_rejected() {
+        OutboxMessage rejected = pendingMessage(0, "rejected-key");
+        OutboxMessage healthy = pendingMessage(0, "healthy-key");
+        givenPending(rejected, healthy);
+        when(kafkaTemplate.send(anyString(), eq("rejected-key"), anyString()))
+                .thenReturn(CompletableFuture.failedFuture(new RecordTooLargeException("too large")));
         when(kafkaTemplate.send(anyString(), eq("healthy-key"), anyString()))
                 .thenReturn(CompletableFuture.completedFuture(sendResult()));
 
@@ -141,11 +201,11 @@ class OutboxPublisherServiceImplTest {
 
         assertThat(published).isEqualTo(1);
         verify(outboxMessageRepository).delete(healthy);
-        verify(outboxMessageRepository).save(failing);
+        verify(outboxMessageRepository).save(rejected);
     }
 
     @Test
-    void should_restore_the_interrupt_flag_and_count_an_attempt_when_interrupted() {
+    void should_restore_the_interrupt_flag_and_leave_the_message_pending_and_uncounted_when_interrupted() {
         OutboxMessage message = pendingMessage(0, "some-key");
         givenPending(message);
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(new CompletableFuture<>());
@@ -154,7 +214,34 @@ class OutboxPublisherServiceImplTest {
         publisher.publishPending();
 
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        assertThat(message.getAttempts()).isZero();
+        verify(outboxMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void should_count_an_attempt_when_the_send_itself_throws_because_kafka_rejects_the_message() {
+        OutboxMessage message = pendingMessage(0, "some-key");
+        givenPending(message);
+        when(kafkaTemplate.send(anyString(), anyString(), anyString()))
+                .thenThrow(new KafkaException("Send failed", new InvalidTopicException("Invalid topics: [some topic]")));
+
+        publisher.publishPending();
+
         assertThat(message.getAttempts()).isEqualTo(1);
+        verify(outboxMessageRepository).save(message);
+    }
+
+    @Test
+    void should_leave_the_message_pending_and_uncounted_when_the_send_itself_throws_because_kafka_is_unreachable() {
+        OutboxMessage message = pendingMessage(0, "some-key");
+        givenPending(message);
+        when(kafkaTemplate.send(anyString(), anyString(), anyString()))
+                .thenThrow(new KafkaException("Send failed", new TimeoutException("Topic some.topic not present in metadata after 5000 ms.")));
+
+        publisher.publishPending();
+
+        assertThat(message.getAttempts()).isZero();
+        verify(outboxMessageRepository, never()).save(any());
     }
 
     @Test
@@ -170,9 +257,9 @@ class OutboxPublisherServiceImplTest {
                 .thenReturn(List.of(messages));
     }
 
-    private void givenSendFails() {
+    private void givenSendFailsWith(Throwable failure) {
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
-                .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("broker down")));
+                .thenReturn(CompletableFuture.failedFuture(failure));
     }
 
     private OutboxMessage pendingMessage(int attempts, String key) {
@@ -186,6 +273,25 @@ class OutboxPublisherServiceImplTest {
                 .attempts(attempts)
                 .createdAt(Instant.parse("2026-01-01T00:00:00Z"))
                 .build();
+    }
+
+    private static Stream<Throwable> failuresOfTheMessageItself() {
+        return Stream.of(
+                new RecordTooLargeException("too large"),
+                new RecordBatchTooLargeException("batch too large"),
+                new InvalidTopicException("invalid topic"),
+                new KafkaException("Send failed", new RecordTooLargeException("too large"))
+        );
+    }
+
+    private static Stream<Throwable> failuresOfKafkaItself() {
+        return Stream.of(
+                new TimeoutException("Topic not present in metadata after 5000 ms."),
+                new NetworkException("disconnected"),
+                new NotLeaderOrFollowerException("leader moved"),
+                new TopicAuthorizationException(Set.of("some.topic")),
+                new IllegalStateException("broker down")
+        );
     }
 
     @SuppressWarnings("unchecked")

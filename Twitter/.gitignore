@@ -1,6 +1,14 @@
 .env
 .env.local
 
+# TLS certificate and key for docker-compose.prod.yml
+certs/
+
+# Demo profile pictures: photos of real people stay on the machine, because the repo is public and a committed file
+# cannot be removed from history. The folder keeps only its README
+twitter_api_gateway/seed-images/*
+!twitter_api_gateway/seed-images/README.md
+
 # Editor / OS
 .idea
 .vscode/

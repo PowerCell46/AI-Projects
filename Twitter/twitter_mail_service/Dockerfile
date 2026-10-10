@@ -38,12 +38,8 @@ USER app
 EXPOSE 8082
 
 # MaxRAMPercentage: the JVM caps max heap at ~25% of container memory by default, leaving most of
-# the allocation unused. UseContainerSupport is not set -- it has been on by default since JDK 10.
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
-
-
-# --- --- Run project --- ---
-
-# docker build -t twitter-mail-service .
-
-# docker run -d --name twitter-mail-service -p 8082:8082 twitter-mail-service
+# the allocation unused. 65% (not more) leaves room for metaspace, thread stacks and network buffers, so a
+# real shortage is a Java OutOfMemoryError in the log and not a silent kill by the container limit.
+# ExitOnOutOfMemoryError: a JVM that survived an OOM is half broken; exiting lets the restart policy bring it back.
+# UseContainerSupport is not set -- it has been on by default since JDK 10.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=65.0", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]

@@ -38,7 +38,7 @@ public class UserConfirmationRequestedEventDTO {
     @Email
     @NotBlank
     @Size(max = MAX_EMAIL_LENGTH)
-    @Pattern(regexp = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$")
+    @Pattern(regexp = "^[\\w.+-]+@([\\w-]+\\.)+[a-zA-Z]{2,}$")
     private String email;
 
     @NotBlank

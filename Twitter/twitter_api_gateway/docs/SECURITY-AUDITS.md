@@ -1,6 +1,6 @@
 # Security audits
 
-Last updated: 2026-10-04
+Last updated: 2026-10-10
 
 The `exploit-hunter` audits of the gateway, one section per phase, condensed from the original per-audit reports
 (dates are the audit dates). Every finding below was re-checked against the code on 2026-10-04: each "fixed" item
@@ -23,7 +23,11 @@ is in place with its test, and each "accepted" item is listed in `PLAN.md` under
 - **A short `JWT_SECRET` was accepted at startup and failed at login (Low), fixed.** Startup now fails below 32 bytes.
 - **Postgres and Kafka were published on all interfaces with default credentials (Medium, dev compose), fixed for
   the ports.** All compose ports now bind `127.0.0.1`. The default credentials and plaintext Kafka are accepted.
-- **`COOKIE_SECURE` defaults to `false` (Low), accepted.** Flipping it breaks plain-HTTP local dev on Safari.
+- **`COOKIE_SECURE` defaulted to `false` (Low), fixed 2026-10-10.** It defaults to `true`; plain-HTTP local dev and the
+  e2e stack set `COOKIE_SECURE=false`.
+- **The seeder's shared password defaulted to a value in the public repo (Medium), fixed 2026-10-10.** `SEED_PASSWORD`
+  has no default; with seeding on, startup fails unless it is 12-72 bytes with a lowercase letter, an uppercase letter
+  and a digit (`DataSeedServiceImplTest`). The seeder stays on by default, so a deployment must set it.
 - **An attacker-chosen path reaches a WARN log line (Low), accepted.** Only reachable authenticated, and forging a
   log line is the worst case.
 - **The constraint-violation WARN carries the offending value, an email address (Low), accepted.** Only the

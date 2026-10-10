@@ -12,7 +12,7 @@ export const PASSWORD_LENGTH_MESSAGE = 'PASSWORD MUST BE 8 TO 72 CHARACTERS';
 export const PASSWORD_COMPOSITION_MESSAGE = 'PASSWORD MUST CONTAIN A LOWERCASE LETTER, AN UPPERCASE LETTER AND A DIGIT';
 
 // These rules mirror RegisterRequestDTO in the gateway; change both sides together.
-const EMAIL_PATTERN = /^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/;
+const EMAIL_PATTERN = /^[\w.+-]+@([\w-]+\.)+[a-zA-Z]{2,}$/;
 
 const EMAIL_MAX_LENGTH = 254;
 

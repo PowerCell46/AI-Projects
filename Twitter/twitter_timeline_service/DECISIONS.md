@@ -216,3 +216,28 @@ One entry per decision: what was chosen, what it was chosen over, and why.
   the size and the id are already valid, so only the cursor can cause one. Any other failure stays `502` / `504`.
 - **`DTOs/client` grouped** into `users`, `follows` and `tweets` (a 7th file would have broken the 5-file rule).
 
+## A `tweet.created` older than the retention is skipped; the follow back-fill is not guarded (2026-10-10)
+
+`FeedFanOutServiceImpl` drops an event whose tweet is older than `app.feed.retention`, after validating it, with an
+info log and no follower lookup. Replays (a new consumer group, expired offsets, a dead-letter retry) bring old tweets
+back, and each one cost a gateway call and entries that the nightly cleanup deletes anyway, so skipping loses nothing.
+The cutoff is the cleanup's own (`clock.instant().minus(retention)`, strictly older), so the two cannot disagree.
+The same check on `user.followed` was left out on purpose: the back-fill is anchored to the clock, not to the event
+time, which is not trusted (a test feeds it `Instant.MIN`), and a replayed follow only re-adds tweets the follower
+would have received anyway. The retention check lives in `utilities/Durations` now, shared by the fan-out, the
+back-fill and the cleanup instead of a third private copy.
+
+## One consumer group per listener (2026-10-10)
+
+The four listeners used to share one group, `twitter-timeline-service`, with four containers of three threads each, so a
+rebalance caused by any one of them (a deploy, a slow poll, a crashed thread) paused all twelve consumers. Each listener
+now sets `groupId = "${spring.kafka.consumer.group-id}-<topic>"`, giving `twitter-timeline-service-tweet-created`,
+`-tweet-deleted`, `-user-followed` and `-user-unfollowed`. Chosen over fixed names in the annotations so the existing
+property stays the one knob for the whole set, and over per-group properties and env vars, which nothing needs. Topics,
+dead-letter topics and concurrency are unchanged. A new group has no committed offsets and starts at `earliest`
+(`auto-offset-reset`), so an environment that ran the old group replays each topic once: `tweet.created` is cut by the
+retention check above, `tweet.deleted` and `user.unfollowed` only delete (the latter only entries older than the
+unfollow's own time), and `user.followed` back-fills again, which is idempotent. A first deploy has nothing to replay.
+The old group's offsets are left to expire. `KafkaListenerGroupsIntegrationTest` reads each group's real assignment
+from the broker and fails when a listener falls back to a shared group.
+

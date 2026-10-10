@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.FeedRetentionService;
+import com.peter_gerdzhikov.twitter_timeline_service.utilities.Durations;
 
 @Service
 public class FeedRetentionServiceImpl implements FeedRetentionService {
@@ -29,7 +30,7 @@ public class FeedRetentionServiceImpl implements FeedRetentionService {
     ) {
         this.clock = clock;
         this.feedEntryRepository = feedEntryRepository;
-        this.retention = requirePositive(retention);
+        this.retention = Durations.requirePositive(retention, "app.feed.retention");
         this.batchSize = requirePositive(batchSize);
     }
 
@@ -45,14 +46,6 @@ public class FeedRetentionServiceImpl implements FeedRetentionService {
         } while (removed == batchSize);
 
         return total;
-    }
-
-    private Duration requirePositive(Duration retention) {
-        if (retention.isZero() || retention.isNegative()) {
-            throw new IllegalStateException("app.feed.retention must be positive, but was " + retention + ".");
-        }
-
-        return retention;
     }
 
     private int requirePositive(int batchSize) {

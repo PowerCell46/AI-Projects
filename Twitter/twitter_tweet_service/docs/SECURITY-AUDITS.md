@@ -1,6 +1,6 @@
 # Security audits
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 The `exploit-hunter` audits of the tweet service, one section per audit, condensed from the original per-audit
 reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md` under its accepted gaps, with a trigger.
@@ -13,7 +13,8 @@ reports (dates are the audit dates). Each "accepted" item is listed in `PLAN.md`
 
 ## Tweet routes (2026-09-30)
 
-- **Any caller who reaches port 8081 can act as any user (High if reachable), accepted.** Identity is the
+- **Any caller who reaches port 8081 can act as any user (Low while only the gateway reaches it, High if anything else
+  can), accepted.** Compose publishes no port for this service (the prod overlay publishes only the frontend). Identity is the
   `X-User-Id` header, trusted as sent, and `getHeader` returns the first value, so a proxy that appends instead of
   replacing would let a client value win. Safe only while the gateway strips `X-User-*` and sets one header (verified
   in gateway phase 4).

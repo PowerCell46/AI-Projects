@@ -21,7 +21,7 @@ public class RegisterRequestDTO {
     @Email
     @NotBlank
     @Size(max = 254)
-    @Pattern(regexp = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$", message = "must be a valid email address")
+    @Pattern(regexp = "^[\\w.+-]+@([\\w-]+\\.)+[a-zA-Z]{2,}$", message = "must be a valid email address")
     private String email;
 
     @NotBlank

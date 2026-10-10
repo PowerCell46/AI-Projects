@@ -43,7 +43,7 @@ class MailInboxServiceIntegrationTest extends AbstractRedisIntegrationTest {
             Long ttlSeconds = redisTemplate.getExpire(key, TimeUnit.SECONDS);
 
             assertEquals(ClaimResult.CLAIMED, result);
-            assertTrue(ttlSeconds >= 290 && ttlSeconds <= 300, "Expected TTL in [290, 300], was " + ttlSeconds);
+            assertTrue(ttlSeconds >= 110 && ttlSeconds <= 120, "Expected TTL in [110, 120], was " + ttlSeconds);
         }
 
         @Test

@@ -9,6 +9,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,15 +19,24 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
 import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
+import com.peter_gerdzhikov.twitter_timeline_service.support.MutableClock;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
 
 class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTest {
+
+    @Autowired
+    private MutableClock clock;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @MockitoSpyBean
     private TweetLikeRepository spiedTweetLikeRepository;
+
+    @AfterEach
+    void resetTheClock() {
+        clock.reset();
+    }
 
     @Nested
     class Deletes {
@@ -84,6 +94,8 @@ class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTes
             UUID authorId = TestIds.userId();
             List<UUID> followers = newUsers(2);
             stubFollowerPages(authorId, List.of(followers));
+            // The fixed tweet time is older than the retention against the real clock, and the fan-out skips such tweets
+            clock.setInstant(TWEET_CREATED_AT.plusSeconds(1));
 
             publish(TWEET_DELETED_TOPIC, tweetId.toString(), tweetDeletedJson(tweetId, authorId));
             publish(TWEET_CREATED_TOPIC, tweetId.toString(), tweetCreatedJson(tweetId, authorId, TWEET_CREATED_AT));

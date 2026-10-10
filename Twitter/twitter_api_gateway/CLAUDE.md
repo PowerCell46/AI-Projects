@@ -32,8 +32,8 @@ Tests use **Testcontainers**, never embedded fakes — a running Docker daemon i
 ## Demo data
 
 `DataSeedRunner` seeds 12 confirmed users, follows, tweets, replies, likes and profile pictures after startup when the
-`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). How it works, the pictures and
-the passwords: `seed-images/README.md`.
+`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). `SEED_PASSWORD` has no default
+and is checked at startup. How it works, the pictures and the passwords: `seed-images/README.md`.
 
 ## Spring Boot 4
 
@@ -88,7 +88,7 @@ Root-level packages, under `com.peter_gerdzhikov.twitter_api_gateway`:
 - **Seed tweets, replies and likes are not retried** (2026-10-08): if the tweet or timeline service is down at the first
   start, the users and follows stay and the tweets (replies, likes) are skipped, because the seed only runs on an empty `users` table. Wipe the
   database to seed again.
-- **No rate limiting on the proxied read routes** (audit 2026-10-08): `author-tweets`, `feed` and `tweets/count` fan out to other services. Add a per-user limit here before any public deployment. Logged in `../frontend/PLAN.md` (accepted gaps, phases 4–5).
+- **No rate limiting on the proxied read routes** (audit 2026-10-08): `author-tweets`, `feed` and `tweets/count` fan out to other services. Accepted, no limiter planned (decision 2026-10-10); revisit on abuse or load with a per-user limit here. Logged in `../frontend/PLAN.md` (accepted gaps, phases 4–5).
 
 ## Standing rules
 
