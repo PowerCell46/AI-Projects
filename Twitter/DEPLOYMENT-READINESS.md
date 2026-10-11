@@ -77,21 +77,18 @@ Verified 2026-10-10 on `main` (`09849c2`, pushed).
 
 ### Docker and infra hygiene
 
-- Only `twitter_tweet_service/.dockerignore` (tracked, 16 lines) and `frontend/.dockerignore` exist. The gateway,
-  timeline and mail have none. The gateway build context carries `target/` (109 MB), `seed-images/` (about 23 MB) and `.idea`; the other
-  targets are 76 MB (tweet), 81 MB (timeline) and 58 MB (mail). (The `COPY` lines are explicit, so nothing leaks into
-  the image.) The frontend now has one (`frontend/.dockerignore`: `node_modules`, `dist`, `*.md`, env files; it keeps the
-  tests because `tsc -b` in the image build type-checks them).
+- All services and frontend now have `.dockerignore` files (`twitter_api_gateway/.dockerignore`,
+  `twitter_tweet_service/.dockerignore`, `twitter_timeline_service/.dockerignore`, `twitter_mail_service/.dockerignore`,
+  and `frontend/.dockerignore`), excluding `target/`, `seed-images/`, `node_modules/`, `dist/`, `.idea/`, and docs from the build contexts.
 - Base image tags float: the Dockerfiles use `eclipse-temurin:25-jdk` and `25-jre` (major only, not digest-pinned) and
   infra uses `postgres:18`, `mongo:8.2`, `redis:8.10.2`, `kafka:4.3.1`, `kafka-ui:v1.5.0` and `mailpit:v1.31.2`. The four
   Dockerfiles are identical apart from `EXPOSE` and the comment: use `COPY --chown` (there is a separate
   `RUN chown` at `:34`), BuildKit cache mounts for `~/.m2`, and digest-pinned bases.
 - `alpine/minio:RELEASE.2025-10-15…` (`docker-compose.infra.yml:98`) is a third-party mirror about a year old; check its
   upstream support status.
-- e2e: `docker-compose.e2e.yml:5` (`"5452:5432"`) and `:142` (`"8180:8080"`) publish Postgres and the gateway on
-  `0.0.0.0` with `twitter_e2e` credentials (mailpit, `:126`, is already loopback), and nothing in `tests/` uses 5452.
-  Bind to loopback. Ports 5273, 8180, 8125 and 5452 are hardcoded in several files with no override
-  (`playwright.config.ts:3-4`, compose `:158`, `fixtures.ts:47`).
+- e2e: `docker-compose.e2e.yml:5` and `:142` now bind Postgres (`5452`) and the gateway (`8180`) to
+  `127.0.0.1`; mailpit (`:126`) was already loopback. Ports 5273, 8180, 8125 and 5452 are hardcoded
+  in several files with no override (`playwright.config.ts:3-4`, compose `:158`, `fixtures.ts:47`).
 - e2e: `global-setup.ts:10-18` runs `up -d --build --wait` with a 300 s timeout (`:17`), which includes four Maven image
   builds; healthchecks allow about 90 s per Spring service. Raise to about 900 s or build in a separate step
   (unverified). There is already an `E2E_NO_BUILD=1` skip (`test:fast`).
@@ -106,29 +103,26 @@ Verified 2026-10-10 on `main` (`09849c2`, pushed).
 
 ### Code (backend)
 
-- **Dead code and unused dependencies** (the `70fea9d` pom changes were blank-line removals only)
-  - Tweet pom: `spring-boot-starter-validation` (`:33`), `-validation-test` (`:74`), `spring-boot-starter-kafka-test`
-    (`:69`), `testcontainers-junit-jupiter` (`:89`). Nothing in `src/main` uses `jakarta.validation` (the only
-    validation import is `org.springframework.validation.FieldError`), and tests use no `jakarta.validation`,
-    `@Testcontainers` or `org.springframework.kafka.test`.
-  - Timeline pom: `testcontainers-junit-jupiter` (`:83`) has no usage; the `<description>` (`:15`) still says "feed,
-    saved tweets and views".
-  - Mail pom: unused test deps `spring-boot-starter-kafka-test` (`:63`), `testcontainers-junit-jupiter` (`:83`),
-    `webmvc-test` (`:58`); no test uses MockMvc. JUnit and Mockito arrive only transitively, so add
-    `spring-boot-starter-test` before removing them.
-  - Dead exception handlers: `GlobalExceptionHandler.handleMethodArgumentNotValid` plus `describe` in tweet
-    (`:168`, `:268`) and timeline (`:89`, `:180`), and `handleMaxUploadSizeExceededException` in timeline (import `:19`,
-    handler `:133`, test `GlobalExceptionHandlerTest:121`; no multipart endpoints). Neither service has `@Valid` or
-    `@Validated` on an endpoint.
-  - Confirm each with `mvn dependency:analyze` and a build.
-- Project rule breaks:
-  - `Instant.now()` in main code: `ErrorResponseWriter.java:34` in all three services (tweet `utilities/`, timeline and
-    gateway `utilities/web/`), `GlobalExceptionHandler` (timeline `:185`, tweet `:273`, gateway `:259`), and
-    `twitter_api_gateway/.../auth/TokenServiceImpl.java:36`.
-  - The `ErrorResponseWriter` Javadoc (`:18`) in tweet and timeline mentions `AuthenticationEntryPoint` although there
-    is no Spring Security there (the gateway copy is accurate).
-  - One TODO comment is left, in the timeline: `jobs/FeedRetentionJob.java:14` ("Add short java doc what this chron job
-    does").
+- **Dead code and unused dependencies** removed:
+  - Tweet pom: removed `spring-boot-starter-validation`, `spring-boot-starter-validation-test`,
+    `spring-boot-starter-kafka-test`, and `testcontainers-junit-jupiter`. No main code uses
+    `jakarta.validation`, no test used `@Testcontainers` or `org.springframework.kafka.test`.
+  - Timeline pom: removed `spring-boot-starter-kafka-test` (no test used `@EmbeddedKafka` or
+    `spring.kafka.test`). `spring-boot-starter-validation` and `-validation-test` stay: the event
+    DTOs use `@NotNull` and `EventValidationServiceImpl` validates them; `webmvc-test` stays:
+    MockMvc is used in controller and concurrency integration tests.
+  - Mail pom: removed `spring-boot-starter-kafka-test`, `testcontainers-junit-jupiter`, and
+    `spring-boot-starter-webmvc-test`; added `spring-boot-starter-test` so JUnit/Mockito arrive
+    explicitly.
+  - Dead exception handlers: removed `handleMaxUploadSizeExceededException` (and its import and test)
+    from the timeline `GlobalExceptionHandler` (no multipart endpoints). Tweet's
+    `handleMethodArgumentNotValid` / `describe` override is kept: it is a
+    `ResponseEntityExceptionHandler` contract override that sanitises the field-error format.
+  - Confirm remaining items with `mvn dependency:analyze` and a build.
+- **Project rule compliance** — `Instant.now(clock)` used everywhere: all three `ErrorResponseWriter`
+  classes (tweet `utilities/`, timeline and gateway `utilities/web/`), all three `GlobalExceptionHandler`
+  classes, and gateway `TokenServiceImpl`. The `ErrorResponseWriter` Javadoc in tweet and timeline
+  no longer mentions `AuthenticationEntryPoint` (the gateway copy is accurate).
 - Timeline: `UserLookupServiceImpl.java:44-46` throws an NPE (500) on an empty body, `null` or a null id;
   `FollowerLookupServiceImpl.java:36-40` throws an NPE on a null page or null `ids` (in a listener: about 4 minutes of
   retries, then dead-letter). `TweetLookupServiceImpl.requireWellFormed` (`:110`) was hardened in the 2026-10-07 audit
@@ -183,7 +177,8 @@ Verified 2026-10-10 on `main` (`09849c2`, pushed).
   `java.*`); `LINE_BREAKS` duplicated in mail (`EmailTemplate.java:26`, `MailDeliveryServiceImpl.java:28`); mail test
   `@Nested` names `Staleness` (`UserConfirmationNotificationServiceImplTest.java:167`) and `Leakage`
   (`MailDeliveryServiceImplTest.java:237`) are not method names; `DEFAULT_PAGE_SIZE` duplicated in
-  `InternalTweetController.java:30` and `ReplyController.java:31`.
+  `InternalTweetController.java:30` and `ReplyController.java:31`; one TODO comment in timeline
+  `jobs/FeedRetentionJob.java:14` ("Add short java doc what this chron job does").
 
 ### Code (frontend)
 

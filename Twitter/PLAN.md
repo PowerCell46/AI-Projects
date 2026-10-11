@@ -27,13 +27,3 @@ Each service owns its own backlog:
   unique views and likes (phases 4–5: the like endpoints and counter, the likes UI and `/liked`), in Postgres. Designed via `/grill-me` 2026-10-03; three phases, all built 2026-10-03 (the feed, saved tweets, views). Its plan also holds
   the gateway steps (internal endpoints, `user.unfollowed`, routes) and the tweet-service steps (internal batch
   read, `views` removed).
-
----
-
-e2e doesn't have README.md like SignalFlow
-
-in the docker compose we must have a setup with nginx acting like a load balancer and two instances of the api gateway service
-
-frontend has to be added to the docker compose + Dockerfile for it (nginx configuration) ✅ **Done** (2026-10-10): `frontend/Dockerfile`, `frontend/nginx/` and the `frontend` service on `127.0.0.1:5173`. ✅ **Done** (2026-10-10): two gateway instances (`gateway`, `gateway-2`) behind nginx round robin; the outbox poller uses `SKIP LOCKED` and the cleanup job and seeder an advisory lock (`twitter_api_gateway/DECISIONS.md`). Not run end to end yet
-
-make claude generate a graph of the architecture of the project

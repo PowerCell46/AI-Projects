@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_tweet_service.controllers;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
@@ -50,6 +51,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final Clock clock;
+
+    public GlobalExceptionHandler(Clock clock) {
+        this.clock = clock;
+    }
 
     private static final String UNPROCESSABLE_REQUEST_MESSAGE = "The request could not be processed.";
 
@@ -270,6 +277,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ErrorResponseDTO errorBody(HttpStatusCode status, List<String> messages) {
-        return new ErrorResponseDTO(status.value(), messages, Instant.now().toEpochMilli());
+        return new ErrorResponseDTO(status.value(), messages, Instant.now(clock).toEpochMilli());
     }
 }

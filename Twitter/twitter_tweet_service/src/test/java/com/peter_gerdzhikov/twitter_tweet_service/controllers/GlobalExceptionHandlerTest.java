@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_tweet_service.controllers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -47,7 +48,7 @@ import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUn
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
+    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler(Clock.systemUTC());
 
     @Test
     void should_return_400_for_a_missing_or_invalid_caller_identity() {

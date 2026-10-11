@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -41,7 +42,7 @@ class TokenServiceImplTest {
         SecretKey secretKey = securityConfiguration.jwtSecretKey(SECRET);
         JwtEncoder jwtEncoder = securityConfiguration.jwtEncoder(secretKey);
         jwtDecoder = securityConfiguration.jwtDecoder(secretKey);
-        tokenService = new TokenServiceImpl(TTL, jwtEncoder);
+        tokenService = new TokenServiceImpl(TTL, jwtEncoder, Clock.systemUTC());
     }
 
     @Test

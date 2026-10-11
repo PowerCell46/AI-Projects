@@ -12,7 +12,7 @@
     <artifactId>twitter_timeline_service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>twitter_timeline_service</name>
-    <description>Timeline service of the Twitter clone: feed, saved tweets and views</description>
+    <description>Timeline service of the Twitter clone: feed, saved tweets, views and likes</description>
     <properties>
         <java.version>25</java.version>
         <wiremock.version>3.13.2</wiremock.version>
@@ -75,11 +75,6 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation-test</artifactId>
             <scope>test</scope>
         </dependency>
@@ -93,11 +88,7 @@
             <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
+
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>

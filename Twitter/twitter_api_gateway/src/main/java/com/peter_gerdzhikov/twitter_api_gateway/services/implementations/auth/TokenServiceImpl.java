@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.auth;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -21,19 +22,21 @@ public class TokenServiceImpl implements TokenService {
 
     private final JwtEncoder jwtEncoder;
 
-    public TokenServiceImpl(@Value("${app.jwt.ttl}") Duration ttl, JwtEncoder jwtEncoder) {
+    private final Clock clock;
+
+    public TokenServiceImpl(
+            @Value("${app.jwt.ttl}") Duration ttl,
+            JwtEncoder jwtEncoder,
+            Clock clock
+    ) {
         this.ttl = ttl;
         this.jwtEncoder = jwtEncoder;
+        this.clock = clock;
     }
 
-    /**
-     * Stamps {@code iat}/{@code exp} from the system clock, not the injected {@code Clock}: the decoder
-     * validates {@code exp} against the system clock, so a token minted against a moved test clock would
-     * come out already expired.
-     */
     @Override
     public String mint(User user) {
-        Instant issuedAt = Instant.now();
+        Instant issuedAt = Instant.now(clock);
         JwtClaimsSet claims = JwtClaimsSet
                 .builder()
                 .subject(user.getId().toString())

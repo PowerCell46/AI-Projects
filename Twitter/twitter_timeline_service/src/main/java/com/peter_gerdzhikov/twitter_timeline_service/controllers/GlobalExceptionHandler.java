@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_timeline_service.controllers;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
@@ -16,7 +17,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -36,6 +36,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final Clock clock;
+
+    public GlobalExceptionHandler(Clock clock) {
+        this.clock = clock;
+    }
 
     private static final String UNPROCESSABLE_REQUEST_MESSAGE = "The request could not be processed.";
 
@@ -130,15 +136,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
-            MaxUploadSizeExceededException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        return ResponseEntity
-                .status(status)
-                .headers(headers)
-                .body(errorBody(status, List.of("The uploaded file is too large.")));
-    }
-
-    @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
             HttpMediaTypeNotSupportedException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return ResponseEntity
@@ -182,6 +179,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ErrorResponseDTO errorBody(HttpStatusCode status, List<String> messages) {
-        return new ErrorResponseDTO(status.value(), messages, Instant.now().toEpochMilli());
+        return new ErrorResponseDTO(status.value(), messages, Instant.now(clock).toEpochMilli());
     }
 }

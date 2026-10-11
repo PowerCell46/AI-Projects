@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.twitter_api_gateway.configurations.security;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -110,14 +112,18 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
+    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey, Clock clock) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
                 .withSecretKey(jwtSecretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        decoder.setJwtValidator(requiredClaimsValidator());
+        decoder.setJwtValidator(requiredClaimsValidator(clock));
 
         return decoder;
+    }
+
+    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
+        return jwtDecoder(jwtSecretKey, Clock.systemUTC());
     }
 
     /**
@@ -131,9 +137,11 @@ public class SecurityConfiguration {
         return converter;
     }
 
-    private OAuth2TokenValidator<Jwt> requiredClaimsValidator() {
+    private OAuth2TokenValidator<Jwt> requiredClaimsValidator(Clock clock) {
+        JwtTimestampValidator timestampValidator = new JwtTimestampValidator();
+        timestampValidator.setClock(clock);
         return new DelegatingOAuth2TokenValidator<>(List.of(
-                JwtValidators.createDefault(),
+                timestampValidator,
                 new JwtClaimValidator<String>("sub", this::isUserId),
                 new JwtClaimValidator<String>("username", Objects::nonNull),
                 new JwtClaimValidator<String>("email", Objects::nonNull),

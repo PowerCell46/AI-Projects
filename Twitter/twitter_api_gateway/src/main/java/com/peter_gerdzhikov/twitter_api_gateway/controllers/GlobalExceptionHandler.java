@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.controllers;
 
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
@@ -46,6 +47,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final Clock clock;
+
+    public GlobalExceptionHandler(Clock clock) {
+        this.clock = clock;
+    }
 
     private static final String UPSTREAM_TIMEOUT_MESSAGE = "Upstream service timed out.";
 
@@ -256,6 +263,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ErrorResponseDTO errorBody(HttpStatusCode status, List<String> messages) {
-        return new ErrorResponseDTO(status.value(), messages, Instant.now().toEpochMilli());
+        return new ErrorResponseDTO(status.value(), messages, Instant.now(clock).toEpochMilli());
     }
 }

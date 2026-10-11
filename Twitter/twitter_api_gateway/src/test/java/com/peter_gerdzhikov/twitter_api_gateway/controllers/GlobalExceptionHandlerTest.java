@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -43,7 +44,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRan
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
+    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler(Clock.systemUTC());
 
     @Test
     void should_return_409_for_a_unique_constraint_violation() {

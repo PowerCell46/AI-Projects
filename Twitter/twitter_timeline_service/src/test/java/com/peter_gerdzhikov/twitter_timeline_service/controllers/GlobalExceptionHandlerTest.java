@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_timeline_service.controllers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +22,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.context.request.ServletWebRequest;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.ErrorResponseDTO;
@@ -37,7 +37,7 @@ import com.peter_gerdzhikov.twitter_timeline_service.exceptions.views.InvalidTwe
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
+    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler(Clock.systemUTC());
 
     @Test
     void should_return_400_for_a_missing_or_invalid_caller_identity() {
@@ -114,19 +114,6 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
         assertThat(response.getBody().getMessages()).containsExactly(RequestBodyTooLargeException.MESSAGE);
-    }
-
-    @Test
-    void should_return_413_for_a_multipart_upload_over_the_spring_limit() {
-        ResponseEntity<Object> response = exceptionHandler.handleMaxUploadSizeExceededException(
-                new MaxUploadSizeExceededException(1024),
-                new HttpHeaders(),
-                HttpStatus.CONTENT_TOO_LARGE,
-                new ServletWebRequest(new MockHttpServletRequest()));
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
-        assertThat(((ErrorResponseDTO) response.getBody()).getMessages())
-                .containsExactly("The uploaded file is too large.");
     }
 
     @Test
