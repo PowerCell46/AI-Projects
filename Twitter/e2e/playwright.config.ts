@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const FRONTEND_PORT = 5273
-const GATEWAY_URL = 'http://localhost:8180'
+const FRONTEND_PORT = process.env.E2E_FRONTEND_PORT ?? '5273'
+const GATEWAY_URL = `http://localhost:${process.env.E2E_GATEWAY_PORT ?? '8180'}`
 
 export default defineConfig({
     testDir: './tests',

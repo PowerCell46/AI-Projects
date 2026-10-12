@@ -2,85 +2,19 @@
 
 Updated 2026-10-11 (`ae79f96`, branch `main`). Only open items remain.
 
-## Before the first deployment
-
-- [ ] **Copy the seed photos to the production host** (`twitter_api_gateway/seed-images/`, yours to
-  replace). Files over 5,242,880 bytes are skipped with a WARN: `stiliyan.jpg` and `gosho.jpg`
-  currently are.
-
 ## Accepted gaps (revisit when relevant)
 
 - DLT replication factor is hardcoded to 1 (mail `KafkaTopicConfiguration.java:16`, timeline `:17`):
   make it a property when a second Kafka broker arrives.
 - The mail service does not filter `@seed.local`: a later real follow of a demo user would email
   that address.
-- No Kafka listener health indicator; the compose healthchecks hit `/actuator/health`, so a
-  `DEGRADED` outbox does not fail them.
-- Plain http between containers (one host, accepted); the seed photos and demo passwords are yours
-  to manage.
-- Git history still holds the old audit documents (including `70fea9d`), and each service's
-  `PLAN.md` / `DECISIONS.md` still lists accepted gaps, several now pointing at stubs in the audit
-  files (for example gateway `PLAN.md:82-85`, mail `PLAN.md:108-123`, timeline `PLAN.md:58`,
-  `DECISIONS.md:122-125`, tweet `PLAN.md:70`, frontend `PLAN.md:81,344,353,356`). Clean those
-  references up or accept them; a history rewrite needs a force-push.
-- Open and accepted security findings now live in the git-ignored `security-private/`.
+- Git history still holds the old audit documents (including `70fea9d`); removing them needs a history
+  rewrite with a force-push.
 
 ## P2: cleanup
 
-### Docs
-
-- Gateway `DECISIONS.md` still has 47 "step N" references although `PLAN.md` was trimmed to a
-  phase table (some of them are frontend-plan steps).
-- Timeline docs: `CLAUDE.md:7-9` omits `/api/v1/author-tweets/*` (route at
-  `AuthorTweetsController.java:19`); `PLAN.md:43` only says "tweets by ids, tweets by author" and
-  the `/page` read is named only in code (`TweetLookupServiceImpl.java:36`); `DECISIONS.md`'s 43
-  "step N" references point nowhere because the steps were trimmed (`PLAN.md:6`);
-  `docs/TESTING.md:19` and `:100` are stale ("Written `@Disabled` in step 5…", "endpoint doesn't
-  exist yet"), `:33` gives the old key set without likes, `likedByMe` or `replyCount`, and
-  `:11-12,162,266,355,448` keep the "written `@Disabled` first" wording although no `@Disabled`
-  remains in the timeline tests.
-- Tweet docs: `PLAN.md:48` still says "Out of scope: tweets by user"; the route list
-  (`PLAN.md:25-28`) and `CLAUDE.md:3-9` omit the by-author, page and count routes
-  (`InternalTweetController.java:34,39,48`, `TweetController.java:61`), which are described only in
-  `DECISIONS.md:80,181`; `src/test/resources/application-test.properties:1-4` repeats the main
-  Kafka logging lines (`application.properties:102-104`).
-- Mail docs: `CLAUDE.md:70` still names "the `@Disabled` test catalog of steps 2 and 10" (none
-  remains in `src/test`); `CLAUDE.md:49` places validate/claim/send/mark in the notification
-  service although they now live in `MailEventValidationService` and `MailDispatchService`
-  (`PLAN.md:27-33` is right); `PLAN.md:22` says infra is in `../docker-compose.yml` (redis and
-  mailpit are in `docker-compose.infra.yml:149,171`; `CLAUDE.md:16` is right); `CLAUDE.md:8-9`
-  says "numbered steps with gates" while `PLAN.md:9-10` says the gates were trimmed.
-- Frontend `PLAN.md`: `:349` says "Path segments are not encoded in ENDPOINTS", but
-  `api/endpoints.ts:7` has `segment()`; the "Out of scope" list (`:378-381`) still names profile
-  pages, follow UI, the tweet-details page, the edit-account page and containerisation, and only
-  containerisation is unbuilt; a stray blank line at `:26` breaks the status table, and lines 3-4
-  have an unbalanced `**`; `:79` says "78/78 green 3x" but there are 79 specs now.
-- `frontend/PLAN.md` (32,184 bytes) and `DECISIONS.md` (34,884 bytes) record the same
-  step-by-step results and `DECISIONS.md` holds superseded decisions (for example "POST button has
-  no handler yet", `:50`). Mark them historical or trim.
-- Root `README.md` does not describe the seeder's 12 `@seed.local` users or the e2e ports and
-  prerequisites (it says only `npm test` in `e2e/`, and there is no `e2e/README.md`).
-  `seed-images/README.md` still ends with a dated to-do list ("Still to add or fix (as of
-  2026-10-08)").
-- `.claude/skills/java-junit` is the only tracked file under `.claude`, while the other skills are
-  global (`~/.claude/skills` has `java-code-style` and `frontend-code-style` but no `java-junit`).
-  All four service `CLAUDE.md` files mandate `java-junit` (for example gateway `CLAUDE.md:55`), so
-  a fresh clone lacks the skills the docs require.
-
 ### Docker and infra hygiene
 
-- Base image tags float: the Dockerfiles use `eclipse-temurin:25-jdk` and `25-jre` (major only,
-  not digest-pinned) and infra uses `postgres:18`, `mongo:8.2`, `redis:8.10.2`, `kafka:4.3.1`,
-  `kafka-ui:v1.5.0` and `mailpit:v1.31.2`. The four Dockerfiles are identical apart from `EXPOSE`
-  and the comment: use `COPY --chown` (there is a separate `RUN chown` at `:34`), BuildKit cache
-  mounts for `~/.m2`, and digest-pinned bases.
-- `alpine/minio:RELEASE.2025-10-15…` (`docker-compose.infra.yml:98`) is a third-party mirror about
-  a year old; check its upstream support status.
-- e2e: ports 5273, 8180, 8125 and 5452 are hardcoded in several files with no override
-  (`playwright.config.ts:3-4`, compose `:158`, `fixtures.ts:47`).
-- e2e: `global-setup.ts:10-18` runs `up -d --build --wait` with a 300 s timeout (`:17`), which
-  includes four Maven image builds; healthchecks allow about 90 s per Spring service. Raise to
-  about 900 s or build in a separate step. There is already an `E2E_NO_BUILD=1` skip (`test:fast`).
 - e2e never touches a production build, an SPA fallback or `/api` through a real proxy (`webServer`
   runs `npm run dev`, `playwright.config.ts:19-24`). The frontend container exists now, so a smoke
   project against it can be added.

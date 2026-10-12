@@ -1,8 +1,11 @@
 # Twitter Frontend — plan
 
+> Historical record (marked 2026-10-11): the per-phase build account below is kept as written. "Status",
+> "Accepted gaps", "Carried over", "Left open" and "Out of scope" stay current.
+
 **Status: phases 4–5 (profile view: API, then UI; `profile-view-design.md`) designed via `/grill-me` on 2026-10-08
 (Q40–Q59) and built 2026-10-08 (steps 25–40; the UI's visual check was waived).** Phase 3 (tab row, People, back-fill on follow) designed via `/grill-me` on 2026-10-04 (Q24–Q39) and built
-2026-10-04 (steps 14–24; the visual check was waived).** Phase 2 (feed) was designed via `/grill-me` (Q1–Q23) and built 2026-10-04. Phase 1 (the "Hadal Descent"
+2026-10-04 (steps 14–24; the visual check was waived). Phase 2 (feed) was designed via `/grill-me` (Q1–Q23) and built 2026-10-04. Phase 1 (the "Hadal Descent"
 auth flow) was built 2026-10-01; its plan is in git history (`git show 95502e1:./PLAN.md` from this folder) and its
 still-open items are under "Carried over" below. The replies UI and the tweet page are phase 3 of
 `../twitter_tweet_service/PLAN.md` (steps 23-30), built 2026-10-07.
@@ -23,7 +26,6 @@ touching any `.ts`/`.tsx`/`.css`.
 |---|---|---|---|
 | 2 | Feed (steps 1–13) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04" |
 | 3 | Tab row, People, back-fill on follow (steps 14–24) | 2026-10-04 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)"; `docs/SECURITY-AUDITS.md` in the gateway; audit reports in the tweet and timeline services |
-
 | 4 | Profile API (steps 25–29) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08" |
 | 5 | Profile UI (steps 30–40) | 2026-10-08 | `SECURITY-FINDINGS.md`, "Audit — 2026-10-08 (profile page ...)" |
 
@@ -52,7 +54,7 @@ complete; phase 5 built the UI on it.
   one replaced, cookie and `Authorization` dropped).
 - **Tests:** gateway, tweet and timeline `mvn verify` green 3× (scenario lists in each `TESTING.md`); `e2e/tests/profile.spec.ts`
   (9 API scenarios) and the whole e2e suite 67/67 green 3× from a fresh stack.
-- **Audit (2026-10-08, `SECURITY-FINDINGS.md`):** one Medium (no rate limit, accepted gap below), three Lows (under
+- **Audit (2026-10-08, `../security-private/root-SECURITY-FINDINGS-open.md`):** one Medium (no rate limit, accepted gap below), three Lows (under
   Left open). Step 29's gate was waived for the Medium.
 
 ### What was built (phase 5, Profile UI, steps 30–40)
@@ -77,8 +79,8 @@ complete; phase 5 built the UI on it.
 - **Own posts (Q52):** on your own profile a new post shows at the top and the count rises (`useOwnProfilePosts`:
   posts published after the page opened).
 - **Tests:** 1146 Vitest tests; `e2e/tests/profile-ui.spec.ts` (11 journeys); the whole e2e suite 78/78 green 3× from
-  fresh stacks.
-- **Audit (2026-10-08, `SECURITY-FINDINGS.md`):** no new findings; finding 5 (`usePagedList` cursor progress) still
+  fresh stacks (the follow-email spec, added after the exit run, makes 79 today).
+- **Audit (2026-10-08, `SECURITY-FINDINGS.md`):** no new findings; finding 5 (`../security-private/frontend-SECURITY-FINDINGS-open.md` #5, `usePagedList` cursor progress) still
   open as a Low with one more consumer.
 - **Style review:** about 50 findings fixed, including the shared `GlowButton`, `utils/clickTarget.ts`, `ProfileStatus`
   and `withProfilePictureUrl`; not applied: splitting `ProfileEditSheet`, `useFocusTrap` order.
@@ -101,7 +103,7 @@ complete; phase 5 built the UI on it.
   network-trust trigger.
 - **No `NEW POSTS` check on a profile.** **Trigger:** people keep a profile open to watch it.
 - **No display names (Q51);** phase 2's gap holds.
-- **Shortcut: no rate limit on the proxied read routes** (audit 2026-10-08, Medium; `SECURITY-FINDINGS.md`). One
+- **Shortcut: no rate limit on the proxied read routes** (audit 2026-10-08, Medium; `../security-private/root-SECURITY-FINDINGS-open.md` #1). One
   `author-tweets` request with `size=100` fans out to three services and four queries, and `/tweets/count` counts every
   tweet of an author; the feed has the same exposure. **Decision (2026-10-10):** no rate limiting is planned. **Trigger:** abuse or load → a per-user
   limit at the gateway on all proxied read routes.
@@ -189,8 +191,8 @@ steps 18–23 build the UI on top.
   8 UI journeys, Q38); `mvn verify` green 3× in the tweet service (267), the gateway (844) and the timeline service
   (496). Scenario lists: the backend `TESTING.md` files; the frontend and e2e specs.
 - **Audit:** no Critical or High; two Mediums found and fixed, the Lows are under Left open
-  (`SECURITY-FINDINGS.md`, "Audit — 2026-10-04 (phase 3 ...)", and `docs/SECURITY-AUDITS.md` in the
-  gateway, and the audit reports in the tweet and timeline services). Closed: phase 2's "A new user can't follow anyone" and the gateway's "No
+  (the open ones in `../security-private/`, the fixed ones in `SECURITY-FINDINGS.md`, "Audit — 2026-10-04
+  (phase 3 ...)", and each service's `docs/SECURITY-AUDITS.md`). Closed: phase 2's "A new user can't follow anyone" and the gateway's "No
   frontend caller yet".
 - **Waived:** step 24's visual check (see Left open).
 
@@ -341,26 +343,26 @@ No question needed re-asking.
 - **Step 12 gate waived (2026-10-04):** the visual check at 1440 / 600 / 320 px, reduced motion on and off, and iPhone
   Safari (thumb reach of `POST`, compose keyboard, safe areas) was not signed off; the user will raise design and
   scalability follow-ups later.
-- **Gateway session cookie `Secure` defaults to off (Low, `SECURITY-FINDINGS.md` #2):** default to `true` before any
-  deployment.
-- **Path segments are not encoded in `ENDPOINTS` (Informational, #3).**
+- **Gateway session cookie `Secure` defaults to off (Low, `../security-private/frontend-SECURITY-FINDINGS-open.md` #2):**
+  default to `true` before any deployment.
+- **Path segments are encoded in `ENDPOINTS` (`segment()`); still unencoded: `backendPath` (takes any path) and the client-side `tweetPath` (Informational, `../security-private/frontend-SECURITY-FINDINGS-open.md` #3).**
 - **Style leftovers:** the SVG path in `FillIcon.tsx` and a few test titles in the older `e2e/tests/feed.spec.ts` and
   `views.spec.ts` exceed 120 columns.
 - **Phase 3 audit (2026-10-04):** two Mediums found and fixed in step 24 (the tweet service's by-author sort defeated its
   index; the timeline read a gateway `404` for a wrong secret as "unfollowed" and deleted the back-fill, so the follow
   check now answers `200 {"following": ...}`). The tweet service's `since` `500` was fixed on 2026-10-09
   (`twitter_tweet_service/docs/SECURITY-AUDITS.md`). Still open, all Low unless noted:
-  - **Frontend (`SECURITY-FINDINGS.md` #5):** `usePagedList` follows a cursor with no progress check, so a server that
-    returns empty pages with a cursor that never advances, or no `nextCursor`, makes it refetch forever. Not reachable
-    against the real gateway.
-  - **Timeline** (`twitter_timeline_service/docs/SECURITY-AUDITS.md`): a retry after an unfollow re-inserts rows and a
+  - **Frontend (`../security-private/frontend-SECURITY-FINDINGS-open.md` #5):** `usePagedList` follows a cursor with no
+    progress check, so a server that returns empty pages with a cursor that never advances, or no `nextCursor`, makes it
+    refetch forever. Not reachable against the real gateway.
+  - **Timeline** (`../security-private/timeline-SECURITY-AUDITS-open.md`): a retry after an unfollow re-inserts rows and a
     dead-lettered event leaves them; no per-pair dampening of follow toggling (2 internal calls + 50 commits per
     event); `FEED_BACKFILL_SIZE` above 100 starts and then dead-letters every follow; events that can never succeed are
     retried ~4 minutes each; a far-past `occurredAt` skips the 7-day window; a forged self-follow event deletes the
     user's own tweets from their feed; a malformed event's text reaches the error log; the poison-event tests cover
     only a missing `occurredAt`.
   - **Gateway:** nothing found on the follow check (`twitter_api_gateway/docs/SECURITY-AUDITS.md`).
-- **Phase 4 audit (2026-10-08, `SECURITY-FINDINGS.md`):** Medium logged as a gap (above); open Lows: `PATCH /users/me`
+- **Phase 4 audit (2026-10-08, `../security-private/root-SECURITY-FINDINGS-open.md` #1–4):** Medium logged as a gap (above); open Lows: `PATCH /users/me`
   accepts a `birthdate` outside Postgres's range and `\u0000` in `bio` / `location`, which fail as a `409` / `500` instead
   of `400` (add a lower bound and a control-character check); the birthdate is visible to every logged-in user
   (the form should say so); the tweet and timeline services trust the network for `/internal/**` and `X-User-Id`.
@@ -374,8 +376,8 @@ No question needed re-asking.
 
 ## Out of scope
 
-Everything in brief §9; edit and delete of your own posts; an image viewer; clickable links or mentions; profile
-pages, follow UI, search; the tweet-details page; the edit-account page; frontend containerisation.
+Everything in brief §9; edit and delete of your own posts; an image viewer; clickable links or mentions; search;
+the edit-account page.
 
 ## Interview record (`/grill-me`, 2026-10-04)
 

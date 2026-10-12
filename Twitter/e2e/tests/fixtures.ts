@@ -44,7 +44,7 @@ interface MailpitMessage {
     Text: string;
 }
 
-const MAILPIT_URL = 'http://127.0.0.1:8125';
+const MAILPIT_URL = `http://127.0.0.1:${process.env.E2E_MAILPIT_PORT ?? '8125'}`;
 
 export const FEED_POLL_TIMEOUT_MS = 30_000;
 

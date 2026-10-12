@@ -104,6 +104,15 @@ stay published too.
 
 Do not run the full stack and services started from the IDE at the same time: they use the same ports.
 
+## Demo data
+
+The first start with an empty database seeds 12 confirmed demo users (`<username>@seed.local`; passwords in Setup):
+Stiliyan, Kristian, Kristyian, Gosho, Gabi, Gabi2, Hristo, Bobkata, Atanas, Stanimir, Bogdan and Kaloyan. Eight share
+`SEED_PASSWORD`; Stiliyan, Kristian, Gosho and Gabi have their own (`SEED_PASSWORD_<NAME>`). The seeder adds follows
+between about a third of all pairs (no emails sent), 3 tweets per user, 0–3 replies per tweet from other users, and
+likes on about 30% of the others' tweets. Profile pictures come from `twitter_api_gateway/seed-images/` (see its
+README; the photos are not in git). `SEED_ENABLED=false` turns seeding off; the test profile and the e2e stack set it.
+
 ## Frontend
 
 The full stack serves the built SPA at `http://localhost:5173`: `frontend/Dockerfile` builds it and nginx
@@ -145,7 +154,14 @@ MinIO keys. A setting that the overlay does not list keeps its default; to chang
 ## End-to-end tests
 
 `e2e/` has its own `docker-compose.e2e.yml` with throw-away credentials and different ports, so it does not touch
-the stacks above. Run it with `npm test` in `e2e/`.
+the stacks above. See `e2e/README.md` for prerequisites, scripts and ports. In short:
+
+```sh
+cd e2e
+npm install
+npx playwright install chromium   # once: the browsers
+npm test                          # build the stack, run the 79 specs, tear it all down
+```
 
 ## Troubleshooting
 

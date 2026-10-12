@@ -40,9 +40,9 @@ tweet details read with `replyCount` (`../twitter_tweet_service/PLAN.md`, phase 
     no check. Your own post's like counts; the liked list is your own only. Items carry `views`, `likes`, `likedByMe`.
   - Lists: opaque keyset cursor, `size` 1–100 (default 20), `size + 1` rows read; rows whose tweet or author is gone are
     skipped, so a short page is not the end, only `nextCursor: null` is.
-- **Downstreams:** gateway (follower ids, authors, follow check), tweet service (tweets by ids, tweets by author). A read
-  fails when one fails: `502` unreachable or `5xx`, `504` timeout, no partial pages. Timeouts 1s connect, 3s read, so the
-  details read's two sequential calls stay under the gateway's 10s.
+- **Downstreams:** gateway (follower ids, authors, follow check), tweet service (tweets by ids, newest summaries by
+  author, one author's tweets paged). A read fails when one fails: `502` unreachable or `5xx`, `504` timeout, no
+  partial pages. Timeouts 1s connect, 3s read, so the details read's two sequential calls stay under the gateway's 10s.
 - **Kafka:** consumes `tweet.created`, `tweet.deleted`, `user.unfollowed`, `user.followed`. An invalid event is
   dead-lettered without retries, the rest retried with backoff (2s → 60s, 8 retries), then `<topic>-dlt`. Never log a payload.
 
@@ -55,7 +55,7 @@ tweet details read with `replyCount` (`../twitter_tweet_service/PLAN.md`, phase 
 - **The opposite-order concurrency scenario does not prove the counter upsert's lock order:** removing the `ORDER BY`
   did not fail it in five variants (`DECISIONS.md`). **Decide:** a test that observes the lock order, or accept the sort
   as a defence with no regression guard.
-- **Back-fill findings still open** (`docs/SECURITY-AUDITS.md`, all Low unless noted): a retry after an unfollow
+- **Back-fill findings still open** (`../security-private/timeline-SECURITY-AUDITS-open.md`, all Low unless noted): a retry after an unfollow
   re-inserts rows and a dead-lettered event leaves them; no dampening of follow toggling; a null tweet-service body,
   item or field is retried ~4 minutes each; a malformed event's raw text reaches the log through the Kafka error
   handler; tests miss non-UUID ids, non-JSON and tombstones (Info). **Decide:** fix the cheap ones (null answers as an
@@ -68,6 +68,9 @@ Ranking or an algorithmic feed; retweets, quotes; notifications; account deletio
 other people's liked lists; a "who liked this" list.
 
 ## Accepted gaps — revisit when the named trigger lands
+
+(Audit references below point at `../security-private/timeline-SECURITY-AUDITS-open.md`, which holds the open and
+accepted findings; the public `docs/SECURITY-AUDITS.md` keeps only fixed findings.)
 
 - **Tweets are fetched over HTTP on every read, and a read needs both downstreams.** **Trigger:** feed p95 above ~200 ms
   or availability complaints → cache tweets by id (Redis, evicted on `tweet.deleted`, plus a `tweet.updated` event), or

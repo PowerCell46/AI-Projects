@@ -1,6 +1,6 @@
 # Test catalog
 
-Last updated: 2026-10-10
+Last updated: 2026-10-11
 
 Scope: HTTP-layer (`*ControllerIntegrationTest`) and listener (`*ListenerIntegrationTest`) tests, plus the Kafka consumer-group test - the
 full stack against Testcontainers Postgres and Kafka, with WireMock standing in for the gateway's internal API
@@ -8,15 +8,15 @@ and the tweet service. Unit, repository, client and concurrency tests are not li
 
 Hand-maintained - see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
-Each phase's scenarios are written `@Disabled` first and approved before any feature code; each feature step
-enables its group (see `PLAN.md`). One `@Nested` class per group, bodies empty until the step that enables it.
+Each phase's scenarios were written `@Disabled` first and approved before any feature code; every group is
+enabled now. One `@Nested` class per group.
 
 Negative async assertions ("nothing was added") use a sentinel event under the same key, sent after the event
 under test. Kafka and dead-letter assertions are filtered by the test's own key.
 
 ## Phase 1 - Feed
 
-Written `@Disabled` in step 5 and approved. Enabled so far: the three listener suites (step 8) and the feed endpoint (step 9).
+All enabled: the three listener suites (step 8) and the feed endpoint (step 9).
 
 ### `GET /api/v1/feed`
 
@@ -32,7 +32,7 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 - An empty feed returns 200, `items: []`, `nextCursor: null` (`should_return_an_empty_page_when_the_feed_is_empty`)
 - Entries come newest first (`should_return_the_newest_entries_first_when_the_feed_has_several`)
 - Entries with the same tweet time are ordered by tweet id (`should_break_ties_on_the_tweet_time_by_tweet_id_when_entries_share_a_timestamp`)
-- Each item carries the tweet and the author from the stubs; the item's exact key set is `id, views, savedByMe, content, createdAt, updatedAt, images, author` (`should_return_the_tweet_and_the_author_from_the_stubs_when_an_entry_exists`)
+- Each item carries the tweet and the author from the stubs; the item's exact key set is `id, views, savedByMe, likes, likedByMe, replyCount, content, createdAt, updatedAt, images, author` (`should_return_the_tweet_and_the_author_from_the_stubs_when_an_entry_exists`)
 - An author without a picture has `profilePictureUrl: null`; added in step 9 (`should_return_a_null_picture_url_when_the_author_has_no_picture`)
 - Only the caller's entries appear (`should_return_only_the_callers_entries_when_other_users_have_entries`)
 
@@ -101,7 +101,7 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 - Every entry for the tweet is removed (`should_remove_every_entry_of_the_tweet_when_it_is_deleted`)
 - Other tweets are untouched (`should_leave_other_tweets_untouched_when_a_tweet_is_deleted`)
 - A repeated delete is a no-op (`should_do_nothing_when_the_same_delete_is_repeated`)
-- A delete before the create leaves orphan entries in the feeds; that the feed then skips them is the `MissingData` scenarios of `GET /api/v1/feed`, since the endpoint doesn't exist yet (`should_leave_orphan_entries_when_the_delete_arrives_before_the_create`; it pins the mutable clock next to the tweet time, because the fan-out skips a tweet older than the retention)
+- A delete before the create leaves orphan entries in the feeds; that the feed then skips them is covered by the `MissingData` scenarios of `GET /api/v1/feed` (`should_leave_orphan_entries_when_the_delete_arrives_before_the_create`; it pins the mutable clock next to the tweet time, because the fan-out skips a tweet older than the retention)
 
 ### `user.unfollowed`
 
@@ -170,7 +170,7 @@ Written `@Disabled` in step 5 and approved. Enabled so far: the three listener s
 
 ## Phase 2 - Saved tweets
 
-Written `@Disabled` in step 14 and approved. Enabled in step 16: the saved-tweets endpoints and the `tweet.deleted` additions. Concurrency scenarios (50 parallel saves, save racing unsave) live in `SavedTweetConcurrencyIntegrationTest` (step 19: 50 parallel saves of one tweet, save racing unsave) and are not listed here.
+All enabled (step 16): the saved-tweets endpoints and the `tweet.deleted` additions. Concurrency scenarios (50 parallel saves, save racing unsave) live in `SavedTweetConcurrencyIntegrationTest` (step 19: 50 parallel saves of one tweet, save racing unsave) and are not listed here.
 
 ### `PUT` / `DELETE` / `GET /api/v1/saved-tweets`
 
@@ -274,7 +274,7 @@ Frontend plan step 2. New group `SavedByMe` in `FeedControllerIntegrationTest` a
 
 ## Phase 3 - Views
 
-Written `@Disabled` in step 20 and approved. Enabled: the views endpoints (step 22), the inline counts and the `tweet.deleted` additions (step 23). Concurrency scenarios (50 viewers on one tweet, one viewer 50x in parallel, two overlapping reports in opposite order) live in `ViewConcurrencyIntegrationTest` (step 27) and are not listed here. The `[tweet]` scenario (repeated `GET /tweets/{id}` leaves the document unchanged, no `views` in the response) lives in the tweet service's `docs/TESTING.md`, step 24.
+All enabled: the views endpoints (step 22), the inline counts and the `tweet.deleted` additions (step 23). Concurrency scenarios (50 viewers on one tweet, one viewer 50x in parallel, two overlapping reports in opposite order) live in `ViewConcurrencyIntegrationTest` (step 27) and are not listed here. The `[tweet]` scenario (repeated `GET /tweets/{id}` leaves the document unchanged, no `views` in the response) lives in the tweet service's `docs/TESTING.md`, step 24.
 
 ### `POST` / `GET /api/v1/views`
 
@@ -363,7 +363,7 @@ New group `Views` in `FeedControllerIntegrationTest` and in `SavedTweetControlle
 
 ## Phase 4 - Likes
 
-Written `@Disabled` in step 28 and approved. All enabled: the like endpoints and `LikeServiceImpl` (step 30), the inline fields and the `tweet.deleted` additions (step 31). Repository, unit and concurrency tests (`LikeConcurrencyIntegrationTest`, step 34) are not listed here. The gateway side is in the gateway's `TESTING.md`, the API journeys in `e2e/tests/likes.spec.ts`.
+All enabled: the like endpoints and `LikeServiceImpl` (step 30), the inline fields and the `tweet.deleted` additions (step 31). Repository, unit and concurrency tests (`LikeConcurrencyIntegrationTest`, step 34) are not listed here. The gateway side is in the gateway's `TESTING.md`, the API journeys in `e2e/tests/likes.spec.ts`.
 
 ### `PUT` / `DELETE` / `GET /api/v1/likes`
 
@@ -415,7 +415,7 @@ Written `@Disabled` in step 28 and approved. All enabled: the like endpoints and
 - Nothing liked returns 200, `items: []`, `nextCursor: null`, no downstream call (`should_return_an_empty_page_when_nothing_is_liked`)
 - The most recently liked comes first (`should_return_the_most_recently_liked_first_when_several_are_liked`)
 - Likes with the same `liked_at` are ordered by tweet id (`should_break_ties_on_the_liked_time_by_tweet_id_when_likes_share_a_timestamp`)
-- Each item is in the feed's shape, exact key set `id, views, likes, likedByMe, savedByMe, content, createdAt, updatedAt, images, author`, `likedByMe: true` (`should_return_the_tweet_and_the_author_from_the_stubs_when_a_tweet_is_liked`; step 31)
+- Each item is in the feed's shape, exact key set `id, views, likes, likedByMe, replyCount, savedByMe, content, createdAt, updatedAt, images, author`, `likedByMe: true` (`should_return_the_tweet_and_the_author_from_the_stubs_when_a_tweet_is_liked`; step 31)
 - An author without a picture has `profilePictureUrl: null` (`should_return_a_null_picture_url_when_the_author_has_no_picture`)
 - Only the caller's likes appear (`should_return_only_the_callers_likes_when_other_users_have_likes`)
 - Liking again does not move a tweet up (`should_not_move_a_tweet_up_when_it_is_liked_again`)
@@ -456,7 +456,7 @@ New group `Likes` in `FeedControllerIntegrationTest` and in `SavedTweetControlle
 
 ## Replies (tweet service phase 2) - reply count and tweet details
 
-Written `@Disabled` in replies step 11 (tweet service `PLAN.md`); the groups are enabled in steps 18 and 19, all enabled now. The gateway side is in the gateway's `docs/TESTING.md`.
+All enabled (steps 18 and 19). The gateway side is in the gateway's `docs/TESTING.md`.
 
 ### `replyCount` on items
 

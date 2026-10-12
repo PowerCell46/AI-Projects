@@ -53,3 +53,11 @@ renderers: it exists to fail the context. The base compose file now passes
 `APP_BASE_URL` (default `http://localhost:5173`), the e2e compose file passes its own origin, and the prod overlay
 already took it from `PUBLIC_URL`. A mail service run from the IDE needs `APP_BASE_URL` in `.env`.
 
+## A stopped Kafka listener reports DOWN (2026-10-11)
+
+`configurations/health/KafkaListenerHealthIndicator` reports `DOWN` with the stopped listener ids while any
+`KafkaListenerEndpointRegistry` container is not running; otherwise the service answered healthy while silently
+consuming nothing. `DOWN` turns `/actuator/health` to 503 and fails the compose health check, unlike the outbox's
+`DEGRADED`, because a stopped listener never recovers on its own. One registry check covers both listeners,
+present and future.
+

@@ -2,16 +2,6 @@
 
 ## Audit — 2026-10-08
 
-**Scope:** gateway `PATCH /api/v1/users/me`; tweet service `GET /internal/v1/tweets/by-author/{authorId}/page` and `GET /api/v1/tweets/count`; timeline `GET /api/v1/author-tweets/{authorId}` and its gateway route (`TimelineRoutesConfiguration`, `CallerIdentityFilters`, `SecurityConfiguration`). Found by reading the code; the stack was not running, so the demonstrations below were not executed.
-
-No Critical or High findings. The identity path is sound: the gateway strips every `X-User-*` header and the cookie/`Authorization`, then sets `X-User-Id` from the verified JWT; both downstream services parse it as a canonical UUID.
-
-0 findings fixed; the open ones are kept privately.
-
-### 2. (moved out of the public repo, 2026-10-10)
-
-### 3. (moved out of the public repo, 2026-10-10)
-
 ### Considered, not a finding
 
 - **Injection:** `authorId` and the cursor reach Mongo only as a typed `UUID` and `Instant`. The cursor is re-encoded and compared, so it accepts only the exact canonical form. The timeline's `RestClient` URI templates encode values (default `TEMPLATE_AND_VALUES`), so `&` in a cursor cannot add parameters.

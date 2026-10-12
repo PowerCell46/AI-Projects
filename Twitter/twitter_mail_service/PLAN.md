@@ -19,7 +19,7 @@ on `mvn verify` green 3× in a row.
 - **Stack:** Java 25, Spring Boot 4.1.1, package `com.peter_gerdzhikov.twitter_mail_service`, port **8082**.
   webmvc and actuator (health only), kafka, mail, `angus-mail`, data-redis, validation, Lombok. No `/api/v1`, no
   security starter. SignalFlow's OWASP sanitizer and jsoup are left out (nothing here renders untrusted HTML).
-- **Infra (root `../docker-compose.yml`):** `redis` (`--appendonly yes`, required `REDIS_PASSWORD`) and `mailpit`
+- **Infra (root `../docker-compose.infra.yml`):** `redis` (`--appendonly yes`, required `REDIS_PASSWORD`) and `mailpit`
   (SMTP `127.0.0.1:1025`, UI `127.0.0.1:8025`), both bound to `127.0.0.1`.
 - **SMTP defaults are Gmail (Q9):** `smtp.gmail.com:587`, auth and STARTTLS on, 10s timeouts. `MAIL_FROM` and
   `APP_BASE_URL` have no default, so the app refuses to start without them, with a `MAIL_FROM` that is not an address, or
@@ -100,6 +100,9 @@ Nothing. The follow email's look was never reviewed in Mailpit (step 12's gate, 
 - Gmail quota handling.
 
 ## Accepted gaps — revisit when the named trigger lands
+
+(Audit references below point at `../security-private/mail-SECURITY-AUDITS-open.md`, which holds the open and
+accepted findings; the public `docs/SECURITY-AUDITS.md` keeps only fixed findings.)
 
 - **One duplicate email per crash or Redis blip between send and mark.** The at-least-once window. **Permanent.**
 - **Blocking retries hold a partition** for up to about 4 minutes while SMTP is down. **Trigger:** latency

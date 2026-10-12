@@ -25,7 +25,9 @@ Where things live: calls made while building `DECISIONS.md`, test catalog `docs/
 - **Routes:** `POST /api/v1/tweets` (multipart, `201`; body cap 21 037 056 bytes, other routes 8 KB; images removed if
   the transaction fails), `GET /{id}`, `GET /{id}/images/{imageId}`, `PUT /{id}` (author only, text only, no event),
   `DELETE /{id}` (author only, hard delete with its `tweet.deleted` message in one transaction, images removed after
-  commit, replies removed with it).
+  commit, replies removed with it), `GET /count?authorId=` (`{"count": n}`, `0` for an unknown author). Internal reads
+  for the timeline (trusted network, no secret): `GET /internal/v1/tweets?ids=`, `GET /by-author/{authorId}?since=&limit=`
+  (`[{id, createdAt}]`, newest first, for the back-fill) and `GET /by-author/{authorId}/page` (whole tweets, keyset-paged).
 - **Replies:** `replies` collection, routes under `/api/v1/tweets/{tweetId}/replies` (create, keyset-paged list, edit by
   the author, delete by the reply's or the tweet's author). `Tweet.replyCount` moves only by `$inc`, in the same
   transaction: create inserts then `+1`, delete removes then `-1`. `ConflictRetrier` retries write conflicts for ~2 s,
@@ -38,14 +40,14 @@ Where things live: calls made while building `DECISIONS.md`, test catalog `docs/
 
 - **Phase 3 visual check waived** (step 30): the details page with a long thread, an edited reply and the edit and
   delete states at 1440 and 320 px was not looked at by hand.
-- **The reply thread follows a cursor with no progress check** (`usePagedList`, frontend audit finding 5). No trigger
+- **The reply thread follows a cursor with no progress check** (`usePagedList`, frontend audit finding 5 in `../security-private/frontend-SECURITY-FINDINGS-open.md`). No trigger
   today.
 
 ---
 
 ## Out of scope
 
-Timelines, feeds, "tweets by user", retweets, quotes, likes, bookmarks, hashtags, mentions, search; editing images;
+Timelines, feeds, a public tweets-by-user list, retweets, quotes, likes, bookmarks, hashtags, mentions, search; editing images;
 soft delete; views and unique viewers (timeline service); geolocation; user data in tweet responses. Replies: replies
 to replies; images, likes, saves or views on replies; notifications; live updates of a thread; edit history.
 
@@ -67,7 +69,7 @@ to replies; images, likes, saves or views on replies; notifications; live update
 - **Scheduled jobs run on every instance.** **Trigger:** a second instance → a lock (e.g. ShedLock's Mongo provider).
 - **Dev Mongo has no auth** (bound to `127.0.0.1`). **Trigger:** any shared environment → auth plus a replica-set keyfile.
 - **A large `content` part is read into memory before it is rejected** (up to the 21 MB create cap), and **up to 10 file
-  parts are parsed before the 4-image limit applies** (`docs/SECURITY-AUDITS.md`, 2026-09-30). **Trigger:** a caller path
+  parts are parsed before the 4-image limit applies** (`../security-private/tweet-SECURITY-AUDITS-open.md`, 2026-09-30). **Trigger:** a caller path
   that isn't authenticated and metered → a per-part size cap and Tomcat's `max-part-count` set to 5.
 - **Tweet text keeps control and bidirectional characters.** **Trigger:** the first consumer that renders `content` →
   sanitise there, or reject control characters on write.

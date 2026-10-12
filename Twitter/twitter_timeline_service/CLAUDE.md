@@ -5,7 +5,8 @@ the feed, saved tweets, unique viewers per tweet and likes (like, unlike, your o
 post). It consumes `tweet.created`, `tweet.deleted` (tweet service), `user.followed` and `user.unfollowed` (gateway), and
 reads tweets and authors from the tweet service and the gateway's `/internal/v1/**` over HTTP. It knows nothing about
 authentication: the gateway (`../twitter_api_gateway`) proxies `/api/v1/feed`, `/api/v1/saved-tweets/**`, `/api/v1/views`,
-`/api/v1/likes/**` and `/api/v1/tweet-details/{tweetId}` (one tweet as a feed item, for the tweet page) to it and tells it
+`/api/v1/likes/**`, `/api/v1/tweet-details/{tweetId}` (one tweet as a feed item, for the tweet page) and
+`/api/v1/author-tweets/{authorId}` (one author's tweets as feed items, for the profile page) to it and tells it
 who is calling through the `X-User-Id` header.
 
 `PLAN.md` is the design in short, the open items and the accepted gaps with their triggers: five phases, all done, the

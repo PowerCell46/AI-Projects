@@ -1,9 +1,10 @@
 ## What this is
 
-The tweets service of the Twitter clone: create (with up to 4 images), read, edit the text, delete, and the
-`tweet.created` / `tweet.deleted` events. It knows nothing about authentication: the gateway
+The tweets service of the Twitter clone: create (with up to 4 images), read, edit the text, delete, an author's tweet
+count, and the `tweet.created` / `tweet.deleted` events. It knows nothing about authentication: the gateway
 (`../twitter_api_gateway`) proxies `/api/v1/tweets/**` to it and tells it who is calling through the
-`X-User-Id` header. It looks users up at the gateway's `/internal/v1/users` (`UserLookupService`,
+`X-User-Id` header. The timeline service reads tweets back over `/internal/v1/tweets` (by ids, newest summaries by
+author, one author's tweets paged). It looks users up at the gateway's `/internal/v1/users` (`UserLookupService`,
 `INTERNAL_API_SECRET` as `X-Internal-Secret`, 32+ bytes, no default; `GATEWAY_INTERNAL_URL`) to name reply authors. Only the create route takes multipart; the body-size filter refuses it elsewhere (`415`). `PLAN.md` is the design, what is left open and the accepted gaps. Read it
 before starting a task. Calls made *during* implementation go in `DECISIONS.md`. The events it produces are
 documented in `docs/EVENTS.md`.

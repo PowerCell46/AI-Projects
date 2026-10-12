@@ -5,8 +5,8 @@ topics (contracts in `../twitter_api_gateway/docs/EVENTS.md`), renders an HTML +
 template and sends it over SMTP. A Redis inbox dedupes, so a Kafka redelivery never sends the same email twice,
 short of a crash between send and mark.
 
-`PLAN.md` is the backlog and the design: two phases (confirmation email, then follow email), numbered steps with
-gates. Read it before starting a task. Calls made *during* implementation go in `DECISIONS.md`. It is a port of
+`PLAN.md` is the design and the backlog: two phases (confirmation email, then follow email), both built; the
+per-step gates were trimmed and the scenarios live in `docs/TESTING.md`. Read it before starting a task. Calls made *during* implementation go in `DECISIONS.md`. It is a port of
 `../../SignalFlow/signal_flow_mail_service`: port from there rather than reinventing.
 
 ## Running the project
@@ -46,7 +46,7 @@ Hard rules - these hold whether or not the skill is loaded:
 - Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation. The renderers are pure and have no interface (`PLAN.md`, step 4).
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`, or an explicit constructor when `@Value` parameters are also needed. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
-- Listeners stay thin - validate, key, render, claim, send and mark all live in the `...NotificationService`; the listener only delegates.
+- Listeners stay thin - validate, claim, send and mark live in `MailEventValidationService` and `MailDispatchService` (shared by both emails); key and render stay in the `...NotificationService` and the renderers. The listener only delegates.
 - No HTTP surface beyond actuator `health` - no `/api/v1`, no security starter. Nothing else consumes this service over HTTP.
 - Anything that compares against "now" injects the `Clock` bean; never call `Instant.now()` in main code.
 - Never log the payload, the address or the token - only `eventId`, user ids and the SMTP code.
@@ -67,7 +67,7 @@ Root-level packages, under `com.peter_gerdzhikov.twitter_mail_service`:
 ## Standing rules
 
 - A behaviour change ships with its test change **in the same commit**.
-- **Never delete, `@Disabled`, or weaken an assertion to make a build pass without explicit approval.** The one exception is the `@Disabled` test catalog of steps 2 and 10, which the plan enables step by step.
+- **Never delete, `@Disabled`, or weaken an assertion to make a build pass without explicit approval.**
 - Never report a suite that didn't run (for example, no Docker) as passing.
 - **No step starts on a red or missing test, and each step ends green.** Nothing in phase 2 starts until phase 1's final gate passes and the gateway's `user.followed` change is committed.
 - Tests are deterministic: no `Thread.sleep` (bounded Awaitility), unique ids and `<uuid>@example.com` recipients per test, time from the mutable test clock, negative async assertions use a same-key sentinel record, DLT assertions are filtered by the test's own key.

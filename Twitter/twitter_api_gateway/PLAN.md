@@ -30,6 +30,8 @@ private accounts; anonymous profile viewing; refresh tokens; image resizing; sea
 and hiding people the caller already follows.
 
 ## Accepted gaps — revisit when the named trigger lands
+(Audit references below point at `../security-private/gateway-SECURITY-AUDITS-open.md`, which holds the open and
+accepted findings; the public `docs/SECURITY-AUDITS.md` keeps only fixed findings.)
 - **One `enabled` flag means "confirmed"; no roles/admin.** Trigger: first ban, or moderation features.
 - **No rate limiting** except the resend cooldown (login capped only by bcrypt-12; register, uploads, follows and the
   tweet routes unthrottled). Trigger: abuse.

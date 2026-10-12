@@ -1,8 +1,11 @@
+# Every host-side port has an override with the default after ":-", so a clash is fixed by
+# exporting E2E_FRONTEND_PORT / E2E_GATEWAY_PORT / E2E_MAILPIT_PORT / E2E_POSTGRES_PORT.
+# The Playwright config and fixtures read the same variables (see README.md).
 services:
   postgres-api-gateway:
     image: postgres:18
     ports:
-      - "127.0.0.1:5452:5432"
+      - "127.0.0.1:${E2E_POSTGRES_PORT:-5452}:5432"
     environment:
       POSTGRES_USER: twitter_e2e
       POSTGRES_PASSWORD: twitter_e2e
@@ -125,7 +128,7 @@ services:
   mailpit:
     image: axllent/mailpit:v1.31.2
     ports:
-      - "127.0.0.1:8125:8025"
+      - "127.0.0.1:${E2E_MAILPIT_PORT:-8125}:8025"
     deploy:
       resources:
         limits:
@@ -141,7 +144,7 @@ services:
   gateway:
     build: ../twitter_api_gateway
     ports:
-      - "127.0.0.1:8180:8080"
+      - "127.0.0.1:${E2E_GATEWAY_PORT:-8180}:8080"
     environment:
       API_GATEWAY_DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/twitter_e2e
       API_GATEWAY_DATASOURCE_USERNAME: twitter_e2e
@@ -157,7 +160,7 @@ services:
       MINIO_ACCESS_KEY: twitter-e2e
       MINIO_SECRET_KEY: twitter-e2e-secret
       # The confirmation link the tests read out of the outbox points at the e2e frontend.
-      CONFIRMATION_LINK_BASE_URL: http://localhost:5273/confirm
+      CONFIRMATION_LINK_BASE_URL: http://localhost:${E2E_FRONTEND_PORT:-5273}/confirm
       # No cooldown, so a test can resend straight after registering.
       CONFIRMATION_RESEND_COOLDOWN: 0s
       # The confirmation link the tests click is read from the email the mail service sends, so the outbox
@@ -197,7 +200,7 @@ services:
       MAIL_SMTP_AUTH: "false"
       MAIL_SMTP_STARTTLS: "false"
       MAIL_FROM: twitter-e2e@example.com
-      APP_BASE_URL: http://localhost:5273
+      APP_BASE_URL: http://localhost:${E2E_FRONTEND_PORT:-5273}
     deploy:
       resources:
         limits:

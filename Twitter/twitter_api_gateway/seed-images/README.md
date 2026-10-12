@@ -45,8 +45,3 @@ It runs on a background thread after `MinioBucketInitializer`. The timeline serv
 healthy, so the likes retry for about three minutes. `SEED_ENABLED=false` turns it off (tests and the e2e stack do).
 The full compose stack mounts this folder read-only (`SEED_PICTURES_DIR`). Follow emails go to the `@seed.local`
 addresses, so run the mail service against Mailpit locally.
-
-Still to add or fix (as of 2026-10-08):
-
-- Missing: `hristo`, `bobkata`, `atanas`, `stanimir`, `bogdan`, `kaloyan`.
-- Over the 5 MB limit, shrink and replace: `stiliyan.jpg` (7.4 MB), `gosho.jpg` (5.5 MB).

@@ -6,15 +6,28 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const COMPOSE_ARGS = '-p twitter-e2e -f docker-compose.e2e.yml'
 
+const BUILD_TIMEOUT_MS = 900_000
+
+const UP_TIMEOUT_MS = 300_000
+
 export default function globalSetup() {
-    const buildFlag = process.env.E2E_NO_BUILD === '1' ? '' : '--build'
-    const command = `docker compose ${COMPOSE_ARGS} up -d ${buildFlag} --wait`
+    // The four Maven image builds run first with their own generous timeout, so a slow
+    // first build fails as a build error instead of a stack-start timeout.
+    if (process.env.E2E_NO_BUILD !== '1') {
+        execSync(`docker compose ${COMPOSE_ARGS} build`, {
+            cwd: __dirname,
+            stdio: 'inherit',
+            timeout: BUILD_TIMEOUT_MS,
+        })
+    }
+
+    const command = `docker compose ${COMPOSE_ARGS} up -d --wait`
 
     try {
         execSync(command, {
             cwd: __dirname,
             stdio: 'inherit',
-            timeout: 300_000,
+            timeout: UP_TIMEOUT_MS,
         })
     } catch (error) {
         console.error('Failed to start e2e stack in globalSetup, cleaning up...', error)

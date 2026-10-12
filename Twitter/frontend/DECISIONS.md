@@ -1,5 +1,8 @@
 # Frontend decisions
 
+> Historical record (marked 2026-10-11): a chronological build journal, kept as written. Standing frontend
+> conventions live in `CLAUDE.md`.
+
 Calls made while building, kept short. `PLAN.md` holds the design.
 
 ## Feed step 3 - one `ApiError`, two senders

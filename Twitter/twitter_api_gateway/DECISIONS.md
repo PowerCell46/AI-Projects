@@ -3,57 +3,57 @@
 Non-obvious calls made *during* implementation, the ones hard to re-derive from the code. Design settled up front
 lives in `PLAN.md`; conventions live in `CLAUDE.md`.
 
-One bullet per decision: what was chosen and why, in a line or two. Group by topic and keep the plan step in
-parentheses so references from `docs/TESTING.md` and the audits still resolve. Skip anything the
+One bullet per decision: what was chosen and why, in a line or two. Group by topic and keep the phase in
+parentheses for provenance. Skip anything the
 code or its tests already say.
 
 ## Setup and test infrastructure
 
-- **One root `.env.example`; Postgres on 5432, Kafka on 9094** (step 1). Same ports as SignalFlow, so the property
+- **One root `.env.example`; Postgres on 5432, Kafka on 9094** (phase 1). Same ports as SignalFlow, so the property
   defaults work with no env, but the two composes can't run together. The optional `API_GATEWAY_DATASOURCE_*` lines
   stay commented out: an exported empty value would override the default with an empty string.
-- **The test clock stands still** (step 1). `MutableClock` moves only through `advance`, `setInstant` and `reset`, so
+- **The test clock stands still** (phase 1). `MutableClock` moves only through `advance`, `setInstant` and `reset`, so
   "61 seconds later" is exact. It is shared across a cached context, so a test that advances it calls `reset()`.
-- **Every full-context test extends `AbstractMinioIntegrationTest`** (step 11). The bucket initializer is an
+- **Every full-context test extends `AbstractMinioIntegrationTest`** (phase 2). The bucket initializer is an
   `ApplicationRunner` that fails startup without MinIO. `@DataJpaTest` slices run no runners and stay on the Postgres
   base.
-- **MinIO runs from `alpine/minio`, pinned, as root** (step 11). `minio/minio` is no longer pullable, and the
+- **MinIO runs from `alpine/minio`, pinned, as root** (phase 2). `minio/minio` is no longer pullable, and the
   alpine image's `minio` user can't write `/data`. The compose healthcheck is `wget`, since the image has no `mc`.
-- **`okhttp-jvm` is a direct dependency** (step 11). `io.minio:minio` pulls an `okhttp` 5.x shell, and
+- **`okhttp-jvm` is a direct dependency** (phase 2). `io.minio:minio` pulls an `okhttp` 5.x shell, and
   `MinioClient.builder()` exposes `okhttp3` types, so main code didn't compile without it.
-- **The test Postgres runs with `max_connections=300`** (timeline step 11). Each cached Spring context keeps a
+- **The test Postgres runs with `max_connections=300`** (timeline phase 1). Each cached Spring context keeps a
   10-connection pool until the JVM exits, and the extra route contexts pushed the suite past the default 100.
-- **`UserListControllerIntegrationTest` wipes `users` before each test** (phase 5 step 33). Exact counts need an
+- **`UserListControllerIntegrationTest` wipes `users` before each test** (phase 5). Exact counts need an
   empty table on the shared Postgres. No other suite wipes users.
-- **`UserListConcurrencyIntegrationTest` deletes its outbox rows after each test** (phase 5 step 35). Its
+- **`UserListConcurrencyIntegrationTest` deletes its outbox rows after each test** (phase 5). Its
   follow/unfollow storm leaves ~200 PENDING rows, and the publisher only takes the first `app.outbox.batch-size`,
   which made `OutboxPublisherServiceKafkaIntegrationTest` fail. Other suites adding many outbox rows will hit the
   same limit.
 
 ## Auth and tokens
 
-- **Token `iat`/`exp` and error-body timestamps use the system clock** (step 4). The decoder validates `exp`
+- **Token `iat`/`exp` and error-body timestamps use the system clock** (phase 1). The decoder validates `exp`
   against the system clock, so a token minted from a moved test clock would be born expired. A deliberate exception
   to "never call `Instant.now()`"; everything that *compares* against now uses `Clock`.
-- **Normalisation uses `Locale.ROOT`** (step 3). A Turkish default locale would turn `I` into `ı` and break
+- **Normalisation uses `Locale.ROOT`** (phase 1). A Turkish default locale would turn `I` into `ı` and break
   uniqueness and lookups.
-- **The unknown-identifier login path hashes the submitted password** (step 8), so it costs one bcrypt like a wrong
+- **The unknown-identifier login path hashes the submitted password** (phase 1), so it costs one bcrypt like a wrong
   password.
-- **Passwords are capped at 72 bytes, not characters** (step 10). `@Size(max = 72)` counts characters while bcrypt
+- **Passwords are capped at 72 bytes, not characters** (phase 1). `@Size(max = 72)` counts characters while bcrypt
   takes 72 bytes, so a multi-byte password gave a 500. `@MaxUtf8Bytes(72)` sits beside `@Size` on register and login.
-- **Startup refuses a `JWT_SECRET` under 32 bytes** (step 10). Nimbus rejects it only when signing, which would
+- **Startup refuses a `JWT_SECRET` under 32 bytes** (phase 1). Nimbus rejects it only when signing, which would
   turn a misconfiguration into a 500 on every login.
 
 ## Email confirmation and outbox
 
-- **The token hash is SHA-256 over the UTF-8 bytes of the 43-character string** (step 5), not a decoded form, so it
+- **The token hash is SHA-256 over the UTF-8 bytes of the 43-character string** (phase 1), not a decoded form, so it
   can't disagree with what the link carried.
-- **Resend reads the user before locking it** (step 7). A confirm committing in between can cost one extra email to
+- **Resend reads the user before locking it** (phase 1). A confirm committing in between can cost one extra email to
   a confirmed user. That is harmless and bounded by the cooldown.
-- **The poll job's `initialDelay` equals its delay** (step 6). `fixedDelay` otherwise fires once at startup, which
+- **The poll job's `initialDelay` equals its delay** (phase 1). `fixedDelay` otherwise fires once at startup, which
   would drain rows mid-suite even with the test profile's 24h delay.
 - **A row Kafka cannot take stops the batch and costs no attempt; only a row Kafka refuses for its own content counts
-  one** (2026-10-10, replaces the step 6 rule that every failed row counted and the batch went on). Counting every
+  one** (2026-10-10, replaces the original rule that every failed row counted and the batch went on). Counting every
   failure meant an outage of about 30 s (3 attempts, 3 s apart) turned every pending row `FAILED` for good, and going on
   after a failure let a later event overtake an earlier one. Now a timeout, a network or leader error, an authorization
   error or an interrupt (the flag is still restored) leaves the row `PENDING` and ends the poll; the next poll tries it
@@ -75,33 +75,33 @@ code or its tests already say.
 
 ## Profiles and pictures
 
-- **Each picture slot is unique per file, and the FKs have no `ON DELETE` action** (step 13). Two users can't share
+- **Each picture slot is unique per file, and the FKs have no `ON DELETE` action** (phase 2). Two users can't share
   a `DbFile`, and deleting one a user still points at is rejected. The upload flow repoints first and deletes second,
   and `SET NULL` would hide a flow that deleted in the wrong order.
-- **`ProfileService` returns the response DTO** (step 14), because the picture URLs read lazy `DbFile` associations
+- **`ProfileService` returns the response DTO** (phase 2), because the picture URLs read lazy `DbFile` associations
   that must be read inside the transaction. `ProfileMapper` is static because upload and delete return the same shape.
-- **`@Past` on a birthdate uses Bean Validation's clock, not the `Clock` bean** (step 14), so the test clock doesn't
+- **`@Past` on a birthdate uses Bean Validation's clock, not the `Clock` bean** (phase 2), so the test clock doesn't
   move it. Today's date is rejected too.
-- **The upload body cap matches `PUT` on the two exact picture paths only** (step 15). `RequestBodySizeLimitFilter`
+- **The upload body cap matches `PUT` on the two exact picture paths only** (phase 2). `RequestBodySizeLimitFilter`
   runs before security, so any other method, path variant or trailing slash keeps the 8 KB cap. A mismatch fails
   small, never large. `UploadLimitsConfigurationTest` pins the derived multipart limits.
-- **A missing object in storage is a 502** (step 15). The `DbFile` row is the source of truth for existence, so a
+- **A missing object in storage is a 502** (phase 2). The `DbFile` row is the source of truth for existence, so a
   row without its object is a storage fault. Deleting a missing key is a no-op.
-- **The DB change runs in a `TransactionTemplate`, not `@Transactional`** (step 16). The new object must be stored
+- **The DB change runs in a `TransactionTemplate`, not `@Transactional`** (phase 2). The new object must be stored
   before the transaction and the old one deleted after the commit.
-- **The 5 MB limit is also checked in the service** (step 16), because MockMvc never applies Spring's multipart
+- **The 5 MB limit is also checked in the service** (phase 2), because MockMvc never applies Spring's multipart
   limits. `PictureUploadLimitsIntegrationTest` proves the real limits on a real server, with a hand-built body so
   the request has a `Content-Length`.
-- **Routes are four explicit mappings, not `/me/{slot}`** (step 16), so the filter's exact-path match holds.
-- **Concurrent uploads to one slot are serialised by a row lock** (step 16 audit fix). `loadLockedUser` takes
+- **Routes are four explicit mappings, not `/me/{slot}`** (phase 2), so the filter's exact-path match holds.
+- **Concurrent uploads to one slot are serialised by a row lock** (phase 2 audit fix). `loadLockedUser` takes
   `UserRepository.lockById` first; without it parallel uploads left orphan rows and objects. The cost is that one
-  account's burst queues on the lock while holding pool connections (`docs/SECURITY-AUDITS.md`, phase 2).
-- **File serving reads the row, then streams the object, with no transaction** (step 17), so a download doesn't pin
+  account's burst queues on the lock while holding pool connections (phase 2 re-check, `../security-private/gateway-SECURITY-AUDITS-open.md`).
+- **File serving reads the row, then streams the object, with no transaction** (phase 2), so a download doesn't pin
   a connection. Any logged-in user can read any file id: ids are time-based UUIDs, not random, but the pictures are public anyway.
-- **`spring.servlet.multipart.enabled=true` is set explicitly** (step 25). The gateway-mvc starter otherwise sets
+- **`spring.servlet.multipart.enabled=true` is set explicitly** (phase 4). The gateway-mvc starter otherwise sets
   it to `false` when unset, and the picture `PUT`s answered 500 on a real server. With it on, the starter's
   `GatewayMvcMultipartResolver` also skips parsing for proxied requests.
-- **`PATCH /api/v1/users/me` replaced the `PUT`** (frontend step 25). A missing or `null` field is kept (so a
+- **`PATCH /api/v1/users/me` replaced the `PUT`** (frontend phase 4). A missing or `null` field is kept (so a
   birthdate can't be cleared), a blank bio or location clears it, values are stripped. Bio ≤ 160 and location ≤ 60
   are counted in **code points after stripping** by `@MaxCodePoints`, not `@Size` (UTF-16 units), so the gateway and
   the frontend agree on emoji. `PUT` answers 405.
@@ -110,15 +110,15 @@ code or its tests already say.
 
 ## Follows
 
-- **`Follow` stands alone, without `CommonEntity`** (step 20). It is only inserted or deleted. The id and
+- **`Follow` stands alone, without `CommonEntity`** (phase 3). It is only inserted or deleted. The id and
   `createdAt` come from the native `insertIfAbsent`, and the caller truncates `createdAt` to microseconds because
   the list cursor is built from it.
-- **Counter statements take a delta** (step 20): one `SET x = x + :delta` per counter, called with `+1`/`-1`. The
+- **Counter statements take a delta** (phase 3): one `SET x = x + :delta` per counter, called with `+1`/`-1`. The
   columns carry `default 0` so `ddl-auto=update` can add them to a table with rows. `update` mode doesn't add the
   `@Check`, so only a fresh schema gets `ck_users_follow_counts_non_negative` (see the `ddl-auto` gap in `PLAN.md`).
-- **The fixed lock order uses `UUID.compareTo`, which is signed** (step 21). Any total order works, but a unit
+- **The fixed lock order uses `UUID.compareTo`, which is signed** (phase 3). Any total order works, but a unit
   test's "larger" id must be `7fff…`, not `ffff…`.
-- **List endpoints** (step 23):
+- **List endpoints** (phase 3):
   - `InvalidCursorException` and `InvalidPageSizeException` are both 400. The size is checked in the service, not
     with `@Min`/`@Max`, so the message is ours.
   - The cursor is strict: `decode` re-encodes and must match, so `?cursor=` (empty) is a 400, not a first page.
@@ -126,30 +126,30 @@ code or its tests already say.
   - Four repository queries, not one with a null cursor. Postgres breaks ties on unsigned UUID bytes, which differs
     from `UUID.compareTo`, so tests compare ids in `UUID.toString` order.
   - `followedByMe` on items is one `IN` query per page, skipped for an empty page.
-- **Repeated `size=1&size=2` is a 200 with the first value** (phase 5 step 33), and a repeated `cursor` fails as
+- **Repeated `size=1&size=2` is a 200 with the first value** (phase 5), and a repeated `cursor` fails as
   invalid. The follow lists behave the same, and the tests pin it.
-- **The user-list after-cursor query uses the row value `(created_at, id) < (:c, :id)`** (phase 5 step 35), which
+- **The user-list after-cursor query uses the row value `(created_at, id) < (:c, :id)`** (phase 5), which
   Postgres can use as an index bound. The `OR` form read every row newer than the cursor. The follow-list queries
   keep the `OR` form, since one account's follows bound it (accepted gap). Time-based ids carrying the host IP is
   an accepted gap with a trigger.
 
 ## Routing
 
-- **Both service routes share `CallerIdentityFilters`** (timeline step 11): drop `Cookie`, `Authorization` and every
+- **Both service routes share `CallerIdentityFilters`** (timeline phase 1): drop `Cookie`, `Authorization` and every
   `X-User-*`, then set `X-User-Id` from the JWT. The HTTP/1.1-only client customizer stays in
   `TweetRoutesConfiguration` because it is global.
-- **One `timeline-service` route with exact or narrow patterns** (timeline steps 11, 17, 25, 32): `/api/v1/feed` and
+- **One `timeline-service` route with exact or narrow patterns** (timeline phases 1–4): `/api/v1/feed` and
   `/api/v1/views` are exact, `/api/v1/saved-tweets/**` and `/api/v1/likes/**` cover the bare path (the list) and
   `/{tweetId}`. A sub-path of an exact route isn't forwarded and falls to the default rule (authenticated, then 404).
-- **Multipart pass-through needs no extra code** (step 27). A 21 MB multipart `POST /api/v1/tweets` reaches the
+- **Multipart pass-through needs no extra code** (phase 4). A 21 MB multipart `POST /api/v1/tweets` reaches the
   downstream byte-identical. The only code is a third cap in `RequestBodySizeLimitFilter` for `POST` on the exact
   path. The cap tests run on a real server, and the stand-in is `RecordingHttpServer`, not WireMock, whose client
   fails on bodies over Jackson's 20 MB string limit.
-- **The contract test brings its own Mongo, MinIO and Kafka** (step 29). The shared containers aren't on a Docker
+- **The contract test brings its own Mongo, MinIO and Kafka** (phase 4). The shared containers aren't on a Docker
   network, so the real tweet service couldn't reach them. The gateway read timeout is raised to 10s for that
   context only, and the image is built from `../twitter_tweet_service`, so the test assumes that layout.
-- **The like stub is a controller with no service** (frontend step 1). `PUT`/`DELETE /api/v1/likes/{tweetId}`
-  answered 204 and stored nothing. Replaced by the timeline route in timeline step 32: `LikeController`, its test and
+- **The like stub is a controller with no service** (frontend phase 2). `PUT`/`DELETE /api/v1/likes/{tweetId}`
+  answered 204 and stored nothing. Replaced by the timeline route in timeline phase 4: `LikeController`, its test and
   its `docs/TESTING.md` section are deleted, and the three like paths are served by the timeline service.
 
 ## Internal API and events
@@ -160,25 +160,25 @@ code or its tests already say.
   the mail service needs no call back.
 - **`user.unfollowed` is enqueued only when `deleteByPair` returns 1**, keyed by `followerId`. `occurredAt` is
   `clock.instant()` untruncated, like `user.followed`.
-- **`InternalApiSecretFilter` reads the path the way Spring MVC does** (timeline step 2), via
+- **`InternalApiSecretFilter` reads the path the way Spring MVC does** (timeline phase 1), via
   `UrlPathHelper.getPathWithinApplication`, so a raw variant can't skip the prefix check. The secret is compared in
   constant time, and a missing or wrong secret gets the unknown-path 404. `/internal/v1/**` is in `PUBLIC_MATCHERS`.
-- **Follower pages use the `FollowerEdge` projection** (timeline step 2), so a page of 1,000 loads no user rows.
+- **Follower pages use the `FollowerEdge` projection** (timeline phase 1), so a page of 1,000 loads no user rows.
   The user lookup leaves out unconfirmed accounts and counts the 1-100 limit on ids as sent, before repeats collapse.
-- **The follow check answers `200 {"following": true|false}`** (frontend steps 15 and 24), for every well-formed
+- **The follow check answers `200 {"following": true|false}`** (frontend phase 3), for every well-formed
   pair, unknown ids and a self pair included (`false`). It first answered `204`/bare `404`, but the guard and a
   gateway build without the route also answer a bare 404, so the timeline service couldn't tell "not following" from
   a misconfiguration. A 404 now means a wrong secret or a missing route. Malformed ids are a 400.
 
-## The tweet-details route and the contract test (tweet service phase 2, step 20)
+## The tweet-details route and the contract test (tweet service phase 2)
 
 - **`/api/v1/tweet-details/*` joins the `timeline-service` route**, one path segment, so a path below the id is not
   forwarded. The same identity filters apply.
 - **`TweetServiceContractIntegrationTest` hands the real tweet-service container an `INTERNAL_API_SECRET`** (a fixed,
-  test-only value). Since tweet service step 12 the image refuses to start without one, which the gateway's suite
+  test-only value). Since tweet service phase 2 the image refuses to start without one, which the gateway's suite
   only showed at this step. No assertion changed.
 
-## The author-tweets route (frontend step 28)
+## The author-tweets route (frontend phase 4)
 
 - **`/api/v1/author-tweets/*` joins the `timeline-service` route**, one path segment, with the same identity filters as
   `tweet-details`: `X-User-Id` set from the JWT, a forged one replaced, the cookie and `Authorization` dropped.
