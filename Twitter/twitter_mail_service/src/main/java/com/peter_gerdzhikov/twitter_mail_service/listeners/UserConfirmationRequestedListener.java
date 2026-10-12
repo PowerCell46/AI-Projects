@@ -16,6 +16,7 @@ public class UserConfirmationRequestedListener {
 
     @KafkaListener(
             topics = "${app.kafka.user-confirmation-requested.name}",
+            groupId = "${spring.kafka.consumer.group-id}-user-confirmation-requested",
             containerFactory = "userConfirmationRequestedListenerContainerFactory"
     )
     public void onMessage(UserConfirmationRequestedEventDTO event) {

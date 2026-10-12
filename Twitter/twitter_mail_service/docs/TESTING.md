@@ -1,11 +1,12 @@
 # E2E test catalog
 
-Last updated: 2026-10-10
+Last updated: 2026-10-12
 
 Scope: the Kafka-to-SMTP pipeline only - `UserConfirmationRequestedListenerIntegrationTest` and
-`UserFollowedListenerIntegrationTest` (real Kafka, Redis and Mailpit containers, a spied `JavaMailSender`) and
-`SmtpUnreachableIntegrationTest` (its own context, SMTP pointed at a closed port). Service-level tests that use real Redis but skip Kafka and the listener are not
-listed here.
+`UserFollowedListenerIntegrationTest` (real Kafka, Redis and Mailpit containers, a spied `JavaMailSender`),
+`SmtpUnreachableIntegrationTest` (its own context, SMTP pointed at a closed port) and
+`KafkaListenerGroupsIntegrationTest` (consumer groups, read through the Kafka admin client). Service-level tests
+that use real Redis but skip Kafka and the listener are not listed here.
 
 Hand-maintained - see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
@@ -97,6 +98,12 @@ Window
 - One follower following two followees sends two emails
   (`should_send_two_emails_when_one_follower_follows_two_followees`)
 
+Skipped
+
+- A follow of a followee on the no-send domain (`seed.local` by default) sends nothing and leaves no
+  Redis key; the sentinel is another follower of the same followee (same Kafka key)
+  (`should_send_nothing_and_leave_no_redis_key_when_the_followee_is_on_the_no_send_domain`)
+
 Invalid - every case below dead-letters **without retries** and sends nothing
 
 - Malformed JSON (`should_dead_letter_malformed_json_without_sending_or_touching_the_inbox`)
@@ -121,3 +128,10 @@ pointed at a closed port
 - A transient connect failure retries the configured number of times (1 initial attempt + the test profile's
   3 retries = 4 sends), then dead-letters, and releases the claim
   (`should_dead_letter_and_release_the_claim_after_exhausting_retries_when_smtp_is_unreachable`)
+
+## Consumer groups
+
+`KafkaListenerGroupsIntegrationTest` - the shared application context against the real broker, read through the Kafka admin client.
+
+- Each of the two listeners reads only its own topic, in its own group `<group-id>-<topic>`; checked from the members'
+  assignments, one case per listener (`should_read_only_its_own_topic_in_its_own_group_when_the_listener_has_started`)

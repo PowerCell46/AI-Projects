@@ -61,3 +61,14 @@ consuming nothing. `DOWN` turns `/actuator/health` to 503 and fails the compose 
 `DEGRADED`, because a stopped listener never recovers on its own. One registry check covers both listeners,
 present and future.
 
+## Follow emails to the no-send domain are skipped, not bounced (2026-10-12)
+
+`UserFollowedNotificationServiceImpl` skips an event whose followee address is on `app.mail.no-send-domain`
+(`seed.local` by default), with an info log and no inbox call, like the older-than-window skip. A real follow of a
+seeded demo user used to attempt SMTP delivery to an undeliverable `.local` domain: 8 retries over about 242 s
+holding the partition, then a DLT record. Chosen over dead-lettering without retries because a skip is the honest
+outcome (nothing is wrong, there is just nowhere to send it), and over filtering in the dispatch service because the
+confirmation email needs no guard: seeded users are pre-confirmed, and a crafted Kafka record emailing any address is
+already an accepted gap (Q7). A blank domain fails startup instead of disabling the filter: silently mailing
+`seed.local` again would be exactly the bug being fixed.
+

@@ -41,6 +41,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserFollowedNotificationServiceImplTest {
 
+    private static final String NO_SEND_DOMAIN = "seed.local";
+
     private static final Duration WINDOW = Duration.ofHours(24);
 
     private static final Instant OCCURRED_AT = Instant.parse("2026-10-01T12:00:00Z");
@@ -62,6 +64,7 @@ class UserFollowedNotificationServiceImplTest {
         service = new UserFollowedNotificationServiceImpl(
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 WINDOW,
+                NO_SEND_DOMAIN,
                 new MailEventValidationServiceImpl(VALIDATOR),
                 new MailDispatchServiceImpl(mailInboxService, mailDeliveryService),
                 new FollowEmailRenderer("http://localhost:5173"));
@@ -155,6 +158,28 @@ class UserFollowedNotificationServiceImplTest {
 
             verify(mailDeliveryService).send(anyString(), anyString(), anyString(), anyString());
         }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"bob@seed.local", "bob@SEED.LOCAL", "bob@Seed.Local"})
+        void should_skip_without_touching_the_inbox_when_the_followee_is_on_the_no_send_domain(String recipient) {
+            UserFollowedEventDTO event = anEvent(UUID.randomUUID(), UUID.randomUUID());
+            event.setFolloweeEmail(recipient);
+
+            service.process(event);
+
+            verifyNoInteractions(mailInboxService, mailDeliveryService);
+        }
+
+        @Test
+        void should_send_when_the_recipient_domain_merely_contains_the_no_send_domain() {
+            UserFollowedEventDTO event = anEvent(UUID.randomUUID(), UUID.randomUUID());
+            event.setFolloweeEmail("bob@sub.seed.local");
+            when(mailInboxService.claim(anyString(), anyString())).thenReturn(ClaimResult.CLAIMED);
+
+            service.process(event);
+
+            verify(mailDeliveryService).send(eq("bob@sub.seed.local"), anyString(), anyString(), anyString());
+        }
     }
 
     @Nested
@@ -168,6 +193,19 @@ class UserFollowedNotificationServiceImplTest {
             assertThrows(IllegalStateException.class, () -> new UserFollowedNotificationServiceImpl(
                     Clock.fixed(NOW, ZoneOffset.UTC),
                     window,
+                    NO_SEND_DOMAIN,
+                    new MailEventValidationServiceImpl(VALIDATOR),
+                    new MailDispatchServiceImpl(mailInboxService, mailDeliveryService),
+                    new FollowEmailRenderer("http://localhost:5173")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", "  "})
+        void should_fail_to_start_when_the_no_send_domain_is_blank(String noSendDomain) {
+            assertThrows(IllegalStateException.class, () -> new UserFollowedNotificationServiceImpl(
+                    Clock.fixed(NOW, ZoneOffset.UTC),
+                    WINDOW,
+                    noSendDomain,
                     new MailEventValidationServiceImpl(VALIDATOR),
                     new MailDispatchServiceImpl(mailInboxService, mailDeliveryService),
                     new FollowEmailRenderer("http://localhost:5173")));

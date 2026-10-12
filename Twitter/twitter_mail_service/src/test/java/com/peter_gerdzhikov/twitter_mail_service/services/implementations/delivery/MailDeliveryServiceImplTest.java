@@ -50,13 +50,15 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MailDeliveryServiceImplTest {
 
-    private static final String FROM_ADDRESS = "twitter@example.com";
-
-    private static final String RECIPIENT = "recipient@example.com";
+    private static final String TEXT = "Hello";
 
     private static final String HTML = "<p>Hello</p>";
 
-    private static final String TEXT = "Hello";
+    private static final String FROM_NAME = "Twitter";
+
+    private static final String RECIPIENT = "recipient@example.com";
+
+    private static final String FROM_ADDRESS = "twitter@example.com";
 
     @Mock
     private JavaMailSender mailSender;
@@ -68,7 +70,7 @@ class MailDeliveryServiceImplTest {
     @BeforeEach
     void setUp() {
         message = new MimeMessage(Session.getInstance(new Properties()));
-        mailDeliveryService = new MailDeliveryServiceImpl(FROM_ADDRESS, mailSender);
+        mailDeliveryService = new MailDeliveryServiceImpl(FROM_ADDRESS, FROM_NAME, mailSender);
     }
 
     @Nested
@@ -77,13 +79,13 @@ class MailDeliveryServiceImplTest {
         @ParameterizedTest
         @ValueSource(strings = {"", "   ", "twitter", "twitter@", "@example.com", "twi tter@example.com", "twitter@@example.com"})
         void should_fail_to_start_when_the_sender_is_not_an_email_address(String fromAddress) {
-            assertThrows(IllegalStateException.class, () -> new MailDeliveryServiceImpl(fromAddress, mailSender));
+            assertThrows(IllegalStateException.class, () -> new MailDeliveryServiceImpl(fromAddress, FROM_NAME, mailSender));
         }
 
         @Test
         void should_not_echo_the_sender_in_the_failure() {
             IllegalStateException thrown = assertThrows(IllegalStateException.class,
-                    () -> new MailDeliveryServiceImpl("typo-sender", mailSender));
+                    () -> new MailDeliveryServiceImpl("typo-sender", FROM_NAME, mailSender));
 
             assertTrue(thrown.getMessage().contains("MAIL_FROM"));
             assertFalse(thrown.getMessage().contains("typo-sender"));
@@ -93,7 +95,7 @@ class MailDeliveryServiceImplTest {
         @ParameterizedTest
         @ValueSource(strings = {"twitter@example.com", "Twitter <twitter@example.com>", "twitter+noreply@mail.example.co.uk"})
         void should_start_when_the_sender_is_a_valid_address(String fromAddress) {
-            assertDoesNotThrow(() -> new MailDeliveryServiceImpl(fromAddress, mailSender));
+            assertDoesNotThrow(() -> new MailDeliveryServiceImpl(fromAddress, FROM_NAME, mailSender));
         }
     }
 
@@ -144,6 +146,37 @@ class MailDeliveryServiceImplTest {
 
             assertEquals("Потвърдете имейла си", message.getSubject());
             assertEquals("<p>Здравей</p>", findPart(message, "text/html").getContent());
+        }
+
+        @Test
+        void should_set_the_configured_from_display_name() throws Exception {
+            when(mailSender.createMimeMessage()).thenReturn(message);
+
+            mailDeliveryService.send(RECIPIENT, "Subject", HTML, TEXT);
+            message.saveChanges();
+
+            assertEquals(FROM_NAME, ((InternetAddress) message.getFrom()[0]).getPersonal());
+        }
+
+        @Test
+        void should_send_a_bare_from_address_when_the_display_name_is_blank() throws Exception {
+            when(mailSender.createMimeMessage()).thenReturn(message);
+            mailDeliveryService = new MailDeliveryServiceImpl(FROM_ADDRESS, "  ", mailSender);
+
+            mailDeliveryService.send(RECIPIENT, "Subject", HTML, TEXT);
+            message.saveChanges();
+
+            assertNull(((InternetAddress) message.getFrom()[0]).getPersonal());
+        }
+
+        @Test
+        void should_mark_the_mail_as_auto_submitted() throws Exception {
+            when(mailSender.createMimeMessage()).thenReturn(message);
+
+            mailDeliveryService.send(RECIPIENT, "Subject", HTML, TEXT);
+            message.saveChanges();
+
+            assertEquals("auto-generated", message.getHeader("Auto-Submitted")[0]);
         }
     }
 

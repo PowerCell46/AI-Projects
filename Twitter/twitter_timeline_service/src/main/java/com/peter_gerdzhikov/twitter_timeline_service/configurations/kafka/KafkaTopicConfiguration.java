@@ -14,45 +14,47 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfiguration {
 
-    private static final int REPLICATION_FACTOR = 1;
-
     @Bean
     public NewTopic tweetCreatedDeadLetterTopic(
             @Value("${app.kafka.tweet-created.dlt-name}") String dltName,
-            @Value("${app.kafka.tweet-created.dlt-partitions}") int partitions
+            @Value("${app.kafka.tweet-created.dlt-partitions}") int partitions,
+            @Value("${app.kafka.dlt-replication-factor}") int replicationFactor
     ) {
-        return deadLetterTopic(dltName, partitions);
+        return deadLetterTopic(dltName, partitions, replicationFactor);
     }
 
     @Bean
     public NewTopic tweetDeletedDeadLetterTopic(
             @Value("${app.kafka.tweet-deleted.dlt-name}") String dltName,
-            @Value("${app.kafka.tweet-deleted.dlt-partitions}") int partitions
+            @Value("${app.kafka.tweet-deleted.dlt-partitions}") int partitions,
+            @Value("${app.kafka.dlt-replication-factor}") int replicationFactor
     ) {
-        return deadLetterTopic(dltName, partitions);
+        return deadLetterTopic(dltName, partitions, replicationFactor);
     }
 
     @Bean
     public NewTopic userUnfollowedDeadLetterTopic(
             @Value("${app.kafka.user-unfollowed.dlt-name}") String dltName,
-            @Value("${app.kafka.user-unfollowed.dlt-partitions}") int partitions
+            @Value("${app.kafka.user-unfollowed.dlt-partitions}") int partitions,
+            @Value("${app.kafka.dlt-replication-factor}") int replicationFactor
     ) {
-        return deadLetterTopic(dltName, partitions);
+        return deadLetterTopic(dltName, partitions, replicationFactor);
     }
 
     @Bean
     public NewTopic userFollowedDeadLetterTopic(
             @Value("${app.kafka.user-followed.dlt-name}") String dltName,
-            @Value("${app.kafka.user-followed.dlt-partitions}") int partitions
+            @Value("${app.kafka.user-followed.dlt-partitions}") int partitions,
+            @Value("${app.kafka.dlt-replication-factor}") int replicationFactor
     ) {
-        return deadLetterTopic(dltName, partitions);
+        return deadLetterTopic(dltName, partitions, replicationFactor);
     }
 
-    private NewTopic deadLetterTopic(String name, int partitions) {
+    private NewTopic deadLetterTopic(String name, int partitions, int replicationFactor) {
         return TopicBuilder
                 .name(name)
                 .partitions(partitions)
-                .replicas(REPLICATION_FACTOR)
+                .replicas(replicationFactor)
                 .build();
     }
 }

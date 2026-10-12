@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery;
 
+import java.io.UnsupportedEncodingException;
 import java.util.function.Function;
 
 import jakarta.mail.MessagingException;
@@ -29,12 +30,20 @@ public class MailDeliveryServiceImpl implements MailDeliveryService {
 
     private static final int PERMANENT_SMTP_REPLY_THRESHOLD = 500;
 
-    private final String fromAddress;
+    private static final String AUTO_SUBMITTED_VALUE = "auto-generated";
+
+    private static final String AUTO_SUBMITTED_HEADER = "Auto-Submitted";
+
+    private final InternetAddress from;
 
     private final JavaMailSender mailSender;
 
-    public MailDeliveryServiceImpl(@Value("${app.mail.from}") String fromAddress, JavaMailSender mailSender) {
-        this.fromAddress = requireValidAddress(fromAddress);
+    public MailDeliveryServiceImpl(
+            @Value("${app.mail.from}") String fromAddress,
+            @Value("${app.mail.from-name}") String fromName,
+            JavaMailSender mailSender
+    ) {
+        this.from = requireValidFrom(fromAddress, fromName);
         this.mailSender = mailSender;
     }
 
@@ -44,10 +53,12 @@ public class MailDeliveryServiceImpl implements MailDeliveryService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setValidateAddresses(true);
-            helper.setFrom(fromAddress);
             helper.setTo(recipient);
             helper.setSubject(EmailText.stripLineBreaks(subject));
             helper.setText(text, html);
+            message.setFrom(from);
+            // Machine-generated mail: auto-responders must not reply to it (RFC 3834).
+            message.setHeader(AUTO_SUBMITTED_HEADER, AUTO_SUBMITTED_VALUE);
 
             mailSender.send(message);
 
@@ -58,15 +69,24 @@ public class MailDeliveryServiceImpl implements MailDeliveryService {
 
     /**
      * Fails without the value or the parse failure, which would echo whatever was typed into the log.
+     * A blank display name sends a bare address.
      */
-    private static String requireValidAddress(String fromAddress) {
+    private static InternetAddress requireValidFrom(String fromAddress, String fromName) {
         try {
-            new InternetAddress(fromAddress, true).validate();
+            InternetAddress from = new InternetAddress(fromAddress, true);
+            from.validate();
 
-            return fromAddress;
+            if (!fromName.isBlank()) {
+                from.setPersonal(fromName);
+            }
 
-        } catch (AddressException e) {
+            return from;
+
+        } catch (AddressException ex) {
             throw new IllegalStateException("app.mail.from (MAIL_FROM) must be a valid email address.");
+
+        } catch (UnsupportedEncodingException ex) {
+            throw new IllegalStateException("app.mail.from-name (MAIL_FROM_NAME) must be encodable mail text.");
         }
     }
 

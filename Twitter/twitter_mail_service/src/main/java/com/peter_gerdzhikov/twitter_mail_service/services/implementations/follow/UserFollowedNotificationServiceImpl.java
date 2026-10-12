@@ -5,6 +5,7 @@ import java.time.Duration;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
@@ -28,6 +29,8 @@ public class UserFollowedNotificationServiceImpl implements UserFollowedNotifica
 
     private final Duration window;
 
+    private final String noSendDomain;
+
     private final FollowEmailRenderer followEmailRenderer;
 
     private final MailDispatchService mailDispatchService;
@@ -37,12 +40,14 @@ public class UserFollowedNotificationServiceImpl implements UserFollowedNotifica
     public UserFollowedNotificationServiceImpl(
             Clock clock,
             @Value("${app.mail-inbox.follow-window}") Duration window,
+            @Value("${app.mail.no-send-domain}") String noSendDomain,
             MailEventValidationService mailEventValidationService,
             MailDispatchService mailDispatchService,
             FollowEmailRenderer followEmailRenderer
     ) {
         this.clock = clock;
         this.window = Durations.requirePositive(window, "app.mail-inbox.follow-window");
+        this.noSendDomain = requireNoSendDomain(noSendDomain);
         this.mailEventValidationService = mailEventValidationService;
         this.mailDispatchService = mailDispatchService;
         this.followEmailRenderer = followEmailRenderer;
@@ -56,6 +61,12 @@ public class UserFollowedNotificationServiceImpl implements UserFollowedNotifica
         // and a replay (a new consumer group, expired offsets, a dead-letter retry) would mail it a second time.
         if (isOlderThanWindow(event)) {
             log.info("Skipping the follow email for {}: the follow is older than the {} window.", ids(event), window);
+
+            return;
+        }
+
+        if (isNoSendDomain(event)) {
+            log.info("Skipping the follow email for {}: {} is a no-send domain.", ids(event), noSendDomain);
 
             return;
         }
@@ -78,8 +89,24 @@ public class UserFollowedNotificationServiceImpl implements UserFollowedNotifica
         return event.getOccurredAt().isBefore(clock.instant().minus(window));
     }
 
+    private boolean isNoSendDomain(UserFollowedEventDTO event) {
+        String email = event.getFolloweeEmail();
+
+        return email
+                .substring(email.lastIndexOf('@') + 1)
+                .equalsIgnoreCase(noSendDomain);
+    }
+
     private String ids(UserFollowedEventDTO event) {
         return "eventId '" + event.getEventId() + "', followerId '" + event.getFollowerId()
                 + "', followeeId '" + event.getFolloweeId() + "'";
+    }
+
+    private static String requireNoSendDomain(String noSendDomain) {
+        if (!StringUtils.hasText(noSendDomain)) {
+            throw new IllegalStateException("app.mail.no-send-domain must not be blank.");
+        }
+
+        return noSendDomain;
     }
 }

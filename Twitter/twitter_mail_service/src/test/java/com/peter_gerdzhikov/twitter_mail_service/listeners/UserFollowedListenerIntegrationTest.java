@@ -171,6 +171,19 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
     }
 
     @Test
+    void should_send_nothing_and_leave_no_redis_key_when_the_followee_is_on_the_no_send_domain() {
+        String recipient = UUID.randomUUID() + "@seed.local";
+        UserFollowedEventDTO event = aValidFollowEvent(UUID.randomUUID(), UUID.randomUUID(), recipient, mutableClock.instant());
+
+        publish(USER_FOLLOWED_TOPIC, event.getFolloweeId().toString(), toJson(event));
+        awaitFollowSentinelProcessed(event.getFolloweeId());
+
+        assertNoEmail(recipient);
+        assertFalse(redisTemplate.hasKey(followRedisKey(event.getFollowerId(), event.getFolloweeId())));
+        verify(javaMailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
     void should_dead_letter_malformed_json_without_sending_or_touching_the_inbox() {
         UUID followeeId = UUID.randomUUID();
 

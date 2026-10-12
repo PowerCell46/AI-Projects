@@ -13,29 +13,29 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfiguration {
 
-    private static final int REPLICATION_FACTOR = 1;
-
     @Bean
     public NewTopic userConfirmationRequestedDeadLetterTopic(
             @Value("${app.kafka.user-confirmation-requested.dlt-name}") String dltName,
-            @Value("${app.kafka.user-confirmation-requested.dlt-partitions}") int partitions
+            @Value("${app.kafka.user-confirmation-requested.dlt-partitions}") int partitions,
+            @Value("${app.kafka.dlt-replication-factor}") int replicationFactor
     ) {
         return TopicBuilder
                 .name(dltName)
                 .partitions(partitions)
-                .replicas(REPLICATION_FACTOR)
+                .replicas(replicationFactor)
                 .build();
     }
 
     @Bean
     public NewTopic userFollowedDeadLetterTopic(
             @Value("${app.kafka.user-followed.dlt-name}") String dltName,
-            @Value("${app.kafka.user-followed.dlt-partitions}") int partitions
+            @Value("${app.kafka.user-followed.dlt-partitions}") int partitions,
+            @Value("${app.kafka.dlt-replication-factor}") int replicationFactor
     ) {
         return TopicBuilder
                 .name(dltName)
                 .partitions(partitions)
-                .replicas(REPLICATION_FACTOR)
+                .replicas(replicationFactor)
                 .build();
     }
 }
