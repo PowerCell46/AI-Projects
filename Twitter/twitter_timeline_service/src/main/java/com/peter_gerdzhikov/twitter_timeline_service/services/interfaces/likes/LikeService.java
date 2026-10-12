@@ -31,7 +31,7 @@ public interface LikeService {
      * page only. A like whose tweet or author is missing is skipped, so the page can be short; its cursor still
      * moves past every row read, and only a {@code null} {@code nextCursor} ends the list.
      *
-     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException
      *         when {@code size} is outside 1 to 100
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException
      *         when the cursor was not produced by this service

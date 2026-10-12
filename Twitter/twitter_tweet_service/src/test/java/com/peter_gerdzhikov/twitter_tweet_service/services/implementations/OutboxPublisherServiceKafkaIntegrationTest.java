@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,11 +30,11 @@ import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisherService;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
-import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxPublisherService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
@@ -71,6 +72,11 @@ class OutboxPublisherServiceKafkaIntegrationTest extends AbstractMinioIntegratio
 
     @Autowired
     private OutboxPublisherService outboxPublisherService;
+
+    @BeforeEach
+    void setUp() {
+        outboxMessageRepository.deleteAll();
+    }
 
     @Nested
     class PublishPending {

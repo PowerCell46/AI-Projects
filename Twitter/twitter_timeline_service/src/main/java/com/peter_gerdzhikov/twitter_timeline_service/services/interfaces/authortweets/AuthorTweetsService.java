@@ -13,7 +13,7 @@ public interface AuthorTweetsService {
      *
      * @param cursor the {@code nextCursor} of the previous page, or {@code null} for the first page
      * @param size   between 1 and 100
-     * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException
      *         when the tweet service refuses the cursor
      * @throws com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException

@@ -24,12 +24,12 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.web.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.InvalidCallerIdentityException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.tweetdetails.AuthorNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;

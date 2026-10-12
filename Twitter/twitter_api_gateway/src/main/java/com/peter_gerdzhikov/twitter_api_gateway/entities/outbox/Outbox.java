@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.CommonEntity;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 /**
  * One Kafka message still owed to a topic. Deliberately has no foreign key to {@code users}, so queued

@@ -25,22 +25,22 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.DuplicateEmailException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.DuplicateUsernameException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.EmailNotConfirmedException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidConfirmationTokenException;
+import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.EmptyUploadException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.FileNotFoundException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.UnsupportedImageTypeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.SelfFollowException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.web.RequestBodyTooLargeException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -225,7 +225,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleNoResourceFoundException(
             NoResourceFoundException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        log.warn("No resource found for {} '{}'.", e.getHttpMethod(), e.getResourcePath());
+        log.warn("No resource found for a {} request.", e.getHttpMethod());
         return ResponseEntity
                 .status(status)
                 .headers(headers)

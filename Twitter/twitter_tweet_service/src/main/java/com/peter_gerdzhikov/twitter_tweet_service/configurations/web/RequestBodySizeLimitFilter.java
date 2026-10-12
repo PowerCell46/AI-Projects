@@ -9,16 +9,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import tools.jackson.databind.ObjectMapper;
 
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.RequestBodyTooLargeException;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.BodySizeLimitingRequestWrapper;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.ErrorResponseWriter;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseWriter;
+import com.peter_gerdzhikov.twitter_shared.web.RequestBodySizeLimitFilterSupport;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
+public class RequestBodySizeLimitFilter extends RequestBodySizeLimitFilterSupport {
 
     private static final String CREATE_TWEET_PATH = "/api/v1/tweets";
 
@@ -45,41 +41,31 @@ public class RequestBodySizeLimitFilter extends OncePerRequestFilter {
 
     private final long maxTweetBodyBytes;
 
-    private final ObjectMapper objectMapper;
-
     public RequestBodySizeLimitFilter(
             @Value("${app.request.max-body-bytes}") long maxBodyBytes,
             @Value("${app.request.max-tweet-body-bytes}") long maxTweetBodyBytes,
             ObjectMapper objectMapper
     ) {
+        super(objectMapper);
         this.maxBodyBytes = maxBodyBytes;
         this.maxTweetBodyBytes = maxTweetBodyBytes;
-        this.objectMapper = objectMapper;
     }
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
-        if (isMultipart(request) && !isCreateTweet(request)) {
-            log.warn("Rejected a multipart request to '{}'.", request.getRequestURI());
-            ErrorResponseWriter.write(response, objectMapper, HttpStatus.UNSUPPORTED_MEDIA_TYPE, UNSUPPORTED_BODY_MESSAGE);
-            return;
+    protected boolean rejectEarly(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        if (!isMultipart(request) || isCreateTweet(request)) {
+            return false;
         }
 
-        long maxBytes = isCreateTweet(request) ? maxTweetBodyBytes : maxBodyBytes;
+        log.warn("Rejected a multipart request to '{}'.", request.getRequestURI());
+        ErrorResponseWriter.write(response, objectMapper(), HttpStatus.UNSUPPORTED_MEDIA_TYPE, UNSUPPORTED_BODY_MESSAGE);
 
-        if (request.getContentLengthLong() > maxBytes) {
-            log.warn("Rejected a request to '{}' declaring an oversized body.", request.getRequestURI());
-            ErrorResponseWriter.write(response, objectMapper, HttpStatus.CONTENT_TOO_LARGE, RequestBodyTooLargeException.MESSAGE);
-            return;
-        }
+        return true;
+    }
 
-        // A chunked request declares no length, so the wrapper counts what is actually read instead;
-        // GlobalExceptionHandler turns the resulting exception into the same 413.
-        filterChain.doFilter(new BodySizeLimitingRequestWrapper(request, maxBytes), response);
+    @Override
+    protected long maxBytesFor(HttpServletRequest request) {
+        return isCreateTweet(request) ? maxTweetBodyBytes : maxBodyBytes;
     }
 
     private boolean isCreateTweet(HttpServletRequest request) {

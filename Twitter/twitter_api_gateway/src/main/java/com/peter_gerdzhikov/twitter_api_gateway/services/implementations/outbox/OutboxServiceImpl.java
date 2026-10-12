@@ -5,9 +5,9 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.outbox.OutboxService;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 import lombok.RequiredArgsConstructor;
 

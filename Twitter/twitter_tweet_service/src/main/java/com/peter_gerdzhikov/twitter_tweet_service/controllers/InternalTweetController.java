@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetPageResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSummaryResponseDTO;
@@ -27,8 +28,6 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/internal/v1/tweets")
 public class InternalTweetController {
 
-    private static final String DEFAULT_PAGE_SIZE = "20";
-
     private final TweetService tweetService;
 
     @GetMapping
@@ -40,7 +39,7 @@ public class InternalTweetController {
     public TweetPageResponseDTO findPageByAuthor(
             @PathVariable UUID authorId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size
+            @RequestParam(defaultValue = PageSizeValidator.DEFAULT_PAGE_SIZE) int size
     ) {
         return tweetService.findPageByAuthor(authorId, cursor, size);
     }

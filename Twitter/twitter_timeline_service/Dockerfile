@@ -3,21 +3,28 @@ FROM eclipse-temurin:25-jdk AS builder
 WORKDIR /app
 
 # Build with the committed Maven wrapper so image builds and local builds use the same Maven.
-# chmod guards checkouts that lost the exec bit.
+# chmod guards checkouts that lost the exec bit. The context is the Twitter root: the service
+# builds together with the shared module it depends on.
 COPY .mvn/ .mvn/
 
 COPY mvnw pom.xml ./
 
 RUN chmod +x mvnw
 
-# Download dependencies (cached unless pom.xml changes)
-RUN ./mvnw dependency:go-offline -B
+# Download dependencies (cached unless a pom changes)
+COPY twitter_shared/pom.xml twitter_shared/pom.xml
+
+COPY twitter_timeline_service/pom.xml twitter_timeline_service/pom.xml
+
+RUN ./mvnw -pl twitter_timeline_service -am dependency:go-offline -B
 
 # Copy source code
-COPY src ./src
+COPY twitter_shared/src twitter_shared/src
+
+COPY twitter_timeline_service/src twitter_timeline_service/src
 
 # Build application
-RUN ./mvnw package -DskipTests -B
+RUN ./mvnw -pl twitter_timeline_service -am package -DskipTests -B
 
 FROM eclipse-temurin:25-jre
 
@@ -29,7 +36,7 @@ RUN useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 
 # Copy the built JAR from builder stage
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/twitter_timeline_service/target/*.jar app.jar
 
 RUN chown app:app app.jar
 

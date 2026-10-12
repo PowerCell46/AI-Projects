@@ -10,7 +10,7 @@ public interface UserListService {
      * Every confirmed user except the caller, newest account first. {@code cursor} is {@code null} for the
      * first page.
      *
-     * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException
      *         when {@code size} is outside 1 to 100
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException
      *         when the cursor was not produced by a list service

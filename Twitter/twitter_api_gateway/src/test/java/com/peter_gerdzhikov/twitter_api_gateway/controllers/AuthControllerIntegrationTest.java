@@ -34,12 +34,10 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.ConfirmRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.LoginRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.RegisterRequestDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.ResendConfirmationRequestDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.auth.UserResponseDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.users.EmailConfirmationToken;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.users.EmailConfirmationToken;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.EmailConfirmationTokenRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
@@ -51,6 +49,8 @@ import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestUser;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestUsers;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
 
 @SpringBootTest
 @AutoConfigureMockMvc

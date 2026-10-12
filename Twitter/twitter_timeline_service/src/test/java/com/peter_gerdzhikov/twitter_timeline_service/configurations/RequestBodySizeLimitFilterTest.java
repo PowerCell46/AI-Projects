@@ -14,8 +14,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import tools.jackson.databind.json.JsonMapper;
 
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.web.BodySizeLimitingRequestWrapper;
-
 class RequestBodySizeLimitFilterTest {
 
     private static final int MAX_BODY_BYTES = 16;
@@ -41,31 +39,12 @@ class RequestBodySizeLimitFilterTest {
     }
 
     @Test
-    void should_answer_an_oversized_body_with_the_apps_error_shape() throws Exception {
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        filter.doFilter(requestWithBody("x".repeat(MAX_BODY_BYTES + 1)), response, new MockFilterChain());
-
-        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_JSON_VALUE);
-        assertThat(response.getContentAsString()).contains("\"status\":413", "\"messages\"", "\"timestamp\"");
-    }
-
-    @Test
     void should_pass_a_body_within_the_cap_down_the_chain() throws Exception {
         MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(requestWithBody("x".repeat(MAX_BODY_BYTES)), new MockHttpServletResponse(), chain);
 
         assertThat(chain.getRequest()).isNotNull();
-    }
-
-    @Test
-    void should_wrap_the_forwarded_request_so_an_undeclared_body_is_counted_while_read() throws Exception {
-        MockFilterChain chain = new MockFilterChain();
-
-        filter.doFilter(requestWithBody("x"), new MockHttpServletResponse(), chain);
-
-        assertThat(chain.getRequest()).isInstanceOf(BodySizeLimitingRequestWrapper.class);
     }
 
     private MockHttpServletRequest requestWithBody(String body) {

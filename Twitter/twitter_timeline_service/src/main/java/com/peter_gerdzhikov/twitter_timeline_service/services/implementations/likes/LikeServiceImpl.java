@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.likes.LikedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLike;
@@ -21,7 +22,6 @@ import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetIt
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.likes.LikeRecordingService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.likes.LikeService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursor;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursorCodec;
 

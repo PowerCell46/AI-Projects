@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.QueryHints;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;

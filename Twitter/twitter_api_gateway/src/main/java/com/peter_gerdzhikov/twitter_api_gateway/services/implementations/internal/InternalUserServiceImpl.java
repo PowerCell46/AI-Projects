@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.FollowerIdsResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.InternalUserResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
@@ -21,6 +20,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.internal.Int
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursor;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursorCodec;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.profiles.ProfileMapper;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
 
 import lombok.RequiredArgsConstructor;
 

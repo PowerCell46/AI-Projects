@@ -20,10 +20,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.files.FileContentResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.FileNotFoundException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.storage.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
+import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
 
 @ExtendWith(MockitoExtension.class)
 class FileServiceImplTest {

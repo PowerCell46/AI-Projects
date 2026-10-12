@@ -36,10 +36,10 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
-import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractTweetServiceIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
 
 /**
  * The tweet service is a WireMock stand-in.

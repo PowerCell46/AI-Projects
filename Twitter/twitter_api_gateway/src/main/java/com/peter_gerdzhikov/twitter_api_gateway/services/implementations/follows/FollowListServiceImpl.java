@@ -22,7 +22,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.follows.Foll
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursor;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursorCodec;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.profiles.ProfileMapper;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.paging.PageSizeValidator;
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 
 import lombok.RequiredArgsConstructor;
 

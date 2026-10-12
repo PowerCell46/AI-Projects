@@ -14,8 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
-import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ObjectStorageService;
+import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
+import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 
 import io.minio.MinioClient;

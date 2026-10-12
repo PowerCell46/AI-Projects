@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,8 +12,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_tweet_service.support.TestDocuments;
@@ -27,6 +28,11 @@ class OutboxHealthIntegrationTest extends AbstractMinioIntegrationTest {
 
     @Autowired
     private OutboxMessageRepository outboxMessageRepository;
+
+    @BeforeEach
+    void setUp() {
+        outboxMessageRepository.deleteAll();
+    }
 
     @Test
     void should_report_degraded_with_http_200_when_an_outbox_message_is_failed() throws Exception {

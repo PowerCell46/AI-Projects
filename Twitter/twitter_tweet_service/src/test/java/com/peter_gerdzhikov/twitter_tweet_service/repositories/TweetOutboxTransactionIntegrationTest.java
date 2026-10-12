@@ -11,10 +11,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.configurations.mongo.MongoConfiguration;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMongoIntegrationTest;

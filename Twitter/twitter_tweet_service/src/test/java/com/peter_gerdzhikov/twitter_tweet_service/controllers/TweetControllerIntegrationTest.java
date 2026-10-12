@@ -48,11 +48,11 @@ import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequ
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;

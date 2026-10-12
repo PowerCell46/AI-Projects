@@ -15,8 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 import jakarta.persistence.EntityManager;
 

@@ -26,11 +26,11 @@ import org.springframework.data.domain.Pageable;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursorCodec;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
 
 @ExtendWith(MockitoExtension.class)
 class UserListServiceImplTest {

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.request.CreateReplyRequestDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.request.UpdateReplyRequestDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.replies.ReplyPageResponseDTO;
@@ -27,8 +28,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/tweets/{tweetId}/replies")
 public class ReplyController {
-
-    private static final String DEFAULT_PAGE_SIZE = "20";
 
     private final ReplyService replyService;
 
@@ -51,7 +50,7 @@ public class ReplyController {
             @CurrentUserId UUID userId,
             @PathVariable UUID tweetId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size
+            @RequestParam(defaultValue = PageSizeValidator.DEFAULT_PAGE_SIZE) int size
     ) {
         return replyService.list(tweetId, cursor, size);
     }

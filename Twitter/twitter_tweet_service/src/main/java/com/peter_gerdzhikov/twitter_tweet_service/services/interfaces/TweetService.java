@@ -25,7 +25,7 @@ public interface TweetService {
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException
-     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException
+     * @throws com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException
      */
     TweetResponseDTO create(UUID authorId, String content, List<MultipartFile> images);
 
@@ -58,7 +58,7 @@ public interface TweetService {
      *
      * @param cursor the {@code nextCursor} of the previous page, or {@code null} for the first page
      * @param size   between 1 and 100
-     * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException
      * @throws com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException
      */
     TweetPageResponseDTO findPageByAuthor(UUID authorId, String cursor, int size);

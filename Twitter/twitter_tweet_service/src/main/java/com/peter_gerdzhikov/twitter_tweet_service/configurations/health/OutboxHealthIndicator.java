@@ -5,7 +5,7 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
 
 import lombok.RequiredArgsConstructor;

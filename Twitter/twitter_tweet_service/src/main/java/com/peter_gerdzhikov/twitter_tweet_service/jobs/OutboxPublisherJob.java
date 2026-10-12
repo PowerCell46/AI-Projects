@@ -3,7 +3,7 @@ package com.peter_gerdzhikov.twitter_tweet_service.jobs;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxPublisherService;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisherService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

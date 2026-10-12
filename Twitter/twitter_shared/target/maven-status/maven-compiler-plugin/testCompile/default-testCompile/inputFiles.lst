@@ -1,0 +1,11 @@
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/kafka/DeadLetterErrorHandlingSupportTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/kafka/KafkaConsumerFactoriesTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/outbox/OutboxPublisherTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/paging/InvalidPageSizeExceptionTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/paging/PageSizeValidatorTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/storage/MinioBucketInitializerTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/storage/ObjectStorageServiceImplTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/web/BodySizeLimitingRequestWrapperTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/web/ErrorResponseDTOTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/web/ErrorResponseWriterTest.java
+/Users/peter_gerdzhikov/Programming/github-workspace/AI-Projects/Twitter/twitter_shared/src/test/java/com/peter_gerdzhikov/twitter_shared/web/RequestBodySizeLimitFilterSupportTest.java

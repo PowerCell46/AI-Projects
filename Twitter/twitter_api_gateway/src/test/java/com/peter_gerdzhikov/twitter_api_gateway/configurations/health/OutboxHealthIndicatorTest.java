@@ -11,8 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxHealthIndicatorTest {

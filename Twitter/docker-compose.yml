@@ -15,7 +15,9 @@ x-service: &service
 
 x-gateway: &gateway
   <<: *service
-  build: ./twitter_api_gateway
+  build:
+      context: .
+      dockerfile: ./twitter_api_gateway/Dockerfile
   environment:
     SERVER_PORT: 8080
     API_GATEWAY_DATASOURCE_URL: jdbc:postgresql://postgres-api-gateway:5432/${POSTGRES_DB:-twitter_api_gateway_db}
@@ -69,7 +71,9 @@ services:
 
   tweet-service:
     <<: *service
-    build: ./twitter_tweet_service
+    build:
+      context: .
+      dockerfile: ./twitter_tweet_service/Dockerfile
     environment:
       SERVER_PORT: 8081
       # The password goes into a URI as it is: use letters and digits only (openssl rand -hex 24)
@@ -98,7 +102,9 @@ services:
 
   timeline-service:
     <<: *service
-    build: ./twitter_timeline_service
+    build:
+      context: .
+      dockerfile: ./twitter_timeline_service/Dockerfile
     environment:
       SERVER_PORT: 8083
       TIMELINE_DATASOURCE_URL: jdbc:postgresql://postgres-timeline:5432/${TIMELINE_POSTGRES_DB:-twitter_timeline_service_db}
@@ -130,7 +136,9 @@ services:
 
   mail-service:
     <<: *service
-    build: ./twitter_mail_service
+    build:
+      context: .
+      dockerfile: ./twitter_mail_service/Dockerfile
     environment:
       SERVER_PORT: 8082
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092

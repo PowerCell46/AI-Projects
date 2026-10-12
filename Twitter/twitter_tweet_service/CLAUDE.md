@@ -16,7 +16,9 @@ Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 `../docker-compose.infra.yml` (the Twitter root, one level up) runs Mongo (a single-node replica set), Kafka and
 MinIO. For local dev: copy `../.env.example` to `../.env`, run `docker compose -f docker-compose.infra.yml up -d` from the Twitter root,
 export the env (`set -a; . ../.env; set +a`), then `./mvnw spring-boot:run` serves the app on **:8081**.
-Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`.
+Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`. Builds need
+`../twitter_shared`: run Maven from the Twitter root as `./mvnw -pl twitter_tweet_service -am <goal>`, or
+`./mvnw -pl twitter_shared install` once and then build here standalone.
 
 Tests use **Testcontainers**, never embedded fakes - a running Docker daemon is a hard prerequisite.
 

@@ -19,7 +19,9 @@ run `docker compose -f docker-compose.infra.yml up -d kafka redis mailpit` from 
 (`set -a; . ../.env; set +a`), then `./mvnw spring-boot:run` serves the app on **:8082**. SMTP defaults to
 Gmail; to send to Mailpit instead (UI on `localhost:8025`) set
 `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, so nothing real gets sent.
-Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`.
+Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`. Builds need
+`../twitter_shared`: run Maven from the Twitter root as `./mvnw -pl twitter_mail_service -am <goal>`, or
+`./mvnw -pl twitter_shared install` once and then build here standalone.
 
 **Start the gateway first.** It owns the main topics and creates them with 3 partitions. Started earlier, this service
 auto-creates them with 1, and its consumers see the other 2 only after a metadata refresh, about 5 minutes later, so

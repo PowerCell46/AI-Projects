@@ -9,7 +9,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.FileNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.storage.FileService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.storage.ObjectStorageService;
+import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
 
 import lombok.RequiredArgsConstructor;
 

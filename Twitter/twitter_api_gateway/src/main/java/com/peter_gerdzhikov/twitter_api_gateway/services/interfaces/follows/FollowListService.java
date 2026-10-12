@@ -11,7 +11,7 @@ public interface FollowListService {
      *
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException
      *         when the cursor was not produced by this service
-     * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException
      *         when {@code size} is outside 1 to 100
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException
      *         for an unknown or unconfirmed user

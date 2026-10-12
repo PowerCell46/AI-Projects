@@ -15,34 +15,37 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.web.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.CallerUnknownException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.InvalidCallerIdentityException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.NotTweetAuthorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetImageNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException;
 
@@ -248,6 +251,29 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
         assertThat(((ErrorResponseDTO) response.getBody()).getMessages())
                 .containsExactly("The uploaded file is too large.");
+    }
+
+    @Test
+    void should_return_400_for_a_garbled_multipart_body() {
+        MultipartException e = new MultipartException("boundary 'xyz' not found: truncated at byte 12");
+
+        ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleMultipartException(e);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getMessages()).containsExactly("Malformed multipart request.");
+    }
+
+    @Test
+    void should_return_400_for_an_unreadable_message_body() {
+        HttpMessageNotReadableException e =
+                new HttpMessageNotReadableException("JSON parse error: unexpected character", new MockHttpInputMessage(new byte[0]));
+
+        ResponseEntity<Object> response = exceptionHandler.handleHttpMessageNotReadable(
+                e, new HttpHeaders(), HttpStatus.BAD_REQUEST, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(((ErrorResponseDTO) response.getBody()).getMessages())
+                .containsExactly("Malformed request body.");
     }
 
     @Test

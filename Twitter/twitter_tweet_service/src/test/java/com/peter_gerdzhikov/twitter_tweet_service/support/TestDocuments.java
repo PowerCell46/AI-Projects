@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 
 /**
  * Documents with fresh random ids and a fresh random author, so a test never sees another test's data.

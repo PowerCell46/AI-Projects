@@ -12,15 +12,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.savedtweets.SavedTweetsResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.TweetNotFoundException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.savedtweets.SavedTweetRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.savedtweets.SavedTweetService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetItemAssemblyService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.PageSizeValidator;
+import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.savedtweets.SavedTweetService;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursor;
 import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.TimelineCursorCodec;
 

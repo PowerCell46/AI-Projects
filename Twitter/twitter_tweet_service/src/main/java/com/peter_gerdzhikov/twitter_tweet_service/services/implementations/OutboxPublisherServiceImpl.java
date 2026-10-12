@@ -2,50 +2,26 @@ package com.peter_gerdzhikov.twitter_tweet_service.services.implementations;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
-import org.apache.kafka.common.errors.InvalidTopicException;
-import org.apache.kafka.common.errors.RecordBatchTooLargeException;
-import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisher;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisherService;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxRecord;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.outbox.PendingOutboxStore;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.outbox.OutboxMessageRepository;
-import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxPublisherService;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Service
 public class OutboxPublisherServiceImpl implements OutboxPublisherService {
 
-    /**
-     * What Kafka refuses because of the message itself, so sending it again can never work. Anything else (a broker
-     * down, a timeout, a leader election, an authorization problem) is not the message's fault and must not use up
-     * its attempts.
-     */
-    private static final List<Class<? extends Throwable>> MESSAGE_SPECIFIC_FAILURES = List.of(
-            RecordTooLargeException.class,
-            RecordBatchTooLargeException.class,
-            InvalidTopicException.class
-    );
+    private final OutboxPublisher publisher;
 
-    private final int batchSize;
-
-    private final int maxAttempts;
-
-    private final Duration sendTimeout;
-
-    private final KafkaTemplate<String, String> kafkaTemplate;
-
-    private final OutboxMessageRepository outboxMessageRepository;
+    private final PendingOutboxStore store;
 
     public OutboxPublisherServiceImpl(
             @Value("${app.outbox.batch-size}") int batchSize,
@@ -54,97 +30,94 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
             KafkaTemplate<String, String> kafkaTemplate,
             OutboxMessageRepository outboxMessageRepository
     ) {
-        this.batchSize = batchSize;
-        this.maxAttempts = maxAttempts;
-        this.sendTimeout = sendTimeout;
-        this.kafkaTemplate = kafkaTemplate;
-        this.outboxMessageRepository = outboxMessageRepository;
+        this.publisher = new OutboxPublisher(batchSize, maxAttempts, sendTimeout, kafkaTemplate);
+        this.store = new RepositoryPendingOutboxStore(outboxMessageRepository);
     }
 
     @Override
     public int publishPending() {
-        List<OutboxMessage> pending = outboxMessageRepository.findByStatusOrderByCreatedAtAsc(
-                OutboxStatus.PENDING,
-                PageRequest.of(0, batchSize)
-        );
-        int published = 0;
-
-        for (OutboxMessage message : pending) {
-            SendOutcome outcome = trySend(message);
-
-            if (outcome == SendOutcome.RETRY_LATER) {
-                break;
-            }
-
-            if (outcome == SendOutcome.REJECTED) {
-                recordRejection(message);
-                continue;
-            }
-
-            outboxMessageRepository.delete(message);
-            published++;
-        }
-
-        return published;
+        return publisher.publishPending(store);
     }
 
-    private SendOutcome trySend(OutboxMessage message) {
-        try {
-            kafkaTemplate
-                    .send(message.getTopic(), message.getMessageKey(), message.getPayload())
-                    .get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
+    private static class RepositoryPendingOutboxStore implements PendingOutboxStore {
 
-            return SendOutcome.SENT;
+        private final OutboxMessageRepository outboxMessageRepository;
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("Interrupted while sending outbox message {}; it stays pending.", message.getId(), e);
+        private RepositoryPendingOutboxStore(OutboxMessageRepository outboxMessageRepository) {
+            this.outboxMessageRepository = outboxMessageRepository;
+        }
 
-            return SendOutcome.RETRY_LATER;
+        @Override
+        public List<OutboxRecord> loadPending(int batchSize) {
+            List<OutboxMessage> messages = outboxMessageRepository.findByStatusOrderByCreatedAtAsc(
+                    OutboxStatus.PENDING,
+                    PageRequest.of(0, batchSize)
+            );
 
-        } catch (ExecutionException | TimeoutException | KafkaException e) {
-            if (isMessageSpecific(e)) {
-                log.warn("Kafka rejected outbox message {} for topic {}.", message.getId(), message.getTopic(), e);
+            return messages.stream().<OutboxRecord>map(MessageOutboxRecord::new).toList();
+        }
 
-                return SendOutcome.REJECTED;
-            }
+        @Override
+        public void delete(OutboxRecord record) {
+            outboxMessageRepository.delete(((MessageOutboxRecord) record).message());
+        }
 
-            log.warn("Kafka did not take outbox message {} for topic {}; it and the rest of the batch stay pending.",
-                    message.getId(), message.getTopic(), e);
-
-            return SendOutcome.RETRY_LATER;
+        @Override
+        public void save(OutboxRecord record) {
+            outboxMessageRepository.save(((MessageOutboxRecord) record).message());
         }
     }
 
-    private boolean isMessageSpecific(Throwable failure) {
-        for (Throwable current = failure; current != null; current = current.getCause()) {
-            Throwable candidate = current;
+    private static class MessageOutboxRecord implements OutboxRecord {
 
-            if (MESSAGE_SPECIFIC_FAILURES.stream().anyMatch(type -> type.isInstance(candidate))) {
-                return true;
-            }
+        private final OutboxMessage message;
+
+        private MessageOutboxRecord(OutboxMessage message) {
+            this.message = message;
         }
 
-        return false;
-    }
-
-    private void recordRejection(OutboxMessage message) {
-        message.setAttempts(message.getAttempts() + 1);
-
-        if (message.getAttempts() >= maxAttempts) {
-            message.setStatus(OutboxStatus.FAILED);
-            log.warn("Outbox message {} was rejected {} times and is marked FAILED until someone requeues it.", message.getId(), message.getAttempts());
+        private OutboxMessage message() {
+            return message;
         }
 
-        outboxMessageRepository.save(message);
-    }
+        @Override
+        public Object id() {
+            return message.getId();
+        }
 
-    private enum SendOutcome {
+        @Override
+        public String topic() {
+            return message.getTopic();
+        }
 
-        SENT,
+        @Override
+        public String messageKey() {
+            return message.getMessageKey();
+        }
 
-        RETRY_LATER,
+        @Override
+        public String payload() {
+            return message.getPayload();
+        }
 
-        REJECTED
+        @Override
+        public int attempts() {
+            return message.getAttempts();
+        }
+
+        @Override
+        public void attempts(int attempts) {
+            message.setAttempts(attempts);
+        }
+
+        @Override
+        public OutboxStatus status() {
+            return message.getStatus();
+        }
+
+        @Override
+        public void status(OutboxStatus status) {
+            message.setStatus(status);
+        }
     }
 }

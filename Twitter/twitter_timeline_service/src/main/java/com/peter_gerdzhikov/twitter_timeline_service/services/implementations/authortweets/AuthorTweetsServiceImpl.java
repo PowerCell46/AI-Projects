@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetPageClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.authortweets.AuthorTweetsResponseDTO;
@@ -14,7 +15,6 @@ import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.TweetIt
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.authortweets.AuthorTweetsService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.TweetLookupService;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.utilities.paging.PageSizeValidator;
 
 import lombok.RequiredArgsConstructor;
 

@@ -18,7 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrationTest;
 
 /**

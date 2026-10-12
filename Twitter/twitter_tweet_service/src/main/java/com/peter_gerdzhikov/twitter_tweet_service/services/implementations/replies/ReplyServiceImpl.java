@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.client.UserClientDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.replies.ReplyPageResponseDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.replies.ReplyResponseDTO;
@@ -28,7 +29,6 @@ import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ConflictRe
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.lookups.UserLookupService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.replies.ReplyService;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.mappers.ReplyMapper;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.PageSizeValidator;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursor;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursorCodec;
 

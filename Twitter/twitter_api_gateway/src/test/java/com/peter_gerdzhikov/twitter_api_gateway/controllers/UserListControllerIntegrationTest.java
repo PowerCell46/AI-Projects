@@ -38,13 +38,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenService;
@@ -52,8 +50,10 @@ import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegration
 import com.peter_gerdzhikov.twitter_api_gateway.support.SqlStatementCounter;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursorCodec;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
 
 import jakarta.persistence.EntityManagerFactory;
 

@@ -31,13 +31,13 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.InternalU
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.projections.FollowerEdge;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.follows.FollowCursorCodec;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -2,50 +2,27 @@ package com.peter_gerdzhikov.twitter_api_gateway.services.implementations.outbox
 
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
-import org.apache.kafka.common.errors.InvalidTopicException;
-import org.apache.kafka.common.errors.RecordBatchTooLargeException;
-import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.outbox.OutboxPublisherService;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisher;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisherService;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxRecord;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.outbox.PendingOutboxStore;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Service
 public class OutboxPublisherServiceImpl implements OutboxPublisherService {
 
-    /**
-     * What Kafka refuses because of the row itself, so sending it again can never work. Anything else (a broker down,
-     * a timeout, a leader election, an authorization problem) is not the row's fault and must not use up its attempts.
-     */
-    private static final List<Class<? extends Throwable>> ROW_SPECIFIC_FAILURES = List.of(
-            RecordTooLargeException.class,
-            RecordBatchTooLargeException.class,
-            InvalidTopicException.class
-    );
+    private final OutboxPublisher publisher;
 
-    private final int batchSize;
-
-    private final int maxAttempts;
-
-    private final Duration sendTimeout;
-
-    private final OutboxRepository outboxRepository;
-
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final PendingOutboxStore store;
 
     public OutboxPublisherServiceImpl(
             @Value("${app.outbox.batch-size}") int batchSize,
@@ -54,98 +31,95 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
             OutboxRepository outboxRepository,
             KafkaTemplate<String, String> kafkaTemplate
     ) {
-        this.batchSize = batchSize;
-        this.maxAttempts = maxAttempts;
-        this.sendTimeout = sendTimeout;
-        this.outboxRepository = outboxRepository;
-        this.kafkaTemplate = kafkaTemplate;
+        this.publisher = new OutboxPublisher(batchSize, maxAttempts, sendTimeout, kafkaTemplate);
+        this.store = new RepositoryPendingOutboxStore(outboxRepository);
     }
 
     @Override
     @Transactional
     public int publishPending() {
-        List<Outbox> pending = outboxRepository.findByStatusOrderByCreatedAtAsc(
-                OutboxStatus.PENDING,
-                PageRequest.of(0, batchSize)
-        );
-        int published = 0;
-
-        for (Outbox row : pending) {
-            SendOutcome outcome = trySend(row);
-
-            if (outcome == SendOutcome.RETRY_LATER) {
-                break;
-            }
-
-            if (outcome == SendOutcome.REJECTED) {
-                recordRejection(row);
-                continue;
-            }
-
-            outboxRepository.delete(row);
-            published++;
-        }
-
-        return published;
+        return publisher.publishPending(store);
     }
 
-    private SendOutcome trySend(Outbox row) {
-        try {
-            kafkaTemplate
-                    .send(row.getTopic(), row.getMessageKey(), row.getPayload())
-                    .get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
+    private static class RepositoryPendingOutboxStore implements PendingOutboxStore {
 
-            return SendOutcome.SENT;
+        private final OutboxRepository outboxRepository;
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("Interrupted while sending outbox row {}; it stays pending.", row.getId(), e);
+        private RepositoryPendingOutboxStore(OutboxRepository outboxRepository) {
+            this.outboxRepository = outboxRepository;
+        }
 
-            return SendOutcome.RETRY_LATER;
+        @Override
+        public List<OutboxRecord> loadPending(int batchSize) {
+            List<Outbox> rows = outboxRepository.findByStatusOrderByCreatedAtAsc(
+                    OutboxStatus.PENDING,
+                    PageRequest.of(0, batchSize)
+            );
 
-        } catch (ExecutionException | TimeoutException | KafkaException e) {
-            if (isRowSpecific(e)) {
-                log.warn("Kafka rejected outbox row {} for topic {}.", row.getId(), row.getTopic(), e);
+            return rows.stream().<OutboxRecord>map(RowOutboxRecord::new).toList();
+        }
 
-                return SendOutcome.REJECTED;
-            }
+        @Override
+        public void delete(OutboxRecord record) {
+            outboxRepository.delete(((RowOutboxRecord) record).row());
+        }
 
-            log.warn("Kafka did not take outbox row {} for topic {}; it and the rest of the batch stay pending.",
-                    row.getId(), row.getTopic(), e);
-
-            return SendOutcome.RETRY_LATER;
+        @Override
+        public void save(OutboxRecord record) {
+            outboxRepository.save(((RowOutboxRecord) record).row());
         }
     }
 
-    private boolean isRowSpecific(Throwable failure) {
-        for (Throwable current = failure; current != null; current = current.getCause()) {
-            Throwable candidate = current;
+    private static class RowOutboxRecord implements OutboxRecord {
 
-            if (ROW_SPECIFIC_FAILURES.stream().anyMatch(type -> type.isInstance(candidate))) {
-                return true;
-            }
+        private final Outbox row;
+
+        private RowOutboxRecord(Outbox row) {
+            this.row = row;
         }
 
-        return false;
-    }
-
-    private void recordRejection(Outbox row) {
-        row.setAttempts(row.getAttempts() + 1);
-
-        if (row.getAttempts() >= maxAttempts) {
-            row.setStatus(OutboxStatus.FAILED);
-            log.warn("Outbox row {} was rejected {} times and is marked FAILED until someone requeues it.", row.getId(), row.getAttempts());
+        private Outbox row() {
+            return row;
         }
 
-        outboxRepository.save(row);
-    }
+        @Override
+        public Object id() {
+            return row.getId();
+        }
 
-    private enum SendOutcome {
+        @Override
+        public String topic() {
+            return row.getTopic();
+        }
 
-        SENT,
+        @Override
+        public String messageKey() {
+            return row.getMessageKey();
+        }
 
-        RETRY_LATER,
+        @Override
+        public String payload() {
+            return row.getPayload();
+        }
 
-        REJECTED
+        @Override
+        public int attempts() {
+            return row.getAttempts();
+        }
+
+        @Override
+        public void attempts(int attempts) {
+            row.setAttempts(attempts);
+        }
+
+        @Override
+        public OutboxStatus status() {
+            return row.getStatus();
+        }
+
+        @Override
+        public void status(OutboxStatus status) {
+            row.setStatus(status);
+        }
     }
 }

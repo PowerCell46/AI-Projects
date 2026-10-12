@@ -19,9 +19,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 /**
  * The rows are committed and two real transactions compete for them, so the test itself must not run in a

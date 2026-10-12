@@ -31,13 +31,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.tweets.TweetClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.response.feed.FeedResponseDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.feed.FeedEntry;
 import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_timeline_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.feed.FeedEntryRepository;
@@ -88,8 +88,8 @@ class FeedServiceImplTest {
         feedService = new FeedServiceImpl(
                 feedEntryRepository,
                 new TweetItemAssemblyServiceImpl(
-                        viewService, executor, userLookupService, tweetLookupService, savedTweetRepository,
-                        tweetLikeRepository, tweetLikeCountRepository));
+                        viewService, userLookupService, tweetLookupService, executor, tweetLikeRepository,
+                        savedTweetRepository, tweetLikeCountRepository));
     }
 
     @AfterEach

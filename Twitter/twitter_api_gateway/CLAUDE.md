@@ -25,7 +25,9 @@ Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 `../docker-compose.infra.yml` (the Twitter root, one level up) runs the infrastructure; the gateway needs **Postgres,
 Kafka and MinIO**. For local dev: copy `../.env.example` to `../.env` and set `JWT_SECRET`, run `docker compose -f docker-compose.infra.yml up -d` from the
 Twitter root, export the env (`set -a; . ../.env; set +a`), then `./mvnw spring-boot:run` serves the app on
-**:8080**. Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`.
+**:8080**. Other goals: `./mvnw clean install`, `./mvnw test`, `./mvnw verify`. Builds need
+`../twitter_shared`: run Maven from the Twitter root as `./mvnw -pl twitter_api_gateway -am <goal>`, or
+`./mvnw -pl twitter_shared install` once and then build here standalone.
 
 Tests use **Testcontainers**, never embedded fakes — a running Docker daemon is a hard prerequisite.
 

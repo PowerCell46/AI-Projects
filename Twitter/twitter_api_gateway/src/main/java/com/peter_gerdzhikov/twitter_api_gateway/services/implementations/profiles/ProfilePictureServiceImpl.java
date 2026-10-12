@@ -12,18 +12,18 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
+import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.PictureSlot;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.PictureSlot;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.EmptyUploadException;
-import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.storage.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.profiles.ProfilePictureService;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.files.ImageSignatureValidator;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.profiles.ProfileMapper;
+import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
+import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -129,7 +129,9 @@ public class ProfilePictureServiceImpl implements ProfilePictureService {
             dbFileRepository.delete(replaced);
         }
 
-        return new Replacement(ProfileMapper.toResponse(user, false), replaced == null ? null : replaced.getObjectKey());
+        return new Replacement(
+                ProfileMapper.toResponse(user, user.getId(), false),
+                replaced == null ? null : replaced.getObjectKey());
     }
 
     private String clear(UUID userId, PictureSlot slot) {

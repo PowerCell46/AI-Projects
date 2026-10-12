@@ -17,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
@@ -25,6 +24,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenSe
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
 
 /**
  * Runs against a real servlet container: MockMvc never applies the multipart size limits or the body-size

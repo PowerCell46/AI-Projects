@@ -36,7 +36,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.UpdateProfileRequestDTO;
-import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
@@ -46,8 +45,9 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenSe
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.support.TestUsers;
-import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.profiles.ProfileMapper;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
 
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
@@ -158,10 +158,21 @@ class ProfileControllerIntegrationTest extends AbstractMinioIntegrationTest {
             assertThat(body.get("username").asString()).isEqualTo(target.getUsername());
             assertThat(body.get("bio").asString()).isEqualTo("Hello there");
             assertThat(body.get("location").asString()).isEqualTo("Sofia");
-            assertThat(body.get("birthdate").asString()).isEqualTo("1990-05-17");
+            assertThat(body.get("birthdate").isNull()).isTrue();
             assertThat(body.get("profilePictureUrl").asString()).isEqualTo("/api/v1/files/" + profilePicture.getId());
             assertThat(body.get("coverPictureUrl").asString()).isEqualTo("/api/v1/files/" + coverPicture.getId());
             assertThat(body.get("createdAt").asString()).isNotBlank();
+        }
+
+        @Test
+        void should_include_the_birthdate_when_viewing_your_own_profile() {
+            User me = confirmedUser();
+            me.setBirthdate(LocalDate.of(1990, 5, 17));
+            userRepository.save(me);
+
+            JsonNode body = jsonOf(getProfile(me.getUsername(), cookieOf(me)));
+
+            assertThat(body.get("birthdate").asString()).isEqualTo("1990-05-17");
         }
 
         @Test

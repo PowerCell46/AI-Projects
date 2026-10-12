@@ -18,30 +18,31 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException;
+import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
+import com.peter_gerdzhikov.twitter_shared.web.ErrorResponseDTO;
+import com.peter_gerdzhikov.twitter_shared.web.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.CallerUnknownException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.InvalidCallerIdentityException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.RequestBodyTooLargeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.WriteConflictBudgetExceededException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.StorageUnavailableException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.UnsupportedImageTypeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidCursorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.paging.InvalidPageSizeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.EmptyReplyException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyContentTooLongException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.replies.ReplyNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.NotTweetAuthorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetImageNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetSinceOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.upstream.UpstreamUnavailableException;
@@ -165,6 +166,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return errorResponse(HttpStatus.GATEWAY_TIMEOUT, e.getMessage());
     }
 
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMultipartException(MultipartException e) {
+        return errorResponse(HttpStatus.BAD_REQUEST, "Malformed multipart request.");
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleUnexpectedError(Exception e) {
         log.error("Unhandled exception.", e);
@@ -236,7 +242,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleNoResourceFoundException(
             NoResourceFoundException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        log.warn("No resource found for {} '{}'.", e.getHttpMethod(), e.getResourcePath());
+        log.warn("No resource found for a {} request.", e.getHttpMethod());
         return ResponseEntity
                 .status(status)
                 .headers(headers)

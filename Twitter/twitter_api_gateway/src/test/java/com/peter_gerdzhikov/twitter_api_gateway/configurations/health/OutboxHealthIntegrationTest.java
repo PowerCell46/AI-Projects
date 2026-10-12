@@ -11,10 +11,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.peter_gerdzhikov.twitter_api_gateway.entities.enums.OutboxStatus;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.outbox.Outbox;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 @SpringBootTest
 @AutoConfigureMockMvc

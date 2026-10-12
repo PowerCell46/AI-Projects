@@ -17,6 +17,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.peter_gerdzhikov.twitter_shared.paging.PageSizeValidator;
+import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.event.TweetDeletedEventDTO;
 import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetImageContentResponseDTO;
@@ -26,26 +28,24 @@ import com.peter_gerdzhikov.twitter_tweet_service.DTOs.response.tweets.TweetSumm
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.TweetImage;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.images.EmptyUploadException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.NotTweetAuthorException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetImageNotFoundException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
-import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.access.TweetNotFoundException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.EmptyTweetException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TooManyImagesException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.content.TweetContentTooLongException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetIdsOutOfRangeException;
+import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetLimitOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.exceptions.tweets.reads.TweetSinceOutOfRangeException;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.replies.ReplyRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.repositories.tweets.TweetRepository;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ConflictRetrier;
-import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.OutboxService;
 import com.peter_gerdzhikov.twitter_tweet_service.services.interfaces.TweetService;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.ImageSignatureValidator;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.mappers.TweetMapper;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursor;
 import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.KeysetCursorCodec;
-import com.peter_gerdzhikov.twitter_tweet_service.utilities.paging.PageSizeValidator;
 
 import lombok.extern.slf4j.Slf4j;
 

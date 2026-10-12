@@ -21,7 +21,9 @@ Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 host port **5433**) next to Kafka and the rest. For local dev: copy `../.env.example` to `../.env` (this service's own vars are also listed in `./.env.example`), run
 `docker compose -f docker-compose.infra.yml up -d` from the Twitter root, export the env (`set -a; . ../.env; set +a`), then
 `./mvnw spring-boot:run` serves the app on **:8083**. Other goals: `./mvnw clean install`, `./mvnw test`,
-`./mvnw verify`.
+`./mvnw verify`. Builds need `../twitter_shared`: run Maven from the Twitter root as
+`./mvnw -pl twitter_timeline_service -am <goal>`, or `./mvnw -pl twitter_shared install` once and then build
+here standalone.
 
 Tests use **Testcontainers**, never embedded fakes - a running Docker daemon is a hard prerequisite.
 

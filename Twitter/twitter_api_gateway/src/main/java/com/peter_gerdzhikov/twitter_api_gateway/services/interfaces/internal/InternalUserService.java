@@ -14,7 +14,7 @@ public interface InternalUserService {
      *
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidCursorException
      *         when the cursor was not produced by this service
-     * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.follows.InvalidPageSizeException
+     * @throws com.peter_gerdzhikov.twitter_shared.paging.InvalidPageSizeException
      *         when {@code size} is outside 1 to 1,000
      */
     FollowerIdsResponseDTO getFollowerIds(UUID userId, String cursor, int size);

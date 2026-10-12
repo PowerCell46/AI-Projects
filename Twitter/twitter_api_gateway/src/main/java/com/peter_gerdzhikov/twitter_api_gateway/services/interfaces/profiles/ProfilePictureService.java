@@ -17,7 +17,7 @@ public interface ProfilePictureService {
      *         for an empty file
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.UnsupportedImageTypeException
      *         when the bytes are not a JPEG, PNG or WebP
-     * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.StorageUnavailableException
+     * @throws com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException
      *         when storing the new object fails, before any database change
      */
     ProfileResponseDTO upload(UUID userId, PictureSlot slot, MultipartFile file);

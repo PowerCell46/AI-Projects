@@ -9,7 +9,7 @@ public interface FileService {
     /**
      * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.FileNotFoundException
      *         when no file has this id
-     * @throws com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.StorageUnavailableException
+     * @throws com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException
      *         when the object can't be read
      */
     FileContentResponseDTO open(UUID fileId);

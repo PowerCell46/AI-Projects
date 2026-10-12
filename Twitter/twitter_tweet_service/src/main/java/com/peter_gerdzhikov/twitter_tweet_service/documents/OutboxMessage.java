@@ -7,7 +7,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.peter_gerdzhikov.twitter_tweet_service.documents.enums.OutboxStatus;
+import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
