@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.EmailConfirmationToken;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
@@ -24,6 +26,9 @@ import jakarta.persistence.EntityManager;
 class EmailConfirmationTokenRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final Instant ISSUED_AT = Instant.parse("2026-01-01T00:00:00Z");
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private EntityManager entityManager;
@@ -122,6 +127,18 @@ class EmailConfirmationTokenRepositoryIntegrationTest extends AbstractPostgresIn
             entityManager.clear();
 
             assertThat(tokenRepository.findById(token.getId())).isEmpty();
+        }
+    }
+
+    @Nested
+    class Indexes {
+
+        @Test
+        void should_create_the_user_id_index() {
+            List<String> indexNames = jdbcTemplate.queryForList(
+                    "SELECT indexname FROM pg_indexes WHERE tablename = 'email_confirmation_tokens'", String.class);
+
+            assertThat(indexNames).contains("ix_email_confirmation_tokens_user_id");
         }
     }
 

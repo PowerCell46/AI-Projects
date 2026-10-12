@@ -42,7 +42,7 @@ function ResendPage() {
                     headline="It's on its way."
                     detail="IF AN ACCOUNT IS WAITING, A NEW LINK IS ON ITS WAY"
                 >
-                    <ResendButton email={dispatchedEmail} startsInCooldown />
+                    <ResendButton email={dispatchedEmail} shouldStartInCooldown />
                 </Arrival>
             </DescentStage>
         );

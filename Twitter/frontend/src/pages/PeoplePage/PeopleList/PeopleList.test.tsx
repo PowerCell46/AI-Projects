@@ -1,9 +1,12 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchPeople, followUser } from '../../../api/users';
 import type { PeoplePage, Person } from '../../../api/users';
+import { FollowUpdatesProvider, useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
+import type { FollowUpdate } from '../../../contexts/FollowUpdatesContext';
 import { reachListBottom } from '../../../test/postListHelpers';
 import PeopleList from './PeopleList';
 
@@ -52,11 +55,14 @@ function liveRegion(): HTMLElement {
     return region;
 }
 
-async function renderList(onFollowChanged = vi.fn()) {
+async function renderList(onFollowChanged = vi.fn(), extra: ReactNode = null) {
     await act(async () => {
         render(
             <MemoryRouter>
-                <PeopleList onFollowChanged={onFollowChanged} />
+                <FollowUpdatesProvider>
+                    {extra}
+                    <PeopleList onFollowChanged={onFollowChanged} />
+                </FollowUpdatesProvider>
             </MemoryRouter>,
         );
     });
@@ -274,5 +280,84 @@ describe('a follow change', () => {
         });
 
         expect(onFollowChanged).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('a follow reported from a profile', () => {
+    interface ReportButtonProps {
+        update: FollowUpdate;
+    }
+
+    function ReportButton({ update }: ReportButtonProps) {
+        const { reportFollowUpdate } = useFollowUpdates();
+
+        return (
+            <button
+                type="button"
+                onClick={() => reportFollowUpdate('ana', update)}
+            >
+                REPORT
+            </button>
+        );
+    }
+
+    function followersOf(card: HTMLElement): string {
+        return card.querySelector('.person-card-followers')?.textContent ?? '';
+    }
+
+    it('should_show_the_card_as_following_with_the_new_count_when_a_profile_reported_a_follow', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue(page([person('ana')], null));
+
+        await renderList(
+            vi.fn(),
+            <ReportButton
+                update={{
+                    followedByMe: true,
+                    followersCount: 4,
+                }}
+            />,
+        );
+
+        await act(async () => {
+            await userEvent.click(screen.getByRole('button', { name: 'REPORT' }));
+        });
+
+        const card = screen.getByRole('listitem');
+
+        expect(within(card).getByRole('button', { name: 'Follow ana' }).getAttribute('aria-pressed')).toBe('true');
+        expect(followersOf(card)).toBe('4 FOLLOWERS');
+    });
+
+    it('should_reset_the_cards_optimistic_follow_when_a_reported_update_replaces_it', async () => {
+        vi.mocked(followUser).mockResolvedValue(undefined);
+        vi.mocked(fetchPeople).mockResolvedValue(page([person('ana')], null));
+
+        await renderList(
+            vi.fn(),
+            <ReportButton
+                update={{
+                    followedByMe: false,
+                    followersCount: 9,
+                }}
+            />,
+        );
+        const card = screen.getByRole('listitem');
+        const followButton = within(card).getByRole('button', { name: 'Follow ana' });
+
+        await act(async () => {
+            await userEvent.click(followButton);
+        });
+
+        expect(followButton.getAttribute('aria-pressed')).toBe('true');
+
+        await act(async () => {
+            await userEvent.click(screen.getByRole('button', { name: 'REPORT' }));
+        });
+
+        const resetCard = screen.getByRole('listitem');
+        const resetFollowButton = within(resetCard).getByRole('button', { name: 'Follow ana' });
+
+        expect(resetFollowButton.getAttribute('aria-pressed')).toBe('false');
+        expect(followersOf(resetCard)).toBe('9 FOLLOWERS');
     });
 });

@@ -44,7 +44,7 @@ function TabPanels() {
                 <section
                     key={tab.id}
                     id={tabPanelId(tab.id)}
-                    className="tab-panel"
+                    className="tab-panels-panel"
                     role="tabpanel"
                     aria-labelledby={tabButtonId(tab.id)}
                     hidden={tab.id !== activeTab}

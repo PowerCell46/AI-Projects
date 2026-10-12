@@ -23,8 +23,6 @@ export const TABS: TabDefinition[] = [
     },
 ];
 
-export const DEFAULT_TAB: TabId = 'tweets';
-
 export function tabOfPath(pathname: string): TabId | null {
     const matchedTab = TABS.find((tab) => matchPath(tab.path, pathname) !== null);
 

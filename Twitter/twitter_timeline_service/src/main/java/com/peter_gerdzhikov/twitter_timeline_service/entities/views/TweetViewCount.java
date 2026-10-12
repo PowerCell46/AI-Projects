@@ -31,10 +31,10 @@ public class TweetViewCount {
 
     public static final String VIEWS_CONSTRAINT = "ck_tweet_view_counts_views_non_negative";
 
+    @Column(name = "views", updatable = false, nullable = false)
+    private long views;
+
     @Id
     @Column(name = "tweet_id", updatable = false, nullable = false)
     private UUID tweetId;
-
-    @Column(name = "views", updatable = false, nullable = false)
-    private long views;
 }

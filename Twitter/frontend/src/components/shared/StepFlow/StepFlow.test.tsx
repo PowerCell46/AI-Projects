@@ -71,6 +71,15 @@ describe('the first step', () => {
 
         expect(screen.queryByRole('button', { name: 'BACK' })).toBeNull();
     });
+
+    it('should_show_the_label_above_the_input', () => {
+        renderFlow('register');
+
+        const label = screen.getByText('email address');
+
+        expect(label.classList.contains('step-input-label')).toBe(true);
+        expect(label.classList.contains('sr-only')).toBe(false);
+    });
 });
 
 describe('advancing', () => {

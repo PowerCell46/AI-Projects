@@ -1,3 +1,12 @@
+.reply-text-field-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    color: var(--pale-secondary);
+}
+
 /* No box: the field is a hairline rule that fills from the left on focus, like the sign-in field and the compose modal. */
 .reply-text-field-text {
     display: block;

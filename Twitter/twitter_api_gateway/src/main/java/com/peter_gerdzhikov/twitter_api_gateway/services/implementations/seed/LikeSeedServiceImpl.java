@@ -7,11 +7,11 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.client.SeededTweetClientDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.LikeSeedService;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.ConnectRetry;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,10 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 public class LikeSeedServiceImpl implements LikeSeedService {
 
     private static final long RANDOM_SEED = 2028;
-
-    private static final int MAX_CONNECT_ATTEMPTS = 36;
-
-    private static final long CONNECT_RETRY_DELAY_MILLIS = 5_000;
 
     private static final double LIKE_PROBABILITY = 0.3;
 
@@ -68,19 +64,7 @@ public class LikeSeedServiceImpl implements LikeSeedService {
     }
 
     private void like(UUID userId, UUID tweetId) {
-        for (int attempt = 1; ; attempt++) {
-            try {
-                putLike(userId, tweetId);
-                return;
-
-            } catch (ResourceAccessException e) {
-                if (attempt == MAX_CONNECT_ATTEMPTS) {
-                    throw e;
-                }
-
-                waitBeforeRetry();
-            }
-        }
+        ConnectRetry.runWithConnectRetry(() -> putLike(userId, tweetId), "the timeline service");
     }
 
     private void putLike(UUID userId, UUID tweetId) {
@@ -90,15 +74,5 @@ public class LikeSeedServiceImpl implements LikeSeedService {
                 .header(CALLER_HEADER, userId.toString())
                 .retrieve()
                 .toBodilessEntity();
-    }
-
-    private void waitBeforeRetry() {
-        try {
-            Thread.sleep(CONNECT_RETRY_DELAY_MILLIS);
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for the timeline service.", e);
-        }
     }
 }

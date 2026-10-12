@@ -1,16 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { AnimationEvent, FormEvent } from 'react';
 import { ApiError } from '../../../api/http';
+import { STATUS_NOT_FOUND, STATUS_UNAVAILABLE } from '../../../api/httpStatus';
 import { createReply } from '../../../api/replies';
 import type { Reply } from '../../../api/replies';
 import { canPublish } from '../../../utils/composeChecks';
 import ReplyTextField from '../ReplyTextField/ReplyTextField';
 import './ReplyComposer.css';
 
-
-const NOT_FOUND_STATUS = 404;
-
-const UNAVAILABLE_STATUS = 503;
 
 const POST_DELETED_MESSAGE = 'This post was deleted.';
 
@@ -23,11 +20,11 @@ const OPENER_TEXT = 'Write a reply…';
 const SEND_FAILED_MESSAGE = "Couldn't send. Try again.";
 
 function describeSendFailure(failure: unknown): string {
-    if (failure instanceof ApiError && failure.status === NOT_FOUND_STATUS) {
+    if (failure instanceof ApiError && failure.status === STATUS_NOT_FOUND) {
         return POST_DELETED_MESSAGE;
     }
 
-    if (failure instanceof ApiError && failure.status === UNAVAILABLE_STATUS) {
+    if (failure instanceof ApiError && failure.status === STATUS_UNAVAILABLE) {
         return BUSY_MESSAGE;
     }
 

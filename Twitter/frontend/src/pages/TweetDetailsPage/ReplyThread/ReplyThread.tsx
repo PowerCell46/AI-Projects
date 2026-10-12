@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Reply } from '../../../api/replies';
-import PostListStatus from '../../../components/shared/PostListStatus/PostListStatus';
+import ListFooter from '../../../components/shared/ListFooter/ListFooter';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
 import { bottomStateOf } from '../../../utils/bottomState';
@@ -54,16 +54,14 @@ function ReplyThread({ tweetId, postAuthorId, replyCount, thread, now }: ReplyTh
                     </li>
                 ))}
             </ol>
-            {bottomState && (
-                <PostListStatus
-                    state={bottomState}
-                    endText={END_TEXT}
-                    emptyText={EMPTY_TEXT}
-                    onRetry={thread.retry}
-                />
-            )}
-            <div ref={sentinelRef} />
-            <p className="sr-only" aria-live="polite">{thread.announcement}</p>
+            <ListFooter
+                bottomState={bottomState}
+                endText={END_TEXT}
+                emptyText={EMPTY_TEXT}
+                announcement={thread.announcement}
+                sentinelRef={sentinelRef}
+                onRetry={thread.retry}
+            />
         </>
     );
 }

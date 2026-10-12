@@ -21,7 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+// Listeners off: a cached context in the shared consumer group would steal the listener ITs' records.
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        properties = "spring.kafka.listener.auto-startup=false")
 class MailInboxServiceIntegrationTest extends AbstractRedisIntegrationTest {
 
     private static final Duration SENT_TTL = Duration.ofDays(7);

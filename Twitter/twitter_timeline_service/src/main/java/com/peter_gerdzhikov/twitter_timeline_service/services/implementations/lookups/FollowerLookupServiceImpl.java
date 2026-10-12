@@ -10,8 +10,12 @@ import org.springframework.web.client.RestClient;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.follows.FollowerIdsClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.FollowerLookupService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class FollowerLookupServiceImpl extends DownstreamLookupSupport implements FollowerLookupService {
 
@@ -33,6 +37,7 @@ public class FollowerLookupServiceImpl extends DownstreamLookupSupport implement
         String cursor = null;
         do {
             FollowerIdsClientDTO page = fetchPage(userId, cursor);
+            requireWellFormed(page);
             if (!page.getIds().isEmpty()) {
                 pageConsumer.accept(page.getIds());
             }
@@ -51,5 +56,12 @@ public class FollowerLookupServiceImpl extends DownstreamLookupSupport implement
                     .retrieve()
                     .body(FollowerIdsClientDTO.class);
         });
+    }
+
+    private void requireWellFormed(FollowerIdsClientDTO page) {
+        if (page == null || page.getIds() == null) {
+            log.warn("The gateway answered with a follower page missing its ids.");
+            throw new UpstreamUnavailableException();
+        }
     }
 }

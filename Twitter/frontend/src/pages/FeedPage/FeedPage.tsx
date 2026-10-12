@@ -27,6 +27,7 @@ function FeedPage() {
                 endText={END_TEXT}
                 emptyText={EMPTY_TEXT}
                 ownPosts={ownPosts}
+                isShown={isShown}
                 shouldCheckForNewPosts
                 emptyAction={{
                     label: FIND_PEOPLE_LABEL,

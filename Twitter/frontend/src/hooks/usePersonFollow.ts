@@ -34,7 +34,10 @@ function followersCountOf(person: FollowSubject, isFollowing: boolean): number {
 
 // Following flips at once and is sent afterwards. Unfollowing takes two taps: the first arms the button, the second
 // sends. A failed change goes back, shows TRY AGAIN for a while, and a tap on that repeats it without arming again.
-export function usePersonFollow(person: FollowSubject, onFollowChanged: () => void): PersonFollow {
+export function usePersonFollow(
+    person: FollowSubject,
+    onFollowChanged: (followedByMe: boolean, followersCount: number) => void,
+): PersonFollow {
     const { phase, arm, markFailed, reset } = useArmPhase();
     const [announcement, setAnnouncement] = useState('');
     const following = useOptimisticToggle(person.followedByMe, sendChange, handleFailure);
@@ -47,7 +50,9 @@ export function usePersonFollow(person: FollowSubject, onFollowChanged: () => vo
             await unfollowUser(person.username);
         }
 
-        onFollowChanged();
+        const followersCount = followersCountOf(person, shouldFollow);
+
+        onFollowChanged(shouldFollow, followersCount);
     }
 
     function handleFailure(failedValue: boolean) {

@@ -31,7 +31,7 @@ function StepInput({ step, value, isActive, isInvalid, errorId, inputRef, onChan
             data-has-toggle={isPassword}
             hidden={!isActive}
         >
-            <label className="sr-only" htmlFor={inputId}>{step.placeholder}</label>
+            <label className="step-input-label" htmlFor={inputId}>{step.placeholder}</label>
             <input
                 ref={isActive ? inputRef : undefined}
                 id={inputId}

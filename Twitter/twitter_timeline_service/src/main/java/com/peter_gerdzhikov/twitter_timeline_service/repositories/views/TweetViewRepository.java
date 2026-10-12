@@ -31,6 +31,11 @@ public interface TweetViewRepository extends JpaRepository<TweetView, TweetViewI
     List<UUID> insertIfAbsent(@Param("viewerId") UUID viewerId, @Param("tweetIds") UUID[] tweetIds);
 
     /**
+     * Every view of one tweet.
+     */
+    List<TweetView> findAllByTweetId(UUID tweetId);
+
+    /**
      * Removes every viewer of the tweet. Idempotent. Returns the number of rows removed.
      */
     @Transactional

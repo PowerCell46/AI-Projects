@@ -258,10 +258,6 @@ class MailDeliveryServiceImplTest {
             assertThrows(TransientMailDeliveryException.class,
                     () -> mailDeliveryService.send(RECIPIENT, "Subject", HTML, TEXT));
         }
-    }
-
-    @Nested
-    class Leakage {
 
         @Test
         void should_not_carry_the_provider_exception_or_its_reply_text_into_a_permanent_exception() throws Exception {

@@ -31,11 +31,10 @@ import com.peter_gerdzhikov.twitter_mail_service.exceptions.PermanentMailDeliver
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.TransientMailDeliveryException;
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery.MailDispatchServiceImpl;
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox.MailEventValidationServiceImpl;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -130,17 +129,6 @@ class UserConfirmationNotificationServiceImplTest {
         }
 
         @Test
-        void should_swallow_a_mark_sent_failure_without_releasing_the_claim() {
-            UserConfirmationRequestedEventDTO event = anEvent(NOW.plus(Duration.ofHours(1)));
-            when(mailInboxService.claim(anyString(), anyString())).thenReturn(ClaimResult.CLAIMED);
-            doThrow(new IllegalStateException("redis down")).when(mailInboxService).markSent(anyString(), eq(SENT_TTL));
-
-            assertDoesNotThrow(() -> service.process(event));
-
-            verify(mailInboxService, never()).release(anyString(), anyString());
-        }
-
-        @Test
         void should_skip_sending_when_the_key_is_already_sent() {
             UserConfirmationRequestedEventDTO event = anEvent(NOW.plus(Duration.ofHours(1)));
             when(mailInboxService.claim(anyString(), anyString())).thenReturn(ClaimResult.ALREADY_SENT);
@@ -161,10 +149,6 @@ class UserConfirmationNotificationServiceImplTest {
             verifyNoInteractions(mailDeliveryService);
             verify(mailInboxService, never()).release(anyString(), anyString());
         }
-    }
-
-    @Nested
-    class Staleness {
 
         @Test
         void should_skip_without_touching_the_inbox_when_expires_at_equals_the_clock() {

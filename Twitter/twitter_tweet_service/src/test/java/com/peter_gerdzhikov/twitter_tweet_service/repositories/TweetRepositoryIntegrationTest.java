@@ -378,6 +378,7 @@ class TweetRepositoryIntegrationTest extends AbstractMongoIntegrationTest {
                     });
         }
 
+        // Mirrors TweetRepositoryCustomImpl.findNewestByAuthorSince: keep this filter in sync with that query.
         @Test
         void should_use_the_index_when_the_newest_tweets_of_an_author_are_read() {
             Document plan = mongoTemplate
@@ -395,6 +396,7 @@ class TweetRepositoryIntegrationTest extends AbstractMongoIntegrationTest {
                     .doesNotContain("COLLSCAN");
         }
 
+        // Mirrors TweetRepositoryCustomImpl.findPageByAuthorAfter: keep this filter in sync with that query.
         @Test
         void should_use_the_index_when_the_next_page_of_an_author_is_read() {
             Document plan = mongoTemplate
@@ -416,6 +418,7 @@ class TweetRepositoryIntegrationTest extends AbstractMongoIntegrationTest {
                     .doesNotContain("COLLSCAN");
         }
 
+        // Mirrors TweetRepositoryCustomImpl.findNewestByAuthorSince: keep this filter in sync with that query.
         @Test
         void should_read_no_more_documents_than_the_limit_when_an_author_has_many_tweets_in_the_window() {
             UUID authorId = UUID.randomUUID();

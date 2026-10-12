@@ -15,13 +15,14 @@ import org.springframework.web.client.RestClientException;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.client.SeededTweetClientDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.TweetSeedService;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.ConnectRetry;
 
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Posts straight to the tweet service with the caller header the gateway would add, because the seeded
- * users have no session to log in with. A tweet service that is down only costs the seed its tweets: the
- * users stay, so the tweets are not retried on the next start.
+ * users have no session to log in with. Waits while the tweet service is still booting; one that stays
+ * down only costs the seed its tweets: the users stay, so the tweets are not retried on the next start.
  */
 @Slf4j
 @Service
@@ -75,7 +76,9 @@ public class TweetSeedServiceImpl implements TweetSeedService {
         try {
             for (UUID authorId : authorIds) {
                 for (int i = 0; i < TWEETS_PER_USER; i++) {
-                    created.add(postTweet(authorId, TWEETS.get(random.nextInt(TWEETS.size()))));
+                    created.add(ConnectRetry.supplyWithConnectRetry(
+                            () -> postTweet(authorId, TWEETS.get(random.nextInt(TWEETS.size()))),
+                            "the tweet service"));
                 }
             }
 

@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.MailClaimHeldException;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDispatchService;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.OutgoingMail;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,11 +43,6 @@ public class MailDispatchServiceImpl implements MailDispatchService {
             throw e;
         }
 
-        try {
-            mailInboxService.markSent(mail.getKey(), mail.getSentTtl());
-
-        } catch (RuntimeException e) {
-            log.error("Failed to mark the {} as sent after a successful send.", mail.getLogLabel(), e);
-        }
+        mailInboxService.markSent(mail.getKey(), mail.getSentTtl());
     }
 }

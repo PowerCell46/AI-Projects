@@ -93,7 +93,7 @@ function LoginPage() {
         );
     }
 
-    const resendLink = stepFlow.offersResend && (
+    const resendLink = stepFlow.shouldOfferResend && (
         <StageLink
             to={ROUTES.resend}
             variant="secondary"

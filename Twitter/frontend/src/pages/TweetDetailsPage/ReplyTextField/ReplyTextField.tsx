@@ -8,9 +8,9 @@ interface ReplyTextFieldProps {
     label: string;
     text: string;
     errorId: string;
-    shouldFocusOnMount?: boolean;
     submitLabel: string;
     isSubmitOff: boolean;
+    shouldFocusOnMount?: boolean;
     onChange: (text: string) => void;
     onCancel: () => void;
     onBlur?: () => void;
@@ -22,9 +22,9 @@ function ReplyTextField({
     label,
     text,
     errorId,
-    shouldFocusOnMount = false,
     submitLabel,
     isSubmitOff,
+    shouldFocusOnMount = false,
     onChange,
     onCancel,
     onBlur,
@@ -55,7 +55,7 @@ function ReplyTextField({
 
     return (
         <>
-            <label className="sr-only" htmlFor={fieldId}>{label}</label>
+            <label className="reply-text-field-label" htmlFor={fieldId}>{label}</label>
             <textarea
                 className="reply-text-field-text"
                 id={fieldId}

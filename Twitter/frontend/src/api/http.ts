@@ -1,3 +1,6 @@
+import { STATUS_UNAUTHORIZED } from './httpStatus';
+
+
 interface ErrorBody {
     messages?: unknown;
 }
@@ -5,8 +8,6 @@ interface ErrorBody {
 type UnauthorizedHandler = () => void;
 
 const NETWORK_FAILURE_STATUS = 0;
-
-const UNAUTHORIZED_STATUS = 401;
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -98,7 +99,7 @@ export async function sendAuthenticated(url: string, init: RequestInit): Promise
         return await send(url, init);
 
     } catch (failure) {
-        if (failure instanceof ApiError && failure.status === UNAUTHORIZED_STATUS) {
+        if (failure instanceof ApiError && failure.status === STATUS_UNAUTHORIZED) {
             unauthorizedHandler?.();
         }
 

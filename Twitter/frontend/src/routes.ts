@@ -12,7 +12,7 @@ export const ROUTES = {
 } as const;
 
 export function tweetPath(tweetId: string): string {
-    return `/tweets/${tweetId}`;
+    return `/tweets/${encodeURIComponent(tweetId)}`;
 }
 
 export function profilePath(username: string): string {

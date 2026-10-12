@@ -1,5 +1,6 @@
 import { fetchPeople } from '../../../api/users';
-import PostListStatus from '../../../components/shared/PostListStatus/PostListStatus';
+import ListFooter from '../../../components/shared/ListFooter/ListFooter';
+import { useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
 import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
 import { usePagedList } from '../../../hooks/usePagedList';
 import { bottomStateOf } from '../../../utils/bottomState';
@@ -21,21 +22,34 @@ interface PeopleListProps {
 
 function PeopleList({ onFollowChanged }: PeopleListProps) {
     const list = usePagedList(fetchPeople, describeAppend);
+    const { updates } = useFollowUpdates();
     const sentinelRef = useBottomSentinel(list.loadMore, `${list.loadedItems.length}-${list.status}`);
     const bottomState = bottomStateOf(list.status, list.isEnd, list.loadedItems.length);
 
     return (
         <>
-            <ul className="person-list">
-                {list.loadedItems.map((person) => (
-                    <PersonCard key={person.id} person={person} onFollowChanged={onFollowChanged} />
-                ))}
+            <ul className="people-list">
+                {list.loadedItems.map((person) => {
+                    // A follow reported from a profile re-keys the card, so its toggle restarts from the new values.
+                    const shownPerson = { ...person, ...updates[person.username.toLowerCase()] };
+
+                    return (
+                        <PersonCard
+                            key={`${person.id}-${shownPerson.followedByMe}-${shownPerson.followersCount}`}
+                            person={shownPerson}
+                            onFollowChanged={onFollowChanged}
+                        />
+                    );
+                })}
             </ul>
-            {bottomState && (
-                <PostListStatus state={bottomState} endText={END_TEXT} emptyText={EMPTY_TEXT} onRetry={list.retry} />
-            )}
-            <div ref={sentinelRef} />
-            <p className="sr-only" aria-live="polite">{list.announcement}</p>
+            <ListFooter
+                bottomState={bottomState}
+                endText={END_TEXT}
+                emptyText={EMPTY_TEXT}
+                announcement={list.announcement}
+                sentinelRef={sentinelRef}
+                onRetry={list.retry}
+            />
         </>
     );
 }

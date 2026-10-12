@@ -31,11 +31,11 @@ public class TweetLookupServiceImpl extends DownstreamLookupSupport implements T
 
     private static final String TWEETS_PATH = "/internal/v1/tweets?ids={ids}";
 
-    private static final String BY_AUTHOR_PATH = "/internal/v1/tweets/by-author/{authorId}?since={since}&limit={limit}";
-
     private static final String AUTHOR_PAGE_PATH = "/internal/v1/tweets/by-author/{authorId}/page?size={size}";
 
     private static final String AUTHOR_PAGE_AFTER_PATH = AUTHOR_PAGE_PATH + "&cursor={cursor}";
+
+    private static final String BY_AUTHOR_PATH = "/internal/v1/tweets/by-author/{authorId}?since={since}&limit={limit}";
 
     private final RestClient tweetServiceRestClient;
 

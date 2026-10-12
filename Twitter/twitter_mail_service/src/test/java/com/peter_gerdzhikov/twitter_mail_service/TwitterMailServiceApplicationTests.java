@@ -13,9 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles("test")
+// Listeners off: a cached context in the shared consumer group would steal the listener ITs' records.
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "management.endpoint.health.show-details=always")
+        properties = {
+            "management.endpoint.health.show-details=always",
+            "spring.kafka.listener.auto-startup=false"
+        })
 class TwitterMailServiceApplicationTests extends AbstractRedisIntegrationTest {
 
     @LocalServerPort

@@ -1,4 +1,5 @@
 import { ApiError } from '../api/http';
+import { STATUS_BAD_REQUEST } from '../api/httpStatus';
 import type { ProfileChange } from '../api/users';
 import { SIGNAL_LOST_MESSAGE } from './authErrors';
 
@@ -8,8 +9,6 @@ export const PROFILE_BIO_MAX_CODE_POINTS = 160;
 export const PROFILE_LOCATION_MAX_CODE_POINTS = 60;
 
 export const PROFILE_PHOTO_HINT = 'JPG, PNG OR WEBP · MAX 5 MB';
-
-const STATUS_BAD_REQUEST = 400;
 
 const BIO_MESSAGE_PREFIX = 'bio ';
 

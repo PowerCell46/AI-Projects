@@ -15,7 +15,7 @@ describe('describeAuthError', () => {
                 stepIndex: 0,
                 gauge: 'travel',
                 message: 'EMAIL ALREADY REGISTERED',
-                offersResend: false,
+                shouldOfferResend: false,
             });
         });
 
@@ -24,7 +24,7 @@ describe('describeAuthError', () => {
                 stepIndex: 1,
                 gauge: 'travel',
                 message: 'USERNAME ALREADY TAKEN',
-                offersResend: false,
+                shouldOfferResend: false,
             });
         });
 
@@ -38,7 +38,7 @@ describe('describeAuthError', () => {
                 stepIndex: 1,
                 gauge: 'travel',
                 message: 'USERNAME MUST BE 3 TO 15 LETTERS, DIGITS OR UNDERSCORES',
-                offersResend: false,
+                shouldOfferResend: false,
             });
         });
 
@@ -47,7 +47,7 @@ describe('describeAuthError', () => {
                 stepIndex: 2,
                 gauge: 'hold',
                 message: 'SIGNAL LOST — TRY AGAIN',
-                offersResend: false,
+                shouldOfferResend: false,
             });
         });
 
@@ -62,7 +62,7 @@ describe('describeAuthError', () => {
                 stepIndex: 1,
                 gauge: 'rise',
                 message: 'INVALID CREDENTIALS — RISING 420 M',
-                offersResend: false,
+                shouldOfferResend: false,
             });
         });
 
@@ -71,7 +71,7 @@ describe('describeAuthError', () => {
                 stepIndex: 1,
                 gauge: 'hold',
                 message: 'PLEASE CONFIRM YOUR EMAIL FIRST',
-                offersResend: true,
+                shouldOfferResend: true,
             });
         });
     });
@@ -86,7 +86,7 @@ describe('describeAuthError', () => {
                 stepIndex: currentStepIndex,
                 gauge: 'hold',
                 message: 'SIGNAL LOST — TRY AGAIN',
-                offersResend: false,
+                shouldOfferResend: false,
             });
         });
 

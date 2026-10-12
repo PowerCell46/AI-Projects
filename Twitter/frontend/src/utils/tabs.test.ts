@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTES } from '../routes';
-import { DEFAULT_TAB, TABS, tabButtonId, tabOfPath, tabPanelId } from './tabs';
+import { TABS, tabButtonId, tabOfPath, tabPanelId } from './tabs';
 
 
 describe('tabOfPath', () => {
@@ -40,9 +40,6 @@ describe('TABS', () => {
         ]);
     });
 
-    it('should_make_tweets_the_default_tab', () => {
-        expect(DEFAULT_TAB).toBe('tweets');
-    });
 });
 
 describe('tab ids', () => {

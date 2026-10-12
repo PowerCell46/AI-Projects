@@ -55,13 +55,15 @@ public class MailInboxServiceImpl implements MailInboxService {
 
     @Override
     public void markSent(String key, Duration ttl) {
+        // Best-effort bookkeeping: the mail is already sent, so a Redis failure here must not fail
+        // the dispatch. A redelivery retries on the still-open claim and resends once it lapses.
         try {
             redisTemplate
                     .opsForValue()
                     .set(key, SENT_VALUE, ttl);
 
-        } catch (RuntimeException e) {
-            log.error("Failed to mark mail inbox key '{}' as sent after a successful send.", key, e);
+        } catch (RuntimeException ex) {
+            log.error("Failed to mark mail inbox key '{}' as sent after a successful send.", key, ex);
         }
     }
 

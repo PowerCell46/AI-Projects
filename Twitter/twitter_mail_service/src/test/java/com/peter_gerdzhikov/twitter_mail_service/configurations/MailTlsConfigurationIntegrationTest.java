@@ -20,7 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@TestPropertySource(properties = "spring.mail.properties.mail.smtp.starttls.enable=true")
+// Listeners off: a cached context in the shared consumer group would steal the listener ITs' records.
+@TestPropertySource(properties = {
+    "spring.mail.properties.mail.smtp.starttls.enable=true",
+    "spring.kafka.listener.auto-startup=false"
+})
 class MailTlsConfigurationIntegrationTest extends AbstractRedisIntegrationTest {
 
     @Autowired

@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.twitter_api_gateway.DTOs.request;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.validation.MaxUtf8Bytes;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.validation.usernames.NotReservedUsername;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -25,6 +26,7 @@ public class RegisterRequestDTO {
     private String email;
 
     @NotBlank
+    @NotReservedUsername
     @Pattern(regexp = "^[A-Za-z0-9_]{3,15}$", message = "must be 3 to 15 letters, digits or underscores")
     private String username;
 

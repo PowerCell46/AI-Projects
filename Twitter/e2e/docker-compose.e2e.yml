@@ -1,6 +1,7 @@
 # Every host-side port has an override with the default after ":-", so a clash is fixed by
-# exporting E2E_FRONTEND_PORT / E2E_GATEWAY_PORT / E2E_MAILPIT_PORT / E2E_POSTGRES_PORT.
-# The Playwright config and fixtures read the same variables (see README.md).
+# exporting E2E_FRONTEND_PORT / E2E_FRONTEND_CONTAINER_PORT / E2E_GATEWAY_PORT / E2E_MAILPIT_PORT /
+# E2E_POSTGRES_PORT. The Playwright config, the fixtures and the container smoke check read the same
+# variables (see README.md).
 services:
   postgres-api-gateway:
     image: postgres:18
@@ -219,6 +220,27 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_healthy
+      gateway:
+        condition: service_healthy
+
+  # The production nginx image, covered only by the container smoke check in global-setup:
+  # the specs themselves run against the vite dev server.
+  frontend:
+    build: ../frontend
+    ports:
+      - "127.0.0.1:${E2E_FRONTEND_CONTAINER_PORT:-5274}:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    depends_on:
       gateway:
         condition: service_healthy
 

@@ -6,11 +6,11 @@ import './StageLink.css';
 interface StageLinkProps {
     to: string;
     variant: 'footer' | 'secondary' | 'primary';
-    state?: object;
     children: ReactNode;
+    state?: object;
 }
 
-function StageLink({ to, variant, state, children }: StageLinkProps) {
+function StageLink({ to, variant, children, state }: StageLinkProps) {
     return (
         <Link className="stage-link" data-variant={variant} to={to} state={state}>
             {children}

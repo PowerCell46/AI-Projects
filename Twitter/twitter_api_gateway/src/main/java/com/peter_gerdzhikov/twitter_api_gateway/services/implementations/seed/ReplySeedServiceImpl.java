@@ -15,12 +15,13 @@ import org.springframework.web.client.RestClientException;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.client.SeededTweetClientDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.ReplySeedService;
+import com.peter_gerdzhikov.twitter_api_gateway.utilities.ConnectRetry;
 
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Posts straight to the tweet service with the caller header the gateway would add. A tweet service that
- * stops answering only costs the seed the rest of its replies.
+ * Posts straight to the tweet service with the caller header the gateway would add. Waits while the tweet
+ * service is still booting; one that stops answering only costs the seed the rest of its replies.
  */
 @Slf4j
 @Service
@@ -70,7 +71,9 @@ public class ReplySeedServiceImpl implements ReplySeedService {
         try {
             for (SeededTweetClientDTO tweet : tweets) {
                 for (UUID replierId : pickRepliers(random, userIds, tweet.getAuthorId())) {
-                    postReply(replierId, tweet.getId(), REPLIES.get(random.nextInt(REPLIES.size())));
+                    ConnectRetry.runWithConnectRetry(
+                            () -> postReply(replierId, tweet.getId(), REPLIES.get(random.nextInt(REPLIES.size()))),
+                            "the tweet service");
                     created++;
                 }
             }

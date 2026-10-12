@@ -6,11 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageRequest } from '../../../api/paging';
 import type { TweetItem, TweetPage } from '../../../api/tweetPage';
 import { PostUpdatesProvider, usePostUpdates } from '../../../contexts/PostUpdatesContext';
+import type { PostUpdate } from '../../../contexts/PostUpdatesContext';
 import { IntersectionObserverDouble, intersect, observersWatching } from '../../../test/intersectionObserver';
 import PostList from './PostList';
+import { NEW_POSTS_INTERVAL_MS } from './useNewPosts';
 
 
-function Wrapper({ children }: { children: ReactNode }) {
+interface WrapperProps {
+    children: ReactNode;
+}
+
+function Wrapper({ children }: WrapperProps) {
     return (
         <MemoryRouter>
             <PostUpdatesProvider>{children}</PostUpdatesProvider>
@@ -1418,13 +1424,17 @@ describe('reloading an empty list', () => {
 
 
 describe('updates reported from the details page', () => {
-    function ReportButton() {
+    interface ReportButtonProps {
+        update: PostUpdate;
+    }
+
+    function ReportButton({ update }: ReportButtonProps) {
         const { reportUpdate } = usePostUpdates();
 
         return (
             <button
                 type="button"
-                onClick={() => reportUpdate('a', { likedByMe: true, likes: 8, replyCount: 5 })}
+                onClick={() => reportUpdate('a', update)}
             >
                 REPORT
             </button>
@@ -1437,7 +1447,13 @@ describe('updates reported from the details page', () => {
         await act(async () => {
             render(
                 <>
-                    <ReportButton />
+                    <ReportButton
+                        update={{
+                            likedByMe: true,
+                            likes: 8,
+                            replyCount: 5,
+                        }}
+                    />
                     <PostList fetchPage={fetchPage} endText={END_TEXT} emptyText={EMPTY_TEXT} />
                 </>,
             );
@@ -1451,5 +1467,108 @@ describe('updates reported from the details page', () => {
         expect(likeButton.textContent).toContain('8');
         expect(likeButton.getAttribute('aria-pressed')).toBe('true');
         expect(within(article).getByRole('link', { name: /Replies/ }).textContent).toContain('5');
+    });
+
+    it('should_show_the_post_as_saved_when_the_details_saved_it', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+
+        await act(async () => {
+            render(
+                <>
+                    <ReportButton update={{ savedByMe: true }} />
+                    <PostList fetchPage={fetchPage} endText={END_TEXT} emptyText={EMPTY_TEXT} />
+                </>,
+            );
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'REPORT' }));
+
+        const article = screen.getByRole('article');
+
+        expect(within(article).getByRole('button', { name: /Save/ }).getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('should_reset_the_lists_optimistic_like_when_a_reported_update_replaces_it', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+
+        await act(async () => {
+            render(
+                <>
+                    <ReportButton
+                        update={{
+                            likedByMe: false,
+                            likes: 3,
+                        }}
+                    />
+                    <PostList fetchPage={fetchPage} endText={END_TEXT} emptyText={EMPTY_TEXT} />
+                </>,
+            );
+        });
+        const likeButton = within(screen.getByRole('article')).getByRole('button', { name: /Like/ });
+
+        await userEvent.click(likeButton);
+
+        expect(likeButton.getAttribute('aria-pressed')).toBe('true');
+
+        await userEvent.click(screen.getByRole('button', { name: 'REPORT' }));
+
+        const resetLikeButton = within(screen.getByRole('article')).getByRole('button', { name: /Like/ });
+
+        expect(resetLikeButton.getAttribute('aria-pressed')).toBe('false');
+        expect(resetLikeButton.textContent).toContain('3');
+    });
+});
+
+describe('while hidden', () => {
+    function list(isShown: boolean) {
+        return (
+            <PostList
+                fetchPage={fetchPage}
+                endText={END_TEXT}
+                emptyText={EMPTY_TEXT}
+                shouldCheckForNewPosts
+                isShown={isShown}
+            />
+        );
+    }
+
+    async function renderHidden() {
+        vi.useFakeTimers();
+
+        let rendered: ReturnType<typeof render> | null = null;
+
+        await act(async () => {
+            rendered = render(list(false));
+        });
+
+        return async (isShown: boolean) => {
+            await act(async () => {
+                rendered?.rerender(list(isShown));
+            });
+        };
+    }
+
+    it('should_not_check_for_new_posts_while_hidden', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+
+        await renderHidden();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(NEW_POSTS_INTERVAL_MS);
+        });
+
+        expect(fetchPage).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_check_for_new_posts_again_when_shown_again', async () => {
+        fetchPage.mockResolvedValue(page(posts('a'), null));
+        const setShown = await renderHidden();
+
+        await setShown(true);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(NEW_POSTS_INTERVAL_MS);
+        });
+
+        expect(fetchPage).toHaveBeenCalledTimes(2);
     });
 });

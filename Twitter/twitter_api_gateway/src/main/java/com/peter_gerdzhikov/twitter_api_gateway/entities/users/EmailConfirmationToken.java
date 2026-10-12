@@ -9,6 +9,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -37,7 +38,8 @@ import com.peter_gerdzhikov.twitter_api_gateway.entities.CommonEntity;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_email_confirmation_tokens_token_hash",
                 columnNames = "token_hash"
-        )
+        ),
+        indexes = @Index(name = "ix_email_confirmation_tokens_user_id", columnList = "user_id")
 )
 public class EmailConfirmationToken extends CommonEntity {
 

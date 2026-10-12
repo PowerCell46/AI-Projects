@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { confirm } from '../../api/auth';
 import { ApiError } from '../../api/http';
+import { STATUS_BAD_REQUEST } from '../../api/httpStatus';
 
 
 export type ConfirmationStatus = 'pending' | 'confirmed' | 'expired' | 'failed';
@@ -9,8 +10,6 @@ export interface Confirmation {
     status: ConfirmationStatus;
     retry: () => void;
 }
-
-const STATUS_BAD_REQUEST = 400;
 
 async function requestConfirmation(token: string, onStatus: (status: ConfirmationStatus) => void) {
     try {

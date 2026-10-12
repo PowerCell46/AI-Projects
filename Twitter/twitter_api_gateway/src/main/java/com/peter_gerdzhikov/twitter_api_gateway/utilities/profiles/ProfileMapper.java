@@ -1,5 +1,8 @@
 package com.peter_gerdzhikov.twitter_api_gateway.utilities.profiles;
 
+import java.util.Objects;
+import java.util.UUID;
+
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.follows.FollowListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.internal.InternalUserResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileResponseDTO;
@@ -14,14 +17,14 @@ public final class ProfileMapper {
     private ProfileMapper() {
     }
 
-    public static ProfileResponseDTO toResponse(User user, boolean followedByMe) {
+    public static ProfileResponseDTO toResponse(User user, UUID viewerId, boolean followedByMe) {
         return ProfileResponseDTO.builder()
                 .id(user.getId())
                 .bio(user.getBio())
                 .username(user.getUsername())
                 .location(user.getLocation())
                 .createdAt(user.getCreatedAt())
-                .birthdate(user.getBirthdate())
+                .birthdate(Objects.equals(user.getId(), viewerId) ? user.getBirthdate() : null)
                 .followedByMe(followedByMe)
                 .followersCount(user.getFollowersCount())
                 .followingCount(user.getFollowingCount())

@@ -4,8 +4,8 @@ import { usePostUpdates } from '../../../contexts/PostUpdatesContext';
 import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
 import { useMinuteClock } from '../../../hooks/useMinuteClock';
 import { bottomStateOf } from '../../../utils/bottomState';
-import PostListStatus from '../PostListStatus/PostListStatus';
 import type { EmptyAction } from '../PostListStatus/PostListStatus';
+import ListFooter from '../ListFooter/ListFooter';
 import NewPostsButton from './NewPostsButton/NewPostsButton';
 import PostCell from './PostCell/PostCell';
 import { useNewPosts } from './useNewPosts';
@@ -26,6 +26,7 @@ interface PostListProps {
     shouldCheckForNewPosts?: boolean;
     emptyAction?: EmptyAction;
     reloadEmptyKey?: number;
+    isShown?: boolean;
 }
 
 function PostList({
@@ -36,14 +37,20 @@ function PostList({
     shouldCheckForNewPosts = false,
     emptyAction,
     reloadEmptyKey,
+    isShown = true,
 }: PostListProps) {
     const list = usePostList(fetchPage, ownPosts);
     const { updates } = usePostUpdates();
-    const now = useMinuteClock();
+    const now = useMinuteClock(isShown);
     const trackView = useViewTracking();
     const sentinelRef = useBottomSentinel(list.loadMore, `${list.items.length}-${list.status}`);
     const hasLoadedFirstPage = list.items.length > 0 || list.isEnd;
-    const incoming = useNewPosts(fetchPage, list.loadedItems, list.items, shouldCheckForNewPosts && hasLoadedFirstPage);
+    const incoming = useNewPosts(
+        fetchPage,
+        list.loadedItems,
+        list.items,
+        shouldCheckForNewPosts && hasLoadedFirstPage && isShown,
+    );
     const bottomState = bottomStateOf(list.status, list.isEnd, list.items.length);
 
     const isEmpty = list.items.length === 0 && list.isEnd;
@@ -75,17 +82,15 @@ function PostList({
                     </li>
                 ))}
             </ul>
-            {bottomState && (
-                <PostListStatus
-                    state={bottomState}
-                    endText={endText}
-                    emptyText={emptyText}
-                    emptyAction={emptyAction}
-                    onRetry={list.retry}
-                />
-            )}
-            <div ref={sentinelRef} />
-            <p className="sr-only" aria-live="polite">{list.announcement}</p>
+            <ListFooter
+                bottomState={bottomState}
+                endText={endText}
+                emptyText={emptyText}
+                announcement={list.announcement}
+                sentinelRef={sentinelRef}
+                emptyAction={emptyAction}
+                onRetry={list.retry}
+            />
         </>
     );
 }

@@ -74,6 +74,11 @@ public interface TweetLikeRepository extends JpaRepository<TweetLike, TweetLikeI
     int deleteByUserAndTweet(@Param("userId") UUID userId, @Param("tweetId") UUID tweetId);
 
     /**
+     * Every like of one tweet.
+     */
+    List<TweetLike> findAllByTweetId(UUID tweetId);
+
+    /**
      * Removes every like of the tweet. Idempotent. Returns the number of rows removed.
      */
     @Transactional

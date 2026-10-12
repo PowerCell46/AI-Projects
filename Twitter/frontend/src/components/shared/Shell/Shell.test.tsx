@@ -98,6 +98,15 @@ describe('the shell', () => {
         expect(within(screen.getByRole('main')).getByRole('heading', { name: 'Feed' })).toBeTruthy();
     });
 
+    it('should_offer_a_skip_link_to_the_main_content', async () => {
+        await renderApp(ROUTES.feed);
+
+        const skipLink = screen.getByRole('link', { name: 'Skip to main content' });
+
+        expect(skipLink.getAttribute('href')).toBe('#main-content');
+        expect(screen.getByRole('main').getAttribute('id')).toBe('main-content');
+    });
+
     it('should_show_the_saved_page_inside_main_when_the_path_is_saved', async () => {
         await renderApp(ROUTES.saved);
 

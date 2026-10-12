@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import type { PublishedTweet } from '../../../api/tweets';
 import type { TweetItem } from '../../../api/tweetPage';
 import { useAuth } from '../../../contexts/AuthContext';
+import { FollowUpdatesProvider } from '../../../contexts/FollowUpdatesContext';
 import { PostUpdatesProvider } from '../../../contexts/PostUpdatesContext';
 import { useActiveTab } from '../../../hooks/useActiveTab';
 import { toOwnPost } from '../../../utils/ownPost';
@@ -59,20 +60,23 @@ function Shell() {
 
     return (
         <PostUpdatesProvider>
-            <div className="shell" data-signing-out={isSigningOut}>
-                <div className="shell-top">
-                    <Header
-                        pictureUrl={pictureUrl}
-                        postButtonRef={postButtonRef}
-                        onPostClick={() => setIsComposing(true)}
-                    />
-                    {activeTab && <TabRow activeTab={activeTab} onSelect={handleTabSelect} />}
+            <FollowUpdatesProvider>
+                <div className="shell" data-signing-out={isSigningOut}>
+                    <a href="#main-content" className="shell-skip-link">Skip to main content</a>
+                    <div className="shell-top">
+                        <Header
+                            pictureUrl={pictureUrl}
+                            postButtonRef={postButtonRef}
+                            onPostClick={() => setIsComposing(true)}
+                        />
+                        {activeTab && <TabRow activeTab={activeTab} onSelect={handleTabSelect} />}
+                    </div>
+                    <main id="main-content" className="shell-main" tabIndex={-1}>
+                        <Outlet context={outletContext} />
+                    </main>
                 </div>
-                <main className="shell-main">
-                    <Outlet context={outletContext} />
-                </main>
-            </div>
-            {isComposing && <ComposeModal onClose={closeCompose} onPublished={handlePublished} />}
+                {isComposing && <ComposeModal onClose={closeCompose} onPublished={handlePublished} />}
+            </FollowUpdatesProvider>
         </PostUpdatesProvider>
     );
 }

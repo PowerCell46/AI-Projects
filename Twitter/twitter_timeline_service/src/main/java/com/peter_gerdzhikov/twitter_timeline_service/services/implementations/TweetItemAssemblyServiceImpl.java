@@ -35,15 +35,15 @@ public class TweetItemAssemblyServiceImpl implements TweetItemAssemblyService {
 
     private final ViewService viewService;
 
-    private final ExecutorService downstreamCallExecutor;
-
     private final UserLookupService userLookupService;
 
     private final TweetLookupService tweetLookupService;
 
-    private final SavedTweetRepository savedTweetRepository;
+    private final ExecutorService downstreamCallExecutor;
 
     private final TweetLikeRepository tweetLikeRepository;
+
+    private final SavedTweetRepository savedTweetRepository;
 
     private final TweetLikeCountRepository tweetLikeCountRepository;
 

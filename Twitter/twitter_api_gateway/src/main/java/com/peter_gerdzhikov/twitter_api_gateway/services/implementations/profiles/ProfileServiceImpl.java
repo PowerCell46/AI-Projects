@@ -36,7 +36,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .filter(User::isEnabled)
                 .orElseThrow(UserNotFoundException::new);
 
-        return ProfileMapper.toResponse(user, isFollowedBy(viewerId, user));
+        return ProfileMapper.toResponse(user, viewerId, isFollowedBy(viewerId, user));
     }
 
     @Override
@@ -49,7 +49,7 @@ public class ProfileServiceImpl implements ProfileService {
         applyIfPresent(request.getLocation(), user::setLocation);
         applyIfPresent(request.getBirthdate(), user::setBirthdate);
 
-        return ProfileMapper.toResponse(user, false);
+        return ProfileMapper.toResponse(user, userId, false);
     }
 
     private boolean isFollowedBy(UUID viewerId, User profile) {

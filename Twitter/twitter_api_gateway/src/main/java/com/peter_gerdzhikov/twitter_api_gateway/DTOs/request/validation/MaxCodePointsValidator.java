@@ -18,6 +18,14 @@ public class MaxCodePointsValidator implements ConstraintValidator<MaxCodePoints
             return true;
         }
 
+        if (value.toString().indexOf('\0') >= 0) {
+            context.disableDefaultConstraintViolation();
+            context
+                    .buildConstraintViolationWithTemplate("must not contain null characters")
+                    .addConstraintViolation();
+            return false;
+        }
+
         String stripped = value.toString().strip();
 
         return stripped.codePointCount(0, stripped.length()) <= maxCodePoints;

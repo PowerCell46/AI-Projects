@@ -14,13 +14,13 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class RestClientConfiguration {
 
-    public static final String GATEWAY_REST_CLIENT = "gatewayRestClient";
+    private static final int MIN_SECRET_BYTES = 32;
 
-    public static final String TWEET_SERVICE_REST_CLIENT = "tweetServiceRestClient";
+    public static final String GATEWAY_REST_CLIENT = "gatewayRestClient";
 
     public static final String INTERNAL_SECRET_HEADER = "X-Internal-Secret";
 
-    private static final int MIN_SECRET_BYTES = 32;
+    public static final String TWEET_SERVICE_REST_CLIENT = "tweetServiceRestClient";
 
     /**
      * Carries the internal secret on every request, because every gateway route this service calls needs it.

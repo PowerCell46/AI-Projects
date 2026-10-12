@@ -15,7 +15,7 @@ const SENT_LABEL = 'LINK SENT';
 
 interface ResendButtonProps {
     email: string;
-    startsInCooldown?: boolean;
+    shouldStartInCooldown?: boolean;
 }
 
 function labelFor(status: ResendStatus): string {
@@ -26,8 +26,8 @@ function labelFor(status: ResendStatus): string {
     return status === 'failed' ? SIGNAL_LOST_MESSAGE : RESEND_LABEL;
 }
 
-function ResendButton({ email, startsInCooldown = false }: ResendButtonProps) {
-    const [status, setStatus] = useState<ResendStatus>(startsInCooldown ? 'cooling' : 'idle');
+function ResendButton({ email, shouldStartInCooldown = false }: ResendButtonProps) {
+    const [status, setStatus] = useState<ResendStatus>(shouldStartInCooldown ? 'cooling' : 'idle');
 
     useEffect(() => {
         if (status !== 'cooling') {

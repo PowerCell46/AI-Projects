@@ -1,3 +1,4 @@
+import { STATUS_BAD_REQUEST, STATUS_CONFLICT, STATUS_FORBIDDEN, STATUS_UNAUTHORIZED } from '../api/httpStatus';
 import { stepIndexOfField } from '../flows';
 import type { FlowField, FlowName } from '../flows';
 
@@ -8,7 +9,7 @@ export interface AuthErrorScreen {
     stepIndex: number;
     gauge: GaugeAction;
     message: string;
-    offersResend: boolean;
+    shouldOfferResend: boolean;
 }
 
 export const RISE_METRES = 420;
@@ -25,14 +26,6 @@ const USERNAME_TAKEN_SERVER_MESSAGE = 'Username already taken.';
 
 const REGISTER_FIELDS_IN_STEP_ORDER: FlowField[] = ['email', 'username', 'password'];
 
-const STATUS_BAD_REQUEST = 400;
-
-const STATUS_UNAUTHORIZED = 401;
-
-const STATUS_FORBIDDEN = 403;
-
-const STATUS_CONFLICT = 409;
-
 export function formatServerMessage(serverMessage: string): string {
     return serverMessage
         .replace(/\.$/, '')
@@ -44,7 +37,7 @@ function signalLost(currentStepIndex: number): AuthErrorScreen {
         stepIndex: currentStepIndex,
         gauge: 'hold',
         message: SIGNAL_LOST_MESSAGE,
-        offersResend: false,
+        shouldOfferResend: false,
     };
 }
 
@@ -54,7 +47,7 @@ function describeConflict(messages: string[], currentStepIndex: number): AuthErr
             stepIndex: stepIndexOfField('register', 'email'),
             gauge: 'travel',
             message: formatServerMessage(EMAIL_TAKEN_SERVER_MESSAGE),
-            offersResend: false,
+            shouldOfferResend: false,
         };
     }
 
@@ -63,7 +56,7 @@ function describeConflict(messages: string[], currentStepIndex: number): AuthErr
             stepIndex: stepIndexOfField('register', 'username'),
             gauge: 'travel',
             message: formatServerMessage(USERNAME_TAKEN_SERVER_MESSAGE),
-            offersResend: false,
+            shouldOfferResend: false,
         };
     }
 
@@ -80,7 +73,7 @@ function describeValidationFailure(messages: string[], currentStepIndex: number)
                 stepIndex: stepIndexOfField('register', field),
                 gauge: 'travel',
                 message: formatServerMessage(fieldMessage),
-                offersResend: false,
+                shouldOfferResend: false,
             };
         }
     }
@@ -108,7 +101,7 @@ function describeLoginError(status: number, currentStepIndex: number): AuthError
             stepIndex: passwordStepIndex,
             gauge: 'rise',
             message: INVALID_CREDENTIALS_MESSAGE,
-            offersResend: false,
+            shouldOfferResend: false,
         };
     }
 
@@ -117,7 +110,7 @@ function describeLoginError(status: number, currentStepIndex: number): AuthError
             stepIndex: passwordStepIndex,
             gauge: 'hold',
             message: CONFIRM_EMAIL_MESSAGE,
-            offersResend: true,
+            shouldOfferResend: true,
         };
     }
 

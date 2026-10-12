@@ -366,31 +366,31 @@ describe('switching tabs', () => {
 });
 
 describe('the feed while it is hidden', () => {
-    it('should_keep_checking_for_new_posts_while_the_people_tab_is_open', async () => {
+    it('should_not_check_for_new_posts_while_the_people_tab_is_open', async () => {
+        await renderApp(ROUTES.feed);
+        await user.click(tab('PEOPLE'));
+
+        await advance(NEW_POSTS_INTERVAL_MS);
+
+        expect(fetchFeed).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole('button', { name: 'NEW POSTS' })).toBeNull();
+    });
+
+    it('should_show_the_new_posts_button_after_the_first_check_back_on_tweets', async () => {
         await renderApp(ROUTES.feed);
         await user.click(tab('PEOPLE'));
         vi.mocked(fetchFeed).mockResolvedValue({
             items: [NEWER_POST, POST],
             nextCursor: null,
         });
+        await advance(NEW_POSTS_INTERVAL_MS);
 
+        expect(fetchFeed).toHaveBeenCalledTimes(1);
+
+        await user.click(tab('TWEETS'));
         await advance(NEW_POSTS_INTERVAL_MS);
 
         expect(fetchFeed).toHaveBeenCalledTimes(2);
-        expect(screen.getByText('NEW POSTS')).toBeTruthy();
-    });
-
-    it('should_show_the_new_posts_button_when_the_user_comes_back_to_tweets', async () => {
-        await renderApp(ROUTES.feed);
-        await user.click(tab('PEOPLE'));
-        vi.mocked(fetchFeed).mockResolvedValue({
-            items: [NEWER_POST, POST],
-            nextCursor: null,
-        });
-        await advance(NEW_POSTS_INTERVAL_MS);
-
-        await user.click(tab('TWEETS'));
-
         expect(screen.getByRole('button', { name: 'NEW POSTS' })).toBeTruthy();
     });
 });

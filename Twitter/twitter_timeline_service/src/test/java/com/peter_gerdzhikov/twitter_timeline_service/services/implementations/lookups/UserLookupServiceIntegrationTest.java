@@ -135,6 +135,30 @@ class UserLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTest
         }
 
         @Test
+        void should_throw_unavailable_when_the_gateway_answers_a_null_body() {
+            stubUsers("null");
+
+            assertThatThrownBy(() -> userLookupService.findByIds(List.of(TestIds.userId())))
+                    .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
+        void should_throw_unavailable_when_a_user_has_no_id() {
+            stubUsers("[{\"username\":\"ana\",\"profilePictureUrl\":null}]");
+
+            assertThatThrownBy(() -> userLookupService.findByIds(List.of(TestIds.userId())))
+                    .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
+        void should_throw_unavailable_when_the_gateway_answers_a_null_user() {
+            stubUsers("[null]");
+
+            assertThatThrownBy(() -> userLookupService.findByIds(List.of(TestIds.userId())))
+                    .isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
         void should_throw_timeout_when_the_gateway_is_slower_than_the_read_timeout() {
             GATEWAY_STUB.register(get(urlPathEqualTo(USERS_PATH))
                     .willReturn(aResponse().withStatus(200).withFixedDelay(DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS)));

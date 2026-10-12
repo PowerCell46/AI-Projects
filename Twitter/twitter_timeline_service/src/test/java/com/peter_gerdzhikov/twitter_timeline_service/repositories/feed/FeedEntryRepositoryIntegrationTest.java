@@ -397,6 +397,21 @@ class FeedEntryRepositoryIntegrationTest extends AbstractPostgresIntegrationTest
         }
     }
 
+    @Nested
+    class Indexes {
+
+        @Test
+        void should_create_the_tweet_user_author_and_tweet_created_indexes() {
+            List<String> indexNames = jdbcTemplate.queryForList(
+                    "SELECT indexname FROM pg_indexes WHERE tablename = 'feed_entries'", String.class);
+
+            assertThat(indexNames).contains(
+                    "ix_feed_entries_tweet",
+                    "ix_feed_entries_user_author",
+                    "ix_feed_entries_tweet_created");
+        }
+    }
+
     private UUID entry(UUID userId, UUID tweetId, Instant tweetCreatedAt) {
         return entryBy(userId, tweetId, TestIds.userId(), tweetCreatedAt);
     }

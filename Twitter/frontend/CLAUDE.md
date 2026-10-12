@@ -36,6 +36,8 @@ profile → tweet → Back reloads the profile from the top.
   nginx on `127.0.0.1:5173`, the dev server's port. `nginx/` serves the SPA with an `index.html` fallback (the
   deep links `/confirm`, `/users/:name`, `/tweets/:id`), proxies only `/api/` to the gateway, and allows bodies up to
   21 MB. The cookie is `SameSite=Strict` and the gateway has no CORS, so the SPA and `/api` must stay on one origin.
+- `VITE_BASE_API_URL` prefixes every API call (`src/api/endpoints.ts`); unset (the default, and how the production
+  image builds it) means same-origin `/api`. It is baked in at build time, so changing it rebuilds.
 - Local confirmation links: the gateway queues the link in its `outbox` table and the mail service
   (`../twitter_mail_service`) emails it. Start `redis` and `mailpit` from the Twitter root, run the mail service
   with `MAIL_HOST=localhost MAIL_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`, and read the email at
@@ -95,7 +97,7 @@ profile → tweet → Back reloads the profile from the top.
   TWEETS was shown, to `PostList` as `reloadEmptyKey`, and an empty feed reads again when the tab comes back. Back-fill
   lands 3–5 s after a follow (the gateway outbox polls every 3 s), so a very quick return still finds it empty until
   the next `NEW POSTS` check.
-- Signing out sinks the cards of both lists: `person-list-leave` (`PeopleList.css`) and `post-list-leave`
+- Signing out sinks the cards of both lists: `people-list-leave` (`PeopleList.css`) and `post-list-leave`
   (`PostList.css`) must stay inside `SIGN_OUT_LEAVE_MS`.
 - Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatCount`.
   A card opens the person's profile on a click anywhere except the follow button, a link or the end of a text selection
@@ -112,6 +114,10 @@ profile → tweet → Back reloads the profile from the top.
   posts; `PostCell` re-keys `PostActions` when the like or save values change, so its toggles start from the new
   values. **Shortcut:** the updates are kept until the shell unmounts, so a later reload of a list shows them over
   the server's newer numbers.
+- Back from a profile keeps the People cards in step: `FollowUpdatesProvider` (in `Shell`, `src/contexts`) holds what
+  each visited profile confirmed per user (follow state and followers count) and `PeopleList` lays it over the loaded
+  people, re-keying a card whose values changed so its toggle restarts from the new values. Only the profile reports;
+  the card's own toggles stay local. **Shortcut:** like the post updates, these are kept until the shell unmounts.
 - The back link goes `navigate(-1)` when the router's `location.key` is not `default`, else to `/feed`.
 - Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a

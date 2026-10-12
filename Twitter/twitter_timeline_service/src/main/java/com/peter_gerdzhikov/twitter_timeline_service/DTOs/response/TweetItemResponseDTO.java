@@ -20,19 +20,19 @@ public class TweetItemResponseDTO {
 
     private final long views;
 
-    private final boolean savedByMe;
-
     private final long likes;
 
-    private final boolean likedByMe;
+    private final String content;
 
     private final long replyCount;
-
-    private final String content;
 
     private final Instant createdAt;
 
     private final Instant updatedAt;
+
+    private final boolean savedByMe;
+
+    private final boolean likedByMe;
 
     private final AuthorResponseDTO author;
 

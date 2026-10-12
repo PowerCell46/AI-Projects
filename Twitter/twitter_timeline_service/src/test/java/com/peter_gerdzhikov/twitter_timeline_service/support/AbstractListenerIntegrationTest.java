@@ -329,9 +329,8 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
 
     protected List<UUID> viewersOf(UUID tweetId) {
         return tweetViewRepository
-                .findAll()
+                .findAllByTweetId(tweetId)
                 .stream()
-                .filter(view -> view.getTweetId().equals(tweetId))
                 .map(TweetView::getViewerId)
                 .toList();
     }
@@ -362,9 +361,8 @@ public abstract class AbstractListenerIntegrationTest extends AbstractDownstream
 
     protected List<UUID> likersOf(UUID tweetId) {
         return tweetLikeRepository
-                .findAll()
+                .findAllByTweetId(tweetId)
                 .stream()
-                .filter(like -> like.getTweetId().equals(tweetId))
                 .map(TweetLike::getOwnerId)
                 .toList();
     }

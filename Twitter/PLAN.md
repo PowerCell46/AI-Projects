@@ -24,3 +24,24 @@ is this ok for deploy?
 in readme "Compose refuses to start while a required value is empty. " -> just refer to .env.example no need to repeat the keys
 
 README 'Put the certificate in certs/fullchain.pem and certs/privkey.pem' -> ask it about that
+
+api gateway
+    PLAN.md -> move to a root level file (about the accepted gaps)
+    same for SECURITY AUDITS
+    run an agent on the folder structure, but some dirs like config don't seem like they follow the +5 files rule
+    no .env.example
+    seed images
+
+tweet service
+    PLAN.md -> move to a root level file (about the accepted gaps)
+    same for SECURITY AUDITS
+
+mail service
+    PLAN.md -> move to a root level file (about the accepted gaps)
+    same for SECURITY AUDITS
+    run an agent on the folder structure, but some dirs like config don't seem like they follow the +5 files rule
+    
+timeline service
+    PLAN.md -> move to a root level file (about the accepted gaps)
+    same for SECURITY AUDITS
+    run an agent on the folder structure, but some dirs like config don't seem like they follow the +5 files rule

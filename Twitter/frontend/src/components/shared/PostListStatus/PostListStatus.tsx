@@ -12,11 +12,11 @@ interface PostListStatusProps {
     state: BottomState;
     endText: string;
     emptyText: string;
-    onRetry: () => void;
     emptyAction?: EmptyAction;
+    onRetry: () => void;
 }
 
-function PostListStatus({ state, endText, emptyText, onRetry, emptyAction }: PostListStatusProps) {
+function PostListStatus({ state, endText, emptyText, emptyAction, onRetry }: PostListStatusProps) {
     if (state === 'loading') {
         return (
             <p className="post-list-status">

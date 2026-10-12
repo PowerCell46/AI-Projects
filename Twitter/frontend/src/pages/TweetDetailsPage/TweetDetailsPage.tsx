@@ -77,8 +77,8 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
     return (
         <>
             <h1 ref={headingRef} className="sr-only" tabIndex={-1}>Post</h1>
-            <Link to={ROUTES.feed} className="tweet-details-back" onClick={handleBackClick}>
-                <span className="tweet-details-back-arrow" aria-hidden="true" />
+            <Link to={ROUTES.feed} className="tweet-details-page-back" onClick={handleBackClick}>
+                <span className="tweet-details-page-back-arrow" aria-hidden="true" />
                 {BACK_LABEL}
             </Link>
             {post ? (

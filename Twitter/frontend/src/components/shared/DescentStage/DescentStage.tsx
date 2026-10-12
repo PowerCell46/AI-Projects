@@ -7,21 +7,21 @@ import './DescentStage.css';
 interface DescentStageProps {
     depthMetres: number;
     seafloorDepthMetres: number;
+    children: ReactNode;
     isAlarm?: boolean;
     isLeaving?: boolean;
     isEntering?: boolean;
     footer?: ReactNode;
-    children: ReactNode;
 }
 
 function DescentStage({
     depthMetres,
     seafloorDepthMetres,
+    children,
     isAlarm = false,
     isLeaving = false,
     isEntering = false,
     footer,
-    children,
 }: DescentStageProps) {
     return (
         <div className="descent-stage" data-alarm={isAlarm} data-leaving={isLeaving} data-entering={isEntering}>

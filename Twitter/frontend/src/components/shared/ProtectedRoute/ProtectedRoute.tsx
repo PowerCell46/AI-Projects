@@ -8,7 +8,7 @@ function ProtectedRoute() {
     const { status, hasSignedOut } = useAuth();
 
     if (status === 'loading') {
-        return null;
+        return <p role="status">Loading…</p>;
     }
 
     if (status === 'anonymous') {

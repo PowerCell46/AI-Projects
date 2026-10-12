@@ -14,8 +14,12 @@ import org.springframework.web.client.RestClient;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClientDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.configurations.downstream.RestClientConfiguration;
+import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class UserLookupServiceImpl extends DownstreamLookupSupport implements UserLookupService {
 
@@ -41,8 +45,21 @@ public class UserLookupServiceImpl extends DownstreamLookupSupport implements Us
                 .body(new ParameterizedTypeReference<List<UserClientDTO>>() {
                 }));
 
+        requireWellFormed(users);
+
         return users
                 .stream()
                 .collect(Collectors.toMap(UserClientDTO::getId, Function.identity(), (first, second) -> first));
+    }
+
+    private void requireWellFormed(List<UserClientDTO> users) {
+        boolean isMalformed = users == null || users
+                .stream()
+                .anyMatch(user -> user == null || user.getId() == null);
+
+        if (isMalformed) {
+            log.warn("The gateway answered with a user missing its id.");
+            throw new UpstreamUnavailableException();
+        }
     }
 }

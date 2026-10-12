@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.mongodb.client.MongoClient;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.OutboxMessage;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Reply;
 import com.peter_gerdzhikov.twitter_tweet_service.documents.Tweet;
@@ -19,6 +20,11 @@ import com.peter_gerdzhikov.twitter_tweet_service.support.AbstractMinioIntegrati
 @SpringBootTest
 @ActiveProfiles("test")
 class MongoCollectionInitializerIntegrationTest extends AbstractMinioIntegrationTest {
+
+    private static final String SCRATCH_DATABASE = "initializer_scratch";
+
+    @Autowired
+    private MongoClient mongoClient;
 
     @Autowired
     private MongoTemplate mongoTemplate;
@@ -60,13 +66,19 @@ class MongoCollectionInitializerIntegrationTest extends AbstractMinioIntegration
 
         @Test
         void should_recreate_the_collections_when_they_are_missing() {
-            mongoTemplate.dropCollection(Tweet.class);
-            mongoTemplate.dropCollection(OutboxMessage.class);
+            MongoTemplate scratchTemplate = new MongoTemplate(mongoClient, SCRATCH_DATABASE);
+            MongoCollectionInitializer scratchInitializer = new MongoCollectionInitializer(scratchTemplate);
+            scratchTemplate.dropCollection(Tweet.class);
+            scratchTemplate.dropCollection(OutboxMessage.class);
 
-            mongoCollectionInitializer.afterSingletonsInstantiated();
+            scratchInitializer.afterSingletonsInstantiated();
 
-            assertTrue(mongoTemplate.collectionExists(Tweet.class), "the initializer must create a missing tweets collection");
-            assertTrue(mongoTemplate.collectionExists(OutboxMessage.class), "the initializer must create a missing outbox collection");
+            assertTrue(
+                    scratchTemplate.collectionExists(Tweet.class),
+                    "the initializer must create a missing tweets collection");
+            assertTrue(
+                    scratchTemplate.collectionExists(OutboxMessage.class),
+                    "the initializer must create a missing outbox collection");
         }
     }
 }

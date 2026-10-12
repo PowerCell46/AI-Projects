@@ -1,7 +1,5 @@
 package com.peter_gerdzhikov.twitter_mail_service.services.implementations.confirmation;
 
-import com.peter_gerdzhikov.twitter_mail_service.services.implementations.EmailTemplate;
-import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -11,6 +9,9 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.EmailTemplate;
+import com.peter_gerdzhikov.twitter_mail_service.services.implementations.RenderedEmail;
 
 @Component
 public class ConfirmationEmailRenderer {

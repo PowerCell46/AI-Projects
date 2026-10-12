@@ -62,6 +62,15 @@ beforeEach(async () => {
     await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
 });
 
+describe('the label', () => {
+    it('should_show_the_label_above_the_field', () => {
+        const label = screen.getByText('YOUR REPLY');
+
+        expect(label.classList.contains('reply-text-field-label')).toBe(true);
+        expect(label.classList.contains('sr-only')).toBe(false);
+    });
+});
+
 describe('collapsing', () => {
     it('should_fold_back_into_its_row_when_the_empty_field_loses_focus', async () => {
         await userEvent.tab({ shift: true });

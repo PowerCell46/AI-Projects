@@ -22,9 +22,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ViewServiceImpl implements ViewService {
 
-    private static final int MAX_REPORTED_TWEETS = 50;
-
     private static final int MAX_READ_TWEETS = 100;
+
+    private static final int MAX_REPORTED_TWEETS = 50;
 
     private final TweetLookupService tweetLookupService;
 

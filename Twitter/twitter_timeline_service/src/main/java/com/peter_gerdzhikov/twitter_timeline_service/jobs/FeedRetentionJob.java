@@ -8,10 +8,13 @@ import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.feed.Fe
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Deletes feed entries past the retention window on the {@code app.feed.cleanup} schedule.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class FeedRetentionJob { // TODO: Add short java doc what this chron job does
+public class FeedRetentionJob {
 
     private final FeedRetentionService feedRetentionService;
 

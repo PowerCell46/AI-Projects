@@ -14,6 +14,8 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.web.util.HtmlUtils;
 
+import com.peter_gerdzhikov.twitter_mail_service.utilities.EmailText;
+
 /**
  * A classpath HTML and text template pair with single-pass {@code {{TOKEN}}} substitution. Both files are
  * loaded and checked against the declared token set in the constructor, so a broken template fails the
@@ -22,8 +24,6 @@ import org.springframework.web.util.HtmlUtils;
  * lines. Substitution is one pass, so a value that looks like a token stays literal.
  */
 public class EmailTemplate {
-
-    private static final String LINE_BREAKS = "[\r\n]";
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{\\{([A-Z_]+)}}");
 
@@ -48,7 +48,7 @@ public class EmailTemplate {
 
         return new RenderedEmail(
                 substitute(htmlTemplate, rawValuesByToken, HtmlUtils::htmlEscape),
-                substitute(textTemplate, rawValuesByToken, value -> value.replaceAll(LINE_BREAKS, "")));
+                substitute(textTemplate, rawValuesByToken, EmailText::stripLineBreaks));
     }
 
     private String substitute(

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { TweetItem } from '../api/tweetPage';
 
@@ -20,7 +20,7 @@ const PostUpdatesContext = createContext<PostUpdatesContextValue | null>(null);
 export function PostUpdatesProvider({ children }: PostUpdatesProviderProps) {
     const [updates, setUpdates] = useState<Record<string, PostUpdate>>({});
 
-    function reportUpdate(tweetId: string, update: PostUpdate) {
+    const reportUpdate = useCallback((tweetId: string, update: PostUpdate) => {
         setUpdates((currentUpdates) => ({
             ...currentUpdates,
             [tweetId]: {
@@ -28,15 +28,24 @@ export function PostUpdatesProvider({ children }: PostUpdatesProviderProps) {
                 ...update,
             },
         }));
-    }
+    }, []);
+
+    const value = useMemo(
+        () => ({
+            updates,
+            reportUpdate,
+        }),
+        [updates, reportUpdate],
+    );
 
     return (
-        <PostUpdatesContext.Provider value={{ updates, reportUpdate }}>
+        <PostUpdatesContext.Provider value={value}>
             {children}
         </PostUpdatesContext.Provider>
     );
 }
 
+// The context convention keeps the provider and its hook in one file, so fast refresh reloads the page here.
 // oxlint-disable-next-line react/only-export-components
 export function usePostUpdates(): PostUpdatesContextValue {
     const context = useContext(PostUpdatesContext);

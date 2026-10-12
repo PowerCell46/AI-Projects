@@ -37,15 +37,15 @@ const POST: TweetItem = {
     images: [],
 };
 
-function renderPost(changes: Partial<TweetItem> = {}, isClickable = true) {
-    return render(
+function postElement(post: TweetItem, isClickable = true) {
+    return (
         <MemoryRouter>
             <Routes>
                 <Route
                     path="/"
                     element={(
                         <PostCell
-                            post={{ ...POST, ...changes }}
+                            post={post}
                             now={NOW}
                             isClickable={isClickable}
                         />
@@ -54,8 +54,12 @@ function renderPost(changes: Partial<TweetItem> = {}, isClickable = true) {
                 <Route path={ROUTES.tweet} element={<p>details page</p>} />
                 <Route path={ROUTES.profile} element={<p>profile page</p>} />
             </Routes>
-        </MemoryRouter>,
+        </MemoryRouter>
     );
+}
+
+function renderPost(changes: Partial<TweetItem> = {}, isClickable = true) {
+    return render(postElement({ ...POST, ...changes }, isClickable));
 }
 
 function isOnDetailsPage(): boolean {
@@ -261,6 +265,28 @@ describe('actions', () => {
         const { container } = renderPost({ views: 4242 });
 
         expect(container.textContent).not.toContain('4242');
+    });
+});
+
+describe('re-keying the toggles', () => {
+    it('should_reset_the_like_toggle_when_new_like_state_arrives', async () => {
+        const { rerender } = renderPost();
+        const likeButton = screen.getByRole('button', { name: /^like/i });
+
+        await userEvent.click(likeButton);
+
+        expect(likeButton.getAttribute('aria-pressed')).toBe('true');
+
+        rerender(postElement({
+            ...POST,
+            likedByMe: false,
+            likes: 3,
+        }));
+
+        const resetLikeButton = screen.getByRole('button', { name: /^like/i });
+
+        expect(resetLikeButton.getAttribute('aria-pressed')).toBe('false');
+        expect(resetLikeButton.textContent).toContain('3');
     });
 });
 

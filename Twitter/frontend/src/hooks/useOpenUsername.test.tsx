@@ -7,8 +7,12 @@ import { useOpenUsername } from './useOpenUsername';
 import { ROUTES } from '../routes';
 
 
+interface WrapperProps {
+    children: ReactNode;
+}
+
 function routerAt(path: string) {
-    return function Wrapper({ children }: { children: ReactNode }) {
+    return function Wrapper({ children }: WrapperProps) {
         return <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>;
     };
 }

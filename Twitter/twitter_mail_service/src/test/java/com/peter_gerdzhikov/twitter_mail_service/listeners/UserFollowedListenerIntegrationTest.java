@@ -25,9 +25,9 @@ import static org.mockito.Mockito.verify;
 
 class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
 
-    private static final String FEED_URL = "http://localhost:5173/feed";
+    private static final String PROFILE_URL = "http://localhost:5173/users/ana";
 
-    private static final String FOLLOWER_LINE = "ana (@ana) is now following you.";
+    private static final String FOLLOWER_LINE = "@ana is now following you.";
 
     @Value("${app.mail-inbox.follow-window}")
     private Duration followWindow;
@@ -57,7 +57,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
         String html = fetchMessage(awaitEmail(recipient)).get("HTML").asString();
         assertTrue(html.contains("Hi bob,"));
         assertTrue(html.contains(FOLLOWER_LINE));
-        assertTrue(html.contains("href=\"" + FEED_URL + "\""));
+        assertTrue(html.contains("href=\"" + PROFILE_URL + "\""));
     }
 
     @Test
@@ -70,7 +70,7 @@ class UserFollowedListenerIntegrationTest extends AbstractNotificationE2ETest {
         String text = fetchMessage(awaitEmail(recipient)).get("Text").asString();
         assertTrue(text.contains("Hi bob,"));
         assertTrue(text.contains(FOLLOWER_LINE));
-        assertTrue(text.contains(FEED_URL));
+        assertTrue(text.contains(PROFILE_URL));
     }
 
     @Test

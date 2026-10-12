@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/http';
 import { createReply, deleteReply, fetchReplies, updateReply } from '../../api/replies';
 import { fetchTweetDetails } from '../../api/tweetDetails';
-import { PostUpdatesProvider } from '../../contexts/PostUpdatesContext';
+import { PostUpdatesProvider, usePostUpdates } from '../../contexts/PostUpdatesContext';
 import { intersect } from '../../test/intersectionObserver';
 import { viewReporter } from '../../utils/viewReporter';
 import { ROUTES } from '../../routes';
@@ -111,10 +111,17 @@ const NO_REPLIES = {
 
 const FEED_TEXT = 'the feed';
 
-function renderPage(entries: string[]) {
+function UpdatesProbe() {
+    const { updates } = usePostUpdates();
+
+    return <p data-testid="reported-updates">{JSON.stringify(updates)}</p>;
+}
+
+function renderPage(entries: string[], probeUpdates = false) {
     return render(
         <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
             <PostUpdatesProvider>
+                {probeUpdates && <UpdatesProbe />}
                 <Routes>
                     <Route path={ROUTES.feed} element={<p>{FEED_TEXT}</p>} />
                     <Route path={ROUTES.tweet} element={<TweetDetailsPage tweetId={TWEET_ID} />} />
@@ -407,5 +414,44 @@ describe('views', () => {
         await advance(DWELL_MS);
 
         expect(viewReporter.record).toHaveBeenCalledExactlyOnceWith(TWEET_ID);
+    });
+});
+
+describe('reporting updates to the lists', () => {
+    it('should_report_the_like_when_the_post_is_liked_here', async () => {
+        renderPage([`/tweets/${TWEET_ID}`], true);
+        await advance(1);
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+        await user.click(screen.getByRole('button', { name: /Like/ }));
+
+        const reported = screen.getByTestId('reported-updates').textContent ?? '';
+
+        expect(reported).toContain('"likedByMe":true');
+        expect(reported).toContain('"likes":1');
+    });
+
+    it('should_report_the_save_when_the_post_is_saved_here', async () => {
+        renderPage([`/tweets/${TWEET_ID}`], true);
+        await advance(1);
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+        await user.click(screen.getByRole('button', { name: /Save/ }));
+
+        expect(screen.getByTestId('reported-updates').textContent).toContain('"savedByMe":true');
+    });
+
+    it('should_report_the_reply_count_when_a_reply_is_sent', async () => {
+        vi.mocked(createReply).mockResolvedValue(SECOND_REPLY);
+        renderPage([`/tweets/${TWEET_ID}`], true);
+        await advance(1);
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+        await user.click(screen.getByRole('button', { name: 'Write a reply…' }));
+        await user.paste('the second reply');
+        await user.click(screen.getByRole('button', { name: 'REPLY' }));
+        await advance(1);
+
+        expect(screen.getByTestId('reported-updates').textContent).toContain('"replyCount":3');
     });
 });

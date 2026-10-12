@@ -24,8 +24,8 @@ import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.InvalidMailEventException;
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.delivery.MailDispatchServiceImpl;
 import com.peter_gerdzhikov.twitter_mail_service.services.implementations.inbox.MailEventValidationServiceImpl;
-import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -83,8 +83,8 @@ class UserFollowedNotificationServiceImplTest {
             inOrder.verify(mailDeliveryService).send(
                     eq("bob@example.com"),
                     eq("ana followed you"),
-                    argThat(html -> html.contains("http://localhost:5173/feed")),
-                    argThat(text -> text.contains("ana (@ana) is now following you.")));
+                    argThat(html -> html.contains("http://localhost:5173/users/ana")),
+                    argThat(text -> text.contains("@ana is now following you.")));
             inOrder.verify(mailInboxService).markSent(key, WINDOW);
         }
 

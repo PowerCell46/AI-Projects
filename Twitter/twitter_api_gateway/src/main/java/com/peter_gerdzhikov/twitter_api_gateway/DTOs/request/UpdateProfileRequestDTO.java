@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.twitter_api_gateway.DTOs.request;
 import java.time.LocalDate;
 
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.validation.MaxCodePoints;
+import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.validation.ages.MinimumAge;
 
 import jakarta.validation.constraints.Past;
 
@@ -24,5 +25,6 @@ public class UpdateProfileRequestDTO {
     private String location;
 
     @Past
+    @MinimumAge(13)
     private LocalDate birthdate;
 }

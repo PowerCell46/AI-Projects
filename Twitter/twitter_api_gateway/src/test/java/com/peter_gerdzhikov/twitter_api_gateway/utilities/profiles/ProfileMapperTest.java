@@ -33,7 +33,7 @@ class ProfileMapperTest {
         user.setProfilePicture(profilePicture);
         user.setProfileCoverPicture(coverPicture);
 
-        ProfileResponseDTO response = ProfileMapper.toResponse(user, true);
+        ProfileResponseDTO response = ProfileMapper.toResponse(user, user.getId(), true);
 
         assertThat(response.getId()).isEqualTo(user.getId());
         assertThat(response.getUsername()).isEqualTo(user.getUsername());
@@ -50,10 +50,21 @@ class ProfileMapperTest {
 
     @Test
     void toResponse_returnsNullUrlsWhenThereAreNoPictures() {
-        ProfileResponseDTO response = ProfileMapper.toResponse(TestEntities.newUser(), false);
+        ProfileResponseDTO response = ProfileMapper.toResponse(TestEntities.newUser(), UUID.randomUUID(), false);
 
         assertThat(response.getProfilePictureUrl()).isNull();
         assertThat(response.getCoverPictureUrl()).isNull();
+    }
+
+    @Test
+    void toResponse_hidesTheBirthdateWhenTheViewerIsSomeoneElse() {
+        User user = TestEntities.newUser();
+        user.setId(UUID.randomUUID());
+        user.setBirthdate(LocalDate.of(1990, 5, 17));
+
+        ProfileResponseDTO response = ProfileMapper.toResponse(user, UUID.randomUUID(), false);
+
+        assertThat(response.getBirthdate()).isNull();
     }
 
     @Test

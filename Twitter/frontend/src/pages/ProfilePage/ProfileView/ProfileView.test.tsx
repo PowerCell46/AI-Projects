@@ -6,6 +6,7 @@ import { fetchAuthorTweets } from '../../../api/authorTweets';
 import type { TweetItem } from '../../../api/tweetPage';
 import { followUser, unfollowUser } from '../../../api/users';
 import { useAuth } from '../../../contexts/AuthContext';
+import { FollowUpdatesProvider, useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
 import { PostUpdatesProvider } from '../../../contexts/PostUpdatesContext';
 import { advance } from '../../../test/stepFlowHelpers';
 import { tweetItem } from '../../../test/tweetItem';
@@ -37,35 +38,45 @@ const FAILURE_RESET_MS = 3000;
 
 const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
+function UpdatesProbe() {
+    const { updates } = useFollowUpdates();
+
+    return <p data-testid="reported-follows">{JSON.stringify(updates)}</p>;
+}
+
 function viewTree(
     changes: Partial<ReturnType<typeof userProfile>>,
     onFollowChanged: () => void,
     ownPosts: TweetItem[],
+    probeUpdates = false,
 ) {
     return (
         <MemoryRouter>
             <PostUpdatesProvider>
-                <Routes>
-                    <Route
-                        element={<Outlet context={{
-                            ownPosts,
-                            followChangeCount: 0,
-                            onFollowChanged,
-                            onProfilePictureChanged: vi.fn(),
-                        }} />}
-                    >
+                <FollowUpdatesProvider>
+                    {probeUpdates && <UpdatesProbe />}
+                    <Routes>
                         <Route
-                            path="*"
-                            element={(
-                                <ProfileView
-                                    profile={{ ...PROFILE, ...changes }}
-                                    serverTweetCount={25}
-                                    onProfileSaved={vi.fn()}
-                                />
-                            )}
-                        />
-                    </Route>
-                </Routes>
+                            element={<Outlet context={{
+                                ownPosts,
+                                followChangeCount: 0,
+                                onFollowChanged,
+                                onProfilePictureChanged: vi.fn(),
+                            }} />}
+                        >
+                            <Route
+                                path="*"
+                                element={(
+                                    <ProfileView
+                                        profile={{ ...PROFILE, ...changes }}
+                                        serverTweetCount={25}
+                                        onProfileSaved={vi.fn()}
+                                    />
+                                )}
+                            />
+                        </Route>
+                    </Routes>
+                </FollowUpdatesProvider>
             </PostUpdatesProvider>
         </MemoryRouter>
     );
@@ -75,12 +86,13 @@ function renderView(
     changes: Partial<ReturnType<typeof userProfile>> = {},
     onFollowChanged = vi.fn(),
     ownPosts: TweetItem[] = [],
+    probeUpdates = false,
 ) {
-    const { rerender } = render(viewTree(changes, onFollowChanged, ownPosts));
+    const { rerender } = render(viewTree(changes, onFollowChanged, ownPosts, probeUpdates));
 
     return {
         onFollowChanged,
-        showOwnPosts: (newOwnPosts: TweetItem[]) => rerender(viewTree(changes, onFollowChanged, newOwnPosts)),
+        showOwnPosts: (newOwnPosts: TweetItem[]) => rerender(viewTree(changes, onFollowChanged, newOwnPosts, probeUpdates)),
     };
 }
 
@@ -196,6 +208,44 @@ describe('the follow button on a profile', () => {
         await advance(1);
 
         expect(onFollowChanged).toHaveBeenCalledOnce();
+    });
+
+    it('should_report_the_follow_for_the_people_list_when_the_request_has_gone_through', async () => {
+        renderView({}, vi.fn(), [], true);
+        await advance(1);
+
+        await user.click(followButton());
+        await advance(1);
+
+        const reported = screen.getByTestId('reported-follows').textContent ?? '';
+
+        expect(reported).toContain('"ana_b":{"followedByMe":true');
+        expect(reported).toContain('"followersCount":1205');
+    });
+
+    it('should_report_the_unfollow_for_the_people_list_when_it_has_gone_through', async () => {
+        renderView({ followedByMe: true }, vi.fn(), [], true);
+        await advance(1);
+
+        await user.click(followButton());
+        await user.click(followButton());
+        await advance(1);
+
+        const reported = screen.getByTestId('reported-follows').textContent ?? '';
+
+        expect(reported).toContain('"followedByMe":false');
+        expect(reported).toContain('"followersCount":1203');
+    });
+
+    it('should_report_nothing_for_the_people_list_when_the_follow_fails', async () => {
+        vi.mocked(followUser).mockRejectedValueOnce(new Error('The request failed.'));
+        renderView({}, vi.fn(), [], true);
+        await advance(1);
+
+        await user.click(followButton());
+        await advance(1);
+
+        expect(screen.getByTestId('reported-follows').textContent).toBe('{}');
     });
 
     it('should_arm_on_the_first_tap_and_unfollow_with_the_count_one_lower_on_the_second', async () => {

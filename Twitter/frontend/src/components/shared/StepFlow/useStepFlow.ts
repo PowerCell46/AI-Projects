@@ -22,7 +22,7 @@ export interface StepFlowState {
     values: StepValues;
     errorMessage: string | null;
     isAlarm: boolean;
-    offersResend: boolean;
+    shouldOfferResend: boolean;
     isSubmitting: boolean;
     slide: StepSlide;
     direction: StepDirection;
@@ -166,7 +166,7 @@ export function useStepFlow(
                 stepIndex,
                 gauge: 'hold',
                 message: validationMessage,
-                offersResend: false,
+                shouldOfferResend: false,
             });
 
         } else if (isLastStep) {
@@ -198,7 +198,7 @@ export function useStepFlow(
         values,
         errorMessage: visibleError?.message ?? null,
         isAlarm: isRising,
-        offersResend: visibleError?.offersResend ?? false,
+        shouldOfferResend: visibleError?.shouldOfferResend ?? false,
         isSubmitting,
         slide,
         direction,

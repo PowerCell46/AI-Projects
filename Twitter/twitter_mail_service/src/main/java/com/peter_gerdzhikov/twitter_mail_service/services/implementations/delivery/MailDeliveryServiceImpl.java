@@ -22,11 +22,10 @@ import org.springframework.stereotype.Service;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.twitter_mail_service.exceptions.TransientMailDeliveryException;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.delivery.MailDeliveryService;
+import com.peter_gerdzhikov.twitter_mail_service.utilities.EmailText;
 
 @Service
 public class MailDeliveryServiceImpl implements MailDeliveryService {
-
-    private static final String LINE_BREAKS = "[\r\n]";
 
     private static final int PERMANENT_SMTP_REPLY_THRESHOLD = 500;
 
@@ -47,7 +46,7 @@ public class MailDeliveryServiceImpl implements MailDeliveryService {
             helper.setValidateAddresses(true);
             helper.setFrom(fromAddress);
             helper.setTo(recipient);
-            helper.setSubject(subject.replaceAll(LINE_BREAKS, ""));
+            helper.setSubject(EmailText.stripLineBreaks(subject));
             helper.setText(text, html);
 
             mailSender.send(message);

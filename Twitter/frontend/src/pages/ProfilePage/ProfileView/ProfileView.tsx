@@ -3,6 +3,7 @@ import type { UserProfile } from '../../../api/users';
 import FollowButton from '../../../components/shared/FollowButton/FollowButton';
 import { useShellContext } from '../../../components/shared/Shell/useShellContext';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
 import { usePersonFollow } from '../../../hooks/usePersonFollow';
 import ProfileEditButton from '../ProfileEditButton/ProfileEditButton';
 import ProfileEditSheet from '../ProfileEditSheet/ProfileEditSheet';
@@ -24,8 +25,18 @@ interface ProfileViewProps {
 function ProfileView({ profile, serverTweetCount, onProfileSaved }: ProfileViewProps) {
     const { user } = useAuth();
     const { onFollowChanged, onProfilePictureChanged } = useShellContext();
+    const { reportFollowUpdate } = useFollowUpdates();
     const isOwnProfile = user?.username.toLowerCase() === profile.username.toLowerCase();
-    const follow = usePersonFollow(profile, onFollowChanged);
+
+    function handleFollowChanged(followedByMe: boolean, followersCount: number) {
+        onFollowChanged();
+        reportFollowUpdate(profile.username, {
+            followedByMe,
+            followersCount,
+        });
+    }
+
+    const follow = usePersonFollow(profile, handleFollowChanged);
     const { ownPosts, tweetCount } = useOwnProfilePosts(isOwnProfile, serverTweetCount);
     const [isEditing, setIsEditing] = useState(false);
     const editButtonRef = useRef<HTMLButtonElement>(null);

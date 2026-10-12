@@ -164,6 +164,24 @@ class FollowerLookupServiceIntegrationTest extends AbstractDownstreamIntegration
         }
 
         @Test
+        void should_throw_unavailable_when_the_follower_page_is_null() {
+            UUID authorId = TestIds.userId();
+            GATEWAY_STUB.register(get(followerIdsPath(authorId))
+                    .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody("null")));
+
+            assertThatThrownBy(() -> collectPages(authorId)).isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
+        void should_throw_unavailable_when_the_follower_ids_are_null() {
+            UUID authorId = TestIds.userId();
+            GATEWAY_STUB.register(get(followerIdsPath(authorId))
+                    .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody("{\"ids\":null,\"nextCursor\":null}")));
+
+            assertThatThrownBy(() -> collectPages(authorId)).isInstanceOf(UpstreamUnavailableException.class);
+        }
+
+        @Test
         void should_throw_timeout_when_the_gateway_is_slower_than_the_read_timeout() {
             UUID authorId = TestIds.userId();
             GATEWAY_STUB.register(get(followerIdsPath(authorId))

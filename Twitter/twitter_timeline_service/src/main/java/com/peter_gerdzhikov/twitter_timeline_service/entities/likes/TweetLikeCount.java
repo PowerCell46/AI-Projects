@@ -32,10 +32,10 @@ public class TweetLikeCount {
 
     public static final String LIKES_CONSTRAINT = "ck_tweet_like_counts_likes_non_negative";
 
+    @Column(name = "likes", updatable = false, nullable = false)
+    private long likes;
+
     @Id
     @Column(name = "tweet_id", updatable = false, nullable = false)
     private UUID tweetId;
-
-    @Column(name = "likes", updatable = false, nullable = false)
-    private long likes;
 }

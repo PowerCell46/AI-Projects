@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/http';
+import { STATUS_NOT_FOUND } from '../../../api/httpStatus';
 import { deleteReply } from '../../../api/replies';
 import type { Reply } from '../../../api/replies';
 import Avatar from '../../../components/shared/Avatar/Avatar';
@@ -10,8 +11,6 @@ import './ReplyCell.css';
 
 
 type ReplyMode = 'viewing' | 'editing' | 'confirming-delete';
-
-const NOT_FOUND_STATUS = 404;
 
 const DELETE_FAILED_MESSAGE = "Couldn't delete. Try again.";
 
@@ -90,7 +89,7 @@ function ReplyCell({
 
         } catch (failure) {
             // A reply that is already gone is what the reader wanted; anything else leaves it in place.
-            if (failure instanceof ApiError && failure.status === NOT_FOUND_STATUS) {
+            if (failure instanceof ApiError && failure.status === STATUS_NOT_FOUND) {
                 onRemoved(reply.id);
 
             } else {
