@@ -35,8 +35,8 @@ import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.containers.AbstractMinioIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 
 import jakarta.servlet.http.Cookie;

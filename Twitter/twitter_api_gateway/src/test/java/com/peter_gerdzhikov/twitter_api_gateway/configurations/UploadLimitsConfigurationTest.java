@@ -10,7 +10,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.unit.DataSize;
 
-import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.containers.AbstractMinioIntegrationTest;
 
 @SpringBootTest
 @ActiveProfiles("test")

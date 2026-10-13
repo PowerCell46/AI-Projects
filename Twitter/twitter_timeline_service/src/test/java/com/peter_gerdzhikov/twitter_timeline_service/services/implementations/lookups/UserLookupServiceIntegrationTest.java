@@ -25,8 +25,8 @@ import com.peter_gerdzhikov.twitter_timeline_service.DTOs.client.users.UserClien
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamTimeoutException;
 import com.peter_gerdzhikov.twitter_timeline_service.exceptions.upstream.UpstreamUnavailableException;
 import com.peter_gerdzhikov.twitter_timeline_service.services.interfaces.lookups.UserLookupService;
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractDownstreamIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractDownstreamIntegrationTest;
 
 class UserLookupServiceIntegrationTest extends AbstractDownstreamIntegrationTest {
 

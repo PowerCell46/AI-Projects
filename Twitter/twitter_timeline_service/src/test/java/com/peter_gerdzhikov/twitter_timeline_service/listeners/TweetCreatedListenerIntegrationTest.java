@@ -29,9 +29,9 @@ import org.springframework.data.domain.PageRequest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEventDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
-import com.peter_gerdzhikov.twitter_timeline_service.support.MutableClock;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.clock.MutableClock;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractListenerIntegrationTest;
 
 class TweetCreatedListenerIntegrationTest extends AbstractListenerIntegrationTest {
 

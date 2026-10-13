@@ -10,8 +10,8 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.dao.DataIntegrityViolationException;
 
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
-import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.containers.AbstractPostgresIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 
 import jakarta.persistence.EntityManager;
 

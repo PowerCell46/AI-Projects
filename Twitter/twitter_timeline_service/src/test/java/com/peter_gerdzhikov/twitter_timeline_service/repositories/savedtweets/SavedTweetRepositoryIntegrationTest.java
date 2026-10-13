@@ -16,8 +16,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.peter_gerdzhikov.twitter_timeline_service.entities.savedtweets.SavedTweet;
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractPostgresIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 

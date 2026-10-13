@@ -15,8 +15,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.peter_gerdzhikov.twitter_timeline_service.entities.likes.TweetLikeCount;
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractPostgresIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractPostgresIntegrationTest;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

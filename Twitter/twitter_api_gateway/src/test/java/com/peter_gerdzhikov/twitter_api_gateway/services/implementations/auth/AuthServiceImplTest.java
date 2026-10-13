@@ -33,7 +33,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.DuplicateUsernam
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.EmailNotConfirmedException;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.ConfirmationRequestService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.confirmations.ConfirmationRequestService;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {

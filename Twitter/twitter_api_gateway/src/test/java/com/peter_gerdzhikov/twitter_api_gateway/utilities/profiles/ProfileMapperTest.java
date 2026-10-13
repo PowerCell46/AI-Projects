@@ -14,7 +14,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.profile.ProfileRes
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.users.UserListItemResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 
 class ProfileMapperTest {
 

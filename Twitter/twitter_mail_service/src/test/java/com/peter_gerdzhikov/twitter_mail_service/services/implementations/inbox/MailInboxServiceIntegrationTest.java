@@ -14,7 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.ClaimResult;
 import com.peter_gerdzhikov.twitter_mail_service.services.interfaces.inbox.MailInboxService;
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractRedisIntegrationTest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractRedisIntegrationTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

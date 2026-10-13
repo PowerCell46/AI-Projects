@@ -17,9 +17,9 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserConfirmationRequestedEventDTO;
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractKafkaE2ETestSupport;
-import com.peter_gerdzhikov.twitter_mail_service.support.MutableClock;
-import com.peter_gerdzhikov.twitter_mail_service.support.TestClockConfiguration;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractKafkaE2ETestSupport;
+import com.peter_gerdzhikov.twitter_mail_service.support.clock.MutableClock;
+import com.peter_gerdzhikov.twitter_mail_service.support.clock.TestClockConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;

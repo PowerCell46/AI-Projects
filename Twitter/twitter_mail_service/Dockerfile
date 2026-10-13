@@ -13,7 +13,9 @@ RUN chmod +x mvnw
 
 # Download dependencies (cached unless a pom changes)
 COPY twitter_shared/pom.xml twitter_shared/pom.xml
-
+COPY twitter_api_gateway/pom.xml twitter_api_gateway/pom.xml
+COPY twitter_tweet_service/pom.xml twitter_tweet_service/pom.xml
+COPY twitter_timeline_service/pom.xml twitter_timeline_service/pom.xml
 COPY twitter_mail_service/pom.xml twitter_mail_service/pom.xml
 
 RUN ./mvnw -pl twitter_mail_service -am dependency:go-offline -B

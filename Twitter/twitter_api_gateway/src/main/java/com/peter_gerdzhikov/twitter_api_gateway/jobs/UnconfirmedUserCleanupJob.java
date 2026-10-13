@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.UnconfirmedUserCleanupService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.confirmations.UnconfirmedUserCleanupService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockKey;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockService;
 

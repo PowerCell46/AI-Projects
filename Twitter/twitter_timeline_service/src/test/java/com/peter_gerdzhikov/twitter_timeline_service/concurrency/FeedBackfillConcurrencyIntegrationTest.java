@@ -18,8 +18,8 @@ import lombok.Value;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.TweetCreatedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserFollowedEventDTO;
 import com.peter_gerdzhikov.twitter_timeline_service.DTOs.event.UserUnfollowedEventDTO;
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractListenerIntegrationTest;
 
 /**
  * Every scenario releases all its threads from one latch, so the calls really overlap, and asserts only the

@@ -40,7 +40,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.UnsupportedImag
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
 

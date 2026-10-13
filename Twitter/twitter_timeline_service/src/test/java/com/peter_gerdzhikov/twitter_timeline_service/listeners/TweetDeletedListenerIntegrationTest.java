@@ -18,9 +18,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.peter_gerdzhikov.twitter_timeline_service.repositories.likes.TweetLikeRepository;
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
-import com.peter_gerdzhikov.twitter_timeline_service.support.MutableClock;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.clock.MutableClock;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractListenerIntegrationTest;
 
 class TweetDeletedListenerIntegrationTest extends AbstractListenerIntegrationTest {
 

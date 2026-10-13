@@ -12,7 +12,7 @@ import org.springframework.boot.health.contributor.Status;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractNotificationE2ETest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractNotificationE2ETest;
 
 class KafkaListenerHealthIntegrationTest extends AbstractNotificationE2ETest {
 

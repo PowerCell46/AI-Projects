@@ -10,7 +10,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractRedisIntegrationTest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractRedisIntegrationTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

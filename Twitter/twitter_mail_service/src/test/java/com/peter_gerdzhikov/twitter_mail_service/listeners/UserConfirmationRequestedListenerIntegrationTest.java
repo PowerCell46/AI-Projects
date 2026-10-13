@@ -13,7 +13,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserConfirmationRequestedEventDTO;
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractNotificationE2ETest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractNotificationE2ETest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

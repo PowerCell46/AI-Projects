@@ -13,7 +13,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.context.annotation.Import;
 
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockKey;
-import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.containers.AbstractPostgresIntegrationTest;
 
 @DataJpaTest
 @Import(AdvisoryLockServiceImpl.class)

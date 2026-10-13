@@ -35,8 +35,8 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractListenerIntegrationTest;
 
 class ViewControllerIntegrationTest extends AbstractListenerIntegrationTest {
 

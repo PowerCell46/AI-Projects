@@ -37,7 +37,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.users.UserNotFoundExc
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.FollowRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.outbox.OutboxService;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 
 @ExtendWith(MockitoExtension.class)
 class FollowServiceImplTest {

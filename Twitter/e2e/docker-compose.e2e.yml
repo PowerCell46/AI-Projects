@@ -143,7 +143,9 @@ services:
       start_period: 5s
 
   gateway:
-    build: ../twitter_api_gateway
+    build:
+      context: ..
+      dockerfile: ./twitter_api_gateway/Dockerfile
     ports:
       - "127.0.0.1:${E2E_GATEWAY_PORT:-8180}:8080"
     environment:
@@ -190,7 +192,9 @@ services:
         condition: service_healthy
 
   mail-service:
-    build: ../twitter_mail_service
+    build:
+      context: ..
+      dockerfile: ./twitter_mail_service/Dockerfile
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       REDIS_HOST: redis
@@ -245,7 +249,9 @@ services:
         condition: service_healthy
 
   tweet-service:
-    build: ../twitter_tweet_service
+    build:
+      context: ..
+      dockerfile: ./twitter_tweet_service/Dockerfile
     environment:
       MONGODB_URI: mongodb://mongo:27017/twitter_tweet_service_e2e?directConnection=true
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -278,7 +284,9 @@ services:
         condition: service_healthy
 
   timeline-service:
-    build: ../twitter_timeline_service
+    build:
+      context: ..
+      dockerfile: ./twitter_timeline_service/Dockerfile
     environment:
       TIMELINE_DATASOURCE_URL: jdbc:postgresql://postgres-timeline:5432/twitter_timeline_e2e
       TIMELINE_DATASOURCE_USERNAME: twitter_e2e

@@ -21,7 +21,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.request.ResendConfirmationR
 import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.auth.UserResponseDTO;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.AuthService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.EmailConfirmationService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.confirmations.EmailConfirmationService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.TokenService;
 import com.peter_gerdzhikov.twitter_api_gateway.utilities.web.CookieFactory;
 

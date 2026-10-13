@@ -7,7 +7,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractRedisIntegrationTest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractRedisIntegrationTest;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

@@ -27,8 +27,8 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractListenerIntegrationTest;
 
 class TweetDetailsControllerIntegrationTest extends AbstractListenerIntegrationTest {
 

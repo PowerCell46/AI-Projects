@@ -24,8 +24,8 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 
 import tools.jackson.databind.ObjectMapper;
 
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractListenerIntegrationTest;
 import com.peter_gerdzhikov.twitter_timeline_service.support.TestIds;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractListenerIntegrationTest;
 
 /**
  * Every scenario releases all its requests from one latch, so they really overlap, and asserts only the final

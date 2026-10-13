@@ -16,6 +16,9 @@ export default defineConfig({
         trace: 'retain-on-failure',
         // The step transitions and the arrival draw collapse to immediate, so navigation is deterministic.
         reducedMotion: 'reduce',
+        launchOptions: {
+            slowMo: process.env.SLOWMO ? Number(process.env.SLOWMO) : undefined,
+        },
     },
     webServer: {
         command: `npm run dev -- --port ${FRONTEND_PORT} --strictPort`,

@@ -16,11 +16,18 @@ the frontend itself (`npm run dev` in `../frontend`). The specs register their o
 ## Run
 
 ```sh
-npm test            # build the images, start the stack, run all specs, tear the stack down
-npm run test:fast   # skip the rebuild (`E2E_NO_BUILD=1`); use after the first run
-npm run test:headed # same as test, with a visible browser
-npm run stack:down  # `down -v` on the e2e project, for a manual cleanup
+npm test            # build images, start stack, run all specs headless, tear stack down
+npm run test:fast   # skip image rebuild (`E2E_NO_BUILD=1`); use on subsequent runs
+npm run test:headed # run with a visible browser
+npm run test:slow   # visible browser, 1 worker, 1000ms delay between actions (watchable)
+npm run stack:down  # `down -v` on the e2e project, for manual cleanup
 ```
+
+### Fast vs. slow execution
+- **Fast run (`npm run test:fast`)**: When service images are already built, setting `E2E_NO_BUILD=1` skips the multi-minute Maven container rebuilds and starts straight into `up -d --wait`.
+- **Visible browser (`npm run test:headed`)**: Runs all specs in a visible Chromium browser window at normal execution speed.
+- **Slow motion / watchable (`npm run test:slow`)**: Runs tests in a visible browser with a single worker (`--workers=1`) and a 1000ms delay (`SLOWMO=1000`) between actions so each step can be watched visually. You can adjust the delay per run, e.g. `SLOWMO=500 npx playwright test --headed --workers=1`.
+- **Debugging & inspection (`E2E_SKIP_TEARDOWN=1`)**: Leaves the stack running after tests finish so you can inspect state or rerun single specs against the active environment. Clean up manually with `npm run stack:down`.
 
 The first run builds the four Maven images and takes several minutes; `global-setup.ts` builds first (900 s
 timeout, skipped by `E2E_NO_BUILD=1`) and then runs `up -d --wait` (300 s). Traces are kept for failures

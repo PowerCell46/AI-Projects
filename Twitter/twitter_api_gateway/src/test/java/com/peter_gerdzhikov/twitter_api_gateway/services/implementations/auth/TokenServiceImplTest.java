@@ -22,7 +22,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 
 import com.peter_gerdzhikov.twitter_api_gateway.configurations.security.SecurityConfiguration;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestJwts;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestJwts;
 
 class TokenServiceImplTest {
 

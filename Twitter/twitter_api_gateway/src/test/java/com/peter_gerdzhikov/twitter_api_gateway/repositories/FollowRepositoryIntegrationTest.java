@@ -19,8 +19,8 @@ import org.springframework.data.domain.PageRequest;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.follows.Follow;
 import com.peter_gerdzhikov.twitter_api_gateway.entities.users.User;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.projections.FollowerEdge;
-import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractPostgresIntegrationTest;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.containers.AbstractPostgresIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 
 import jakarta.persistence.EntityManager;
 

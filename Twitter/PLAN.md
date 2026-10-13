@@ -15,26 +15,4 @@ first deployment.
 | `frontend` | 1–5: auth flow → feed + compose → tab row + People → profile view |
 | e2e | Playwright suite (79 specs) covering auth, feed, follows, profile and follow email |
 
-README for e2e (how to start the tests fast and slow - look at SignalFlow)
-
-ports:
-    - "127.0.0.1:5432:5432"
-is this ok for deploy?
-
-in readme "Compose refuses to start while a required value is empty. " -> just refer to .env.example no need to repeat the keys
-
 README 'Put the certificate in certs/fullchain.pem and certs/privkey.pem' -> ask it about that
-
-api gateway
-    run an agent on the folder structure, but some dirs like config don't seem like they follow the +5 files rule
-    no .env.example
-    seed images
-
-tweet service
-
-mail service
-    run an agent on the folder structure, but some dirs like config don't seem like they follow the +5 files rule
-    
-timeline service
-    run an agent on the folder structure, but some dirs like config don't seem like they follow the +5 files rule
-

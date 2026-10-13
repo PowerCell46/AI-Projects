@@ -21,7 +21,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.DTOs.response.files.FileContentR
 import com.peter_gerdzhikov.twitter_api_gateway.entities.files.DbFile;
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.files.FileNotFoundException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.DbFileRepository;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
 import com.peter_gerdzhikov.twitter_shared.storage.ObjectStorageService;
 import com.peter_gerdzhikov.twitter_shared.storage.StorageUnavailableException;
 

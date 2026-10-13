@@ -16,7 +16,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractDownstreamIntegrationTest;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractDownstreamIntegrationTest;
 
 class KafkaListenerHealthIntegrationTest extends AbstractDownstreamIntegrationTest {
 

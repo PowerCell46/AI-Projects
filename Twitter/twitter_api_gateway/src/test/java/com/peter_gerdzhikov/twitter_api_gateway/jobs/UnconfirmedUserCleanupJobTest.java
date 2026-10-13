@@ -15,7 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.UnconfirmedUserCleanupService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.confirmations.UnconfirmedUserCleanupService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockKey;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.locks.AdvisoryLockService;
 

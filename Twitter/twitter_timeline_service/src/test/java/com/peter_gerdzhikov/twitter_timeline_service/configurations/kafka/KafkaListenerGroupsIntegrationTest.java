@@ -19,7 +19,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.peter_gerdzhikov.twitter_timeline_service.support.AbstractDownstreamIntegrationTest;
+import com.peter_gerdzhikov.twitter_timeline_service.support.integration.AbstractDownstreamIntegrationTest;
 
 class KafkaListenerGroupsIntegrationTest extends AbstractDownstreamIntegrationTest {
 

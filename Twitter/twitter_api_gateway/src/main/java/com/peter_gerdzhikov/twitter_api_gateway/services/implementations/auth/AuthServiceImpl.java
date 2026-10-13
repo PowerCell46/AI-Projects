@@ -18,7 +18,7 @@ import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.EmailNotConfirme
 import com.peter_gerdzhikov.twitter_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.AuthService;
-import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.ConfirmationRequestService;
+import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.confirmations.ConfirmationRequestService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

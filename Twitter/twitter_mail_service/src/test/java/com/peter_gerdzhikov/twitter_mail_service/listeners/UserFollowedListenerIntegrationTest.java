@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 
 import com.peter_gerdzhikov.twitter_mail_service.DTOs.event.UserFollowedEventDTO;
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractNotificationE2ETest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractNotificationE2ETest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

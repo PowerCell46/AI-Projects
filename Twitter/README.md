@@ -20,23 +20,7 @@ Needs Docker with Compose 2.20 or newer (`include` support). Run every command f
 cp .env.example .env
 ```
 
-Compose refuses to start while a required value is empty. Fill in at least:
-
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` (the gateway's Postgres)
-- `TIMELINE_DATASOURCE_USERNAME`, `TIMELINE_DATASOURCE_PASSWORD` (the timeline service's Postgres; `TIMELINE_POSTGRES_DB` is optional)
-- `REDIS_PASSWORD`
-- `MONGO_ROOT_PASSWORD`, `MONGO_APP_PASSWORD`, `MONGO_KEYFILE_SECRET` (Mongo needs a login: the tweet service uses its own
-  `tweet_service` user. Generate the passwords with `openssl rand -hex 24` and the keyfile secret with
-  `openssl rand -base64 48 | tr -d '\n'`)
-- `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` (the secret needs 8+ characters)
-- `JWT_SECRET` and `INTERNAL_API_SECRET` (32+ bytes each; the gateway and timeline service refuse to start without them)
-- `MAIL_FROM` (a valid email address; the mail service refuses to start without it)
-- `SEED_PASSWORD` (the shared password of the 12 demo users; the gateway refuses to start without a strong one, 12-72
-  bytes with a lowercase letter, an uppercase letter and a digit, unless `SEED_ENABLED=false`). Generate one with
-  `openssl rand -base64 18`. It has no default because this repo is public
-- `SEED_PASSWORD_STILIYAN`, `SEED_PASSWORD_KRISTIAN`, `SEED_PASSWORD_GOSHO`, `SEED_PASSWORD_GABI` (one password each for
-  the four demo users that are real people, same rules, required unless `SEED_ENABLED=false`)
-- `COOKIE_SECURE=false` if you open the app over plain HTTP in Safari; the cookie is `Secure` by default
+Compose refuses to start while a required value is empty. Fill in the required keys in `.env` as documented in `.env.example` (lines without a leading `#`).
 
 Mongo creates its users only on an empty data volume. An existing `mongo_data` volume from before the login was added has
 none, so the tweet service cannot connect: run `docker compose down -v` (this deletes the data) or create the users by hand.
@@ -160,7 +144,9 @@ the stacks above. See `e2e/README.md` for prerequisites, scripts and ports. In s
 cd e2e
 npm install
 npx playwright install chromium   # once: the browsers
-npm test                          # build the stack, run the 79 specs, tear it all down
+npm test                          # build stack, run the 79 specs, tear down
+npm run test:fast                 # skip image rebuilds on subsequent runs
+npm run test:slow                 # visible browser, slowed down to watch actions
 ```
 
 ## Troubleshooting

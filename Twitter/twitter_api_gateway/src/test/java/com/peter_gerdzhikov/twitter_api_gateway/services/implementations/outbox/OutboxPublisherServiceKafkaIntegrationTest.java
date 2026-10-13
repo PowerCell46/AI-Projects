@@ -35,10 +35,10 @@ import com.peter_gerdzhikov.twitter_api_gateway.repositories.OutboxRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.auth.AuthService;
 import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.follows.FollowService;
-import com.peter_gerdzhikov.twitter_api_gateway.support.AbstractMinioIntegrationTest;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestEntities;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestUser;
-import com.peter_gerdzhikov.twitter_api_gateway.support.TestUsers;
+import com.peter_gerdzhikov.twitter_api_gateway.support.containers.AbstractMinioIntegrationTest;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestEntities;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestUser;
+import com.peter_gerdzhikov.twitter_api_gateway.support.fixtures.TestUsers;
 import com.peter_gerdzhikov.twitter_shared.outbox.OutboxPublisherService;
 import com.peter_gerdzhikov.twitter_shared.outbox.OutboxStatus;
 

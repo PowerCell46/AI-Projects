@@ -19,7 +19,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.peter_gerdzhikov.twitter_mail_service.support.AbstractNotificationE2ETest;
+import com.peter_gerdzhikov.twitter_mail_service.support.base.AbstractNotificationE2ETest;
 
 class KafkaListenerGroupsIntegrationTest extends AbstractNotificationE2ETest {
 
