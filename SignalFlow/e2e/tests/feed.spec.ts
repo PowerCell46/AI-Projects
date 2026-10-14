@@ -59,6 +59,24 @@ test('a topic with two categories shows both on its card, in name order', async 
     )
 })
 
+test('a card shows its schedule, Daily by default', async ({ page, request }) => {
+    const user = newUser()
+    await registerViaApi(request, user)
+    const weeklyTopic = await createTopicViaApi(request, undefined, 'WEEKLY')
+    const defaultTopic = await createTopicViaApi(request)
+
+    await loginAndWaitForFeed(page, user)
+    await revealTopicCard(page, weeklyTopic.name)
+    await expect(topicCard(page, weeklyTopic.name).locator('.topic-card-schedule')).toHaveText(
+        'Weekly \u00B7 Mondays',
+    )
+
+    await revealTopicCard(page, defaultTopic.name)
+    await expect(topicCard(page, defaultTopic.name).locator('.topic-card-schedule')).toHaveText(
+        'Daily',
+    )
+})
+
 test('a fresh account sees the empty state in the subscribed view', async ({
     page,
     request,

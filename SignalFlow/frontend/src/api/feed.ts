@@ -2,6 +2,8 @@ const BASE_URL = import.meta.env.VITE_BASE_API_URL ?? ''
 
 export type FeedFilter = 'ALL' | 'SUBSCRIBED' | 'NOT_SUBSCRIBED'
 
+export type FeedSchedule = 'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'WEEKLY'
+
 export interface FeedCategory {
     id: string
     name: string
@@ -12,6 +14,7 @@ export interface FeedTopic {
     name: string
     description: string
     categories: FeedCategory[]
+    schedule: FeedSchedule
     subscribed: boolean
 }
 

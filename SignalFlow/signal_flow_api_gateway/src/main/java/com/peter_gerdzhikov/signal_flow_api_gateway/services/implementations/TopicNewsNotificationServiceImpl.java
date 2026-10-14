@@ -30,6 +30,8 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
     /** Matches {@link com.peter_gerdzhikov.signal_flow_api_gateway.entities.NotificationOutbox}'s default {@code varchar(255)}. */
     private static final int MAX_COLUMN_LENGTH = 255;
 
+    private static final int MAX_SCHEDULE_LENGTH = 16;
+
     private static final String INSERT_INBOX_ROW_SQL = """
             INSERT INTO topic_news_inbox (news_id, processed_at) VALUES (?, ?)
             """;
@@ -37,8 +39,9 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
     private static final String INSERT_OUTBOX_ROW_SQL = """
             INSERT INTO notification_outbox
                 (id, created_at, updated_at, news_id, interest_topic_id, topic_name, category_names,
-                 news_date, data, generated_at, user_id, email_address, status, attempt_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 news_date, schedule, period_start, data, generated_at, user_id, email_address, status,
+                 attempt_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
     private final int batchSize;
@@ -91,6 +94,17 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
             return;
         }
 
+        if (hasInvalidSchedule(event.getSchedule())) {
+            skipOversizedRecord(event.getNewsId(), "schedule is blank or over the %d-character cap"
+                    .formatted(MAX_SCHEDULE_LENGTH));
+            return;
+        }
+
+        if (event.getPeriodStart() == null) {
+            skipOversizedRecord(event.getNewsId(), "periodStart is missing");
+            return;
+        }
+
         UUID after = BEFORE_EVERY_USER_ID;
         long queued = 0;
 
@@ -114,6 +128,10 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
         return categoryNames == null
                 || categoryNames.isEmpty()
                 || categoryNames.stream().anyMatch(name -> name == null || name.length() > MAX_COLUMN_LENGTH);
+    }
+
+    private boolean hasInvalidSchedule(String schedule) {
+        return schedule == null || schedule.isBlank() || schedule.length() > MAX_SCHEDULE_LENGTH;
     }
 
     private void insertInboxRow(UUID newsId) {
@@ -145,12 +163,14 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
             ps.setString(6, event.getTopicName());
             ps.setArray(7, ps.getConnection().createArrayOf("text", categoryNames));
             ps.setObject(8, event.getNewsDate());
-            ps.setString(9, event.getData());
-            ps.setObject(10, generatedAt);
-            ps.setObject(11, subscriber.getUserId());
-            ps.setString(12, subscriber.getEmail());
-            ps.setString(13, NotificationOutboxStatus.PENDING.name());
-            ps.setInt(14, 0);
+            ps.setString(9, event.getSchedule());
+            ps.setObject(10, event.getPeriodStart());
+            ps.setString(11, event.getData());
+            ps.setObject(12, generatedAt);
+            ps.setObject(13, subscriber.getUserId());
+            ps.setString(14, subscriber.getEmail());
+            ps.setString(15, NotificationOutboxStatus.PENDING.name());
+            ps.setInt(16, 0);
         });
     }
 }

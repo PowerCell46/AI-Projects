@@ -69,6 +69,7 @@ public class FeedServiceImpl implements FeedService {
                 topic.getName(),
                 topic.getDescription(),
                 topic.getCategories(),
+                topic.getSchedule(),
                 subscribed
         );
     }

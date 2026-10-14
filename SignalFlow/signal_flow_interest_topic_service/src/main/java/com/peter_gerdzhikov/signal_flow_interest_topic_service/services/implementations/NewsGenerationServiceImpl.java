@@ -34,13 +34,17 @@ public class NewsGenerationServiceImpl implements NewsGenerationService {
     private static final String NO_PROVIDER_MESSAGE = "(no message)";
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
-            You are a news curator. Report notable news published on or just before %s about the user's \
+            You are a news curator. Report %s about the user's \
             topic below, using only what the web search returned. Report at most 5 items.
             Output only an HTML fragment - no preamble, no Markdown. Put the items in one <ul>, and write \
             every item exactly as:
             <li><strong>Headline</strong> One or two sentences of detail. <a href="source URL">Source name</a></li>
             <em> is allowed inside the detail. If you find nothing new worth reporting, output only a short \
             <p> note saying so instead of the list.""";
+
+    private static final String ONE_DAY_SCOPE_TEMPLATE = "notable news published on or just before %s";
+
+    private static final String PERIOD_SCOPE_TEMPLATE = "the most notable news published between %s and %s";
 
     private static final String COVERED_STORIES_INTRO =
             "For context, these stories were already covered for this topic recently:";
@@ -65,8 +69,13 @@ public class NewsGenerationServiceImpl implements NewsGenerationService {
     }
 
     @Override
-    public String generate(InterestTopic interestTopic, LocalDate newsDate, List<String> coveredHeadlines) {
-        OpenRouterChatResponseDTO response = call(buildRequest(interestTopic, newsDate, coveredHeadlines));
+    public String generate(
+            InterestTopic interestTopic,
+            LocalDate newsDate,
+            LocalDate periodStart,
+            List<String> coveredHeadlines
+    ) {
+        OpenRouterChatResponseDTO response = call(buildRequest(interestTopic, newsDate, periodStart, coveredHeadlines));
         return extractContent(response);
     }
 
@@ -103,13 +112,22 @@ public class NewsGenerationServiceImpl implements NewsGenerationService {
     }
 
     private OpenRouterChatRequestDTO buildRequest(
-            InterestTopic interestTopic, LocalDate newsDate, List<String> coveredHeadlines) {
+            InterestTopic interestTopic, LocalDate newsDate, LocalDate periodStart, List<String> coveredHeadlines) {
         OpenRouterChatMessageDTO systemMessage = new OpenRouterChatMessageDTO(
-                "system", SYSTEM_PROMPT_TEMPLATE.formatted(newsDate) + coveredStoriesBlock(coveredHeadlines));
+                "system",
+                SYSTEM_PROMPT_TEMPLATE.formatted(newsScope(newsDate, periodStart)) + coveredStoriesBlock(coveredHeadlines));
         OpenRouterChatMessageDTO userMessage = new OpenRouterChatMessageDTO(
                 "user", "%s%n%n%s".formatted(interestTopic.getName(), interestTopic.getPrompt()));
 
         return new OpenRouterChatRequestDTO(model, List.of(systemMessage, userMessage), maxTokens);
+    }
+
+    private String newsScope(LocalDate newsDate, LocalDate periodStart) {
+        if (periodStart.equals(newsDate)) {
+            return ONE_DAY_SCOPE_TEMPLATE.formatted(newsDate);
+        }
+
+        return PERIOD_SCOPE_TEMPLATE.formatted(periodStart, newsDate);
     }
 
     private String coveredStoriesBlock(List<String> coveredHeadlines) {

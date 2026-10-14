@@ -851,3 +851,11 @@ the request to reach the public controller without interference from stale cooki
   waits and cascades over the new row; delete first means the lock finds nothing and subscribe answers 401.
 - **Queued emails are not cancelled.** The outbox polls every 3 s and deletes each row once sent, so the window
   is a few seconds.
+
+## Cross-service plan, phase 4 — each topic has a news schedule
+
+- **`schedule` is carried as an uninterpreted `String`, plus a `LocalDate periodStart`.** The gateway never reads
+  its meaning, so a new preset needs no gateway change. `notification_outbox.schedule` is `varchar(16)`; the fan-out
+  guard skips and marks processed a record whose `schedule` is blank or over 16 characters, or whose `periodStart` is null.
+- **In the outbox `INSERT`, `schedule` and `period_start` sit right after `news_date`**, which shifted the later
+  parameter indices by two.

@@ -41,6 +41,8 @@ class NotificationOutboxRepositoryIntegrationTest extends AbstractPostgresIntegr
         assertThat(found.getTopicName()).isEqualTo("rust");
         assertThat(found.getCategoryNames()).containsExactly("programming", "science", "tech");
         assertThat(found.getNewsDate()).isEqualTo(newsDate);
+        assertThat(found.getSchedule()).isEqualTo("WEEKLY");
+        assertThat(found.getPeriodStart()).isEqualTo(newsDate.minusDays(6));
         assertThat(found.getData()).isEqualTo("today's rust news");
         assertThat(found.getUserId()).isEqualTo(userId);
         assertThat(found.getEmailAddress()).isEqualTo("bob@example.com");
@@ -100,6 +102,8 @@ class NotificationOutboxRepositoryIntegrationTest extends AbstractPostgresIntegr
                 .topicName("rust")
                 .categoryNames(List.of("programming", "science", "tech"))
                 .newsDate(newsDate)
+                .schedule("WEEKLY")
+                .periodStart(newsDate.minusDays(6))
                 .data("today's rust news")
                 .generatedAt(generatedAt)
                 .userId(userId)

@@ -28,6 +28,7 @@ import org.springframework.test.context.TestPropertySource;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
@@ -92,12 +93,34 @@ class TopicNewsOutboxPublisherIntegrationTest extends AbstractIntegrationTest {
         assertThat(categoryNames(payload)).containsExactly("programming");
         assertThat(payload.get("newsDate").asString()).isEqualTo(news.getNewsDate().toString());
         assertThat(payload.get("data").asString()).isEqualTo(news.getData());
+        assertThat(payload.get("schedule").asString()).isEqualTo("DAILY");
+        assertThat(payload.get("periodStart").asString()).isEqualTo(news.getPeriodStart().toString());
 
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             TopicNews reloaded = topicNewsRepository.findById(news.getId()).orElseThrow();
             assertThat(reloaded.getStatus()).isEqualTo(NewsStatus.SENT);
             assertThat(reloaded.getSentAt()).isNotNull();
         });
+    }
+
+    @Test
+    void should_publish_the_schedule_and_period_start_of_the_row_not_the_current_schedule_of_the_topic() {
+        Category category = categoryRepository.save(newCategory("programming"));
+        InterestTopic topic = newTopic("rust", category);
+        topic.setSchedule(NewsSchedule.DAILY);
+        topic = interestTopicRepository.save(topic);
+        TopicNews news = newPendingNews(topic);
+        news.setSchedule(NewsSchedule.WEEKLY);
+        news.setPeriodStart(LocalDate.of(2026, 10, 6));
+        news.setNewsDate(LocalDate.of(2026, 10, 12));
+        topicNewsRepository.save(news);
+
+        ConsumerRecord<String, String> record = awaitRecordFor(topic);
+
+        JsonNode payload = JSON_MAPPER.readTree(record.value());
+        assertThat(payload.get("schedule").asString()).isEqualTo("WEEKLY");
+        assertThat(payload.get("periodStart").asString()).isEqualTo("2026-10-06");
+        assertThat(payload.get("newsDate").asString()).isEqualTo("2026-10-12");
     }
 
     @Test
@@ -186,6 +209,8 @@ class TopicNewsOutboxPublisherIntegrationTest extends AbstractIntegrationTest {
         TopicNews news = new TopicNews();
         news.setInterestTopic(topic);
         news.setNewsDate(LocalDate.now());
+        news.setSchedule(NewsSchedule.DAILY);
+        news.setPeriodStart(LocalDate.now());
         news.setData("today's rust news");
         news.setNextAttemptAt(Instant.now());
         return news;

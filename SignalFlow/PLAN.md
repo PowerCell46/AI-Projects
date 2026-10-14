@@ -16,11 +16,16 @@ green.** Before any `.java` edit load `java-code-style` (and `java-junit` for te
 | 1 | An interest topic belongs to 1–3 categories (steps 1–9) | 2026-10-14 | — |
 | 2 | Tell the model which stories were already covered (steps 1–4) | 2026-10-14 | — |
 | 3 | An admin can delete a user account (steps 1–4) | 2026-10-14 | — |
+| 4 | Each topic has a news schedule (steps 1–10) | 2026-10-14 | — |
 
 ## Left open
 
 - **Phase 1, step 7: the frontend gate's manual check was waived.** Three 40-character chips at 375 px and in both
   themes were not checked. The 2026-10-14 smoke check looked only at desktop width, dark theme.
+- **Phase 4, step 8: the manual card check ran against a mock gateway, not the full stack.** It covered desktop and a
+  375 px viewport, dark theme only (the app has no light theme). It also covers the 375 px part of the Phase 1 item above.
+- **Mail service: consumers started before their topic exists pick it up only after the Kafka metadata refresh (about
+  5 minutes).** Seen in the Phase 4 smoke check (the email arrived late); not caused by Phase 4.
 
 ---
 
@@ -241,7 +246,7 @@ nothing per user.
 
 ---
 
-## Phase 4 — Each topic has a news schedule
+## Phase 4 — Each topic has a news schedule ✅ **Done** (2026-10-14)
 
 ### Why
 
@@ -255,128 +260,35 @@ topic card, and the email says which period it covers.
 This touches every service: the topic service (schedule, job, prompt, event), the gateway (feed, event,
 outbox), the mail service (header), the frontend (card) and e2e.
 
-### Design
+### What was built
 
-**The presets.** These go in a new enum `NewsSchedule`, in the topic service's `entities/enums`:
-
-| Preset | Runs on | Card label | Email label |
-| --- | --- | --- | --- |
-| `DAILY` (default) | every day | Daily | *(unchanged email)* |
-| `WEEKDAYS` | Mon–Fri | Weekdays | Weekdays |
-| `WEEKENDS` | Sat, Sun | Weekends | Weekends |
-| `WEEKLY` | Mon | Weekly · Mondays | Weekly |
-
-- `boolean runsOn(DayOfWeek day)`.
-- `LocalDate periodStart(LocalDate newsDate)`: walk back from `newsDate − 1` to the previous day the
-  preset runs on; the period starts the day after it, so it is `[periodStart, newsDate]`. This gives:
-  - `DAILY` → `newsDate` (one day);
-  - `WEEKDAYS` on Mon → the previous Saturday, on Tue–Fri → `newsDate`;
-  - `WEEKENDS` on Sat → the previous Monday (a weekly roundup), on Sun → `newsDate`;
-  - `WEEKLY` → `newsDate − 6`.
-
-  It's only called on a day the preset runs on.
-- **The period comes from the preset, not from the last news row.** If the admin switches a topic from
-  `WEEKLY` to `DAILY` on a Wednesday, Thursday's issue simply covers Thursday. No history lookup is
-  needed.
-- Days are judged in `app.news.zone` (Europe/Sofia), the same zone `newsDate` already uses. The job
-  still runs once a day at the same time for every topic.
-
-**Data model (topic service).**
-- `InterestTopic.schedule`: `@Enumerated(STRING) @Column(nullable = false)`, `@Builder.Default` `DAILY`.
-- `TopicNews` gets `schedule` and `periodStart` (`LocalDate`), both `nullable = false`. They are set
-  by the job when the row is created, a **snapshot**. The event and the email then describe what was
-  actually generated, even if the admin changes the topic's schedule before the outbox publishes.
-- No migration: `ddl-auto=create`, as in the earlier phases.
-
-**HTTP contract (topic service; the gateway route passes it through).**
-
-| Where | Change |
-| --- | --- |
-| `CreateInterestTopicRequestDTO` | `NewsSchedule schedule`, optional. If missing or null, it defaults to `DAILY`. |
-| `UpdateInterestTopicRequestDTO` | `NewsSchedule schedule`, where null means unchanged. |
-| `InterestTopicResponseDTO` (also the internal feed's items) | `NewsSchedule schedule` |
-| An unknown value, e.g. `"MONTHLY"` | **400**, the same path as any unreadable body. |
-
-**The job (`TopicNewsGenerationJob`).**
-- Split it: `@Scheduled generateDailyNews()` only computes today's `newsDate` and calls a new public
-  `generateNewsFor(LocalDate newsDate)`. Tests call `generateNewsFor` with fixed dates, so they never
-  depend on what day the build runs.
-- In `generateNewsForTopic`, **first** `if (!topic.getSchedule().runsOn(newsDate.getDayOfWeek()))
-  return;`, logged at `debug`. This happens before the "already exists" query, so skipped topics cost
-  no database read and no AI call. The page loop over all topics stays as it is, because it is cheap.
-- Compute `periodStart` once, pass it to `generate`, and store it and `schedule` on the new row.
-
-**The prompt (`NewsGenerationServiceImpl`).** `generate` gets the period start, and the first sentence
-of `SYSTEM_PROMPT_TEMPLATE` depends on the period:
-- one day (`periodStart == newsDate`): unchanged, "Report notable news published on or just before
-  2026-10-13 …";
-- a range: "Report the most notable news published between 2026-10-06 and 2026-10-12 …".
-
-Everything else stays the same, including "at most 5 items". A weekly issue is the top 5 of the week.
-This works with Phase 2 as it is: a weekly topic's previous issue is exactly 7 days back, so it's
-inside the 7-day "already covered" window.
-
-**Event contract (all three services).**
-
-| Event | Added fields |
-| --- | --- |
-| `topic-news.generated` (`TopicNewsEventDTO`, topic service + gateway copy) | `schedule`, `periodStart` |
-| `topic-news.notification-requested` (`TopicNewsNotificationEventDTO`, gateway + mail copy) | `schedule`, `periodStart` |
-
-- **Topic service:** `toEvent` reads both from the `TopicNews` row, not from the topic.
-- **Gateway:** it never interprets the schedule, so it carries it as a `String`, plus
-  `LocalDate periodStart`. `notification_outbox` gets the columns `schedule varchar(16) not null` and
-  `period_start date not null`, bound in the batch insert. The existing guard also skips the record,
-  through `skipOversizedRecord`, when `schedule` is blank or longer than 16 characters, or when
-  `periodStart` is null.
-- **Mail:** its own `NewsSchedule` enum copy with `@NotNull`, and `@NotNull LocalDate periodStart`. An
-  unknown or missing value takes the same path an invalid event takes today.
-
-**Email.** The token `NEWS_DATE` becomes `NEWS_PERIOD`, in `KNOWN_TOKENS` and in both templates. The
-lines "News for {{NEWS_DATE}}" and the preheader's "news for {{NEWS_DATE}}" become `{{NEWS_PERIOD}}`.
-The renderer builds the text with the existing `d MMMM yyyy` style:
-
-| Case | Text |
-| --- | --- |
-| `DAILY` | News for 13 October 2026 *(exactly as today)* |
-| Not daily, one day | Weekdays · 14 October 2026 |
-| A range within one month | Weekly · 6–12 October 2026 |
-| A range across months | Weekly · 29 September – 5 October 2026 |
-| A range across years | Weekly · 29 December 2026 – 4 January 2027 |
-
-The `·` is ` &middot; ` in the HTML version, as elsewhere in that template.
-
-**Feed card.**
-- The gateway's `InterestTopicResponseDTO` and `FeedTopicResponseDTO` get `String schedule`, passed
-  through by `FeedServiceImpl`.
-- `frontend/src/api/feed.ts`: `schedule: 'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'WEEKLY'`.
-- `TopicCard` shows the card label from the table on **every** card, `Daily` included, as small muted
-  text, visually distinct from the category chip(s). An unknown value falls back to showing nothing.
-
-**Seed schedules.** `TopicSeed` gets a `NewsSchedule`. The commented-out entries get one too, so they
-still compile when uncommented. Adjust freely:
-
-| Topic | Preset | | Topic | Preset |
-| --- | --- | --- | --- | --- |
-| Artificial Intelligence | `DAILY` | | Medical Research | `WEEKLY` |
-| Consumer Electronics | `WEEKLY` | | Climate Science | `WEEKLY` |
-| Cybersecurity | `WEEKDAYS` | | Public Health | `WEEKDAYS` |
-| Stock Markets | `WEEKDAYS` | | Nutrition & Fitness | `WEEKLY` |
-| Startups & Venture Capital | `WEEKLY` | | Mental Health | `WEEKLY` |
-| Cryptocurrency | `DAILY` | | Football (Soccer) | `WEEKENDS` |
-| U.S. Politics | `DAILY` | | Basketball | `DAILY` |
-| European Union Affairs | `WEEKDAYS` | | Olympic Sports | `WEEKLY` |
-| Elections Worldwide | `WEEKLY` | | Film & Television | `WEEKENDS` |
-| Space Exploration | `WEEKLY` | | Music Industry | `WEEKLY` |
-| Video Games | `WEEKLY` | | Renewable Energy | `WEEKLY` |
-| Climate Policy | `WEEKLY` | | Wildlife Conservation | `WEEKLY` |
-| Middle East | `DAILY` | | Asia-Pacific | `WEEKDAYS` |
-| International Trade | `WEEKDAYS` | | Electric Vehicles | `WEEKLY` |
-| Autonomous Driving | `WEEKLY` | | Aviation & Aerospace | `WEEKLY` |
-
-**Order with the other phases.** Phases 1 and 4 both add fields to the same DTOs, events, outbox
-insert and email templates. Whichever phase runs second adds its fields alongside the first one's;
-the parameter indices in the gateway's outbox `INSERT` shift accordingly.
+- **Presets.** `NewsSchedule` (topic service, `entities/enums`): `DAILY`, `WEEKDAYS`, `WEEKENDS`, `WEEKLY` (Monday), with
+  `runsOn(DayOfWeek)` and `periodStart(newsDate)`, which walks back to the previous day the preset runs on. Days are
+  judged in `app.news.zone`.
+- **Topic.** `InterestTopic.schedule` (`@Enumerated(STRING)`, not null, default `DAILY`). Create takes an optional
+  `schedule` (missing or null → `DAILY`, set in the service); update takes it with null meaning unchanged; an unknown
+  value → 400. Responses and the internal feed items carry `schedule`. No migration (Q6 of Phase 1).
+- **Seeds.** Every `TopicSeed`, active and commented out, carries a preset.
+- **Job.** `generateDailyNews()` only computes today's date and calls `generateNewsFor(LocalDate)`. A topic whose preset
+  doesn't run that day is skipped first (debug log), before the "already exists" query and any AI call.
+- **Snapshot.** `TopicNews.schedule` and `periodStart` (both not null) are set when the row is created, so the event and
+  email describe what was generated even if the schedule is edited before the outbox publishes.
+- **Prompt.** `generate(topic, newsDate, periodStart, coveredHeadlines)`: one day keeps "on or just before D"; a range
+  says "the most notable news published between S and D". At most 5 items for every preset.
+- **Events.** `topic-news.generated` and `topic-news.notification-requested` carry `schedule` and `periodStart` in all
+  three services. The gateway carries `schedule` as a `String` (`notification_outbox.schedule varchar(16)`,
+  `period_start date`); its guard skips a record with a blank or over-16-character `schedule` or a null `periodStart`.
+  The mail service has its own `NewsSchedule` copy with `@NotNull`; an unknown value fails JSON reading and dead-letters.
+- **Gateway feed.** The topic-service and feed DTOs carry `schedule` as a `String`; the routes pass it through unchanged.
+- **Mail.** Token `NEWS_PERIOD` replaces `NEWS_DATE`. `DAILY`: "News for 13 October 2026" (unchanged). Others: label,
+  ` · `, then "14 October 2026", "6–12 October 2026", "29 September – 5 October 2026" or
+  "29 December 2026 – 4 January 2027". The hidden preheader now starts with a capital "News for".
+- **Frontend.** `FeedSchedule` type; `TopicCard` shows a small muted label under the title ("Daily", "Weekdays",
+  "Weekends", "Weekly · Mondays"); an unknown value renders nothing.
+- **e2e.** `createTopicViaApi` takes an optional schedule; `feed.spec.ts` checks "Weekly · Mondays" and the default "Daily".
+- **Audit.** A smoke check on the e2e stack (2026-10-14, fake OpenRouter, cron every minute): the `WEEKDAYS` topic got a
+  row (`schedule` WEEKDAYS, `period_start` 2026-10-14) and the `WEEKENDS` topic none; the email header read
+  "Weekdays · 14 October 2026"; both cards showed their labels. No exploit-hunter audit was run for this phase.
 
 ### Test strategy
 
@@ -386,134 +298,6 @@ the parameter indices in the gateway's outbox `INSERT` shift accordingly.
 - Prompt and email assertions are exact strings for the cases in the Design tables.
 - Each service gate: `mvn verify` green **three runs in a row**. Every new or changed
   `*ControllerIntegrationTest` scenario updates that service's `TESTING.md` in the same change.
-
-### Steps
-
-#### 1. Topic service: the `NewsSchedule` enum
-
-- [ ] `entities/enums/NewsSchedule` with `runsOn` and `periodStart`, as in Design.
-- [ ] `NewsScheduleTest` (unit, parameterized):
-  - [ ] `runsOn` for every preset × all 7 days;
-  - [ ] `periodStart` for every preset on every day it runs: `WEEKDAYS` on Mon 2026-10-12 → Sat
-        2026-10-10; `WEEKENDS` on Sat 2026-10-17 → Mon 2026-10-12, on Sun 2026-10-18 → 2026-10-18;
-        `WEEKLY` on 2026-10-12 → 2026-10-06; `DAILY` → the same day;
-  - [ ] a period that crosses a month and a year boundary, e.g. `WEEKLY` on Mon 2027-01-04 → 2026-12-29.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 2. Topic service: schedule on the topic, the HTTP contract and the seeds
-
-- [ ] `InterestTopic.schedule` (Design). Request and response DTOs as in the HTTP contract table;
-      `InterestTopicService`/`Impl` and `InterestTopicResponseMapper` carry it.
-- [ ] `DatabaseSeedServiceImpl`: each `TopicSeed`, active and commented out, gets its preset from the
-      seed table.
-- [ ] Tests, `InterestTopicControllerIntegrationTest`:
-  - [ ] create without `schedule` → 201 and `DAILY`;
-  - [ ] create with `WEEKLY` → 201 and `WEEKLY`, also in `GET` by id and in the list;
-  - [ ] create or PATCH with `"MONTHLY"` → 400;
-  - [ ] PATCH with `schedule` changes only it; PATCH without it leaves it unchanged.
-- [ ] Tests, `InternalInterestTopicControllerIntegrationTest`: the feed items carry `schedule`.
-- [ ] Tests, `DatabaseSeedServiceImplTest`: seeded topics carry their preset, e.g. Stock Markets is
-      `WEEKDAYS` and Nutrition & Fitness is `WEEKLY`.
-- [ ] Update `TESTING.md`.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 3. Topic service: the job skips off-schedule topics, and the prompt covers the period
-
-- [ ] `TopicNews.schedule` and `TopicNews.periodStart` (Design).
-- [ ] `TopicNewsGenerationJob`: the `generateNewsFor(LocalDate)` split, the schedule check first, then
-      compute `periodStart` and store both on the row.
-- [ ] `NewsGenerationService`/`Impl`: the period-start parameter and the two prompt wordings.
-- [ ] Tests, `TopicNewsGenerationJobTest` (unit): on Tuesday 2026-10-13 a `WEEKLY` topic is skipped, with
-      no repository or `generate` call. On Monday 2026-10-12 it's generated with `periodStart`
-      2026-10-06, and the saved row carries `WEEKLY` and 2026-10-06.
-- [ ] Tests, `TopicNewsGenerationJobIntegrationTest`: four topics, one per preset;
-      `generateNewsFor(Sat 2026-10-17)` creates rows only for `DAILY` and `WEEKENDS`, and the
-      `WEEKENDS` row has `periodStart` 2026-10-12. Existing tests in this class call
-      `generateNewsFor` with a fixed date.
-- [ ] Tests, `NewsGenerationServiceImplIntegrationTest`: one day → the system message contains the
-      unchanged "on or just before 2026-10-13" sentence; a range → it contains "between 2026-10-06 and
-      2026-10-12". Existing tests follow the new signature.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 4. Topic service: `topic-news.generated` carries `schedule` and `periodStart`
-
-- [ ] `TopicNewsEventDTO`: `NewsSchedule schedule`, `LocalDate periodStart`; `toEvent` reads them from
-      the row.
-- [ ] Tests, `TopicNewsOutboxPublisherIntegrationTest`: a row saved with `WEEKLY`/2026-10-06 → the Kafka
-      record carries `"WEEKLY"` and `"2026-10-06"`, even after the topic's schedule is changed to
-      `DAILY` before the publish (the snapshot). `TopicNewsOutboxPublisherTest` follows the new shape.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 5. Gateway: feed and route DTOs carry `schedule`
-
-- [ ] Gateway `InterestTopicResponseDTO` and `FeedTopicResponseDTO`: `String schedule`. `FeedServiceImpl`
-      passes it through.
-- [ ] Tests: `FeedControllerIntegrationTest`: a stubbed topic with `WEEKLY` → the feed item carries
-      `WEEKLY`. `InterestTopicRoutesIntegrationTest`: a create body with `schedule` and a response with
-      `schedule` pass through unchanged.
-- [ ] Update `TESTING.md`.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 6. Gateway: events and outbox carry `schedule` and `periodStart`
-
-- [ ] Both gateway event DTOs, `NotificationOutbox` (two new columns),
-      `TopicNewsNotificationServiceImpl` (insert and guard) and
-      `NotificationOutboxPublisherServiceImpl` (mapping onto the outgoing event).
-- [ ] Tests, `TopicNewsListenerIntegrationTest`: an event with `WEEKLY`/2026-10-06 → outbox rows carry
-      both. A null `periodStart`, a blank `schedule`, or a 17-character `schedule` → skipped and marked in
-      the inbox, asserted with a sentinel event. `NotificationOutboxRepositoryIntegrationTest`: both
-      columns round-trip. The publisher and service unit tests follow the new shape.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 7. Mail service: the `NEWS_PERIOD` header
-
-- [ ] `TopicNewsNotificationEventDTO`: the mail-side `NewsSchedule` copy and `periodStart`, both `@NotNull`.
-- [ ] `TopicNewsEmailRenderer`: `NEWS_DATE` → `NEWS_PERIOD`, built as in the email table. Update both
-      templates: the header line and the preheader.
-- [ ] Tests (renderer): each row of the email table, as exact strings, in both the HTML and the text
-      version. A `DAILY` email's header is byte-for-byte what it is today. Validation: a null `schedule`,
-      a null `periodStart`, an unknown schedule value → rejected the way an invalid event is today.
-      `AbstractKafkaE2ETestSupport` fixtures follow the new shape.
-- [ ] Update `TESTING.md` if any listed scenario changed.
-- [ ] **Gate:** `signal_flow_mail_service` `mvn verify` green 3× in a row.
-
-#### 8. Frontend: the schedule label on the card
-
-- [ ] `src/api/feed.ts`: the `schedule` union type.
-- [ ] `TopicCard.tsx`/`.css`: the label from the Design table, small and muted, styled with the existing
-      tokens and `--home-scale`. An unknown value renders nothing.
-- [ ] **Gate:** `npm run build` and `npm run lint` pass. Then a manual check with the stack running: cards
-      show "Daily", "Weekdays" and "Weekly · Mondays" correctly at 375 px and desktop widths, in both
-      themes, without crowding the title or the category.
-
-#### 9. e2e: one schedule check
-
-- [ ] `e2e/tests/fixtures.ts`: an optional `schedule` when creating a topic. Existing callers stay on
-      the default.
-- [ ] `feed.spec.ts`: a topic created with `WEEKLY` shows "Weekly · Mondays" on its card, and a default
-      topic shows "Daily".
-- [ ] Update `e2e/PLAN.md` or `e2e/CLAUDE.md` if either lists the scenarios.
-- [ ] **Gate:** the full e2e suite is green twice in a row against a freshly started stack.
-
-#### 10. Docs and the end-to-end smoke check
-
-- [ ] `DECISIONS.md` entries:
-  - topic service: presets instead of cron or days-of-week; the period derived from the preset; the
-    snapshot on `TopicNews`; `WEEKLY` fixed to Monday; 5 items for every preset; the
-    `generateNewsFor` split for testability;
-  - gateway: `schedule` carried as an uninterpreted `String`;
-  - mail: the `NEWS_PERIOD` format.
-- [ ] `CLAUDE.md` "easy to break" notes:
-  - topic service: the job must not compute `newsDate` anywhere except `generateDailyNews`;
-  - all three services: the event fields must ship together. Record this as a **shortcut**, as in
-    Phase 1.
-- [ ] **Gate:** a manual smoke check on a freshly started full stack. On the day of the check:
-  1. Create one non-daily topic that runs today (`WEEKDAYS` on Mon–Fri, `WEEKENDS` on Sat–Sun) and one
-     that doesn't. Subscribe to both.
-  2. Trigger generation with `NEWS_CRON` a minute ahead.
-  3. Only the first topic gets a `topic_news` row, with the expected `schedule` and `period_start`.
-  4. Its email header shows the label and the period from the email table.
-  5. Both cards show their labels.
 
 ### Accepted gaps
 

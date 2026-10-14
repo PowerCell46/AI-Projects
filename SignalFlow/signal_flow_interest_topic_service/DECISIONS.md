@@ -425,3 +425,20 @@ re-raise them when entries are uncommented.
   yields no headlines for later days.
 - **`findDataByTopicInDateRange` names its parameters `startDate`/`endDate`**, not `from`/`to`, to stay clear of
   JPQL keywords. De-duplication uses `distinct()`, which keeps first-seen order like a `LinkedHashSet`.
+
+## Cross-service plan, phase 4 — each topic has a news schedule
+
+- **A missing or null `schedule` on create becomes `DAILY` in `InterestTopicServiceImpl.create`**, not in the DTO, so an
+  explicit `"schedule": null` defaults the same way. On update, null leaves the schedule unchanged.
+- **No get-by-id endpoint exists, so the create test checks the stored row and the list** instead of a `GET` by id.
+- **`NewsGenerationService.generate` takes `(topic, newsDate, periodStart, coveredHeadlines)`.** A one-day period
+  (`periodStart == newsDate`) keeps the original wording; any other period says "between `periodStart` and `newsDate`".
+- **Four presets (`DAILY`, `WEEKDAYS`, `WEEKENDS`, `WEEKLY`) instead of a cron expression or a set of days.** They are
+  easy to show on a card and to validate; `WEEKLY` is fixed to Monday.
+- **The period comes from the preset, not from the last issue.** `NewsSchedule.periodStart` walks back to the previous
+  day the preset runs on, so a schedule change or a missed run can leave a gap or an overlap. No history lookup.
+- **`TopicNews.schedule` and `periodStart` are a snapshot taken when the row is created.** The event and the email
+  describe what was generated even if the topic's schedule is edited before the outbox publishes.
+- **At most 5 items per issue for every preset.** A weekly issue is the top 5 of the week.
+- **`generateDailyNews()` only computes today's date and calls the public `generateNewsFor(LocalDate)`.** Tests call
+  `generateNewsFor` with fixed dates, so none of them depends on the weekday the build runs on.

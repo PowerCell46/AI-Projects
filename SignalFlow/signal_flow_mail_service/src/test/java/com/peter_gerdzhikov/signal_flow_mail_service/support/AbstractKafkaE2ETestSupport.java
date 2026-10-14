@@ -30,6 +30,7 @@ import org.awaitility.Awaitility;
 
 import org.springframework.kafka.support.KafkaHeaders;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,6 +63,8 @@ public abstract class AbstractKafkaE2ETestSupport extends AbstractRedisIntegrati
                 UUID.randomUUID(),
                 "Topic",
                 List.of("Category"),
+                LocalDate.of(2026, 9, 24),
+                NewsSchedule.DAILY,
                 LocalDate.of(2026, 9, 24),
                 "<p>Body</p>",
                 Instant.parse("2026-09-24T10:00:00Z"),

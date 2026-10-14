@@ -26,5 +26,7 @@ public class InterestTopicResponseDTO {
 
     private List<CategorySummaryResponseDTO> categories;
 
+    private String schedule;
+
     private Instant createdAt;
 }

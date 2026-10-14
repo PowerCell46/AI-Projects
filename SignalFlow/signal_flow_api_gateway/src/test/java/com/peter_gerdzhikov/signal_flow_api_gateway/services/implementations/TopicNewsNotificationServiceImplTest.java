@@ -94,6 +94,8 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
             assertThat(row.getTopicName()).isEqualTo(event.getTopicName());
             assertThat(row.getCategoryNames()).containsExactlyElementsOf(event.getCategoryNames());
             assertThat(row.getNewsDate()).isEqualTo(event.getNewsDate());
+            assertThat(row.getSchedule()).isEqualTo("WEEKLY");
+            assertThat(row.getPeriodStart()).isEqualTo(event.getPeriodStart());
             assertThat(row.getData()).isEqualTo(event.getData());
             assertThat(row.getGeneratedAt()).isEqualTo(event.getGeneratedAt());
             assertThat(row.getStatus()).isEqualTo(NotificationOutboxStatus.PENDING);
@@ -228,6 +230,8 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
                 "rust",
                 List.of("programming", "science", "tech"),
                 LocalDate.now(),
+                "WEEKLY",
+                LocalDate.now().minusDays(6),
                 data,
                 Instant.now().truncatedTo(ChronoUnit.MICROS));
     }

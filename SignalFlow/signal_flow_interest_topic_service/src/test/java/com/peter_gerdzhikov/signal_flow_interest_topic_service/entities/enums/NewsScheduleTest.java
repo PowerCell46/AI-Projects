@@ -1,0 +1,75 @@
+package com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+class NewsScheduleTest {
+
+    private static final DayOfWeek MON = DayOfWeek.MONDAY;
+
+    private static final DayOfWeek TUE = DayOfWeek.TUESDAY;
+
+    private static final DayOfWeek WED = DayOfWeek.WEDNESDAY;
+
+    private static final DayOfWeek THU = DayOfWeek.THURSDAY;
+
+    private static final DayOfWeek FRI = DayOfWeek.FRIDAY;
+
+    private static final DayOfWeek SAT = DayOfWeek.SATURDAY;
+
+    private static final DayOfWeek SUN = DayOfWeek.SUNDAY;
+
+    @ParameterizedTest
+    @MethodSource("runDaysByPreset")
+    void should_run_only_on_its_days_when_checking_every_day_of_the_week(
+            NewsSchedule schedule, DayOfWeek[] expectedRunDays) {
+        for (DayOfWeek day : DayOfWeek.values()) {
+            boolean expected = Arrays.asList(expectedRunDays).contains(day);
+
+            assertThat(schedule.runsOn(day))
+                    .as("%s runs on %s", schedule, day)
+                    .isEqualTo(expected);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("periodStarts")
+    void should_start_the_period_after_the_previous_run_day_when_the_preset_runs_on_the_news_date(
+            NewsSchedule schedule, LocalDate newsDate, LocalDate expectedPeriodStart) {
+        assertThat(schedule.runsOn(newsDate.getDayOfWeek())).isTrue();
+
+        assertThat(schedule.periodStart(newsDate)).isEqualTo(expectedPeriodStart);
+    }
+
+    private static Stream<Arguments> runDaysByPreset() {
+        return Stream.of(
+                Arguments.of(NewsSchedule.DAILY, new DayOfWeek[]{MON, TUE, WED, THU, FRI, SAT, SUN}),
+                Arguments.of(NewsSchedule.WEEKDAYS, new DayOfWeek[]{MON, TUE, WED, THU, FRI}),
+                Arguments.of(NewsSchedule.WEEKENDS, new DayOfWeek[]{SAT, SUN}),
+                Arguments.of(NewsSchedule.WEEKLY, new DayOfWeek[]{MON}));
+    }
+
+    private static Stream<Arguments> periodStarts() {
+        return Stream.of(
+                Arguments.of(NewsSchedule.DAILY, LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 13)),
+                Arguments.of(NewsSchedule.DAILY, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 12)),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 10)),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 13)),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 14)),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 15), LocalDate.of(2026, 10, 15)),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 16), LocalDate.of(2026, 10, 16)),
+                Arguments.of(NewsSchedule.WEEKENDS, LocalDate.of(2026, 10, 17), LocalDate.of(2026, 10, 12)),
+                Arguments.of(NewsSchedule.WEEKENDS, LocalDate.of(2026, 10, 18), LocalDate.of(2026, 10, 18)),
+                Arguments.of(NewsSchedule.WEEKLY, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 6)),
+                Arguments.of(NewsSchedule.WEEKLY, LocalDate.of(2027, 1, 4), LocalDate.of(2026, 12, 29)),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2027, 1, 4), LocalDate.of(2027, 1, 2)),
+                Arguments.of(NewsSchedule.WEEKENDS, LocalDate.of(2026, 10, 3), LocalDate.of(2026, 9, 28)));
+    }
+}

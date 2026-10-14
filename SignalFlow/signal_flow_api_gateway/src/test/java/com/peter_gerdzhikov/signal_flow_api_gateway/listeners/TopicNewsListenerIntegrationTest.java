@@ -53,6 +53,12 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
 
     private static final String PASSWORD = "hashed-password";
 
+    private static final String CATEGORY_NAMES_JSON = "[\"Politics\", \"Science\", \"Technology\"]";
+
+    private static final String WEEKLY_JSON = "\"WEEKLY\"";
+
+    private static final String PERIOD_START_JSON = "\"2026-10-06\"";
+
     /**
      * Same literal as {@code app.kafka.topic-news.name}'s default - a static {@code @BeforeAll} runs
      * before the Spring context, and its {@code @Value}-injected fields, exist.
@@ -157,6 +163,8 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
             assertThat(row.getTopicName()).isEqualTo("rust");
             assertThat(row.getCategoryNames()).containsExactly("Politics", "Science", "Technology");
             assertThat(row.getNewsDate()).isEqualTo(newsDate);
+            assertThat(row.getSchedule()).isEqualTo("WEEKLY");
+            assertThat(row.getPeriodStart()).isEqualTo(LocalDate.of(2026, 10, 6));
             assertThat(row.getData()).isEqualTo("today's rust news");
             assertThat(row.getGeneratedAt()).isEqualTo(generatedAt);
             assertThat(row.getStatus()).isEqualTo(NotificationOutboxStatus.PENDING);
@@ -182,6 +190,21 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
     }
 
     @Test
+    void should_skip_and_mark_processed_an_event_with_a_null_period_start() throws Exception {
+        assertSkippedBeforeSentinel(CATEGORY_NAMES_JSON, WEEKLY_JSON, "null");
+    }
+
+    @Test
+    void should_skip_and_mark_processed_an_event_with_a_blank_schedule() throws Exception {
+        assertSkippedBeforeSentinel(CATEGORY_NAMES_JSON, "\"  \"", PERIOD_START_JSON);
+    }
+
+    @Test
+    void should_skip_and_mark_processed_an_event_with_a_17_character_schedule() throws Exception {
+        assertSkippedBeforeSentinel(CATEGORY_NAMES_JSON, "\"" + "x".repeat(17) + "\"", PERIOD_START_JSON);
+    }
+
+    @Test
     void should_send_a_malformed_record_to_the_dead_letter_topic() throws Exception {
         producer
                 .send(new ProducerRecord<>(topicNewsTopicName, UUID.randomUUID().toString(), "not valid json"))
@@ -198,6 +221,11 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
      * skipped record has been handled too.
      */
     private void assertSkippedBeforeSentinel(String categoryNamesJson) throws Exception {
+        assertSkippedBeforeSentinel(categoryNamesJson, WEEKLY_JSON, PERIOD_START_JSON);
+    }
+
+    private void assertSkippedBeforeSentinel(String categoryNamesJson, String scheduleJson, String periodStartJson)
+            throws Exception {
         UUID interestTopicId = UUID.randomUUID();
         User bob = userRepository.save(newUser("bob@example.com", true));
         subscriptionRepository.save(newSubscription(bob, interestTopicId));
@@ -208,7 +236,9 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
 
         producer
                 .send(new ProducerRecord<>(topicNewsTopicName, interestTopicId.toString(),
-                        topicNewsEventJson(skippedNewsId, interestTopicId, newsDate, generatedAt, categoryNamesJson)))
+                        topicNewsEventJson(
+                                skippedNewsId, interestTopicId, newsDate, generatedAt, categoryNamesJson, scheduleJson,
+                                periodStartJson)))
                 .get(10, TimeUnit.SECONDS);
         producer
                 .send(new ProducerRecord<>(topicNewsTopicName, interestTopicId.toString(),
@@ -236,11 +266,17 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
 
     private String topicNewsEventJson(UUID newsId, UUID interestTopicId, LocalDate newsDate, Instant generatedAt) {
         return topicNewsEventJson(
-                newsId, interestTopicId, newsDate, generatedAt, "[\"Politics\", \"Science\", \"Technology\"]");
+                newsId, interestTopicId, newsDate, generatedAt, CATEGORY_NAMES_JSON, WEEKLY_JSON, PERIOD_START_JSON);
     }
 
     private String topicNewsEventJson(
-            UUID newsId, UUID interestTopicId, LocalDate newsDate, Instant generatedAt, String categoryNamesJson
+            UUID newsId,
+            UUID interestTopicId,
+            LocalDate newsDate,
+            Instant generatedAt,
+            String categoryNamesJson,
+            String scheduleJson,
+            String periodStartJson
     ) {
         return """
                 {
@@ -249,10 +285,13 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
                   "topicName": "rust",
                   "categoryNames": %s,
                   "newsDate": "%s",
+                  "schedule": %s,
+                  "periodStart": %s,
                   "data": "today's rust news",
                   "generatedAt": "%s"
                 }
-                """.formatted(newsId, interestTopicId, categoryNamesJson, newsDate, generatedAt);
+                """.formatted(
+                newsId, interestTopicId, categoryNamesJson, newsDate, scheduleJson, periodStartJson, generatedAt);
     }
 
     private User newUser(String email, boolean enabled) {

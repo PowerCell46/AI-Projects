@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -168,6 +169,37 @@ class TopicNewsEmailRendererTest {
         }
 
         @Test
+        void should_keep_the_daily_header_exactly_as_it_was_in_html_and_text() {
+            TopicNewsNotificationEventDTO event = anEvent("Topic", "Category", "Body", "recipient@example.com");
+
+            RenderedEmail email = renderer.render(event);
+
+            assertTrue(email.getHtml().contains(">News for 24 September 2026 &middot; generated 24 September 2026, 13:00 EEST</p>"));
+            assertTrue(email.getText().contains("\nNews for 24 September 2026 \u00B7 generated 24 September 2026, 13:00 EEST\n"));
+        }
+
+        @ParameterizedTest(name = "{0} {1}..{2}")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsEmailRendererTest#periods")
+        void should_render_the_period_in_the_header_and_the_preheader(
+                NewsSchedule schedule,
+                LocalDate periodStart,
+                LocalDate newsDate,
+                String expectedHtmlPeriod,
+                String expectedTextPeriod
+        ) {
+            TopicNewsNotificationEventDTO event = anEvent("Topic", "Category", "Body", "recipient@example.com");
+            event.setSchedule(schedule);
+            event.setPeriodStart(periodStart);
+            event.setNewsDate(newsDate);
+
+            RenderedEmail email = renderer.render(event);
+
+            assertTrue(email.getHtml().contains(">" + expectedHtmlPeriod + " &middot; generated "));
+            assertTrue(email.getHtml().contains("&mdash; " + expectedHtmlPeriod + "&nbsp;"));
+            assertTrue(email.getText().contains("\n" + expectedTextPeriod + " \u00B7 generated "));
+        }
+
+        @Test
         void should_leave_the_text_tokens_raw_and_not_html_escaped() {
             TopicNewsNotificationEventDTO event = anEvent(
                     "Tech & Science", "R&D", "<p>Body</p>", "\"quoted\"@example.com");
@@ -289,6 +321,26 @@ class TopicNewsEmailRendererTest {
         }
     }
 
+    static Stream<Arguments> periods() {
+        return Stream.of(
+                Arguments.of(NewsSchedule.DAILY, LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 13),
+                        "News for 13 October 2026", "News for 13 October 2026"),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 14),
+                        "Weekdays &middot; 14 October 2026", "Weekdays \u00B7 14 October 2026"),
+                Arguments.of(NewsSchedule.WEEKDAYS, LocalDate.of(2026, 10, 10), LocalDate.of(2026, 10, 12),
+                        "Weekdays &middot; 10\u201312 October 2026", "Weekdays \u00B7 10\u201312 October 2026"),
+                Arguments.of(NewsSchedule.WEEKENDS, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 17),
+                        "Weekends &middot; 12\u201317 October 2026", "Weekends \u00B7 12\u201317 October 2026"),
+                Arguments.of(NewsSchedule.WEEKLY, LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 12),
+                        "Weekly &middot; 6\u201312 October 2026", "Weekly \u00B7 6\u201312 October 2026"),
+                Arguments.of(NewsSchedule.WEEKLY, LocalDate.of(2026, 9, 29), LocalDate.of(2026, 10, 5),
+                        "Weekly &middot; 29 September \u2013 5 October 2026",
+                        "Weekly \u00B7 29 September \u2013 5 October 2026"),
+                Arguments.of(NewsSchedule.WEEKLY, LocalDate.of(2026, 12, 29), LocalDate.of(2027, 1, 4),
+                        "Weekly &middot; 29 December 2026 \u2013 4 January 2027",
+                        "Weekly \u00B7 29 December 2026 \u2013 4 January 2027"));
+    }
+
     static Stream<Arguments> generatedAtAcrossDstBoundary() {
         return Stream.of(
                 Arguments.of(Instant.parse("2026-03-29T00:30:00Z"), "02:30 EET"),
@@ -307,6 +359,8 @@ class TopicNewsEmailRendererTest {
                 UUID.randomUUID(),
                 topicName,
                 categoryNames,
+                LocalDate.of(2026, 9, 24),
+                NewsSchedule.DAILY,
                 LocalDate.of(2026, 9, 24),
                 data,
                 Instant.parse("2026-09-24T10:00:00Z"),

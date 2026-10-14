@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.impleme
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.CategoryService;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.InterestTopicService;
@@ -54,7 +56,7 @@ class DatabaseSeedServiceImplTest {
             databaseSeedService.seedInitialCatalog();
 
             verify(categoryService, never()).create(anyString());
-            verify(interestTopicService, never()).create(any(), any(), any(), any());
+            verify(interestTopicService, never()).create(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -70,7 +72,25 @@ class DatabaseSeedServiceImplTest {
             databaseSeedService.seedInitialCatalog();
 
             verify(categoryService, times(EXPECTED_CATEGORY_COUNT)).create(anyString());
-            verify(interestTopicService, times(EXPECTED_TOPIC_COUNT)).create(any(), any(), any(), any());
+            verify(interestTopicService, times(EXPECTED_TOPIC_COUNT)).create(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void should_seed_each_topic_with_its_schedule_preset_when_none_exist() {
+            when(categoryRepository.count()).thenReturn(0L);
+            when(categoryService.create(anyString())).thenAnswer(invocation -> {
+                Category category = new Category();
+                category.setId(UUID.randomUUID());
+                category.setName(invocation.getArgument(0));
+                return category;
+            });
+
+            databaseSeedService.seedInitialCatalog();
+
+            verify(interestTopicService).create(eq("Stock Markets"), any(), any(), any(), eq(NewsSchedule.WEEKDAYS));
+            verify(interestTopicService).create(eq("Nutrition & Fitness"), any(), any(), any(), eq(NewsSchedule.WEEKLY));
+            verify(interestTopicService).create(eq("Cryptocurrency"), any(), any(), any(), eq(NewsSchedule.DAILY));
+            verify(interestTopicService).create(eq("Film & Television"), any(), any(), any(), eq(NewsSchedule.WEEKENDS));
         }
     }
 }

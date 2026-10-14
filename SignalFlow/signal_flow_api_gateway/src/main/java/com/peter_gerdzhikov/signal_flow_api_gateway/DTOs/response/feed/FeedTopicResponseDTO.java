@@ -22,5 +22,7 @@ public class FeedTopicResponseDTO {
 
     private List<CategorySummaryResponseDTO> categories;
 
+    private String schedule;
+
     private boolean subscribed;
 }

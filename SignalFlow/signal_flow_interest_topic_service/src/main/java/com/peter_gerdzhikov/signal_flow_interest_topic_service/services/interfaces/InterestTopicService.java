@@ -10,14 +10,28 @@ import org.springframework.data.domain.Slice;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 
 public interface InterestTopicService {
 
-    InterestTopic create(String name, String description, String prompt, List<UUID> categoryIds);
+    InterestTopic create(
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    );
 
     Page<InterestTopic> findPage(UUID categoryId, Pageable pageable);
 
-    InterestTopic update(UUID topicId, String name, String description, String prompt, List<UUID> categoryIds);
+    InterestTopic update(
+            UUID topicId,
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    );
 
     void delete(UUID topicId);
 

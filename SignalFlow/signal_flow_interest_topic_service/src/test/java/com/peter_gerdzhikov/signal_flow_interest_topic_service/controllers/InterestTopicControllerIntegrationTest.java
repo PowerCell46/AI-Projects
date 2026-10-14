@@ -31,6 +31,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.int
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
@@ -87,6 +88,61 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
             assertThat(body.getCategories())
                     .extracting(CategorySummaryResponseDTO::getId, CategorySummaryResponseDTO::getName)
                     .containsExactly(tuple(categoryId, "programming"));
+        }
+
+        @Test
+        void should_default_the_schedule_to_daily_when_none_is_given() {
+            UUID categoryId = persistedCategory("programming").getId();
+
+            InterestTopicResponseDTO body = createInterestTopic(TOPIC_NAME, null, TOPIC_PROMPT, List.of(categoryId))
+                    .expectStatus().isCreated()
+                    .expectBody(InterestTopicResponseDTO.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            assertThat(body.getSchedule()).isEqualTo(NewsSchedule.DAILY);
+            assertThat(storedSchedule(body.getId())).isEqualTo(NewsSchedule.DAILY);
+        }
+
+        @Test
+        void should_default_the_schedule_to_daily_when_it_is_explicitly_null() {
+            UUID categoryId = persistedCategory("programming").getId();
+
+            postRawBody("{\"name\": \"rust\", \"prompt\": \"p\", \"categoryIds\": [\"" + categoryId + "\"], \"schedule\": null}")
+                    .expectStatus().isCreated()
+                    .expectBody()
+                    .jsonPath("$.schedule").isEqualTo("DAILY");
+        }
+
+        @Test
+        void should_create_with_the_given_schedule_and_return_it_in_the_response_and_the_list() {
+            UUID categoryId = persistedCategory("programming").getId();
+
+            InterestTopicResponseDTO body = createInterestTopic(
+                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(categoryId), NewsSchedule.WEEKLY)
+                    .expectStatus().isCreated()
+                    .expectBody(InterestTopicResponseDTO.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            assertThat(body.getSchedule()).isEqualTo(NewsSchedule.WEEKLY);
+            assertThat(storedSchedule(body.getId())).isEqualTo(NewsSchedule.WEEKLY);
+            restTestClient.get()
+                    .uri("/api/v1/interest-topics")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.content[0].schedule").isEqualTo("WEEKLY");
+        }
+
+        @Test
+        void should_return_400_for_an_unknown_schedule_and_create_no_topic() {
+            UUID categoryId = persistedCategory("programming").getId();
+
+            postRawBody("{\"name\": \"rust\", \"prompt\": \"p\", \"categoryIds\": [\"" + categoryId + "\"], \"schedule\": \"MONTHLY\"}")
+                    .expectStatus().isBadRequest();
+
+            assertThat(interestTopicRepository.count()).isZero();
         }
 
         @Test
@@ -394,6 +450,53 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void should_change_only_the_schedule_when_only_a_schedule_is_provided() {
+            Category category = persistedCategory("programming");
+            InterestTopic interestTopic = persistedInterestTopic(TOPIC_NAME, category);
+
+            InterestTopicResponseDTO body = updateInterestTopic(
+                    interestTopic.getId(), null, null, null, null, NewsSchedule.WEEKENDS)
+                    .expectStatus().isOk()
+                    .expectBody(InterestTopicResponseDTO.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            InterestTopic stored = interestTopicRepository.findById(interestTopic.getId()).orElseThrow();
+            assertThat(body.getSchedule()).isEqualTo(NewsSchedule.WEEKENDS);
+            assertThat(stored.getSchedule()).isEqualTo(NewsSchedule.WEEKENDS);
+            assertThat(stored.getName()).isEqualTo(TOPIC_NAME);
+            assertThat(stored.getPrompt()).isEqualTo(TOPIC_PROMPT);
+            assertThat(storedCategoryNames(interestTopic.getId())).containsExactly("programming");
+        }
+
+        @Test
+        void should_leave_the_schedule_unchanged_when_it_is_absent() {
+            Category category = persistedCategory("programming");
+            InterestTopic interestTopic = persistedInterestTopic(TOPIC_NAME, category);
+            interestTopic.setSchedule(NewsSchedule.WEEKLY);
+            interestTopicRepository.save(interestTopic);
+
+            InterestTopicResponseDTO body = updateInterestTopic(interestTopic.getId(), "kotlin", null, null, null)
+                    .expectStatus().isOk()
+                    .expectBody(InterestTopicResponseDTO.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            assertThat(body.getSchedule()).isEqualTo(NewsSchedule.WEEKLY);
+            assertThat(storedSchedule(interestTopic.getId())).isEqualTo(NewsSchedule.WEEKLY);
+        }
+
+        @Test
+        void should_return_400_for_an_unknown_schedule_and_keep_the_stored_one() {
+            Category category = persistedCategory("programming");
+            InterestTopic interestTopic = persistedInterestTopic(TOPIC_NAME, category);
+
+            patchRawBody(interestTopic.getId(), "{\"schedule\": \"MONTHLY\"}").expectStatus().isBadRequest();
+
+            assertThat(storedSchedule(interestTopic.getId())).isEqualTo(NewsSchedule.DAILY);
+        }
+
+        @Test
         void should_replace_the_whole_category_set_when_category_ids_are_provided() {
             Category art = persistedCategory("art");
             Category science = persistedCategory("science");
@@ -496,11 +599,22 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private RestTestClient.ResponseSpec createInterestTopic(String name, String description, String prompt, List<UUID> categoryIds) {
+        return createInterestTopic(name, description, prompt, categoryIds, null);
+    }
+
+    private RestTestClient.ResponseSpec createInterestTopic(
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    ) {
         CreateInterestTopicRequestDTO request = new CreateInterestTopicRequestDTO();
         request.setName(name);
         request.setDescription(description);
         request.setPrompt(prompt);
         request.setCategoryIds(categoryIds);
+        request.setSchedule(schedule);
 
         return restTestClient.post()
                 .uri("/api/v1/interest-topics")
@@ -510,10 +624,37 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private RestTestClient.ResponseSpec updateInterestTopic(UUID topicId, String name, String description, String prompt, List<UUID> categoryIds) {
+        return updateInterestTopic(topicId, name, description, prompt, categoryIds, null);
+    }
+
+    private RestTestClient.ResponseSpec updateInterestTopic(
+            UUID topicId,
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    ) {
         return restTestClient.patch()
                 .uri("/api/v1/interest-topics/" + topicId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(updateRequest(name, description, prompt, categoryIds))
+                .body(updateRequest(name, description, prompt, categoryIds, schedule))
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec patchRawBody(UUID topicId, String body) {
+        return restTestClient.patch()
+                .uri("/api/v1/interest-topics/" + topicId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec postRawBody(String body) {
+        return restTestClient.post()
+                .uri("/api/v1/interest-topics")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
                 .exchange();
     }
 
@@ -524,11 +665,22 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private UpdateInterestTopicRequestDTO updateRequest(String name, String description, String prompt, List<UUID> categoryIds) {
+        return updateRequest(name, description, prompt, categoryIds, null);
+    }
+
+    private UpdateInterestTopicRequestDTO updateRequest(
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    ) {
         UpdateInterestTopicRequestDTO request = new UpdateInterestTopicRequestDTO();
         request.setName(name);
         request.setDescription(description);
         request.setPrompt(prompt);
         request.setCategoryIds(categoryIds);
+        request.setSchedule(schedule);
         return request;
     }
 
@@ -544,6 +696,10 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         interestTopic.setPrompt(TOPIC_PROMPT);
         interestTopic.setCategories(Set.of(categories));
         return interestTopicRepository.save(interestTopic);
+    }
+
+    private NewsSchedule storedSchedule(UUID topicId) {
+        return interestTopicRepository.findById(topicId).orElseThrow().getSchedule();
     }
 
     private List<String> storedCategoryNames(UUID topicId) {
@@ -571,6 +727,8 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
         TopicNews topicNews = new TopicNews();
         topicNews.setInterestTopic(interestTopic);
         topicNews.setNewsDate(LocalDate.now());
+        topicNews.setSchedule(NewsSchedule.DAILY);
+        topicNews.setPeriodStart(LocalDate.now());
         topicNews.setData("Canned news.");
         topicNews.setStatus(NewsStatus.PENDING);
         topicNews.setNextAttemptAt(Instant.now());

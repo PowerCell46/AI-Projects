@@ -33,6 +33,7 @@ import org.springframework.mail.MailParseException;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.TransientMailDeliveryException;
@@ -215,6 +216,8 @@ class TopicNewsMailServiceImplTest {
                 UUID.randomUUID(),
                 topicName,
                 List.of("Category"),
+                newsDate,
+                NewsSchedule.DAILY,
                 newsDate,
                 "<p>Body</p>",
                 Instant.parse("2026-09-24T10:00:00Z"),

@@ -4,6 +4,8 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -14,6 +16,8 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 
 import org.hibernate.annotations.BatchSize;
+
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -51,6 +55,11 @@ public class InterestTopic extends CommonEntity {
             joinColumns = @JoinColumn(name = "interest_topic_id"),
             inverseJoinColumns = @JoinColumn(name = "category_id"))
     private Set<Category> categories;
+
+    @Builder.Default
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private NewsSchedule schedule = NewsSchedule.DAILY;
 
     @PreUpdate
     @PrePersist

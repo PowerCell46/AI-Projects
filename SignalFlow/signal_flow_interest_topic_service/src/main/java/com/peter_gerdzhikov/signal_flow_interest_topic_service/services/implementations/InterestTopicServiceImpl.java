@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryIdsException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
@@ -60,7 +61,13 @@ public class InterestTopicServiceImpl implements InterestTopicService {
 
     @Override
     @Transactional
-    public InterestTopic create(String name, String description, String prompt, List<UUID> categoryIds) {
+    public InterestTopic create(
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    ) {
         if (interestTopicRepository.count() >= maxInterestTopicCount) {
             throw new InterestTopicLimitExceededException();
         }
@@ -73,6 +80,7 @@ public class InterestTopicServiceImpl implements InterestTopicService {
                 .description(description)
                 .prompt(prompt)
                 .categories(categories)
+                .schedule(Objects.requireNonNullElse(schedule, NewsSchedule.DAILY))
                 .build();
 
         try {
@@ -95,7 +103,14 @@ public class InterestTopicServiceImpl implements InterestTopicService {
 
     @Override
     @Transactional
-    public InterestTopic update(UUID topicId, String name, String description, String prompt, List<UUID> categoryIds) {
+    public InterestTopic update(
+            UUID topicId,
+            String name,
+            String description,
+            String prompt,
+            List<UUID> categoryIds,
+            NewsSchedule schedule
+    ) {
         InterestTopic interestTopic = interestTopicRepository
                 .findById(topicId)
                 .orElseThrow(InterestTopicNotFoundException::new);
@@ -111,6 +126,9 @@ public class InterestTopicServiceImpl implements InterestTopicService {
         }
         if (categoryIds != null) {
             interestTopic.setCategories(findCategoriesOrThrow(categoryIds));
+        }
+        if (schedule != null) {
+            interestTopic.setSchedule(schedule);
         }
 
         try {

@@ -20,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.support.AbstractIntegrationTest;
 
@@ -195,6 +196,8 @@ class TopicNewsRepositoryIntegrationTest extends AbstractIntegrationTest {
         TopicNews news = new TopicNews();
         news.setInterestTopic(topic);
         news.setNewsDate(newsDate);
+        news.setSchedule(NewsSchedule.DAILY);
+        news.setPeriodStart(newsDate);
         news.setData("some generated news");
         news.setStatus(status);
         news.setNextAttemptAt(nextAttemptAt);

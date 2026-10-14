@@ -7,5 +7,5 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Interest
 
 public interface NewsGenerationService {
 
-    String generate(InterestTopic interestTopic, LocalDate newsDate, List<String> coveredHeadlines);
+    String generate(InterestTopic interestTopic, LocalDate newsDate, LocalDate periodStart, List<String> coveredHeadlines);
 }

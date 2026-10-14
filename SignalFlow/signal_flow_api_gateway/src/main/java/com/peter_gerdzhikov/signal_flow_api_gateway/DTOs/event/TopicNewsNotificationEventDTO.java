@@ -29,6 +29,10 @@ public class TopicNewsNotificationEventDTO {
 
     private LocalDate newsDate;
 
+    private String schedule;
+
+    private LocalDate periodStart;
+
     private String data;
 
     private Instant generatedAt;

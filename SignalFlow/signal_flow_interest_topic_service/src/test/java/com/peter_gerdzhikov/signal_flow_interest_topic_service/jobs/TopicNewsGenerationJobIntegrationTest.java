@@ -6,10 +6,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -26,6 +25,7 @@ import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
@@ -38,6 +38,10 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
 
     private static final String STUBBED_NEWS = "<p>Stubbed news.</p>";
+
+    private static final LocalDate NEWS_DATE = LocalDate.of(2026, 10, 13);
+
+    private static final LocalDate SATURDAY = LocalDate.of(2026, 10, 17);
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -72,7 +76,7 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
         InterestTopic rust = interestTopicRepository.save(newTopic("rust", category));
         InterestTopic kotlin = interestTopicRepository.save(newTopic("kotlin", category));
 
-        topicNewsGenerationJob.generateDailyNews();
+        topicNewsGenerationJob.generateNewsFor(NEWS_DATE);
 
         List<TopicNews> allNews = topicNewsRepository.findAll();
         assertThat(allNews).hasSize(2);
@@ -82,11 +86,13 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
                 .containsExactlyInAnyOrder(rust.getId(), kotlin.getId());
         assertThat(allNews).allSatisfy(news -> {
             assertThat(news.getStatus()).isEqualTo(NewsStatus.PENDING);
-            assertThat(news.getNewsDate()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
+            assertThat(news.getNewsDate()).isEqualTo(NEWS_DATE);
+            assertThat(news.getSchedule()).isEqualTo(NewsSchedule.DAILY);
+            assertThat(news.getPeriodStart()).isEqualTo(NEWS_DATE);
             assertThat(news.getData()).isEqualTo(STUBBED_NEWS);
         });
 
-        topicNewsGenerationJob.generateDailyNews();
+        topicNewsGenerationJob.generateNewsFor(NEWS_DATE);
 
         assertThat(topicNewsRepository.findAll()).hasSize(2);
     }
@@ -101,7 +107,7 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
                 .atPriority(1)
                 .willReturn(aResponse().withStatus(500)));
 
-        topicNewsGenerationJob.generateDailyNews();
+        topicNewsGenerationJob.generateNewsFor(NEWS_DATE);
 
         List<TopicNews> allNews = topicNewsRepository.findAll();
         assertThat(allNews).hasSize(1);
@@ -110,16 +116,15 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
 
     @Test
     void should_send_only_the_recent_headlines_of_the_topic_being_generated() {
-        LocalDate today = LocalDate.now(ZoneId.of("Europe/Sofia"));
         Category category = categoryRepository.save(newCategory("programming"));
         InterestTopic topicA = interestTopicRepository.save(newTopic("alpha-topic", category));
         InterestTopic topicB = interestTopicRepository.save(newTopic("beta-topic", category));
-        topicNewsRepository.save(newNews(topicA, today.minusDays(1), headlineItem("A yesterday story")));
-        topicNewsRepository.save(newNews(topicA, today.minusDays(8), headlineItem("A old story")));
-        topicNewsRepository.save(newNews(topicB, today.minusDays(1), headlineItem("B yesterday story")));
-        topicNewsRepository.save(newNews(topicB, today, headlineItem("B today story")));
+        topicNewsRepository.save(newNews(topicA, NEWS_DATE.minusDays(1), headlineItem("A yesterday story")));
+        topicNewsRepository.save(newNews(topicA, NEWS_DATE.minusDays(8), headlineItem("A old story")));
+        topicNewsRepository.save(newNews(topicB, NEWS_DATE.minusDays(1), headlineItem("B yesterday story")));
+        topicNewsRepository.save(newNews(topicB, NEWS_DATE, headlineItem("B today story")));
 
-        topicNewsGenerationJob.generateDailyNews();
+        topicNewsGenerationJob.generateNewsFor(NEWS_DATE);
 
         List<LoggedRequest> requests = OPENROUTER_STUB.find(postRequestedFor(urlEqualTo(CHAT_COMPLETIONS_PATH)));
         assertThat(requests).hasSize(1);
@@ -130,6 +135,29 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
                 .doesNotContain("B yesterday story");
     }
 
+    @Test
+    void should_create_rows_only_for_the_topics_whose_preset_runs_on_a_saturday() {
+        Category category = categoryRepository.save(newCategory("programming"));
+        InterestTopic daily = interestTopicRepository.save(newTopic("daily-topic", category, NewsSchedule.DAILY));
+        interestTopicRepository.save(newTopic("weekdays-topic", category, NewsSchedule.WEEKDAYS));
+        InterestTopic weekends = interestTopicRepository.save(newTopic("weekends-topic", category, NewsSchedule.WEEKENDS));
+        interestTopicRepository.save(newTopic("weekly-topic", category, NewsSchedule.WEEKLY));
+
+        topicNewsGenerationJob.generateNewsFor(SATURDAY);
+
+        List<TopicNews> allNews = topicNewsRepository.findAll();
+        assertThat(allNews)
+                .extracting(news -> news.getInterestTopic().getId(), TopicNews::getSchedule)
+                .containsExactlyInAnyOrder(
+                        tuple(daily.getId(), NewsSchedule.DAILY),
+                        tuple(weekends.getId(), NewsSchedule.WEEKENDS));
+        assertThat(allNews)
+                .filteredOn(news -> news.getSchedule() == NewsSchedule.WEEKENDS)
+                .extracting(TopicNews::getPeriodStart)
+                .containsExactly(LocalDate.of(2026, 10, 12));
+        assertThat(OPENROUTER_STUB.find(postRequestedFor(urlEqualTo(CHAT_COMPLETIONS_PATH)))).hasSize(2);
+    }
+
     private String headlineItem(String headline) {
         return "<ul><li><strong>%s</strong> Detail.</li></ul>".formatted(headline);
     }
@@ -138,6 +166,8 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
         return TopicNews.builder()
                 .interestTopic(topic)
                 .newsDate(newsDate)
+                .schedule(NewsSchedule.DAILY)
+                .periodStart(newsDate)
                 .data(data)
                 .nextAttemptAt(Instant.now())
                 .build();
@@ -150,8 +180,13 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
     }
 
     private InterestTopic newTopic(String name, Category category) {
+        return newTopic(name, category, NewsSchedule.DAILY);
+    }
+
+    private InterestTopic newTopic(String name, Category category, NewsSchedule schedule) {
         InterestTopic topic = new InterestTopic();
         topic.setName(name);
+        topic.setSchedule(schedule);
         topic.setPrompt("What's new with " + name + "?");
         topic.setCategories(Set.of(category));
         return topic;

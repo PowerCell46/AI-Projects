@@ -15,6 +15,8 @@ export interface TestUser {
     password: string
 }
 
+export type TestSchedule = 'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'WEEKLY'
+
 export interface TestTopic {
     categoryId: string
     topicId: string
@@ -81,6 +83,7 @@ export async function getAdminApiContext(baseURL = 'http://localhost:8090'): Pro
 export async function createTopicViaApi(
     _request?: APIRequestContext,
     name?: string,
+    schedule?: TestSchedule,
 ): Promise<TestTopic> {
     const adminReq = await getAdminApiContext()
     try {
@@ -94,6 +97,7 @@ export async function createTopicViaApi(
             description: `e2e description for ${topicName}`,
             prompt: 'e2e prompt',
             categoryIds: [category['id']],
+            ...(schedule && { schedule }),
         })
 
         return {

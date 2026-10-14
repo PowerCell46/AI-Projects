@@ -3,6 +3,8 @@ package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
@@ -22,6 +24,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.utilities.HtmlToPlainTextConverter;
 
@@ -38,13 +41,23 @@ public class TopicNewsEmailRenderer {
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{\\{([A-Z_]+)}}");
 
-    private static final Set<String> KNOWN_TOKENS = Set.of("TOPIC_NAME", "CATEGORY_NAMES", "NEWS_DATE", "GENERATED_AT", "RECIPIENT_EMAIL", "DATA");
+    private static final Set<String> KNOWN_TOKENS = Set.of("TOPIC_NAME", "CATEGORY_NAMES", "NEWS_PERIOD", "GENERATED_AT", "RECIPIENT_EMAIL", "DATA");
 
     private static final String HTML_CATEGORY_SEPARATOR = " &middot; ";
 
     private static final String TEXT_CATEGORY_SEPARATOR = " \u00B7 ";
 
+    private static final String HTML_PERIOD_SEPARATOR = " &middot; ";
+
+    private static final String TEXT_PERIOD_SEPARATOR = " \u00B7 ";
+
+    private static final String DAILY_PERIOD_PREFIX = "News for ";
+
+    private static final String EN_DASH = "\u2013";
+
     private static final DateTimeFormatter NEWS_DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
+
+    private static final DateTimeFormatter DAY_AND_MONTH_FORMATTER = DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH);
 
     private static final DateTimeFormatter GENERATED_AT_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm zzz", Locale.ENGLISH);
 
@@ -75,13 +88,12 @@ public class TopicNewsEmailRenderer {
 
     public RenderedEmail render(TopicNewsNotificationEventDTO event) {
         String sanitizedData = DATA_SANITIZATION_POLICY.sanitize(event.getData());
-        String formattedNewsDate = event.getNewsDate().format(NEWS_DATE_FORMATTER);
         String formattedGeneratedAt = event.getGeneratedAt().atZone(zone).format(GENERATED_AT_FORMATTER);
 
         Map<String, String> htmlValuesByToken = Map.of(
                 "TOPIC_NAME", HtmlUtils.htmlEscape(event.getTopicName()),
                 "CATEGORY_NAMES", joinHtml(event.getCategoryNames()),
-                "NEWS_DATE", formattedNewsDate,
+                "NEWS_PERIOD", formatNewsPeriod(event, HTML_PERIOD_SEPARATOR),
                 "GENERATED_AT", formattedGeneratedAt,
                 "RECIPIENT_EMAIL", HtmlUtils.htmlEscape(event.getEmailAddress()),
                 "DATA", sanitizedData
@@ -90,13 +102,39 @@ public class TopicNewsEmailRenderer {
         Map<String, String> textValuesByToken = Map.of(
                 "TOPIC_NAME", stripLineBreaks(event.getTopicName()),
                 "CATEGORY_NAMES", joinText(event.getCategoryNames()),
-                "NEWS_DATE", formattedNewsDate,
+                "NEWS_PERIOD", formatNewsPeriod(event, TEXT_PERIOD_SEPARATOR),
                 "GENERATED_AT", formattedGeneratedAt,
                 "RECIPIENT_EMAIL", event.getEmailAddress(),
                 "DATA", HtmlToPlainTextConverter.convert(sanitizedData)
         );
 
         return new RenderedEmail(substitute(htmlTemplate, htmlValuesByToken), substitute(textTemplate, textValuesByToken));
+    }
+
+    private String formatNewsPeriod(TopicNewsNotificationEventDTO event, String separator) {
+        if (event.getSchedule() == NewsSchedule.DAILY) {
+            return DAILY_PERIOD_PREFIX + event.getNewsDate().format(NEWS_DATE_FORMATTER);
+        }
+
+        return event.getSchedule().getEmailLabel()
+                + separator
+                + formatDateRange(event.getPeriodStart(), event.getNewsDate());
+    }
+
+    private String formatDateRange(LocalDate start, LocalDate end) {
+        if (start.equals(end)) {
+            return end.format(NEWS_DATE_FORMATTER);
+        }
+
+        if (YearMonth.from(start).equals(YearMonth.from(end))) {
+            return start.getDayOfMonth() + EN_DASH + end.format(NEWS_DATE_FORMATTER);
+        }
+
+        if (start.getYear() == end.getYear()) {
+            return start.format(DAY_AND_MONTH_FORMATTER) + " " + EN_DASH + " " + end.format(NEWS_DATE_FORMATTER);
+        }
+
+        return start.format(NEWS_DATE_FORMATTER) + " " + EN_DASH + " " + end.format(NEWS_DATE_FORMATTER);
     }
 
     private String joinHtml(List<String> categoryNames) {

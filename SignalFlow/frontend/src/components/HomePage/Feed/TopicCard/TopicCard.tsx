@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { subscribe, unsubscribe } from '../../../../api/subscriptions'
-import type { FeedTopic } from '../../../../api/feed'
+import type { FeedSchedule, FeedTopic } from '../../../../api/feed'
 import './TopicCard.css'
+
+const SCHEDULE_LABELS: Record<FeedSchedule, string> = {
+    DAILY: 'Daily',
+    WEEKDAYS: 'Weekdays',
+    WEEKENDS: 'Weekends',
+    WEEKLY: 'Weekly \u00B7 Mondays',
+};
 
 interface TopicCardProps {
     topic: FeedTopic
@@ -45,6 +52,8 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
         }
     }
 
+    const scheduleLabel: string | undefined = SCHEDULE_LABELS[topic.schedule];
+
     return (
         <article
             className="topic-card"
@@ -65,6 +74,10 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
                     ))}
                 </ul>
             </div>
+
+            {scheduleLabel && (
+                <p className="topic-card-schedule">{scheduleLabel}</p>
+            )}
 
             <p className="topic-card-description">{topic.description}</p>
 

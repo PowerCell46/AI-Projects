@@ -57,6 +57,12 @@ public class NotificationOutbox extends CommonEntity {
     @Column(name = "news_date", nullable = false)
     private LocalDate newsDate;
 
+    @Column(nullable = false, length = 16)
+    private String schedule;
+
+    @Column(name = "period_start", nullable = false)
+    private LocalDate periodStart;
+
     @Column(nullable = false, columnDefinition = "text")
     private String data;
 

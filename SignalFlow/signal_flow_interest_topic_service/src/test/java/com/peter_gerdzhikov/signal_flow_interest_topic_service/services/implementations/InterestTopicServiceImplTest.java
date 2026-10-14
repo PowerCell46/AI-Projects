@@ -31,6 +31,7 @@ import org.springframework.data.domain.Slice;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryIdsException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
@@ -77,7 +78,8 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
-            InterestTopic saved = interestTopicService.create(TOPIC_NAME, "A systems language", TOPIC_PROMPT, List.of(CATEGORY_ID));
+            InterestTopic saved = interestTopicService.create(
+                    TOPIC_NAME, "A systems language", TOPIC_PROMPT, List.of(CATEGORY_ID), null);
 
             assertThat(saved.getName()).isEqualTo(TOPIC_NAME);
             assertThat(saved.getPrompt()).isEqualTo(TOPIC_PROMPT);
@@ -85,11 +87,36 @@ class InterestTopicServiceImplTest {
         }
 
         @Test
+        void should_default_the_schedule_to_daily_when_none_is_given() {
+            when(interestTopicRepository.count()).thenReturn(0L);
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of(categoryWithId(CATEGORY_ID)));
+            when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            InterestTopic saved = interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID), null);
+
+            assertThat(saved.getSchedule()).isEqualTo(NewsSchedule.DAILY);
+        }
+
+        @Test
+        void should_keep_the_given_schedule_when_one_is_given() {
+            when(interestTopicRepository.count()).thenReturn(0L);
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of(categoryWithId(CATEGORY_ID)));
+            when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            InterestTopic saved = interestTopicService.create(
+                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID), NewsSchedule.WEEKDAYS);
+
+            assertThat(saved.getSchedule()).isEqualTo(NewsSchedule.WEEKDAYS);
+        }
+
+        @Test
         void should_throw_when_the_category_does_not_exist() {
             when(interestTopicRepository.count()).thenReturn(0L);
             when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of());
 
-            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID)))
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID), null))
                     .isInstanceOf(CategoryNotFoundException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());
@@ -103,7 +130,7 @@ class InterestTopicServiceImplTest {
                     .thenReturn(List.of(categoryWithId(CATEGORY_ID)));
 
             assertThatThrownBy(() -> interestTopicService.create(
-                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID, unknownCategoryId)))
+                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID, unknownCategoryId), null))
                     .isInstanceOf(CategoryNotFoundException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());
@@ -114,7 +141,7 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.count()).thenReturn(0L);
 
             assertThatThrownBy(() -> interestTopicService.create(
-                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID, CATEGORY_ID)))
+                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID, CATEGORY_ID), null))
                     .isInstanceOf(DuplicateCategoryIdsException.class);
 
             verifyNoInteractions(categoryRepository);
@@ -128,7 +155,7 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID)))
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID), null))
                     .isInstanceOf(DuplicateInterestTopicNameException.class);
         }
 
@@ -136,7 +163,7 @@ class InterestTopicServiceImplTest {
         void should_throw_when_the_topic_count_is_at_the_limit() {
             when(interestTopicRepository.count()).thenReturn(MAX_INTEREST_TOPIC_COUNT);
 
-            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID)))
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID), null))
                     .isInstanceOf(InterestTopicLimitExceededException.class);
 
             verifyNoInteractions(categoryRepository);
@@ -181,11 +208,27 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
             when(interestTopicRepository.saveAndFlush(interestTopic)).thenReturn(interestTopic);
 
-            InterestTopic updated = interestTopicService.update(TOPIC_ID, "kotlin", null, null, null);
+            InterestTopic updated = interestTopicService.update(TOPIC_ID, "kotlin", null, null, null, null);
 
             assertThat(updated.getName()).isEqualTo("kotlin");
             assertThat(updated.getPrompt()).isEqualTo(TOPIC_PROMPT);
+            assertThat(updated.getSchedule()).isEqualTo(NewsSchedule.DAILY);
             verify(categoryRepository, never()).findAllById(any());
+        }
+
+        @Test
+        void should_change_only_the_schedule_when_only_a_schedule_is_provided() {
+            InterestTopic interestTopic = new InterestTopic();
+            interestTopic.setName(TOPIC_NAME);
+            interestTopic.setPrompt(TOPIC_PROMPT);
+            when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
+            when(interestTopicRepository.saveAndFlush(interestTopic)).thenReturn(interestTopic);
+
+            InterestTopic updated = interestTopicService.update(TOPIC_ID, null, null, null, null, NewsSchedule.WEEKLY);
+
+            assertThat(updated.getSchedule()).isEqualTo(NewsSchedule.WEEKLY);
+            assertThat(updated.getName()).isEqualTo(TOPIC_NAME);
+            assertThat(updated.getPrompt()).isEqualTo(TOPIC_PROMPT);
         }
 
         @Test
@@ -199,7 +242,8 @@ class InterestTopicServiceImplTest {
             when(categoryRepository.findAllById(List.of(newCategoryId))).thenReturn(List.of(newCategory));
             when(interestTopicRepository.saveAndFlush(interestTopic)).thenReturn(interestTopic);
 
-            InterestTopic updated = interestTopicService.update(TOPIC_ID, null, null, null, List.of(newCategoryId));
+            InterestTopic updated = interestTopicService.update(
+                    TOPIC_ID, null, null, null, List.of(newCategoryId), null);
 
             assertThat(updated.getCategories()).containsExactly(newCategory);
         }
@@ -211,7 +255,7 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
 
             assertThatThrownBy(() -> interestTopicService.update(
-                    TOPIC_ID, null, null, null, List.of(CATEGORY_ID, CATEGORY_ID)))
+                    TOPIC_ID, null, null, null, List.of(CATEGORY_ID, CATEGORY_ID), null))
                     .isInstanceOf(DuplicateCategoryIdsException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());
@@ -221,7 +265,7 @@ class InterestTopicServiceImplTest {
         void should_throw_when_the_topic_does_not_exist() {
             when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, "kotlin", null, null, null))
+            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, "kotlin", null, null, null, null))
                     .isInstanceOf(InterestTopicNotFoundException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());
@@ -234,7 +278,7 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
             when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of());
 
-            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, null, null, null, List.of(CATEGORY_ID)))
+            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, null, null, null, List.of(CATEGORY_ID), null))
                     .isInstanceOf(CategoryNotFoundException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());
@@ -248,7 +292,7 @@ class InterestTopicServiceImplTest {
             when(interestTopicRepository.saveAndFlush(interestTopic))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, "kotlin", null, null, null))
+            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, "kotlin", null, null, null, null))
                     .isInstanceOf(DuplicateInterestTopicNameException.class);
         }
     }

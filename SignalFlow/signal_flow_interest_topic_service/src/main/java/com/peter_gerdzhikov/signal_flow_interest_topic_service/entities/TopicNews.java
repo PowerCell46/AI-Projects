@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 
 import jakarta.persistence.Column;
@@ -50,6 +51,20 @@ public class TopicNews extends CommonEntity {
      */
     @Column(name = "news_date", nullable = false)
     private LocalDate newsDate;
+
+    /**
+     * Snapshot of the topic's schedule when this row was generated, so the published event describes
+     * what was actually generated even if the topic's schedule is edited before the outbox publishes.
+     */
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private NewsSchedule schedule;
+
+    /**
+     * First day of the period this issue covers; the period runs from here through {@code newsDate}.
+     */
+    @Column(name = "period_start", nullable = false)
+    private LocalDate periodStart;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String data;

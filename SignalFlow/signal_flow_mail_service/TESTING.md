@@ -32,6 +32,8 @@ Hand-maintained - see `CLAUDE.md`'s "Writing code" section for the rule keeping 
   (`should_dead_letter_malformed_json_without_sending`)
 - A blank `emailAddress` fails validation before the inbox is touched, dead-letters, sends nothing
   (`should_dead_letter_a_blank_email_address_without_sending`)
+- A missing `periodStart` fails validation the same way (`should_dead_letter_a_missing_period_start_without_sending`)
+- An unknown `schedule` value (`MONTHLY`) cannot be read, so it dead-letters without sending (`should_dead_letter_an_unknown_schedule_without_sending`)
 - A missing `newsId` fails validation the same way (`should_dead_letter_a_missing_news_id_without_sending`)
 - `data` one char over its 65,536-char cap fails validation the same way - rejected whole, never truncated
   (`should_dead_letter_an_oversized_data_field_without_sending`)

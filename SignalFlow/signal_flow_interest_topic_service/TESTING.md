@@ -63,6 +63,9 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 
 - Creates an interest topic and returns it with `categories` (`id`, `name`) embedded (`should_create_an_interest_topic_and_return_it`)
 - Three categories → 201, `categories` sorted by name (`should_create_with_three_categories_sorted_by_name`)
+- Without `schedule` → 201 and `DAILY` (`should_default_the_schedule_to_daily_when_none_is_given`); an explicit `"schedule": null` does the same (`should_default_the_schedule_to_daily_when_it_is_explicitly_null`)
+- With `WEEKLY` → 201 and `WEEKLY` in the response, the database and the list (`should_create_with_the_given_schedule_and_return_it_in_the_response_and_the_list`); there is no get-by-id endpoint
+- Unknown `schedule` (`MONTHLY`) returns 400 and creates no topic (`should_return_400_for_an_unknown_schedule_and_create_no_topic`)
 - The response never carries `prompt` (`should_not_expose_the_prompt_in_the_response`)
 - Name is stored lowercased (`should_store_the_name_lowercased`)
 - Unknown category id returns 404 (`should_return_404_for_an_unknown_category_id`)
@@ -102,6 +105,9 @@ step 4, interest topic scenarios since `InterestTopicController` landed in step 
 `InterestTopicControllerIntegrationTest.UpdateInterestTopic`
 
 - Updates only the fields provided; omitted (null) fields are unchanged, checked for `prompt` in the database since responses no longer carry it (`should_update_only_the_provided_fields`)
+- `schedule` alone changes only the schedule (`should_change_only_the_schedule_when_only_a_schedule_is_provided`)
+- Omitting `schedule` leaves it unchanged (`should_leave_the_schedule_unchanged_when_it_is_absent`)
+- Unknown `schedule` (`MONTHLY`) returns 400 and keeps the stored one (`should_return_400_for_an_unknown_schedule_and_keep_the_stored_one`)
 - `categoryIds` replaces the whole category set (`should_replace_the_whole_category_set_when_category_ids_are_provided`)
 - Omitting `categoryIds` leaves the categories unchanged (`should_leave_the_categories_unchanged_when_category_ids_are_absent`)
 - Empty `categoryIds` returns 400 and keeps the categories (`should_return_400_for_an_empty_category_id_list_and_keep_the_categories`)
@@ -141,6 +147,7 @@ It's outside `/api/v1`, so no gateway route forwards a client to it.
 - EXCLUDE leaves the given ids out (`should_leave_out_the_given_ids_when_excluding`)
 - `total` counts every topic; `matching` counts only the given ids that still exist (`should_count_every_topic_and_only_the_given_ids_that_still_exist`)
 - Items embed the categories and carry no `prompt` (`should_embed_the_categories_and_not_expose_the_prompt`)
+- Items carry each topic's `schedule` (`should_carry_each_topics_schedule_in_the_feed_items`)
 - 3 topics × 3 categories with size 2 return exactly 2 distinct topics, each with all 3 categories sorted, in ALL, INCLUDE and EXCLUDE modes (`should_return_each_topic_once_with_all_three_categories_sorted_when_paging_all`, `…_when_including`, `…_when_excluding`)
 - Missing `mode` returns 400 (`should_return_400_when_the_mode_is_missing`)
 - Missing `ids` returns 400 (`should_return_400_when_ids_is_missing`)

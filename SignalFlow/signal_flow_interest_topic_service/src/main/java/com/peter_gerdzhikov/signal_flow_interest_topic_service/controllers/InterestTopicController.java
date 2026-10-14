@@ -45,7 +45,8 @@ public class InterestTopicController {
                 request.getName(),
                 request.getDescription(),
                 request.getPrompt(),
-                request.getCategoryIds()
+                request.getCategoryIds(),
+                request.getSchedule()
         );
 
         return ResponseEntity
@@ -77,7 +78,8 @@ public class InterestTopicController {
                 request.getName(),
                 request.getDescription(),
                 request.getPrompt(),
-                request.getCategoryIds()
+                request.getCategoryIds(),
+                request.getSchedule()
         );
 
         return ResponseEntity.ok(InterestTopicResponseMapper.toResponse(interestTopic));

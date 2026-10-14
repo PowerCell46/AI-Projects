@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.categories.CategorySummaryResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,6 +23,8 @@ public class InterestTopicResponseDTO {
     private String description;
 
     private List<CategorySummaryResponseDTO> categories;
+
+    private NewsSchedule schedule;
 
     private Instant createdAt;
 }

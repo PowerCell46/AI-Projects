@@ -161,6 +161,27 @@ class InterestTopicRoutesIntegrationTest extends AbstractInterestTopicServiceInt
         }
 
         @Test
+        void should_pass_a_schedule_in_the_create_body_and_in_the_response_through_unchanged() {
+            String requestBody = "{\"name\":\"ai\",\"prompt\":\"Latest AI research.\",\"categoryIds\":[\""
+                    + CATEGORY_ID + "\"],\"schedule\":\"WEEKLY\"}";
+            String topic = "{\"id\":\"" + INTEREST_TOPIC_ID + "\",\"name\":\"ai\",\"schedule\":\"WEEKLY\","
+                    + "\"categories\":[{\"id\":\"" + CATEGORY_ID + "\",\"name\":\"business\"}]}";
+            stubEveryRequestWith(201, topic);
+
+            restTestClient.post()
+                    .uri("/api/v1/interest-topics")
+                    .cookie(CookieFactory.COOKIE_NAME, cookieFor(Role.ADMIN))
+                    .contentType(MediaType.parseMediaType(REQUEST_CONTENT_TYPE))
+                    .body(requestBody)
+                    .exchange()
+                    .expectStatus().isEqualTo(201)
+                    .expectBody(String.class).isEqualTo(topic);
+
+            INTEREST_TOPIC_SERVICE_STUB.verifyThat(1, requestedFor("POST", urlEqualTo("/api/v1/interest-topics"))
+                    .withRequestBody(equalToJson(requestBody)));
+        }
+
+        @Test
         void should_pass_a_downstream_error_response_through_verbatim() {
             String conflict = "{\"status\":409,\"messages\":[\"Category 'tech' already exists.\"],\"timestamp\":\"2026-09-23T10:00:00Z\"}";
             stubEveryRequestWith(409, conflict);

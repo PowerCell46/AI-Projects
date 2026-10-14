@@ -156,6 +156,31 @@ class TopicNewsNotificationRequestedListenerIntegrationTest extends AbstractNoti
     }
 
     @Test
+    void should_dead_letter_a_missing_period_start_without_sending() {
+        TopicNewsNotificationEventDTO event = aValidEvent(uniqueRecipient());
+        event.setPeriodStart(null);
+        String key = event.getUserId().toString();
+
+        publishThenAwaitSentinelProcessed(key, toJson(event));
+
+        awaitDltRecordForKey(key);
+        assertNoEmail(event.getEmailAddress());
+        verify(javaMailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void should_dead_letter_an_unknown_schedule_without_sending() {
+        TopicNewsNotificationEventDTO event = aValidEvent(uniqueRecipient());
+        String key = event.getUserId().toString();
+
+        publishThenAwaitSentinelProcessed(key, toJson(event).replace("\"DAILY\"", "\"MONTHLY\""));
+
+        awaitDltRecordForKey(key);
+        assertNoEmail(event.getEmailAddress());
+        verify(javaMailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
     void should_dead_letter_a_missing_news_id_without_sending() {
         TopicNewsNotificationEventDTO event = aValidEvent(uniqueRecipient());
         event.setNewsId(null);

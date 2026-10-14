@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
@@ -31,6 +32,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
@@ -77,7 +79,7 @@ class TopicNewsGenerationJobTest {
 
             topicNewsGenerationJob.generateDailyNews();
 
-            verify(newsGenerationService, never()).generate(any(), any(), any());
+            verify(newsGenerationService, never()).generate(any(), any(), any(), any());
             verify(topicNewsRepository, never()).saveAndFlush(any());
         }
 
@@ -87,12 +89,12 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("today's rust news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("today's rust news");
 
             topicNewsGenerationJob.generateDailyNews();
 
             ArgumentCaptor<LocalDate> newsDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
-            verify(newsGenerationService).generate(eq(topic), newsDateCaptor.capture(), any());
+            verify(newsGenerationService).generate(eq(topic), newsDateCaptor.capture(), any(LocalDate.class), any());
             assertThat(newsDateCaptor.getValue()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
 
             ArgumentCaptor<TopicNews> newsCaptor = ArgumentCaptor.forClass(TopicNews.class);
@@ -103,6 +105,8 @@ class TopicNewsGenerationJobTest {
             assertThat(saved.getStatus()).isEqualTo(NewsStatus.PENDING);
             assertThat(saved.getNewsDate()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
             assertThat(saved.getNextAttemptAt()).isNotNull();
+            assertThat(saved.getSchedule()).isEqualTo(NewsSchedule.DAILY);
+            assertThat(saved.getPeriodStart()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
         }
 
         @Test
@@ -113,9 +117,9 @@ class TopicNewsGenerationJobTest {
                     .thenReturn(new PageImpl<>(List.of(failingTopic, healthyTopic)));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(failingTopic), any(LocalDate.class), any()))
+            when(newsGenerationService.generate(eq(failingTopic), any(LocalDate.class), any(LocalDate.class), any()))
                     .thenThrow(new RuntimeException("AI timeout"));
-            when(newsGenerationService.generate(eq(healthyTopic), any(LocalDate.class), any()))
+            when(newsGenerationService.generate(eq(healthyTopic), any(LocalDate.class), any(LocalDate.class), any()))
                     .thenReturn("healthy topic news");
 
             assertThatCode(() -> topicNewsGenerationJob.generateDailyNews()).doesNotThrowAnyException();
@@ -129,7 +133,7 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("today's rust news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("today's rust news");
             when(topicNewsRepository.saveAndFlush(any()))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
@@ -146,12 +150,12 @@ class TopicNewsGenerationJobTest {
                     .thenReturn(List.of(
                             "<ul><li><strong>Beta</strong> d</li><li><strong>Alpha</strong> d</li></ul>",
                             "<ul><li><strong>Alpha</strong> d</li><li><strong>Gamma</strong> d</li></ul>"));
-            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("news");
 
             topicNewsGenerationJob.generateDailyNews();
 
             verify(newsGenerationService).generate(
-                    eq(topic), any(LocalDate.class), eq(List.of("Beta", "Alpha", "Gamma")));
+                    eq(topic), any(LocalDate.class), any(LocalDate.class), eq(List.of("Beta", "Alpha", "Gamma")));
         }
 
         @Test
@@ -160,11 +164,11 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("news");
 
             topicNewsGenerationJob.generateDailyNews();
 
-            verify(newsGenerationService).generate(eq(topic), any(LocalDate.class), eq(List.of()));
+            verify(newsGenerationService).generate(eq(topic), any(LocalDate.class), any(LocalDate.class), eq(List.of()));
         }
 
         @Test
@@ -195,7 +199,7 @@ class TopicNewsGenerationJobTest {
 
             AtomicInteger inFlight = new AtomicInteger();
             AtomicInteger maxInFlight = new AtomicInteger();
-            when(newsGenerationService.generate(any(), any(LocalDate.class), any())).thenAnswer(invocation -> {
+            when(newsGenerationService.generate(any(), any(LocalDate.class), any(LocalDate.class), any())).thenAnswer(invocation -> {
                 int concurrentCalls = inFlight.incrementAndGet();
                 maxInFlight.updateAndGet(observed -> Math.max(observed, concurrentCalls));
                 Thread.sleep(20);
@@ -210,11 +214,52 @@ class TopicNewsGenerationJobTest {
         }
     }
 
+    @Nested
+    class GenerateNewsFor {
+
+        private static final LocalDate MONDAY = LocalDate.of(2026, 10, 12);
+
+        private static final LocalDate TUESDAY = LocalDate.of(2026, 10, 13);
+
+        @Test
+        void should_skip_a_weekly_topic_without_any_lookup_or_generation_when_the_day_is_not_monday() {
+            InterestTopic topic = newTopic(NewsSchedule.WEEKLY);
+            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+
+            topicNewsGenerationJob.generateNewsFor(TUESDAY);
+
+            verifyNoInteractions(topicNewsRepository, newsGenerationService);
+        }
+
+        @Test
+        void should_generate_a_weekly_topic_for_the_past_week_and_save_its_schedule_and_period_start_on_monday() {
+            InterestTopic topic = newTopic(NewsSchedule.WEEKLY);
+            LocalDate expectedPeriodStart = LocalDate.of(2026, 10, 6);
+            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(topic.getId(), MONDAY)).thenReturn(false);
+            when(newsGenerationService.generate(topic, MONDAY, expectedPeriodStart, List.of())).thenReturn("weekly news");
+
+            topicNewsGenerationJob.generateNewsFor(MONDAY);
+
+            ArgumentCaptor<TopicNews> newsCaptor = ArgumentCaptor.forClass(TopicNews.class);
+            verify(topicNewsRepository).saveAndFlush(newsCaptor.capture());
+            TopicNews saved = newsCaptor.getValue();
+            assertThat(saved.getNewsDate()).isEqualTo(MONDAY);
+            assertThat(saved.getSchedule()).isEqualTo(NewsSchedule.WEEKLY);
+            assertThat(saved.getPeriodStart()).isEqualTo(expectedPeriodStart);
+        }
+    }
+
     private InterestTopic newTopic() {
+        return newTopic(NewsSchedule.DAILY);
+    }
+
+    private InterestTopic newTopic(NewsSchedule schedule) {
         InterestTopic topic = new InterestTopic();
         topic.setId(UUID.randomUUID());
         topic.setName("rust");
         topic.setPrompt(TOPIC_PROMPT);
+        topic.setSchedule(schedule);
         return topic;
     }
 

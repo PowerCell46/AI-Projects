@@ -141,7 +141,7 @@ class FeedServiceImplTest {
 
     private InterestTopicResponseDTO topic(UUID id, String name) {
         return new InterestTopicResponseDTO(
-                id, name, "A description.", List.of(new CategorySummaryResponseDTO(UUID.randomUUID(), "programming")), null);
+                id, name, "A description.", List.of(new CategorySummaryResponseDTO(UUID.randomUUID(), "programming")), "DAILY", null);
     }
 
     private Subscription subscriptionTo(UUID interestTopicId) {

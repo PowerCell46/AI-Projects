@@ -19,6 +19,7 @@ public final class InterestTopicResponseMapper {
                 interestTopic.getName(),
                 interestTopic.getDescription(),
                 toSortedSummaries(interestTopic),
+                interestTopic.getSchedule(),
                 interestTopic.getCreatedAt());
     }
 

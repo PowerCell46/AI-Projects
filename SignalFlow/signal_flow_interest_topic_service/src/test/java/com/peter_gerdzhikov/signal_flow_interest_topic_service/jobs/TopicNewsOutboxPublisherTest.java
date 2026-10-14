@@ -31,6 +31,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.event.TopicN
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
@@ -95,6 +96,8 @@ class TopicNewsOutboxPublisherTest {
             assertThat(event.getTopicName()).isEqualTo("rust");
             assertThat(event.getCategoryNames()).containsExactly("programming", "technology");
             assertThat(event.getNewsDate()).isEqualTo(news.getNewsDate());
+            assertThat(event.getSchedule()).isEqualTo(NewsSchedule.WEEKLY);
+            assertThat(event.getPeriodStart()).isEqualTo(news.getPeriodStart());
             assertThat(event.getData()).isEqualTo(news.getData());
             assertThat(event.getGeneratedAt()).isEqualTo(news.getCreatedAt());
 
@@ -168,6 +171,8 @@ class TopicNewsOutboxPublisherTest {
         news.setId(UUID.randomUUID());
         news.setInterestTopic(topic);
         news.setNewsDate(LocalDate.now());
+        news.setSchedule(NewsSchedule.WEEKLY);
+        news.setPeriodStart(LocalDate.now().minusDays(6));
         news.setData("today's rust news");
         news.setStatus(NewsStatus.PENDING);
         news.setCreatedAt(Instant.now().minus(1, ChronoUnit.HOURS));

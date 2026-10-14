@@ -46,6 +46,12 @@ public class TopicNewsNotificationEventDTO {
     @NotNull
     private LocalDate newsDate;
 
+    @NotNull
+    private NewsSchedule schedule;
+
+    @NotNull
+    private LocalDate periodStart;
+
     @NotBlank
     @Size(max = MAX_DATA_LENGTH)
     private String data;

@@ -165,6 +165,8 @@ public class TopicNewsOutboxPublisher {
                 topic.getName(),
                 categoryNamesByTopicId.get(topic.getId()),
                 news.getNewsDate(),
+                news.getSchedule(),
+                news.getPeriodStart(),
                 news.getData(),
                 news.getCreatedAt());
     }

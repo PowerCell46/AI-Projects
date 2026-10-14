@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +30,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.int
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.CategoryRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.support.AbstractIntegrationTest;
@@ -183,6 +185,20 @@ class InternalInterestTopicControllerIntegrationTest extends AbstractIntegration
                     .expectBody()
                     .jsonPath("$.items[0].categories[0].name").isEqualTo("programming")
                     .jsonPath("$.items[0].prompt").doesNotExist();
+        }
+
+        @Test
+        void should_carry_each_topics_schedule_in_the_feed_items() {
+            InterestTopic weekly = persistedInterestTopic("go", category);
+            weekly.setSchedule(NewsSchedule.WEEKLY);
+            interestTopicRepository.save(weekly);
+            persistedInterestTopic("rust", category);
+
+            InterestTopicFeedResponseDTO body = feedBody(feedRequest(List.of(), InterestTopicFeedMode.ALL, null, 20));
+
+            assertThat(body.getItems())
+                    .extracting(InterestTopicResponseDTO::getName, InterestTopicResponseDTO::getSchedule)
+                    .containsExactly(tuple("go", NewsSchedule.WEEKLY), tuple("rust", NewsSchedule.DAILY));
         }
 
         @Test

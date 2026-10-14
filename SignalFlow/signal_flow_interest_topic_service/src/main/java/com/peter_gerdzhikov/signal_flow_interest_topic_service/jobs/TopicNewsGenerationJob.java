@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.NewsGenerationService;
@@ -64,7 +65,10 @@ public class TopicNewsGenerationJob {
 
     @Scheduled(cron = "${app.news.cron}", zone = "${app.news.zone}")
     public void generateDailyNews() {
-        LocalDate newsDate = LocalDate.now(newsZone);
+        generateNewsFor(LocalDate.now(newsZone));
+    }
+
+    public void generateNewsFor(LocalDate newsDate) {
         log.info("Daily news generation job triggered for '{}'.", newsDate);
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, Sort.by("id"));
 
@@ -110,17 +114,25 @@ public class TopicNewsGenerationJob {
     }
 
     private void generateNewsForTopic(InterestTopic topic, LocalDate newsDate) {
+        NewsSchedule schedule = topic.getSchedule();
+        if (!schedule.runsOn(newsDate.getDayOfWeek())) {
+            log.debug("Interest topic '{}' does not run on '{}' with schedule '{}'; skipping it.",
+                    topic.getId(), newsDate, schedule);
+            return;
+        }
+
         if (topicNewsRepository.existsByInterestTopic_IdAndNewsDate(topic.getId(), newsDate)) {
             return;
         }
 
+        LocalDate periodStart = schedule.periodStart(newsDate);
         List<String> coveredHeadlines = findCoveredHeadlines(topic, newsDate);
         log.info("Interest topic '{}' has {} already covered headlines for '{}'.",
                 topic.getId(), coveredHeadlines.size(), newsDate);
 
         String data;
         try {
-            data = newsGenerationService.generate(topic, newsDate, coveredHeadlines);
+            data = newsGenerationService.generate(topic, newsDate, periodStart, coveredHeadlines);
 
         } catch (Exception e) {
             log.error("News generation failed for interest topic '{}'; skipping it for '{}'.",
@@ -129,7 +141,7 @@ public class TopicNewsGenerationJob {
         }
 
         try {
-            topicNewsRepository.saveAndFlush(newPendingNews(topic, newsDate, data));
+            topicNewsRepository.saveAndFlush(newPendingNews(topic, newsDate, periodStart, data));
 
         } catch (DataIntegrityViolationException e) {
             log.warn("Lost the race to insert news for interest topic '{}' on '{}'; another run already did.",
@@ -146,10 +158,12 @@ public class TopicNewsGenerationJob {
                 .toList();
     }
 
-    private TopicNews newPendingNews(InterestTopic topic, LocalDate newsDate, String data) {
+    private TopicNews newPendingNews(InterestTopic topic, LocalDate newsDate, LocalDate periodStart, String data) {
         return TopicNews.builder()
                 .interestTopic(topic)
                 .newsDate(newsDate)
+                .schedule(topic.getSchedule())
+                .periodStart(periodStart)
                 .data(data)
                 .nextAttemptAt(Instant.now())
                 .build();

@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.InvalidNotificationEventException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.NotificationClaimHeldException;
@@ -168,6 +169,8 @@ class TopicNewsNotificationServiceImplTest {
                 Arguments.of("4 categoryNames", mutate(e -> e.setCategoryNames(List.of("A", "B", "C", "D")))),
                 Arguments.of("a blank categoryName", mutate(e -> e.setCategoryNames(List.of("A", " ")))),
                 Arguments.of("null newsDate", mutate(e -> e.setNewsDate(null))),
+                Arguments.of("null schedule", mutate(e -> e.setSchedule(null))),
+                Arguments.of("null periodStart", mutate(e -> e.setPeriodStart(null))),
                 Arguments.of("blank data", mutate(e -> e.setData(""))),
                 Arguments.of("null generatedAt", mutate(e -> e.setGeneratedAt(null))),
                 Arguments.of("null userId", mutate(e -> e.setUserId(null))),
@@ -207,6 +210,8 @@ class TopicNewsNotificationServiceImplTest {
                 UUID.randomUUID(),
                 "Topic",
                 List.of("Category"),
+                LocalDate.of(2026, 9, 24),
+                NewsSchedule.DAILY,
                 LocalDate.of(2026, 9, 24),
                 "<p>Body</p>",
                 Instant.parse("2026-09-24T10:00:00Z"),

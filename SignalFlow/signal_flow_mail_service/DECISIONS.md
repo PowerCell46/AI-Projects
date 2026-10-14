@@ -183,3 +183,13 @@ file — this entry is the full record of its one finding.
   body strips line breaks from each name and joins with ` · `. One category renders with no separator.
 - **Validation: `@NotEmpty @Size(max = 3)` on the list, `@NotBlank @Size(max = 100)` per name.** An invalid event
   takes the same path as any other invalid event.
+
+## Cross-service plan, phase 4 — each topic has a news schedule
+
+- **`NEWS_PERIOD` carries the "News for" prefix for `DAILY`.** The header line is unchanged; the hidden preheader
+  now reads "— News for 24 September 2026" (capital N) instead of "— news for …", because it shares the token.
+- **An unknown `schedule` value fails JSON reading, not bean validation.** It takes the malformed-record path
+  (dead-lettered without sending); a null `schedule` or `periodStart` is rejected by `@NotNull` as an invalid event.
+- **`NEWS_PERIOD` format.** `DAILY`: "News for 13 October 2026" (unchanged). Other presets: the label, ` · `
+  (`&middot;` in HTML), then the dates - one day "14 October 2026", a range inside one month "6–12 October 2026",
+  across months "29 September – 5 October 2026", across years "29 December 2026 – 4 January 2027" (en dashes).

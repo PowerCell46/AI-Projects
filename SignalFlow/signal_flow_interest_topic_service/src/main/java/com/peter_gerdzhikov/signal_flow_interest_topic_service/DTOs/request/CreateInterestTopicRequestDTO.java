@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -30,4 +31,6 @@ public class CreateInterestTopicRequestDTO {
     @NotNull
     @Size(min = 1, max = InterestTopic.MAX_CATEGORIES)
     private List<@NotNull UUID> categoryIds;
+
+    private NewsSchedule schedule;
 }

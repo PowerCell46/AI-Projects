@@ -2,7 +2,7 @@ signalflow — topic digest
 
 {{CATEGORY_NAMES}}
 {{TOPIC_NAME}}
-News for {{NEWS_DATE}} · generated {{GENERATED_AT}}
+{{NEWS_PERIOD}} · generated {{GENERATED_AT}}
 
 {{DATA}}
 

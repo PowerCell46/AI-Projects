@@ -121,6 +121,17 @@ class FeedControllerIntegrationTest extends AbstractInterestTopicServiceIntegrat
         }
 
         @Test
+        void should_pass_each_topics_schedule_through_to_the_feed_item() {
+            String cookie = registerAndGetCookie(EMAIL);
+
+            getFeed(cookie, "")
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.items[0].schedule").isEqualTo("WEEKLY")
+                    .jsonPath("$.items[1].schedule").isEqualTo("DAILY");
+        }
+
+        @Test
         void should_not_expose_the_prompt_or_the_creation_time() {
             String cookie = registerAndGetCookie(EMAIL);
 
@@ -252,10 +263,10 @@ class FeedControllerIntegrationTest extends AbstractInterestTopicServiceIntegrat
                     {"id": "%s", "name": "go", "description": "A language.",
                      "categories": [{"id": "%s", "name": "technology"}, {"id": "%s", "name": "business"},
                                     {"id": "%s", "name": "politics"}],
-                     "createdAt": "2026-09-23T10:00:00Z"},
+                     "schedule": "WEEKLY", "createdAt": "2026-09-23T10:00:00Z"},
                     {"id": "%s", "name": "rust", "description": "A language.",
                      "categories": [{"id": "%s", "name": "programming"}],
-                     "createdAt": "2026-09-23T10:00:00Z"}
+                     "schedule": "DAILY", "createdAt": "2026-09-23T10:00:00Z"}
                   ],
                   "nextCursor": "rust",
                   "total": 5,
