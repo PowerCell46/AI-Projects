@@ -155,7 +155,7 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
             assertThat(row.getNewsId()).isEqualTo(newsId);
             assertThat(row.getInterestTopicId()).isEqualTo(interestTopicId);
             assertThat(row.getTopicName()).isEqualTo("rust");
-            assertThat(row.getCategoryName()).isEqualTo("programming");
+            assertThat(row.getCategoryNames()).containsExactly("Politics", "Science", "Technology");
             assertThat(row.getNewsDate()).isEqualTo(newsDate);
             assertThat(row.getData()).isEqualTo("today's rust news");
             assertThat(row.getGeneratedAt()).isEqualTo(generatedAt);
@@ -164,6 +164,21 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
             User expectedSubscriber = row.getUserId().equals(bob.getId()) ? bob : alice;
             assertThat(row.getEmailAddress()).isEqualTo(expectedSubscriber.getEmail());
         }
+    }
+
+    @Test
+    void should_skip_and_mark_processed_an_event_with_empty_category_names() throws Exception {
+        assertSkippedBeforeSentinel("[]");
+    }
+
+    @Test
+    void should_skip_and_mark_processed_an_event_with_null_category_names() throws Exception {
+        assertSkippedBeforeSentinel("null");
+    }
+
+    @Test
+    void should_skip_and_mark_processed_an_event_with_an_oversized_category_name() throws Exception {
+        assertSkippedBeforeSentinel("[\"" + "x".repeat(256) + "\"]");
     }
 
     @Test
@@ -178,6 +193,37 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
         assertThat(deadLetterRecord.value()).isEqualTo("not valid json");
     }
 
+    /**
+     * Records on the single partition are handled in order, so once the sentinel's inbox row exists the
+     * skipped record has been handled too.
+     */
+    private void assertSkippedBeforeSentinel(String categoryNamesJson) throws Exception {
+        UUID interestTopicId = UUID.randomUUID();
+        User bob = userRepository.save(newUser("bob@example.com", true));
+        subscriptionRepository.save(newSubscription(bob, interestTopicId));
+        UUID skippedNewsId = UUID.randomUUID();
+        UUID sentinelNewsId = UUID.randomUUID();
+        LocalDate newsDate = LocalDate.now();
+        Instant generatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+
+        producer
+                .send(new ProducerRecord<>(topicNewsTopicName, interestTopicId.toString(),
+                        topicNewsEventJson(skippedNewsId, interestTopicId, newsDate, generatedAt, categoryNamesJson)))
+                .get(10, TimeUnit.SECONDS);
+        producer
+                .send(new ProducerRecord<>(topicNewsTopicName, interestTopicId.toString(),
+                        topicNewsEventJson(sentinelNewsId, interestTopicId, newsDate, generatedAt)))
+                .get(10, TimeUnit.SECONDS);
+
+        await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> assertThat(topicNewsInboxRepository.existsById(sentinelNewsId)).isTrue());
+
+        assertThat(topicNewsInboxRepository.existsById(skippedNewsId)).isTrue();
+        assertThat(notificationOutboxRepository.findAll())
+                .extracting(NotificationOutbox::getNewsId)
+                .containsOnly(sentinelNewsId);
+    }
+
     private Consumer<String, String> newRawConsumer(String groupId, String topic) {
         Consumer<String, String> consumer = new DefaultKafkaConsumerFactory<>(
                 KafkaTestUtils.consumerProps(kafkaBootstrapServers(), groupId, false),
@@ -189,17 +235,24 @@ class TopicNewsListenerIntegrationTest extends AbstractKafkaIntegrationTest {
     }
 
     private String topicNewsEventJson(UUID newsId, UUID interestTopicId, LocalDate newsDate, Instant generatedAt) {
+        return topicNewsEventJson(
+                newsId, interestTopicId, newsDate, generatedAt, "[\"Politics\", \"Science\", \"Technology\"]");
+    }
+
+    private String topicNewsEventJson(
+            UUID newsId, UUID interestTopicId, LocalDate newsDate, Instant generatedAt, String categoryNamesJson
+    ) {
         return """
                 {
                   "newsId": "%s",
                   "interestTopicId": "%s",
                   "topicName": "rust",
-                  "categoryName": "programming",
+                  "categoryNames": %s,
                   "newsDate": "%s",
                   "data": "today's rust news",
                   "generatedAt": "%s"
                 }
-                """.formatted(newsId, interestTopicId, newsDate, generatedAt);
+                """.formatted(newsId, interestTopicId, categoryNamesJson, newsDate, generatedAt);
     }
 
     private User newUser(String email, boolean enabled) {

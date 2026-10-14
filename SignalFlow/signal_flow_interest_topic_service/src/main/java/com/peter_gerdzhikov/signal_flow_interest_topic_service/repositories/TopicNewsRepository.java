@@ -20,7 +20,6 @@ public interface TopicNewsRepository extends JpaRepository<TopicNews, UUID> {
     @Query("""
             SELECT tn FROM TopicNews tn
             JOIN FETCH tn.interestTopic topic
-            JOIN FETCH topic.category
             WHERE tn.status = :status AND tn.nextAttemptAt <= :now
             ORDER BY tn.nextAttemptAt ASC
             """)

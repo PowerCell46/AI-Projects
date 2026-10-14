@@ -50,6 +50,8 @@ class FeedControllerIntegrationTest extends AbstractInterestTopicServiceIntegrat
     private static final UUID SUBSCRIBED_TOPIC_ID = UUID.fromString("7d2e9f10-3c4b-4a5d-8e6f-1a2b3c4d5e6f");
     private static final UUID OTHER_TOPIC_ID = UUID.fromString("0b5c3a4e-6f0e-4b8e-9d3a-2c1f7e8a9b01");
     private static final UUID CATEGORY_ID = UUID.fromString("5a1d0c2e-8b3f-4e6a-9c7d-3f2e1b0a9c8d");
+    private static final UUID SECOND_CATEGORY_ID = UUID.fromString("c4b7e2a1-1d5f-4f8a-b3e9-7a6c5d4e3f21");
+    private static final UUID THIRD_CATEGORY_ID = UUID.fromString("e9f8d7c6-b5a4-4392-8170-6f5e4d3c2b1a");
 
     @Autowired
     private RestTestClient restTestClient;
@@ -92,13 +94,30 @@ class FeedControllerIntegrationTest extends AbstractInterestTopicServiceIntegrat
                     .expectBody()
                     .jsonPath("$.items.length()").isEqualTo(2)
                     .jsonPath("$.items[0].name").isEqualTo("go")
-                    .jsonPath("$.items[0].categoryName").isEqualTo("programming")
                     .jsonPath("$.items[0].subscribed").isEqualTo(true)
                     .jsonPath("$.items[1].subscribed").isEqualTo(false)
                     .jsonPath("$.nextCursor").isEqualTo("rust")
                     .jsonPath("$.counts.all").isEqualTo(5)
                     .jsonPath("$.counts.subscribed").isEqualTo(1)
                     .jsonPath("$.counts.notSubscribed").isEqualTo(4);
+        }
+
+        @Test
+        void should_return_every_category_of_a_topic_in_the_order_the_topic_service_sent() {
+            String cookie = registerAndGetCookie(EMAIL);
+
+            getFeed(cookie, "")
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.items[0].categories.length()").isEqualTo(3)
+                    .jsonPath("$.items[0].categories[0].id").isEqualTo(CATEGORY_ID.toString())
+                    .jsonPath("$.items[0].categories[0].name").isEqualTo("technology")
+                    .jsonPath("$.items[0].categories[1].id").isEqualTo(SECOND_CATEGORY_ID.toString())
+                    .jsonPath("$.items[0].categories[1].name").isEqualTo("business")
+                    .jsonPath("$.items[0].categories[2].id").isEqualTo(THIRD_CATEGORY_ID.toString())
+                    .jsonPath("$.items[0].categories[2].name").isEqualTo("politics")
+                    .jsonPath("$.items[1].categories.length()").isEqualTo(1)
+                    .jsonPath("$.items[1].categoryName").doesNotExist();
         }
 
         @Test
@@ -230,16 +249,20 @@ class FeedControllerIntegrationTest extends AbstractInterestTopicServiceIntegrat
         return """
                 {
                   "items": [
-                    {"id": "%s", "name": "go", "description": "A language.", "categoryId": "%s",
-                     "categoryName": "programming", "createdAt": "2026-09-23T10:00:00Z"},
-                    {"id": "%s", "name": "rust", "description": "A language.", "categoryId": "%s",
-                     "categoryName": "programming", "createdAt": "2026-09-23T10:00:00Z"}
+                    {"id": "%s", "name": "go", "description": "A language.",
+                     "categories": [{"id": "%s", "name": "technology"}, {"id": "%s", "name": "business"},
+                                    {"id": "%s", "name": "politics"}],
+                     "createdAt": "2026-09-23T10:00:00Z"},
+                    {"id": "%s", "name": "rust", "description": "A language.",
+                     "categories": [{"id": "%s", "name": "programming"}],
+                     "createdAt": "2026-09-23T10:00:00Z"}
                   ],
                   "nextCursor": "rust",
                   "total": 5,
                   "matching": 1
                 }
-                """.formatted(SUBSCRIBED_TOPIC_ID, CATEGORY_ID, OTHER_TOPIC_ID, CATEGORY_ID);
+                """.formatted(
+                SUBSCRIBED_TOPIC_ID, CATEGORY_ID, SECOND_CATEGORY_ID, THIRD_CATEGORY_ID, OTHER_TOPIC_ID, CATEGORY_ID);
     }
 
     private ResponseDefinitionBuilder jsonResponse(String body) {

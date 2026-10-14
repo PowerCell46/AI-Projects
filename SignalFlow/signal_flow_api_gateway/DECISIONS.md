@@ -823,3 +823,13 @@ consequently locked out of logging in, registering, or logging out until the bro
 which returns `null` for any matching request so `BearerTokenAuthenticationFilter` skips token resolution and allows
 the request to reach the public controller without interference from stale cookies.
 
+
+## Cross-service plan, phase 1 — `categoryNames` in the notification outbox
+
+- **`notification_outbox.category_names` is `text[]`, not a joined string.** A joined string would hit the 255-char
+  column cap and could skip a valid record, and it would push formatting into the gateway. The list travels
+  unchanged; the mail service formats it.
+- **The guard skips (via `skipOversizedRecord`) a record whose `categoryNames` is null, empty or has a name over
+  255 characters.** Same skip-and-mark-processed treatment as the other guards: retrying can't change the payload.
+- **The batch insert binds the array with `setArray(createArrayOf("text", ...))`** because `JdbcTemplate` has no
+  list binding for `text[]`.

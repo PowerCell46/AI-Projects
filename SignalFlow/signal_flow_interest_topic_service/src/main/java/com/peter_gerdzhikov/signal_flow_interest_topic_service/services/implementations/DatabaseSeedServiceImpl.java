@@ -213,7 +213,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
         Category category = categoryService.create(categorySeed.getName());
         categorySeed.getTopics()
                 .forEach(topicSeed -> interestTopicService
-                        .create(topicSeed.getName(), topicSeed.getDescription(), topicSeed.getPrompt(), category.getId()));
+                        .create(topicSeed.getName(), topicSeed.getDescription(), topicSeed.getPrompt(), List.of(category.getId())));
     }
 
     @Value

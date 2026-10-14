@@ -24,9 +24,9 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfac
 @ExtendWith(MockitoExtension.class)
 class DatabaseSeedServiceImplTest {
 
-    private static final int EXPECTED_CATEGORY_COUNT = 10;
+    private static final int EXPECTED_CATEGORY_COUNT = 4;
 
-    private static final int EXPECTED_TOPIC_COUNT = 30;
+    private static final int EXPECTED_TOPIC_COUNT = 10;
 
     @Mock
     private CategoryService categoryService;

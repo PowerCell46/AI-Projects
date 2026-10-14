@@ -1,8 +1,10 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.implementations;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +21,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryIdsException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicNotFoundException;
@@ -57,19 +60,19 @@ public class InterestTopicServiceImpl implements InterestTopicService {
 
     @Override
     @Transactional
-    public InterestTopic create(String name, String description, String prompt, UUID categoryId) {
+    public InterestTopic create(String name, String description, String prompt, List<UUID> categoryIds) {
         if (interestTopicRepository.count() >= maxInterestTopicCount) {
             throw new InterestTopicLimitExceededException();
         }
 
-        Category category = findCategoryOrThrow(categoryId);
+        Set<Category> categories = findCategoriesOrThrow(categoryIds);
 
         InterestTopic interestTopic = InterestTopic
                 .builder()
                 .name(name)
                 .description(description)
                 .prompt(prompt)
-                .category(category)
+                .categories(categories)
                 .build();
 
         try {
@@ -85,14 +88,14 @@ public class InterestTopicServiceImpl implements InterestTopicService {
     @Override
     public Page<InterestTopic> findPage(UUID categoryId, Pageable pageable) {
         if (categoryId != null) {
-            return interestTopicRepository.findByCategory_Id(categoryId, pageable);
+            return interestTopicRepository.findByCategories_Id(categoryId, pageable);
         }
         return interestTopicRepository.findAll(pageable);
     }
 
     @Override
     @Transactional
-    public InterestTopic update(UUID topicId, String name, String description, String prompt, UUID categoryId) {
+    public InterestTopic update(UUID topicId, String name, String description, String prompt, List<UUID> categoryIds) {
         InterestTopic interestTopic = interestTopicRepository
                 .findById(topicId)
                 .orElseThrow(InterestTopicNotFoundException::new);
@@ -106,8 +109,8 @@ public class InterestTopicServiceImpl implements InterestTopicService {
         if (prompt != null) {
             interestTopic.setPrompt(prompt);
         }
-        if (categoryId != null) {
-            interestTopic.setCategory(findCategoryOrThrow(categoryId));
+        if (categoryIds != null) {
+            interestTopic.setCategories(findCategoriesOrThrow(categoryIds));
         }
 
         try {
@@ -182,9 +185,16 @@ public class InterestTopicServiceImpl implements InterestTopicService {
         };
     }
 
-    private Category findCategoryOrThrow(UUID categoryId) {
-        return categoryRepository
-                .findById(categoryId)
-                .orElseThrow(CategoryNotFoundException::new);
+    private Set<Category> findCategoriesOrThrow(List<UUID> categoryIds) {
+        if (new HashSet<>(categoryIds).size() != categoryIds.size()) {
+            throw new DuplicateCategoryIdsException();
+        }
+
+        List<Category> categories = categoryRepository.findAllById(categoryIds);
+        if (categories.size() != categoryIds.size()) {
+            throw new CategoryNotFoundException();
+        }
+
+        return new HashSet<>(categories);
     }
 }

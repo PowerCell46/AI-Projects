@@ -6,7 +6,11 @@ import static org.awaitility.Awaitility.await;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -78,15 +82,14 @@ class TopicNewsOutboxPublisherIntegrationTest extends AbstractIntegrationTest {
         InterestTopic topic = interestTopicRepository.save(newTopic("rust", category));
         TopicNews news = topicNewsRepository.save(newPendingNews(topic));
 
-        ConsumerRecord<String, String> record =
-                KafkaTestUtils.getSingleRecord(consumer, topicName, Duration.ofSeconds(15));
+        ConsumerRecord<String, String> record = awaitRecordFor(topic);
 
         assertThat(record.key()).isEqualTo(topic.getId().toString());
         JsonNode payload = JSON_MAPPER.readTree(record.value());
         assertThat(payload.get("newsId").asString()).isEqualTo(news.getId().toString());
         assertThat(payload.get("interestTopicId").asString()).isEqualTo(topic.getId().toString());
         assertThat(payload.get("topicName").asString()).isEqualTo("rust");
-        assertThat(payload.get("categoryName").asString()).isEqualTo("programming");
+        assertThat(categoryNames(payload)).containsExactly("programming");
         assertThat(payload.get("newsDate").asString()).isEqualTo(news.getNewsDate().toString());
         assertThat(payload.get("data").asString()).isEqualTo(news.getData());
 
@@ -97,6 +100,70 @@ class TopicNewsOutboxPublisherIntegrationTest extends AbstractIntegrationTest {
         });
     }
 
+    @Test
+    void should_publish_all_three_category_names_in_sorted_order() {
+        List<Category> categories = categoryRepository.saveAll(List.of(
+                newCategory("technology"), newCategory("politics"), newCategory("business")));
+        InterestTopic topic = interestTopicRepository.save(newTopic("ai regulation", categories));
+        topicNewsRepository.save(newPendingNews(topic));
+
+        ConsumerRecord<String, String> record = awaitRecordFor(topic);
+
+        assertThat(categoryNames(JSON_MAPPER.readTree(record.value())))
+                .containsExactly("business", "politics", "technology");
+    }
+
+    @Test
+    void should_publish_each_topic_with_its_own_category_names_when_a_batch_is_due() {
+        List<Category> categories = categoryRepository.saveAll(List.of(
+                newCategory("art"), newCategory("science"), newCategory("sport")));
+        InterestTopic oneCategory = interestTopicRepository.save(newTopic("single", categories.subList(1, 2)));
+        InterestTopic twoCategories = interestTopicRepository.save(newTopic("double", categories.subList(0, 2)));
+        InterestTopic threeCategories = interestTopicRepository.save(newTopic("triple", categories));
+        topicNewsRepository.saveAll(List.of(
+                newPendingNews(oneCategory), newPendingNews(twoCategories), newPendingNews(threeCategories)));
+
+        Map<String, List<String>> namesByTopicName = new HashMap<>();
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(2)).forEach(record -> {
+                JsonNode payload = JSON_MAPPER.readTree(record.value());
+                namesByTopicName.put(payload.get("topicName").asString(), categoryNames(payload));
+            });
+            assertThat(namesByTopicName).hasSize(3);
+        });
+
+        assertThat(namesByTopicName.get("single")).containsExactly("science");
+        assertThat(namesByTopicName.get("double")).containsExactly("art", "science");
+        assertThat(namesByTopicName.get("triple")).containsExactly("art", "science", "sport");
+    }
+
+    /**
+     * The Kafka topic is shared across tests and each consumer starts from the earliest offset, so
+     * records left by earlier tests are skipped by matching on the topic's own key.
+     */
+    private ConsumerRecord<String, String> awaitRecordFor(InterestTopic topic) {
+        List<ConsumerRecord<String, String>> matching = new ArrayList<>();
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(2))
+                    .forEach(record -> {
+                        if (record.key().equals(topic.getId().toString())) {
+                            matching.add(record);
+                        }
+                    });
+            assertThat(matching).isNotEmpty();
+        });
+        return matching.getFirst();
+    }
+
+    private List<String> categoryNames(JsonNode payload) {
+        return payload
+                .get("categoryNames")
+                .values()
+                .stream()
+                .map(JsonNode::asString)
+                .toList();
+    }
+
     private Category newCategory(String name) {
         Category category = new Category();
         category.setName(name);
@@ -104,10 +171,14 @@ class TopicNewsOutboxPublisherIntegrationTest extends AbstractIntegrationTest {
     }
 
     private InterestTopic newTopic(String name, Category category) {
+        return newTopic(name, List.of(category));
+    }
+
+    private InterestTopic newTopic(String name, List<Category> categories) {
         InterestTopic topic = new InterestTopic();
         topic.setName(name);
         topic.setPrompt("What's new with " + name + "?");
-        topic.setCategory(category);
+        topic.setCategories(new HashSet<>(categories));
         return topic;
     }
 

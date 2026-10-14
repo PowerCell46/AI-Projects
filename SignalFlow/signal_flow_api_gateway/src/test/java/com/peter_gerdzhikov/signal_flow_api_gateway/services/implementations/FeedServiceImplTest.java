@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.InterestTopicFeedRequestDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.categories.CategorySummaryResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedTopicResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.InterestTopicFeedResponseDTO;
@@ -139,7 +140,8 @@ class FeedServiceImplTest {
     }
 
     private InterestTopicResponseDTO topic(UUID id, String name) {
-        return new InterestTopicResponseDTO(id, name, "A description.", UUID.randomUUID(), "programming", null);
+        return new InterestTopicResponseDTO(
+                id, name, "A description.", List.of(new CategorySummaryResponseDTO(UUID.randomUUID(), "programming")), null);
     }
 
     private Subscription subscriptionTo(UUID interestTopicId) {

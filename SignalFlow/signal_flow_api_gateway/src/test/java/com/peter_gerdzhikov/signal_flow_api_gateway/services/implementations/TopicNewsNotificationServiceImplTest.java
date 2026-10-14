@@ -92,7 +92,7 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
             assertThat(row.getNewsId()).isEqualTo(event.getNewsId());
             assertThat(row.getInterestTopicId()).isEqualTo(event.getInterestTopicId());
             assertThat(row.getTopicName()).isEqualTo(event.getTopicName());
-            assertThat(row.getCategoryName()).isEqualTo(event.getCategoryName());
+            assertThat(row.getCategoryNames()).containsExactlyElementsOf(event.getCategoryNames());
             assertThat(row.getNewsDate()).isEqualTo(event.getNewsDate());
             assertThat(row.getData()).isEqualTo(event.getData());
             assertThat(row.getGeneratedAt()).isEqualTo(event.getGeneratedAt());
@@ -167,18 +167,32 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
         }
 
         @Test
-        void should_queue_nothing_but_still_mark_the_news_processed_when_the_category_name_exceeds_the_column_cap() {
-            UUID interestTopicId = UUID.randomUUID();
-            User bob = userRepository.save(newUser("bob@example.com", true));
-            subscriptionRepository.save(newSubscription(bob, interestTopicId));
-            TopicNewsEventDTO event = newEvent(interestTopicId);
-            event.setCategoryName("x".repeat(256));
-
-            topicNewsNotificationService.notifySubscribers(event);
-
-            assertThat(topicNewsInboxRepository.existsById(event.getNewsId())).isTrue();
-            assertThat(notificationOutboxRepository.findAll()).isEmpty();
+        void should_queue_nothing_but_still_mark_the_news_processed_when_a_category_name_exceeds_the_column_cap() {
+            assertSkippedAndMarkedProcessed(List.of("programming", "x".repeat(256)));
         }
+
+        @Test
+        void should_queue_nothing_but_still_mark_the_news_processed_when_the_category_names_are_empty() {
+            assertSkippedAndMarkedProcessed(List.of());
+        }
+
+        @Test
+        void should_queue_nothing_but_still_mark_the_news_processed_when_the_category_names_are_null() {
+            assertSkippedAndMarkedProcessed(null);
+        }
+    }
+
+    private void assertSkippedAndMarkedProcessed(List<String> categoryNames) {
+        UUID interestTopicId = UUID.randomUUID();
+        User bob = userRepository.save(newUser("bob@example.com", true));
+        subscriptionRepository.save(newSubscription(bob, interestTopicId));
+        TopicNewsEventDTO event = newEvent(interestTopicId);
+        event.setCategoryNames(categoryNames);
+
+        topicNewsNotificationService.notifySubscribers(event);
+
+        assertThat(topicNewsInboxRepository.existsById(event.getNewsId())).isTrue();
+        assertThat(notificationOutboxRepository.findAll()).isEmpty();
     }
 
     private User newUser(String email, boolean enabled) {
@@ -212,7 +226,7 @@ class TopicNewsNotificationServiceImplTest extends AbstractPostgresIntegrationTe
                 UUID.randomUUID(),
                 interestTopicId,
                 "rust",
-                "programming",
+                List.of("programming", "science", "tech"),
                 LocalDate.now(),
                 data,
                 Instant.now().truncatedTo(ChronoUnit.MICROS));

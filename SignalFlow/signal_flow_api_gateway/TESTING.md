@@ -118,6 +118,7 @@ WireMock stand-in.
 
 - No cookie returns 401 and calls nothing (`should_return_401_and_call_nothing_when_there_is_no_cookie`)
 - Returns items flagged `subscribed` per the caller's subscriptions, plus `nextCursor` and `counts` (`should_return_the_topics_flagged_by_subscription_with_counts_and_a_cursor`)
+- Every category of a topic is returned as `categories` (`id`, `name`), in the order the topic service sent them; no `categoryName` is left (`should_return_every_category_of_a_topic_in_the_order_the_topic_service_sent`)
 - Items carry neither `prompt` nor `createdAt` (`should_not_expose_the_prompt_or_the_creation_time`)
 - Defaults to `filter=ALL`, no cursor, size 20 (`should_default_to_every_topic_from_the_start_in_pages_of_20`)
 - Sends the caller's subscribed ids with mode ALL / INCLUDE / EXCLUDE for each filter, plus `after` and `size` (`should_send_the_callers_subscribed_ids_with_the_mode_for_the_filter`)
@@ -143,9 +144,10 @@ body-carrying writes.
 `InterestTopicRoutesIntegrationTest.ForwardingFidelity`
 
 - Downstream status, body and `Content-Type` are passed through verbatim (`should_pass_the_downstream_status_body_and_content_type_through_verbatim`)
+- A topic response carrying `categories` is passed through unchanged (`should_pass_a_topic_response_with_its_categories_through_unchanged`)
 - A downstream 409 error body is passed through verbatim (`should_pass_a_downstream_error_response_through_verbatim`)
 - `page`/`size`/`categoryId` query string is forwarded as is (`should_forward_the_query_string_as_is`)
-- Request body and `Content-Type` of the four body-carrying writes are forwarded as is (`should_forward_the_request_body_and_content_type_as_is`)
+- Request body and `Content-Type` of the four body-carrying writes are forwarded as is, topic bodies carrying `categoryIds` (`should_forward_the_request_body_and_content_type_as_is`)
 - `Cookie` and `Authorization` never reach the downstream (`should_not_forward_the_cookie_or_the_authorization_header`)
 - Client-supplied `X-User-Id`/`X-User-Role` headers are stripped, never reach the downstream (`should_strip_client_supplied_identity_headers_before_forwarding`)
 

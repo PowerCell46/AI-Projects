@@ -3,6 +3,7 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.controllers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -19,7 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.CategoryRequestDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.CategoryResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.categories.CategoryResponseDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
@@ -100,8 +101,13 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        void should_return_400_for_a_name_over_100_characters() {
-            createCategory("a".repeat(101)).expectStatus().isBadRequest();
+        void should_return_400_for_a_name_over_40_characters() {
+            createCategory("a".repeat(41)).expectStatus().isBadRequest();
+        }
+
+        @Test
+        void should_create_a_category_with_a_40_character_name() {
+            createCategory("a".repeat(40)).expectStatus().isCreated();
         }
 
         @Test
@@ -215,6 +221,22 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        void should_return_400_for_a_name_over_40_characters() {
+            UUID categoryId = persistedCategory(CATEGORY_NAME).getId();
+
+            renameCategory(categoryId, "a".repeat(41)).expectStatus().isBadRequest();
+
+            assertThat(categoryRepository.findById(categoryId).orElseThrow().getName()).isEqualTo(CATEGORY_NAME);
+        }
+
+        @Test
+        void should_rename_to_a_40_character_name() {
+            UUID categoryId = persistedCategory(CATEGORY_NAME).getId();
+
+            renameCategory(categoryId, "a".repeat(40)).expectStatus().isOk();
+        }
+
+        @Test
         void should_return_400_for_a_malformed_id() {
             restTestClient.patch()
                     .uri("/api/v1/categories/not-a-uuid")
@@ -250,6 +272,20 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
             deleteCategory(category.getId()).expectStatus().isEqualTo(HttpStatus.CONFLICT);
 
             assertThat(categoryRepository.existsById(category.getId())).isTrue();
+        }
+
+        @Test
+        void should_return_409_when_one_of_several_categories_of_a_topic_and_204_after_the_topic_is_deleted() {
+            Category category = persistedCategory(CATEGORY_NAME);
+            InterestTopic topic = persistedInterestTopic("rust", category, persistedCategory("science"), persistedCategory("art"));
+
+            deleteCategory(category.getId()).expectStatus().isEqualTo(HttpStatus.CONFLICT);
+            assertThat(categoryRepository.existsById(category.getId())).isTrue();
+
+            interestTopicRepository.deleteById(topic.getId());
+
+            deleteCategory(category.getId()).expectStatus().isNoContent();
+            assertThat(categoryRepository.existsById(category.getId())).isFalse();
         }
 
         @Test
@@ -306,10 +342,14 @@ class CategoryControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private InterestTopic persistedInterestTopic(Category category) {
+        return persistedInterestTopic("rust", category);
+    }
+
+    private InterestTopic persistedInterestTopic(String name, Category... categories) {
         InterestTopic interestTopic = new InterestTopic();
-        interestTopic.setName("rust");
+        interestTopic.setName(name);
         interestTopic.setPrompt("What's new with Rust?");
-        interestTopic.setCategory(category);
+        interestTopic.setCategories(Set.of(categories));
         return interestTopicRepository.save(interestTopic);
     }
 }

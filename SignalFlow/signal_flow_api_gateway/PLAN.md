@@ -51,8 +51,8 @@ Nothing open.
   real-time validation — see `DECISIONS.md`. The nightly reconciliation job already bounds the damage to
   ~24h of junk rows, capped per user.
 - **Register leaks whether an email is registered** (explicit `409`, chosen over a silent success).
-- **`ddl-auto=update`, no versioned migrations.** Schema drift between environments is possible.
-  **Trigger:** a second deployed environment, or the first destructive schema change.
+- **`ddl-auto=create`: the database is wiped on every start, on purpose; no versioned migrations.**
+  **Trigger:** a second deployed environment, or data that must survive a restart.
 - **Downstream trust model** (identity headers over a private network) is unimplemented and unverified.
   The topic service is forwarded to with credentials stripped and no identity, because it consumes none; it
   trusts the gateway on network isolation alone. Client-supplied `X-User-*` headers are stripped before

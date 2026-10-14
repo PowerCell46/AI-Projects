@@ -1,6 +1,6 @@
 signalflow — topic digest
 
-{{CATEGORY_NAME}}
+{{CATEGORY_NAMES}}
 {{TOPIC_NAME}}
 News for {{NEWS_DATE}} · generated {{GENERATED_AT}}
 

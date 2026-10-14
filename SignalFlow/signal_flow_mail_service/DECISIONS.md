@@ -175,3 +175,11 @@ unauthenticated Redis even with the app-side password required, since the app's 
 `--requirepass` arg and `REDISCLI_AUTH`: `docker compose up`/`config` now refuses to resolve the service
 if `REDIS_PASSWORD` is unset or blank. This phase's `exploit-hunter` report isn't kept as a standalone
 file — this entry is the full record of its one finding.
+
+
+## Cross-service plan, phase 1 — the `CATEGORY_NAMES` join format
+
+- **Token `CATEGORY_NAME` became `CATEGORY_NAMES`.** HTML escapes each name and joins with ` &middot; `; the text
+  body strips line breaks from each name and joins with ` · `. One category renders with no separator.
+- **Validation: `@NotEmpty @Size(max = 3)` on the list, `@NotBlank @Size(max = 100)` per name.** An invalid event
+  takes the same path as any other invalid event.

@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.entities;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -11,6 +12,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.NotificationOutboxStatus;
 
@@ -46,8 +50,9 @@ public class NotificationOutbox extends CommonEntity {
     @Column(name = "topic_name", nullable = false)
     private String topicName;
 
-    @Column(name = "category_name", nullable = false)
-    private String categoryName;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "category_names", nullable = false, columnDefinition = "text[]")
+    private List<String> categoryNames;
 
     @Column(name = "news_date", nullable = false)
     private LocalDate newsDate;

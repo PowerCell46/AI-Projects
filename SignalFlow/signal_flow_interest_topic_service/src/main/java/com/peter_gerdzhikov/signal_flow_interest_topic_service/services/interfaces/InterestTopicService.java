@@ -13,11 +13,11 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.In
 
 public interface InterestTopicService {
 
-    InterestTopic create(String name, String description, String prompt, UUID categoryId);
+    InterestTopic create(String name, String description, String prompt, List<UUID> categoryIds);
 
     Page<InterestTopic> findPage(UUID categoryId, Pageable pageable);
 
-    InterestTopic update(UUID topicId, String name, String description, String prompt, UUID categoryId);
+    InterestTopic update(UUID topicId, String name, String description, String prompt, List<UUID> categoryIds);
 
     void delete(UUID topicId);
 

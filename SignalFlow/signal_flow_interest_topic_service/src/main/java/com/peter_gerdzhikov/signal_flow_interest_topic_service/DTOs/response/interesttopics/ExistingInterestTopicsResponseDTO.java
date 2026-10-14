@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response;
+package com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.interesttopics;
 
 import java.util.List;
 import java.util.UUID;

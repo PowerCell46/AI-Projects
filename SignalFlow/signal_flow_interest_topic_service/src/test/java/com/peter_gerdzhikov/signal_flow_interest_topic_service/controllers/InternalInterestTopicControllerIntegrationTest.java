@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -20,9 +22,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.ExistingInterestTopicsRequestDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.InterestTopicFeedRequestDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.ExistingInterestTopicsResponseDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.InterestTopicFeedResponseDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.InterestTopicResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.categories.CategorySummaryResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.interesttopics.ExistingInterestTopicsResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.interesttopics.InterestTopicFeedResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.interesttopics.InterestTopicResponseDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
@@ -172,14 +175,42 @@ class InternalInterestTopicControllerIntegrationTest extends AbstractIntegration
         }
 
         @Test
-        void should_embed_the_category_and_not_expose_the_prompt() {
+        void should_embed_the_categories_and_not_expose_the_prompt() {
             persistedInterestTopic("go", category);
 
             feed(feedRequest(List.of(), InterestTopicFeedMode.ALL, null, 20))
                     .expectStatus().isOk()
                     .expectBody()
-                    .jsonPath("$.items[0].categoryName").isEqualTo("programming")
+                    .jsonPath("$.items[0].categories[0].name").isEqualTo("programming")
                     .jsonPath("$.items[0].prompt").doesNotExist();
+        }
+
+        @Test
+        void should_return_each_topic_once_with_all_three_categories_sorted_when_paging_all() {
+            persistedTopicsWithThreeCategories();
+
+            InterestTopicFeedResponseDTO body = feedBody(feedRequest(List.of(), InterestTopicFeedMode.ALL, null, 2));
+
+            assertEachItemIsDistinctWithThreeSortedCategories(body, List.of("topic-0", "topic-1"));
+        }
+
+        @Test
+        void should_return_each_topic_once_with_all_three_categories_sorted_when_including() {
+            List<UUID> ids = persistedTopicsWithThreeCategories();
+
+            InterestTopicFeedResponseDTO body = feedBody(feedRequest(ids, InterestTopicFeedMode.INCLUDE, null, 2));
+
+            assertEachItemIsDistinctWithThreeSortedCategories(body, List.of("topic-0", "topic-1"));
+        }
+
+        @Test
+        void should_return_each_topic_once_with_all_three_categories_sorted_when_excluding() {
+            List<UUID> ids = persistedTopicsWithThreeCategories();
+
+            InterestTopicFeedResponseDTO body = feedBody(
+                    feedRequest(List.of(ids.getFirst()), InterestTopicFeedMode.EXCLUDE, null, 2));
+
+            assertEachItemIsDistinctWithThreeSortedCategories(body, List.of("topic-1", "topic-2"));
         }
 
         @Test
@@ -261,17 +292,41 @@ class InternalInterestTopicControllerIntegrationTest extends AbstractIntegration
         return persistedInterestTopic(name, persistedCategory());
     }
 
-    private InterestTopic persistedInterestTopic(String name, Category category) {
+    private InterestTopic persistedInterestTopic(String name, Category... categories) {
         InterestTopic interestTopic = new InterestTopic();
         interestTopic.setName(name);
         interestTopic.setPrompt("What's new with " + name + "?");
-        interestTopic.setCategory(category);
+        interestTopic.setCategories(Set.of(categories));
         return interestTopicRepository.save(interestTopic);
     }
 
-    private Category persistedCategory() {
+    private List<UUID> persistedTopicsWithThreeCategories() {
+        Category art = persistedCategoryNamed("art");
+        Category science = persistedCategoryNamed("science");
+        Category sport = persistedCategoryNamed("sport");
+
+        return IntStream.range(0, 3)
+                .mapToObj(i -> persistedInterestTopic("topic-" + i, sport, art, science).getId())
+                .toList();
+    }
+
+    private void assertEachItemIsDistinctWithThreeSortedCategories(
+            InterestTopicFeedResponseDTO body,
+            List<String> expectedTopicNames
+    ) {
+        assertThat(body.getItems()).extracting(InterestTopicResponseDTO::getName).containsExactlyElementsOf(expectedTopicNames);
+        body.getItems().forEach(item -> assertThat(item.getCategories())
+                .extracting(CategorySummaryResponseDTO::getName)
+                .containsExactly("art", "science", "sport"));
+    }
+
+    private Category persistedCategoryNamed(String name) {
         Category category = new Category();
-        category.setName("programming");
+        category.setName(name);
         return categoryRepository.save(category);
+    }
+
+    private Category persistedCategory() {
+        return persistedCategoryNamed("programming");
     }
 }

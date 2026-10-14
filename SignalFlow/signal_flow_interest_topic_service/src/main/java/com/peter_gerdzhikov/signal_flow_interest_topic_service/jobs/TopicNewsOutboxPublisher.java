@@ -3,8 +3,11 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.jobs;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -17,7 +20,9 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.event.TopicN
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.projections.TopicCategoryNameProjection;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +42,8 @@ public class TopicNewsOutboxPublisher {
 
     private final TopicNewsRepository topicNewsRepository;
 
+    private final InterestTopicRepository interestTopicRepository;
+
     private final KafkaTemplate<String, TopicNewsEventDTO> kafkaTemplate;
 
     public TopicNewsOutboxPublisher(
@@ -45,6 +52,7 @@ public class TopicNewsOutboxPublisher {
             @Value("${app.kafka.topic-news.name:topic-news.generated}") String topicName,
             @Value("${app.outbox.base-backoff:PT1M}") Duration baseBackoff,
             TopicNewsRepository topicNewsRepository,
+            InterestTopicRepository interestTopicRepository,
             KafkaTemplate<String, TopicNewsEventDTO> kafkaTemplate
     ) {
         this.batchSize = batchSize;
@@ -52,6 +60,7 @@ public class TopicNewsOutboxPublisher {
         this.topicName = topicName;
         this.baseBackoff = baseBackoff;
         this.topicNewsRepository = topicNewsRepository;
+        this.interestTopicRepository = interestTopicRepository;
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -65,21 +74,23 @@ public class TopicNewsOutboxPublisher {
                         pageable
                 );
 
+        Map<UUID, List<String>> categoryNamesByTopicId = findCategoryNamesByTopicId(due);
+
         due
-            .forEach(this::publishOneSafely);
+            .forEach(news -> publishOneSafely(news, categoryNamesByTopicId));
     }
 
-    private void publishOneSafely(TopicNews news) {
+    private void publishOneSafely(TopicNews news, Map<UUID, List<String>> categoryNamesByTopicId) {
         try {
-            publishOne(news);
+            publishOne(news, categoryNamesByTopicId);
 
         } catch (Exception e) {
             log.error("Unexpected error publishing news '{}'; skipping it this cycle.", news.getId(), e);
         }
     }
 
-    private void publishOne(TopicNews news) {
-        TopicNewsEventDTO event = toEvent(news);
+    private void publishOne(TopicNews news, Map<UUID, List<String>> categoryNamesByTopicId) {
+        TopicNewsEventDTO event = toEvent(news, categoryNamesByTopicId);
 
         try {
             kafkaTemplate
@@ -120,13 +131,39 @@ public class TopicNewsOutboxPublisher {
         topicNewsRepository.saveAndFlush(news);
     }
 
-    private TopicNewsEventDTO toEvent(TopicNews news) {
+    private Map<UUID, List<String>> findCategoryNamesByTopicId(List<TopicNews> due) {
+        List<UUID> topicIds = due
+                .stream()
+                .map(news -> news.getInterestTopic().getId())
+                .toList();
+        if (topicIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return interestTopicRepository
+                .findCategoryNamesByTopicIds(topicIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        TopicCategoryNameProjection::getTopicId,
+                        Collectors.mapping(
+                                TopicCategoryNameProjection::getCategoryName,
+                                Collectors.collectingAndThen(Collectors.toList(), TopicNewsOutboxPublisher::sorted))));
+    }
+
+    private static List<String> sorted(List<String> names) {
+        return names
+                .stream()
+                .sorted()
+                .toList();
+    }
+
+    private TopicNewsEventDTO toEvent(TopicNews news, Map<UUID, List<String>> categoryNamesByTopicId) {
         InterestTopic topic = news.getInterestTopic();
         return new TopicNewsEventDTO(
                 news.getId(),
                 topic.getId(),
                 topic.getName(),
-                topic.getCategory().getName(),
+                categoryNamesByTopicId.get(topic.getId()),
                 news.getNewsDate(),
                 news.getData(),
                 news.getCreatedAt());

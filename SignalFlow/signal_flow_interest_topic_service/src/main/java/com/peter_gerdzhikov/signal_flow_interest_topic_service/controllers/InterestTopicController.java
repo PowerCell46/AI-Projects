@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.CreateInterestTopicRequestDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.UpdateInterestTopicRequestDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.InterestTopicResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.interesttopics.InterestTopicResponseDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.InterestTopicService;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.utilities.InterestTopicResponseMapper;
@@ -45,7 +45,7 @@ public class InterestTopicController {
                 request.getName(),
                 request.getDescription(),
                 request.getPrompt(),
-                request.getCategoryId()
+                request.getCategoryIds()
         );
 
         return ResponseEntity
@@ -77,7 +77,7 @@ public class InterestTopicController {
                 request.getName(),
                 request.getDescription(),
                 request.getPrompt(),
-                request.getCategoryId()
+                request.getCategoryIds()
         );
 
         return ResponseEntity.ok(InterestTopicResponseMapper.toResponse(interestTopic));

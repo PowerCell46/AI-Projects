@@ -2,10 +2,12 @@ package com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -23,6 +25,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TopicNewsNotificationEventDTO {
 
+    public static final int MAX_CATEGORIES = 3;
     public static final int MAX_NAME_LENGTH = 100;
     public static final int MAX_DATA_LENGTH = 65_536;
 
@@ -36,9 +39,9 @@ public class TopicNewsNotificationEventDTO {
     @Size(max = MAX_NAME_LENGTH)
     private String topicName;
 
-    @NotBlank
-    @Size(max = MAX_NAME_LENGTH)
-    private String categoryName;
+    @NotEmpty
+    @Size(max = MAX_CATEGORIES)
+    private List<@NotBlank @Size(max = MAX_NAME_LENGTH) String> categoryNames;
 
     @NotNull
     private LocalDate newsDate;

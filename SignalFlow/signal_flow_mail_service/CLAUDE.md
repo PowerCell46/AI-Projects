@@ -75,6 +75,14 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_mail_service`:
     - `/implementations` — service implementations
 - `/utilities` — pure, Spring-free helpers, if any appear
 
+## Easy to break
+
+- **Shortcut: event field changes ship to all three services together.** `topic-news.generated` and
+  `topic-news.notification-requested` have no versioning, so a field change must be deployed in the topic service,
+  the gateway and the mail service at once. A stale in-flight event is skipped by the gateway guard or rejected by
+  the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
+  deploys, or deploying the services independently.
+
 ## Skills
 
 Load skill bodies on demand (`/skill-name`). Descriptions live here — don't repeat them elsewhere.

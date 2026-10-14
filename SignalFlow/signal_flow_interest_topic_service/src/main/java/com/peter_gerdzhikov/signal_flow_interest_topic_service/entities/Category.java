@@ -18,8 +18,8 @@ import lombok.Setter;
 @Table(name = "categories")
 public class Category extends CommonEntity {
 
-    @Size(max = 100)
-    @Column(nullable = false, unique = true, length = 100)
+    @Size(max = 40)
+    @Column(nullable = false, unique = true, length = 40)
     private String name;
 
     @PreUpdate

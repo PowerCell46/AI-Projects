@@ -20,8 +20,8 @@ Below is what's still open.
 - **Single instance assumed.** No scheduler locking; two instances would double-pay AI calls and could
   double-publish. **Trigger:** a second instance → ShedLock or `SKIP LOCKED`. *(DECISIONS.md)*
 - **Deleting a topic drops its news, including unsent `PENDING` rows.** *(DECISIONS.md)*
-- **`ddl-auto=update`, no versioned migrations.** **Trigger:** a second deployed environment or the first
-  destructive schema change.
+- **`ddl-auto=create`: the database is wiped on every start, on purpose; no versioned migrations.**
+  **Trigger:** a second deployed environment, or data that must survive a restart.
 - **News rows kept forever.** **Trigger:** table size becomes a concern.
 - **AI failures lose that day's news for the topic.** **Trigger:** the real provider proves flaky.
 - **Grounded content isn't fact-checked.** A false or injected web page can still put false claims and real

@@ -145,7 +145,7 @@ class CategoryServiceImplTest {
         @Test
         void should_delete_the_category() {
             when(categoryRepository.existsById(CATEGORY_ID)).thenReturn(true);
-            when(interestTopicRepository.existsByCategory_Id(CATEGORY_ID)).thenReturn(false);
+            when(interestTopicRepository.existsByCategories_Id(CATEGORY_ID)).thenReturn(false);
 
             categoryService.delete(CATEGORY_ID);
 
@@ -165,7 +165,7 @@ class CategoryServiceImplTest {
         @Test
         void should_throw_when_referenced_by_an_interest_topic() {
             when(categoryRepository.existsById(CATEGORY_ID)).thenReturn(true);
-            when(interestTopicRepository.existsByCategory_Id(CATEGORY_ID)).thenReturn(true);
+            when(interestTopicRepository.existsByCategories_Id(CATEGORY_ID)).thenReturn(true);
 
             assertThatThrownBy(() -> categoryService.delete(CATEGORY_ID))
                     .isInstanceOf(CategoryInUseException.class);

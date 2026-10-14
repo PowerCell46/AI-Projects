@@ -88,7 +88,7 @@ public class CategoryServiceImpl implements CategoryService {
             throw new CategoryNotFoundException();
         }
 
-        if (interestTopicRepository.existsByCategory_Id(categoryId)) {
+        if (interestTopicRepository.existsByCategories_Id(categoryId)) {
             throw new CategoryInUseException();
         }
 

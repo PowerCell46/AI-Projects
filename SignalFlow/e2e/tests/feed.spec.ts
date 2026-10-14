@@ -3,6 +3,7 @@ import {
     clickSubscriptionToggle,
     collectViewTitles,
     createTopicViaApi,
+    createTopicWithCategoriesViaApi,
     createTopicsBatchViaApi,
     isFeedGet,
     loginAndWaitForFeed,
@@ -40,6 +41,22 @@ test('each filter view shows only its own topics', async ({ page, request }) => 
     const allTitles = await collectViewTitles(page)
     expect(allTitles).toContain(followed.name)
     expect(allTitles).toContain(unfollowed.name)
+})
+
+test('a topic with two categories shows both on its card, in name order', async ({
+    page,
+    request,
+}) => {
+    const user = newUser()
+    await registerViaApi(request, user)
+    const topic = await createTopicWithCategoriesViaApi(['alpha', 'beta'])
+
+    await loginAndWaitForFeed(page, user)
+    await revealTopicCard(page, topic.name)
+
+    await expect(topicCard(page, topic.name).locator('.topic-card-category')).toHaveText(
+        topic.categoryNames,
+    )
 })
 
 test('a fresh account sees the empty state in the subscribed view', async ({

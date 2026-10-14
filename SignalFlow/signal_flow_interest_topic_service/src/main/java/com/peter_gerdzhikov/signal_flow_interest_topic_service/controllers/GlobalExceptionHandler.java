@@ -25,6 +25,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.Reques
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryInUseException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryIdsException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicLimitExceededException;
@@ -57,6 +58,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleNotFound(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(errorBody(HttpStatus.NOT_FOUND, List.of(e.getMessage())));
+    }
+
+    @ExceptionHandler(DuplicateCategoryIdsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleBadRequest(DuplicateCategoryIdsException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(errorBody(HttpStatus.BAD_REQUEST, List.of(e.getMessage())));
     }
 
     /**

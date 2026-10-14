@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.InterestTopicFeedMode;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.CategoryNotFoundException;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.categories.DuplicateCategoryIdsException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.DuplicateInterestTopicNameException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.exceptions.interesttopics.InterestTopicNotFoundException;
@@ -71,36 +73,62 @@ class InterestTopicServiceImplTest {
         void should_save_and_return_the_interest_topic() {
             Category category = categoryWithId(CATEGORY_ID);
             when(interestTopicRepository.count()).thenReturn(0L);
-            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(category));
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of(category));
             when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
-            InterestTopic saved = interestTopicService.create(TOPIC_NAME, "A systems language", TOPIC_PROMPT, CATEGORY_ID);
+            InterestTopic saved = interestTopicService.create(TOPIC_NAME, "A systems language", TOPIC_PROMPT, List.of(CATEGORY_ID));
 
             assertThat(saved.getName()).isEqualTo(TOPIC_NAME);
             assertThat(saved.getPrompt()).isEqualTo(TOPIC_PROMPT);
-            assertThat(saved.getCategory()).isEqualTo(category);
+            assertThat(saved.getCategories()).containsExactly(category);
         }
 
         @Test
         void should_throw_when_the_category_does_not_exist() {
             when(interestTopicRepository.count()).thenReturn(0L);
-            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.empty());
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of());
 
-            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, CATEGORY_ID))
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID)))
                     .isInstanceOf(CategoryNotFoundException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());
         }
 
         @Test
+        void should_throw_when_one_of_several_categories_does_not_exist() {
+            UUID unknownCategoryId = UUID.randomUUID();
+            when(interestTopicRepository.count()).thenReturn(0L);
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID, unknownCategoryId)))
+                    .thenReturn(List.of(categoryWithId(CATEGORY_ID)));
+
+            assertThatThrownBy(() -> interestTopicService.create(
+                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID, unknownCategoryId)))
+                    .isInstanceOf(CategoryNotFoundException.class);
+
+            verify(interestTopicRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        void should_throw_when_the_category_ids_contain_a_duplicate() {
+            when(interestTopicRepository.count()).thenReturn(0L);
+
+            assertThatThrownBy(() -> interestTopicService.create(
+                    TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID, CATEGORY_ID)))
+                    .isInstanceOf(DuplicateCategoryIdsException.class);
+
+            verifyNoInteractions(categoryRepository);
+            verify(interestTopicRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
         void should_throw_when_the_name_is_already_in_use() {
             when(interestTopicRepository.count()).thenReturn(0L);
-            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(categoryWithId(CATEGORY_ID)));
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of(categoryWithId(CATEGORY_ID)));
             when(interestTopicRepository.saveAndFlush(any(InterestTopic.class)))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, CATEGORY_ID))
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID)))
                     .isInstanceOf(DuplicateInterestTopicNameException.class);
         }
 
@@ -108,7 +136,7 @@ class InterestTopicServiceImplTest {
         void should_throw_when_the_topic_count_is_at_the_limit() {
             when(interestTopicRepository.count()).thenReturn(MAX_INTEREST_TOPIC_COUNT);
 
-            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, CATEGORY_ID))
+            assertThatThrownBy(() -> interestTopicService.create(TOPIC_NAME, null, TOPIC_PROMPT, List.of(CATEGORY_ID)))
                     .isInstanceOf(InterestTopicLimitExceededException.class);
 
             verifyNoInteractions(categoryRepository);
@@ -127,14 +155,14 @@ class InterestTopicServiceImplTest {
 
             assertThat(interestTopicService.findPage(null, pageable)).isSameAs(page);
 
-            verify(interestTopicRepository, never()).findByCategory_Id(any(), any());
+            verify(interestTopicRepository, never()).findByCategories_Id(any(), any());
         }
 
         @Test
         void should_filter_by_category_id_when_provided() {
             Pageable pageable = PageRequest.of(0, 20);
             Page<InterestTopic> page = new PageImpl<>(List.of(new InterestTopic()));
-            when(interestTopicRepository.findByCategory_Id(CATEGORY_ID, pageable)).thenReturn(page);
+            when(interestTopicRepository.findByCategories_Id(CATEGORY_ID, pageable)).thenReturn(page);
 
             assertThat(interestTopicService.findPage(CATEGORY_ID, pageable)).isSameAs(page);
 
@@ -157,7 +185,36 @@ class InterestTopicServiceImplTest {
 
             assertThat(updated.getName()).isEqualTo("kotlin");
             assertThat(updated.getPrompt()).isEqualTo(TOPIC_PROMPT);
-            verify(categoryRepository, never()).findById(any());
+            verify(categoryRepository, never()).findAllById(any());
+        }
+
+        @Test
+        void should_replace_the_whole_category_set_when_category_ids_are_provided() {
+            UUID newCategoryId = UUID.randomUUID();
+            Category newCategory = categoryWithId(newCategoryId);
+            InterestTopic interestTopic = new InterestTopic();
+            interestTopic.setName(TOPIC_NAME);
+            interestTopic.setCategories(Set.of(categoryWithId(CATEGORY_ID)));
+            when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
+            when(categoryRepository.findAllById(List.of(newCategoryId))).thenReturn(List.of(newCategory));
+            when(interestTopicRepository.saveAndFlush(interestTopic)).thenReturn(interestTopic);
+
+            InterestTopic updated = interestTopicService.update(TOPIC_ID, null, null, null, List.of(newCategoryId));
+
+            assertThat(updated.getCategories()).containsExactly(newCategory);
+        }
+
+        @Test
+        void should_throw_when_the_update_category_ids_contain_a_duplicate() {
+            InterestTopic interestTopic = new InterestTopic();
+            interestTopic.setName(TOPIC_NAME);
+            when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
+
+            assertThatThrownBy(() -> interestTopicService.update(
+                    TOPIC_ID, null, null, null, List.of(CATEGORY_ID, CATEGORY_ID)))
+                    .isInstanceOf(DuplicateCategoryIdsException.class);
+
+            verify(interestTopicRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -175,9 +232,9 @@ class InterestTopicServiceImplTest {
             InterestTopic interestTopic = new InterestTopic();
             interestTopic.setName(TOPIC_NAME);
             when(interestTopicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(interestTopic));
-            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.empty());
+            when(categoryRepository.findAllById(List.of(CATEGORY_ID))).thenReturn(List.of());
 
-            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, null, null, null, CATEGORY_ID))
+            assertThatThrownBy(() -> interestTopicService.update(TOPIC_ID, null, null, null, List.of(CATEGORY_ID)))
                     .isInstanceOf(CategoryNotFoundException.class);
 
             verify(interestTopicRepository, never()).saveAndFlush(any());

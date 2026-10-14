@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.request.CategoryRequestDTO;
-import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.CategoryResponseDTO;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response.categories.CategoryResponseDTO;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.CategoryService;
 

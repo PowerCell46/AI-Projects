@@ -1,6 +1,5 @@
-package com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.response;
+package com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.categories;
 
-import java.time.Instant;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -10,11 +9,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CategoryResponseDTO {
+public class CategorySummaryResponseDTO {
 
     private UUID id;
 
     private String name;
-
-    private Instant createdAt;
 }

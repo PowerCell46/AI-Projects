@@ -61,7 +61,7 @@ public abstract class AbstractKafkaE2ETestSupport extends AbstractRedisIntegrati
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Topic",
-                "Category",
+                List.of("Category"),
                 LocalDate.of(2026, 9, 24),
                 "<p>Body</p>",
                 Instant.parse("2026-09-24T10:00:00Z"),

@@ -380,3 +380,34 @@ subscriber (the seeded admin): a genuine `topic_news` row landed with clean HTML
 email whose rendered body matched - allowlisted tags only, both `rel="noopener noreferrer"` tokens present
 on every link. No code changes came out of this step; it exists to catch what the WireMock-based suite
 structurally can't (a real provider's actual response shape).
+
+## Seed test counts follow the active seed catalog (cross-service plan, phase 1 step 1)
+
+`DatabaseSeedServiceImplTest` expected 10 categories / 30 topics, but most `SEED_CATALOG` entries are commented
+out, so the seed creates 4 categories / 10 topics. The expected counts were corrected to match (user-approved);
+re-raise them when entries are uncommented.
+
+## Cross-service plan, phase 1 steps 2+3 — built together; projection and DTO packages
+
+- **Steps 2 and 3 ran as one unit.** Step 2 removes `InterestTopic.category`, which the outbox publisher and
+  `TopicNewsRepository` still read, so step 2's gate could not pass without step 3's scope. Both were built, then
+  the gate (`mvn verify` 3x green) ran once for the pair (user-approved).
+- **`findCategoryNamesByTopicIds` returns an interface projection** (`repositories/projections/
+  TopicCategoryNameProjection`: `topicId`, `categoryName`), not `Object[]` rows. The publisher groups and sorts
+  the names itself, once per batch.
+- **`DTOs/response` was grouped** into `categories` and `interesttopics` (`ErrorResponseDTO` stays at the root)
+  because adding `CategorySummaryResponseDTO` would have made six files in one package.
+
+## Cross-service plan, phase 1 — an interest topic has 1–3 categories
+
+- **Many-to-many, capped at 3 (`InterestTopic.MAX_CATEGORIES`), all categories equal.** No primary category, no
+  admin-chosen order: responses and events list them sorted by name.
+- **Duplicate ids in `categoryIds` are rejected (400), not de-duplicated.** A silent de-duplication would hide a
+  client bug; the same request with the duplicate removed is the only thing that succeeds.
+- **No `JOIN FETCH` of `categories` in any paged or limited query.** Hibernate would page in memory
+  (HHH90003004) and could return a topic more than once. `@BatchSize(100)` loads a page's categories in one extra
+  query, inside the open session.
+- **The outbox publisher reads its batch detached, so it can't lazy-load.** It calls
+  `findCategoryNamesByTopicIds` once per batch and groups the names itself (see the entry above).
+- **`Category.name` max length 100 → 40**, to keep feed chips and the email header tidy. No migration:
+  `ddl-auto=create` wipes both databases on every start, on purpose.

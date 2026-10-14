@@ -6,9 +6,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,7 +38,11 @@ public class TopicNewsEmailRenderer {
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{\\{([A-Z_]+)}}");
 
-    private static final Set<String> KNOWN_TOKENS = Set.of("TOPIC_NAME", "CATEGORY_NAME", "NEWS_DATE", "GENERATED_AT", "RECIPIENT_EMAIL", "DATA");
+    private static final Set<String> KNOWN_TOKENS = Set.of("TOPIC_NAME", "CATEGORY_NAMES", "NEWS_DATE", "GENERATED_AT", "RECIPIENT_EMAIL", "DATA");
+
+    private static final String HTML_CATEGORY_SEPARATOR = " &middot; ";
+
+    private static final String TEXT_CATEGORY_SEPARATOR = " \u00B7 ";
 
     private static final DateTimeFormatter NEWS_DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
 
@@ -74,7 +80,7 @@ public class TopicNewsEmailRenderer {
 
         Map<String, String> htmlValuesByToken = Map.of(
                 "TOPIC_NAME", HtmlUtils.htmlEscape(event.getTopicName()),
-                "CATEGORY_NAME", HtmlUtils.htmlEscape(event.getCategoryName()),
+                "CATEGORY_NAMES", joinHtml(event.getCategoryNames()),
                 "NEWS_DATE", formattedNewsDate,
                 "GENERATED_AT", formattedGeneratedAt,
                 "RECIPIENT_EMAIL", HtmlUtils.htmlEscape(event.getEmailAddress()),
@@ -83,7 +89,7 @@ public class TopicNewsEmailRenderer {
 
         Map<String, String> textValuesByToken = Map.of(
                 "TOPIC_NAME", stripLineBreaks(event.getTopicName()),
-                "CATEGORY_NAME", stripLineBreaks(event.getCategoryName()),
+                "CATEGORY_NAMES", joinText(event.getCategoryNames()),
                 "NEWS_DATE", formattedNewsDate,
                 "GENERATED_AT", formattedGeneratedAt,
                 "RECIPIENT_EMAIL", event.getEmailAddress(),
@@ -91,6 +97,20 @@ public class TopicNewsEmailRenderer {
         );
 
         return new RenderedEmail(substitute(htmlTemplate, htmlValuesByToken), substitute(textTemplate, textValuesByToken));
+    }
+
+    private String joinHtml(List<String> categoryNames) {
+        return categoryNames
+                .stream()
+                .map(HtmlUtils::htmlEscape)
+                .collect(Collectors.joining(HTML_CATEGORY_SEPARATOR));
+    }
+
+    private String joinText(List<String> categoryNames) {
+        return categoryNames
+                .stream()
+                .map(this::stripLineBreaks)
+                .collect(Collectors.joining(TEXT_CATEGORY_SEPARATOR));
     }
 
     private String stripLineBreaks(String value) {

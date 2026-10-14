@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -101,12 +103,35 @@ class TopicNewsRepositoryIntegrationTest extends AbstractIntegrationTest {
         assertThat(due).hasSize(1);
     }
 
+    @Test
+    void should_return_each_news_row_once_and_respect_the_page_size_when_topics_have_three_categories() {
+        Set<Category> categories = new HashSet<>(categoryRepository.saveAll(List.of(
+                newCategory("art"), newCategory("science"), newCategory("sport"))));
+        Instant now = Instant.now();
+        for (int topicIndex = 0; topicIndex < 3; topicIndex++) {
+            InterestTopic topic = newSavedTopic("topic-" + topicIndex, categories);
+            topicNewsRepository.save(
+                    newNews(topic, LocalDate.now(), NewsStatus.PENDING, now.minus(topicIndex + 1, ChronoUnit.MINUTES)));
+        }
+
+        List<TopicNews> due = topicNewsRepository.findByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
+                NewsStatus.PENDING, now, PageRequest.of(0, 2));
+
+        assertThat(due)
+                .extracting(news -> news.getInterestTopic().getName())
+                .containsExactly("topic-2", "topic-1");
+    }
+
     private InterestTopic newSavedTopic(String name) {
         Category category = categoryRepository.save(newCategory("programming"));
+        return newSavedTopic(name, Set.of(category));
+    }
+
+    private InterestTopic newSavedTopic(String name, Set<Category> categories) {
         InterestTopic topic = new InterestTopic();
         topic.setName(name);
         topic.setPrompt(PROMPT);
-        topic.setCategory(category);
+        topic.setCategories(categories);
         return interestTopicRepository.save(topic);
     }
 

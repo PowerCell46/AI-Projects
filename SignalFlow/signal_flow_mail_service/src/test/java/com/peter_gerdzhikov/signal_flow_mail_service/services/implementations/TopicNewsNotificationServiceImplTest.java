@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -162,7 +163,10 @@ class TopicNewsNotificationServiceImplTest {
                 Arguments.of("null newsId", mutate(e -> e.setNewsId(null))),
                 Arguments.of("null interestTopicId", mutate(e -> e.setInterestTopicId(null))),
                 Arguments.of("blank topicName", mutate(e -> e.setTopicName(" "))),
-                Arguments.of("blank categoryName", mutate(e -> e.setCategoryName(""))),
+                Arguments.of("null categoryNames", mutate(e -> e.setCategoryNames(null))),
+                Arguments.of("empty categoryNames", mutate(e -> e.setCategoryNames(List.of()))),
+                Arguments.of("4 categoryNames", mutate(e -> e.setCategoryNames(List.of("A", "B", "C", "D")))),
+                Arguments.of("a blank categoryName", mutate(e -> e.setCategoryNames(List.of("A", " ")))),
                 Arguments.of("null newsDate", mutate(e -> e.setNewsDate(null))),
                 Arguments.of("blank data", mutate(e -> e.setData(""))),
                 Arguments.of("null generatedAt", mutate(e -> e.setGeneratedAt(null))),
@@ -171,8 +175,8 @@ class TopicNewsNotificationServiceImplTest {
                 Arguments.of("malformed emailAddress", mutate(e -> e.setEmailAddress("not-an-email"))),
                 Arguments.of("topicName over max length",
                         mutate(e -> e.setTopicName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH + 1)))),
-                Arguments.of("categoryName over max length",
-                        mutate(e -> e.setCategoryName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH + 1)))),
+                Arguments.of("a categoryName over max length",
+                        mutate(e -> e.setCategoryNames(List.of("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH + 1))))),
                 Arguments.of("data over max length",
                         mutate(e -> e.setData("a".repeat(TopicNewsNotificationEventDTO.MAX_DATA_LENGTH + 1)))));
     }
@@ -181,8 +185,11 @@ class TopicNewsNotificationServiceImplTest {
         return Stream.of(
                 Arguments.of("topicName at max length",
                         mutate(e -> e.setTopicName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH)))),
-                Arguments.of("categoryName at max length",
-                        mutate(e -> e.setCategoryName("a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH)))),
+                Arguments.of("3 categoryNames at max length",
+                        mutate(e -> e.setCategoryNames(List.of(
+                                "a".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH),
+                                "b".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH),
+                                "c".repeat(TopicNewsNotificationEventDTO.MAX_NAME_LENGTH))))),
                 Arguments.of("data at max length",
                         mutate(e -> e.setData("a".repeat(TopicNewsNotificationEventDTO.MAX_DATA_LENGTH)))));
     }
@@ -199,7 +206,7 @@ class TopicNewsNotificationServiceImplTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Topic",
-                "Category",
+                List.of("Category"),
                 LocalDate.of(2026, 9, 24),
                 "<p>Body</p>",
                 Instant.parse("2026-09-24T10:00:00Z"),

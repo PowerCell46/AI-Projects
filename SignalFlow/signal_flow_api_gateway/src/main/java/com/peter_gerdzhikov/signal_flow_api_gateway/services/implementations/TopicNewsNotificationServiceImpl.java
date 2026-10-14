@@ -36,7 +36,7 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
 
     private static final String INSERT_OUTBOX_ROW_SQL = """
             INSERT INTO notification_outbox
-                (id, created_at, updated_at, news_id, interest_topic_id, topic_name, category_name,
+                (id, created_at, updated_at, news_id, interest_topic_id, topic_name, category_names,
                  news_date, data, generated_at, user_id, email_address, status, attempt_count)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
@@ -79,8 +79,14 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
             return;
         }
 
-        if (event.getTopicName().length() > MAX_COLUMN_LENGTH || event.getCategoryName().length() > MAX_COLUMN_LENGTH) {
-            skipOversizedRecord(event.getNewsId(), "topicName/categoryName exceeds the %d-character column cap"
+        if (event.getTopicName().length() > MAX_COLUMN_LENGTH) {
+            skipOversizedRecord(event.getNewsId(), "topicName exceeds the %d-character column cap"
+                    .formatted(MAX_COLUMN_LENGTH));
+            return;
+        }
+
+        if (hasInvalidCategoryNames(event.getCategoryNames())) {
+            skipOversizedRecord(event.getNewsId(), "categoryNames is empty or has a name over the %d-character cap"
                     .formatted(MAX_COLUMN_LENGTH));
             return;
         }
@@ -104,6 +110,12 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
         return subscriptionRepository.findEnabledSubscribersAfter(interestTopicId, after, PageRequest.of(0, batchSize));
     }
 
+    private boolean hasInvalidCategoryNames(List<String> categoryNames) {
+        return categoryNames == null
+                || categoryNames.isEmpty()
+                || categoryNames.stream().anyMatch(name -> name == null || name.length() > MAX_COLUMN_LENGTH);
+    }
+
     private void insertInboxRow(UUID newsId) {
         jdbcTemplate.update(INSERT_INBOX_ROW_SQL, newsId, OffsetDateTime.now(ZoneOffset.UTC));
     }
@@ -122,6 +134,8 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         OffsetDateTime generatedAt = event.getGeneratedAt().atOffset(ZoneOffset.UTC);
 
+        Object[] categoryNames = event.getCategoryNames().toArray();
+
         jdbcTemplate.batchUpdate(INSERT_OUTBOX_ROW_SQL, subscribers, subscribers.size(), (ps, subscriber) -> {
             ps.setObject(1, UUID.randomUUID());
             ps.setObject(2, now);
@@ -129,7 +143,7 @@ public class TopicNewsNotificationServiceImpl implements TopicNewsNotificationSe
             ps.setObject(4, event.getNewsId());
             ps.setObject(5, event.getInterestTopicId());
             ps.setString(6, event.getTopicName());
-            ps.setString(7, event.getCategoryName());
+            ps.setArray(7, ps.getConnection().createArrayOf("text", categoryNames));
             ps.setObject(8, event.getNewsDate());
             ps.setString(9, event.getData());
             ps.setObject(10, generatedAt);

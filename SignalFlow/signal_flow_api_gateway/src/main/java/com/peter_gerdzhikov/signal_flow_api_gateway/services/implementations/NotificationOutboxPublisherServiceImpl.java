@@ -102,7 +102,7 @@ public class NotificationOutboxPublisherServiceImpl implements NotificationOutbo
                 row.getNewsId(),
                 row.getInterestTopicId(),
                 row.getTopicName(),
-                row.getCategoryName(),
+                row.getCategoryNames(),
                 row.getNewsDate(),
                 row.getData(),
                 row.getGeneratedAt(),

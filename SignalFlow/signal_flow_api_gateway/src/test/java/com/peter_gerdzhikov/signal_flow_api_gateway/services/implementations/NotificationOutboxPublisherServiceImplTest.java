@@ -73,7 +73,7 @@ class NotificationOutboxPublisherServiceImplTest {
             assertThat(notification.getNewsId()).isEqualTo(row.getNewsId());
             assertThat(notification.getInterestTopicId()).isEqualTo(row.getInterestTopicId());
             assertThat(notification.getTopicName()).isEqualTo(row.getTopicName());
-            assertThat(notification.getCategoryName()).isEqualTo(row.getCategoryName());
+            assertThat(notification.getCategoryNames()).containsExactlyElementsOf(row.getCategoryNames());
             assertThat(notification.getNewsDate()).isEqualTo(row.getNewsDate());
             assertThat(notification.getData()).isEqualTo(row.getData());
             assertThat(notification.getGeneratedAt()).isEqualTo(row.getGeneratedAt());
@@ -151,7 +151,7 @@ class NotificationOutboxPublisherServiceImplTest {
                 .newsId(UUID.randomUUID())
                 .interestTopicId(UUID.randomUUID())
                 .topicName("rust")
-                .categoryName("programming")
+                .categoryNames(List.of("programming", "science", "tech"))
                 .newsDate(LocalDate.now())
                 .data("today's rust news")
                 .generatedAt(Instant.now())

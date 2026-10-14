@@ -1,14 +1,19 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.entities;
 
+import java.util.Set;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
+
+import org.hibernate.annotations.BatchSize;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,6 +30,8 @@ import lombok.Setter;
 @Table(name = "interest_topics")
 public class InterestTopic extends CommonEntity {
 
+    public static final int MAX_CATEGORIES = 3;
+
     @Size(max = 100)
     @Column(nullable = false, unique = true, length = 100)
     private String name;
@@ -37,9 +44,13 @@ public class InterestTopic extends CommonEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String prompt;
 
-    @JoinColumn(name = "category_id", nullable = false)
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private Category category;
+    @BatchSize(size = 100)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "interest_topic_categories",
+            joinColumns = @JoinColumn(name = "interest_topic_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id"))
+    private Set<Category> categories;
 
     @PreUpdate
     @PrePersist

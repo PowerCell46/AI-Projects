@@ -53,7 +53,17 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
         >
             <div className="topic-card-row">
                 <h2 className="topic-card-title">{topic.name}</h2>
-                <span className="topic-card-category">{topic.categoryName}</span>
+                <ul className="topic-card-categories">
+                    {topic.categories.map((category) => (
+                        <li
+                            key={category.id}
+                            className="topic-card-category"
+                            title={category.name}
+                        >
+                            {category.name}
+                        </li>
+                    ))}
+                </ul>
             </div>
 
             <p className="topic-card-description">{topic.description}</p>

@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.Properties;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -213,7 +214,7 @@ class TopicNewsMailServiceImplTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 topicName,
-                "Category",
+                List.of("Category"),
                 newsDate,
                 "<p>Body</p>",
                 Instant.parse("2026-09-24T10:00:00Z"),

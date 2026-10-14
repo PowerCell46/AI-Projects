@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.DTOs.event;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -19,7 +20,7 @@ public class TopicNewsEventDTO {
 
     private String topicName;
 
-    private String categoryName;
+    private List<String> categoryNames;
 
     private LocalDate newsDate;
 

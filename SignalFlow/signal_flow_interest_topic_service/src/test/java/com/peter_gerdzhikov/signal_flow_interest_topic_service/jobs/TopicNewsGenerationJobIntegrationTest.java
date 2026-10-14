@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,7 +113,7 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
         InterestTopic topic = new InterestTopic();
         topic.setName(name);
         topic.setPrompt("What's new with " + name + "?");
-        topic.setCategory(category);
+        topic.setCategories(Set.of(category));
         return topic;
     }
 }

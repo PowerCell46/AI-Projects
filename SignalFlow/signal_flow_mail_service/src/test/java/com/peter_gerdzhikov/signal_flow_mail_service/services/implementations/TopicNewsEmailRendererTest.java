@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -190,6 +191,50 @@ class TopicNewsEmailRendererTest {
         }
 
         @Test
+        void should_render_a_single_category_without_a_separator() {
+            TopicNewsNotificationEventDTO event = anEvent("Topic", "Technology", "<p>Body</p>", "recipient@example.com");
+
+            RenderedEmail email = renderer.render(event);
+
+            assertTrue(email.getHtml().contains(">Technology</p>"));
+            assertTrue(email.getText().contains("\nTechnology\n"));
+        }
+
+        @Test
+        void should_join_three_categories_in_the_given_order_in_html_and_text() {
+            TopicNewsNotificationEventDTO event = anEvent(
+                    "Topic", List.of("Politics", "Science", "Technology"), "<p>Body</p>", "recipient@example.com");
+
+            RenderedEmail email = renderer.render(event);
+
+            assertTrue(email.getHtml().contains(">Politics &middot; Science &middot; Technology</p>"));
+            assertTrue(email.getHtml().contains("Politics &middot; Science &middot; Technology &middot; Topic"));
+            assertTrue(email.getText().contains("\nPolitics \u00B7 Science \u00B7 Technology\n"));
+        }
+
+        @Test
+        void should_escape_a_category_name_in_html_only() {
+            TopicNewsNotificationEventDTO event = anEvent(
+                    "Topic", List.of("<b>&", "Science"), "<p>Body</p>", "recipient@example.com");
+
+            RenderedEmail email = renderer.render(event);
+
+            assertTrue(email.getHtml().contains("&lt;b&gt;&amp; &middot; Science"));
+            assertFalse(email.getHtml().contains("<b>&"));
+            assertTrue(email.getText().contains("<b>& \u00B7 Science"));
+        }
+
+        @Test
+        void should_flatten_line_breaks_in_every_category_name_in_the_text_body() {
+            TopicNewsNotificationEventDTO event = anEvent(
+                    "Topic", List.of("Poli\r\ntics", "Sci\nence"), "<p>Body</p>", "recipient@example.com");
+
+            String text = renderer.render(event).getText();
+
+            assertTrue(text.contains("\nPolitics \u00B7 Science\n"));
+        }
+
+        @Test
         void should_convert_sanitized_data_to_plain_text_including_the_link_url_in_the_text_body() {
             TopicNewsNotificationEventDTO event = anEvent("Topic", "Category",
                     "<p>Rust 1.90 shipped.</p><ul><li>See <a href=\"https://example.com/notes\">release notes</a>.</li></ul>",
@@ -251,11 +296,17 @@ class TopicNewsEmailRendererTest {
     }
 
     private static TopicNewsNotificationEventDTO anEvent(String topicName, String categoryName, String data, String emailAddress) {
+        return anEvent(topicName, List.of(categoryName), data, emailAddress);
+    }
+
+    private static TopicNewsNotificationEventDTO anEvent(
+            String topicName, List<String> categoryNames, String data, String emailAddress
+    ) {
         return new TopicNewsNotificationEventDTO(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 topicName,
-                categoryName,
+                categoryNames,
                 LocalDate.of(2026, 9, 24),
                 data,
                 Instant.parse("2026-09-24T10:00:00Z"),

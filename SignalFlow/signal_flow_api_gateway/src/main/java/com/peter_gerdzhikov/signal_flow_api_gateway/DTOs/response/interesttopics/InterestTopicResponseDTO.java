@@ -1,7 +1,10 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.interesttopics;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+
+import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.categories.CategorySummaryResponseDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,9 +24,7 @@ public class InterestTopicResponseDTO {
 
     private String description;
 
-    private UUID categoryId;
-
-    private String categoryName;
+    private List<CategorySummaryResponseDTO> categories;
 
     private Instant createdAt;
 }

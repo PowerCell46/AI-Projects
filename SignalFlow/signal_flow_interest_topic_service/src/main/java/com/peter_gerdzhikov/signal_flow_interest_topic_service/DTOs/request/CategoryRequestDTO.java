@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 public class CategoryRequestDTO {
 
     @NotBlank
-    @Size(max = 100)
+    @Size(max = 40)
     private String name;
 }

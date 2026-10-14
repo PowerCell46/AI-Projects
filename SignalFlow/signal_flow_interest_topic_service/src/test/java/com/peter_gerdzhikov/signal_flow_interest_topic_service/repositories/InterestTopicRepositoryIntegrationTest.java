@@ -2,9 +2,15 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
+
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +22,7 @@ import org.springframework.data.domain.Limit;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.projections.TopicCategoryNameProjection;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.support.AbstractIntegrationTest;
 
 @DataJpaTest
@@ -28,6 +35,9 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private InterestTopicRepository interestTopicRepository;
@@ -78,14 +88,14 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
         Category category = categoryRepository.save(newCategory("programming"));
         interestTopicRepository.save(newTopic(NAME, category));
 
-        assertThat(interestTopicRepository.existsByCategory_Id(category.getId())).isTrue();
+        assertThat(interestTopicRepository.existsByCategories_Id(category.getId())).isTrue();
     }
 
     @Test
     void should_not_report_an_unreferenced_category_as_existing() {
         Category category = categoryRepository.save(newCategory("programming"));
 
-        assertThat(interestTopicRepository.existsByCategory_Id(category.getId())).isFalse();
+        assertThat(interestTopicRepository.existsByCategories_Id(category.getId())).isFalse();
     }
 
     @Test
@@ -140,6 +150,77 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
                 .containsExactly("kotlin");
     }
 
+    @Test
+    void should_return_each_topic_once_with_all_its_categories_when_paging_all() {
+        persistThreeTopicsWithThreeCategories();
+
+        List<InterestTopic> page = interestTopicRepository.findPageAfter("", Limit.of(2));
+
+        assertEachTopicIsDistinctWithThreeCategories(page, List.of("topic-0", "topic-1"));
+    }
+
+    @Test
+    void should_return_each_topic_once_with_all_its_categories_when_paging_by_included_ids() {
+        List<UUID> ids = persistThreeTopicsWithThreeCategories();
+
+        List<InterestTopic> page = interestTopicRepository.findPageAfterIdIn("", ids, Limit.of(2));
+
+        assertEachTopicIsDistinctWithThreeCategories(page, List.of("topic-0", "topic-1"));
+    }
+
+    @Test
+    void should_return_each_topic_once_with_all_its_categories_when_paging_by_excluded_ids() {
+        List<UUID> ids = persistThreeTopicsWithThreeCategories();
+
+        List<InterestTopic> page = interestTopicRepository.findPageAfterIdNotIn("", List.of(ids.getFirst()), Limit.of(2));
+
+        assertEachTopicIsDistinctWithThreeCategories(page, List.of("topic-1", "topic-2"));
+    }
+
+    @Test
+    void should_report_a_category_that_is_one_of_several_as_existing() {
+        List<Category> categories = categoryRepository.saveAll(List.of(
+                newCategory("art"), newCategory("science"), newCategory("sport")));
+        interestTopicRepository.save(newTopic(NAME, new HashSet<>(categories)));
+
+        assertThat(interestTopicRepository.existsByCategories_Id(categories.get(1).getId())).isTrue();
+    }
+
+    @Test
+    void should_return_the_category_names_of_each_given_topic() {
+        List<Category> categories = categoryRepository.saveAll(List.of(newCategory("art"), newCategory("science")));
+        InterestTopic both = interestTopicRepository.save(newTopic("both", new HashSet<>(categories)));
+        InterestTopic onlyArt = interestTopicRepository.save(newTopic("only-art", Set.of(categories.getFirst())));
+
+        List<TopicCategoryNameProjection> rows = interestTopicRepository
+                .findCategoryNamesByTopicIds(List.of(both.getId(), onlyArt.getId()));
+
+        assertThat(rows)
+                .extracting(TopicCategoryNameProjection::getTopicId, TopicCategoryNameProjection::getCategoryName)
+                .containsExactlyInAnyOrder(
+                        tuple(both.getId(), "art"),
+                        tuple(both.getId(), "science"),
+                        tuple(onlyArt.getId(), "art"));
+    }
+
+    private List<UUID> persistThreeTopicsWithThreeCategories() {
+        Set<Category> categories = new HashSet<>(categoryRepository.saveAll(List.of(
+                newCategory("art"), newCategory("science"), newCategory("sport"))));
+        List<UUID> ids = IntStream.range(0, 3)
+                .mapToObj(i -> interestTopicRepository.save(newTopic("topic-" + i, categories)).getId())
+                .toList();
+        interestTopicRepository.flush();
+        entityManager.clear();
+        return ids;
+    }
+
+    private void assertEachTopicIsDistinctWithThreeCategories(List<InterestTopic> page, List<String> expectedNames) {
+        assertThat(page).extracting(InterestTopic::getName).containsExactlyElementsOf(expectedNames);
+        page.forEach(topic -> assertThat(topic.getCategories())
+                .extracting(Category::getName)
+                .containsExactlyInAnyOrder("art", "science", "sport"));
+    }
+
     private Category newCategory(String name) {
         Category category = new Category();
         category.setName(name);
@@ -147,10 +228,14 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
     }
 
     private InterestTopic newTopic(String name, Category category) {
+        return newTopic(name, Set.of(category));
+    }
+
+    private InterestTopic newTopic(String name, Set<Category> categories) {
         InterestTopic topic = new InterestTopic();
         topic.setName(name);
         topic.setPrompt(PROMPT);
-        topic.setCategory(category);
+        topic.setCategories(categories);
         return topic;
     }
 }

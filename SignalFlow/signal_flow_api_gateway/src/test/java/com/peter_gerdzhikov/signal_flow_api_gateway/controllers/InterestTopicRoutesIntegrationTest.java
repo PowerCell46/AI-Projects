@@ -52,6 +52,7 @@ import com.peter_gerdzhikov.signal_flow_api_gateway.utilities.CookieFactory;
 class InterestTopicRoutesIntegrationTest extends AbstractInterestTopicServiceIntegrationTest {
 
     private static final String CATEGORY_ID = "0b5c3a4e-6f0e-4b8e-9d3a-2c1f7e8a9b01";
+    private static final String OTHER_CATEGORY_ID = "5e8f1a2b-9c3d-4e7f-8a1b-6d4c2e0f9a33";
     private static final String INTEREST_TOPIC_ID = "7d2e9f10-3c4b-4a5d-8e6f-1a2b3c4d5e6f";
     private static final String DOWNSTREAM_BODY = "{\"forwarded\":true}";
     private static final String REQUEST_CONTENT_TYPE = "application/json;charset=UTF-8";
@@ -145,6 +146,18 @@ class InterestTopicRoutesIntegrationTest extends AbstractInterestTopicServiceInt
                     .expectStatus().isEqualTo(203)
                     .expectHeader().valueEquals(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     .expectBody(String.class).isEqualTo(categories);
+        }
+
+        @Test
+        void should_pass_a_topic_response_with_its_categories_through_unchanged() {
+            String topic = "{\"id\":\"" + INTEREST_TOPIC_ID + "\",\"name\":\"ai\",\"categories\":["
+                    + "{\"id\":\"" + CATEGORY_ID + "\",\"name\":\"business\"},"
+                    + "{\"id\":\"" + OTHER_CATEGORY_ID + "\",\"name\":\"technology\"}]}";
+            stubEveryRequestWith(201, topic);
+
+            send(Endpoint.CREATE_INTEREST_TOPIC, cookieFor(Role.ADMIN))
+                    .expectStatus().isEqualTo(201)
+                    .expectBody(String.class).isEqualTo(topic);
         }
 
         @Test
@@ -249,7 +262,7 @@ class InterestTopicRoutesIntegrationTest extends AbstractInterestTopicServiceInt
         @Test
         void should_forward_a_valid_topic_whose_utf8_body_exceeds_the_default_cap() {
             String prompt = "新".repeat(MAX_PROMPT_CHARACTERS);
-            String body = "{\"name\":\"ai\",\"prompt\":\"%s\",\"categoryId\":\"%s\"}".formatted(prompt, CATEGORY_ID);
+            String body = "{\"name\":\"ai\",\"prompt\":\"%s\",\"categoryIds\":[\"%s\"]}".formatted(prompt, CATEGORY_ID);
             assertThat(body.getBytes(StandardCharsets.UTF_8).length).isGreaterThan(maxRequestBodyBytes);
 
             restTestClient.post()
@@ -353,9 +366,9 @@ class InterestTopicRoutesIntegrationTest extends AbstractInterestTopicServiceInt
         RENAME_CATEGORY(HttpMethod.PATCH, "/api/v1/categories/" + CATEGORY_ID, "{\"name\":\"science\"}"),
         DELETE_CATEGORY(HttpMethod.DELETE, "/api/v1/categories/" + CATEGORY_ID, null),
         CREATE_INTEREST_TOPIC(HttpMethod.POST, "/api/v1/interest-topics",
-                "{\"name\":\"ai\",\"prompt\":\"Latest AI research.\",\"categoryId\":\"" + CATEGORY_ID + "\"}"),
+                "{\"name\":\"ai\",\"prompt\":\"Latest AI research.\",\"categoryIds\":[\"" + CATEGORY_ID + "\",\"" + OTHER_CATEGORY_ID + "\"]}"),
         LIST_INTEREST_TOPICS(HttpMethod.GET, "/api/v1/interest-topics", null),
-        UPDATE_INTEREST_TOPIC(HttpMethod.PATCH, "/api/v1/interest-topics/" + INTEREST_TOPIC_ID, "{\"description\":\"Updated.\"}"),
+        UPDATE_INTEREST_TOPIC(HttpMethod.PATCH, "/api/v1/interest-topics/" + INTEREST_TOPIC_ID, "{\"description\":\"Updated.\",\"categoryIds\":[\"" + CATEGORY_ID + "\"]}"),
         DELETE_INTEREST_TOPIC(HttpMethod.DELETE, "/api/v1/interest-topics/" + INTEREST_TOPIC_ID, null);
 
         private final HttpMethod method;

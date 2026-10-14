@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -31,7 +32,9 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNews;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsStatus;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.projections.TopicCategoryNameProjection;
 
 @ExtendWith(MockitoExtension.class)
 class TopicNewsOutboxPublisherTest {
@@ -48,6 +51,9 @@ class TopicNewsOutboxPublisherTest {
     private TopicNewsRepository topicNewsRepository;
 
     @Mock
+    private InterestTopicRepository interestTopicRepository;
+
+    @Mock
     private KafkaTemplate<String, TopicNewsEventDTO> kafkaTemplate;
 
     private TopicNewsOutboxPublisher topicNewsOutboxPublisher;
@@ -55,7 +61,7 @@ class TopicNewsOutboxPublisherTest {
     @BeforeEach
     void setUp() {
         topicNewsOutboxPublisher = new TopicNewsOutboxPublisher(
-                BATCH_SIZE, MAX_ATTEMPTS, TOPIC_NAME, BASE_BACKOFF, topicNewsRepository, kafkaTemplate);
+                BATCH_SIZE, MAX_ATTEMPTS, TOPIC_NAME, BASE_BACKOFF, topicNewsRepository, interestTopicRepository, kafkaTemplate);
     }
 
     @Nested
@@ -67,6 +73,12 @@ class TopicNewsOutboxPublisherTest {
             when(topicNewsRepository.findByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
                     eq(NewsStatus.PENDING), any(Instant.class), any(Pageable.class)))
                     .thenReturn(List.of(news));
+            UUID topicId = news.getInterestTopic().getId();
+            List<TopicCategoryNameProjection> categoryNames = List.of(
+                    categoryName(topicId, "technology"),
+                    categoryName(topicId, "programming"));
+            when(interestTopicRepository.findCategoryNamesByTopicIds(List.of(topicId)))
+                    .thenReturn(categoryNames);
             when(kafkaTemplate.send(eq(TOPIC_NAME), any(), any()))
                     .thenReturn(CompletableFuture.completedFuture(mockSendResult()));
 
@@ -81,7 +93,7 @@ class TopicNewsOutboxPublisherTest {
             assertThat(event.getNewsId()).isEqualTo(news.getId());
             assertThat(event.getInterestTopicId()).isEqualTo(news.getInterestTopic().getId());
             assertThat(event.getTopicName()).isEqualTo("rust");
-            assertThat(event.getCategoryName()).isEqualTo("programming");
+            assertThat(event.getCategoryNames()).containsExactly("programming", "technology");
             assertThat(event.getNewsDate()).isEqualTo(news.getNewsDate());
             assertThat(event.getData()).isEqualTo(news.getData());
             assertThat(event.getGeneratedAt()).isEqualTo(news.getCreatedAt());
@@ -136,6 +148,13 @@ class TopicNewsOutboxPublisherTest {
         }
     }
 
+    private TopicCategoryNameProjection categoryName(UUID topicId, String name) {
+        TopicCategoryNameProjection projection = mock(TopicCategoryNameProjection.class);
+        when(projection.getTopicId()).thenReturn(topicId);
+        when(projection.getCategoryName()).thenReturn(name);
+        return projection;
+    }
+
     private TopicNews newPendingNews() {
         Category category = new Category();
         category.setName("programming");
@@ -143,7 +162,7 @@ class TopicNewsOutboxPublisherTest {
         InterestTopic topic = new InterestTopic();
         topic.setId(UUID.randomUUID());
         topic.setName("rust");
-        topic.setCategory(category);
+        topic.setCategories(Set.of(category));
 
         TopicNews news = new TopicNews();
         news.setId(UUID.randomUUID());

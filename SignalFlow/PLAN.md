@@ -9,9 +9,20 @@ to the step heading in the same change. **No step starts on a red or missing tes
 green.** Before any `.java` edit load `java-code-style` (and `java-junit` for tests); before any `.ts`/`.tsx`/
 `.css` edit load `frontend-code-style`. Each service's own `CLAUDE.md` rules still apply.
 
+## Status
+
+| Phase | Scope | Done | Audit |
+| --- | --- | --- | --- |
+| 1 | An interest topic belongs to 1–3 categories (steps 1–9) | 2026-10-14 | — |
+
+## Left open
+
+- **Phase 1, step 7: the frontend gate's manual check was waived.** Three 40-character chips at 375 px and in both
+  themes were not checked. The 2026-10-14 smoke check looked only at desktop width, dark theme.
+
 ---
 
-## Phase 1 — An interest topic belongs to 1–3 categories
+## Phase 1 — An interest topic belongs to 1–3 categories ✅ **Done** (2026-10-14)
 
 ### Why
 
@@ -20,80 +31,26 @@ regulation" is both Technology and Politics). A topic gets **1 to 3** categories
 **Every** category is shown on the feed's topic card and in the news email. Category stays a label: there
 is no category filter in the feed (see Accepted gaps).
 
-### Design
+### What was built
 
-**Data model (topic service).**
-- `InterestTopic.category` becomes `Set<Category> categories`: `@ManyToMany(fetch = LAZY)`,
-  `@JoinTable(name = "interest_topic_categories", joinColumns = interest_topic_id,
-  inverseJoinColumns = category_id)`, plus `@BatchSize(size = 100)` so loading the categories of a page of
-  topics costs one extra query, not one per topic. `InterestTopic` owns the relation; `Category` gets no
-  back-reference.
-- A constant `InterestTopic.MAX_CATEGORIES = 3`, used by the request DTOs' `@Size`.
-- `Category.name` max length drops **100 → 40** (entity `@Size` + `@Column(length = 40)`, and
-  `CategoryRequestDTO`). This keeps chips and the email header tidy. The seed names already fit (longest is
-  "Automotive & Transportation", 27).
-- No migration: `ddl-auto=create` recreates both databases on every start, and that is intentional.
-
-**HTTP contract (topic service, passed through unchanged by the gateway's `/api/v1/interest-topics/**`
-route).**
-
-| Where | Before | After |
-| --- | --- | --- |
-| `CreateInterestTopicRequestDTO` | `@NotNull UUID categoryId` | `@NotNull @Size(min = 1, max = MAX_CATEGORIES) List<@NotNull UUID> categoryIds` |
-| `UpdateInterestTopicRequestDTO` | `UUID categoryId` (null = unchanged) | `@Size(min = 1, max = MAX_CATEGORIES) List<@NotNull UUID> categoryIds` (null = unchanged; present = **replaces** the whole set; `[]` → 400) |
-| `InterestTopicResponseDTO` | `categoryId`, `categoryName` | `List<CategorySummaryResponseDTO> categories` (`id`, `name`), **sorted by name** |
-| `GET /api/v1/interest-topics?categoryId=` | topics in that category | topics that have that category among theirs (unchanged parameter) |
-
-- Duplicate ids in `categoryIds` → **400**, through a new `DuplicateCategoryIdsException` mapped in
-  `GlobalExceptionHandler`. Duplicates are rejected, not silently de-duplicated.
-- Any unknown id → **404** `CategoryNotFoundException`, as today. Resolve with `categoryRepository.findAllById(ids)`;
-  a size mismatch means an id is unknown.
-- Deleting a category stays **409 `CategoryInUseException`** while any topic has it, whether as its only category
-  or one of several. `existsByCategory_Id` → `existsByCategories_Id`, and `findByCategory_Id` →
-  `findByCategories_Id`.
-
-**Reads without collection fetch-joins.** Never `JOIN FETCH` the `categories` collection in a query with
-`Pageable`/`Limit`, because Hibernate then paginates in memory (HHH90003004). Concretely:
-- `InterestTopicRepository.findPageAfter*`: drop `JOIN FETCH t.category`. The controllers map entities to
-  DTOs inside the open session (`open-in-view` is on by default, which is what the lazy `category` already
-  relies on), and `@BatchSize` loads the categories in one extra query.
-- `TopicNewsRepository.findByStatusAndNextAttemptAt…`: keep `JOIN FETCH tn.interestTopic` (to-one, safe) and
-  drop `JOIN FETCH topic.category`. The publisher reads its batch **detached** (no `@Transactional`, by
-  decision: `DECISIONS.md` step 7), so it can't lazy-load. Add
-  `InterestTopicRepository.findCategoryNamesByTopicIds(Collection<UUID>)`: a JPQL projection
-  `SELECT t.id, c.name FROM InterestTopic t JOIN t.categories c WHERE t.id IN :ids`. The publisher calls it
-  once per batch and groups the result into a `Map<UUID, List<String>>` (names sorted).
-
-**Event contract (all three services).**
-
-| Event | Before | After |
-| --- | --- | --- |
-| `topic-news.generated` (`TopicNewsEventDTO`, topic service + gateway copy) | `String categoryName` | `List<String> categoryNames` (sorted by name, 1–3) |
-| `topic-news.notification-requested` (`TopicNewsNotificationEventDTO`, gateway + mail copy) | `String categoryName` | `List<String> categoryNames` |
-
-- **Gateway outbox:** `notification_outbox.category_name varchar` becomes `category_names text[]`:
-  `@JdbcTypeCode(SqlTypes.ARRAY) @Column(name = "category_names", nullable = false, columnDefinition = "text[]")
-  List<String> categoryNames`. The batch insert in `TopicNewsNotificationServiceImpl` binds it with
-  `ps.setArray(7, ps.getConnection().createArrayOf("text", names.toArray()))`. It's a list, not a joined string,
-  so the 255-character column cap can't skip a valid record, and formatting stays in the mail service.
-- **Gateway guard:** the current `categoryName.length() > MAX_COLUMN_LENGTH` check becomes "skip (via the
-  existing `skipOversizedRecord`) when `categoryNames` is null or empty, or any name exceeds
-  `MAX_COLUMN_LENGTH`".
-- **Mail validation:** `@NotEmpty @Size(max = 3) List<@NotBlank @Size(max = MAX_NAME_LENGTH) String>
-  categoryNames`. An invalid event takes the same path today's invalid `categoryName` takes.
-
-**Display.**
-- **Email:** the token `CATEGORY_NAME` is renamed to `CATEGORY_NAMES` in `KNOWN_TOKENS` and both templates.
-  The HTML version escapes each name with `HtmlUtils.htmlEscape` and joins them with ` &middot; `. The
-  plain-text version applies `stripLineBreaks` to each name and joins them with ` · `. One category renders
-  with no separator.
-- **Feed card:** `frontend/src/api/feed.ts` changes `categoryId`/`categoryName` to
-  `categories: { id: string; name: string }[]`. `TopicCard` renders one chip per category (`key={id}`) in a
-  wrapping flex row. Each chip has `max-width: 100%`, `overflow: hidden`, `text-overflow: ellipsis` and
-  `white-space: nowrap`, so three 40-character names on a phone-width card wrap instead of overflowing.
-- **Gateway feed:** `FeedTopicResponseDTO` and the gateway's `InterestTopicResponseDTO` change
-  `categoryId`/`categoryName` to `List<…> categories` (`id`, `name`), passed through in the order the topic
-  service sends.
+- **Model.** `InterestTopic.categories` is a `@ManyToMany` `Set<Category>` (join table `interest_topic_categories`,
+  `@BatchSize(100)`), capped at `MAX_CATEGORIES = 3`; `Category.name` max length 100 → 40. No migration (Q6).
+- **HTTP.** Create/update take `categoryIds` (1–3, `[]` and duplicates → 400, unknown id → 404, update replaces the
+  set); responses carry `categories` (`id`, `name`) sorted by name. `GET ?categoryId=` matches any of a topic's
+  categories. Deleting a category any topic still has → 409.
+- **Reads.** No `JOIN FETCH` of `categories` in a paged query (HHH90003004); `@BatchSize` loads a page's categories in
+  one extra query. The outbox publisher reads detached and gets names from `findCategoryNamesByTopicIds`, once per batch.
+- **Events.** `topic-news.generated` and `topic-news.notification-requested` carry `List<String> categoryNames`
+  (sorted, 1–3) in all three services.
+- **Gateway.** `notification_outbox.category_names` is `text[]`, bound with `setArray`; the guard skips a record
+  whose list is null, empty or has a name over 255 characters. Feed and route DTOs carry `categories`.
+- **Mail.** Token `CATEGORY_NAMES`: HTML escapes each name and joins with ` &middot; `; text strips line breaks and joins
+  with ` · `. Validation `@NotEmpty @Size(max = 3)`, `@NotBlank @Size(max = 100)` per name.
+- **Frontend.** `FeedTopic.categories`; `TopicCard` renders one chip per category in a wrapping flex row, each chip
+  ellipsized with a `title` of the full name.
+- **e2e.** Fixtures use `categoryIds` and 40-character-safe category names; `feed.spec.ts` checks a two-category card.
+- **Audit.** A smoke check on a fresh full stack (2026-10-14) showed 3 chips on the card and `alpha · beta · gamma` in the
+  email header, preheader and text body. No exploit-hunter audit was run for this phase.
 
 ### Test strategy
 
@@ -108,129 +65,6 @@ route).**
 - Each `*ControllerIntegrationTest` scenario added or changed updates that service's `TESTING.md` in the
   same change (each service's `CLAUDE.md` rule).
 - Each service gate: `mvn verify` green **three runs in a row** (flake check).
-
-### Steps
-
-#### 1. Topic service: category name capped at 40
-
-- [ ] `Category.name`: `@Size(max = 40)`, `@Column(length = 40)`; `CategoryRequestDTO.name`: `@Size(max = 40)`.
-- [ ] `CategoryControllerIntegrationTest`: a 40-character name → 201, a 41-character name → 400, on both create and rename.
-- [ ] Update `TESTING.md`.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 2. Topic service: many-to-many model, HTTP contract and admin filter
-
-- [ ] `InterestTopic`: `Set<Category> categories` with `@ManyToMany`/`@JoinTable`/`@BatchSize` as in Design;
-      add `MAX_CATEGORIES = 3`.
-- [ ] Request DTOs: `categoryIds` as in the HTTP contract table.
-- [ ] `DuplicateCategoryIdsException` → 400 in `GlobalExceptionHandler`.
-- [ ] `InterestTopicService`/`Impl`: `create` and `update` take `List<UUID> categoryIds`; resolve via
-      `findAllById`; reject duplicates (400) and unknown ids (404); `update` replaces the set when non-null.
-- [ ] `CategorySummaryResponseDTO(id, name)`; `InterestTopicResponseDTO.categories`;
-      `InterestTopicResponseMapper` sorts by name.
-- [ ] Repository: `existsByCategories_Id`, `findByCategories_Id`; drop `JOIN FETCH t.category` from the three
-      `findPageAfter*` queries.
-- [ ] `CategoryServiceImpl.delete` uses `existsByCategories_Id`.
-- [ ] `DatabaseSeedServiceImpl`: pass `List.of(category.getId())`. The seed content stays single-category.
-- [ ] Tests, `InterestTopicControllerIntegrationTest`:
-  - [ ] create with 1 and with 3 categories → 201, response `categories` sorted by name;
-  - [ ] create with 0 ids, 4 ids, a `null` element, duplicate ids → 400;
-  - [ ] create with one unknown id among known ones → 404, and no topic row is created;
-  - [ ] PATCH with `categoryIds` replaces the set; PATCH without it leaves the set unchanged;
-        PATCH with `[]` → 400;
-  - [ ] `GET ?categoryId=X` returns a topic whose **second** category is X; `totalElements` counts each topic once.
-- [ ] Tests, `CategoryControllerIntegrationTest`: deleting a category that is one of a topic's three
-      categories → 409; after that topic is deleted, the category deletes → 204. This proves the join rows go
-      with the topic.
-- [ ] Tests, `InternalInterestTopicControllerIntegrationTest` and `InterestTopicRepositoryIntegrationTest`:
-      3 topics × 3 categories with limit 2 → exactly 2 distinct topics, each with all 3 categories, for all
-      three `findPageAfter*` variants.
-- [ ] Unit tests (`InterestTopicServiceImplTest`, `CategoryServiceImplTest`, `DatabaseSeedServiceImplTest`)
-      follow the new signatures.
-- [ ] Update `TESTING.md`.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 3. Topic service: `topic-news.generated` carries `categoryNames`
-
-- [ ] `TopicNewsEventDTO.categoryName` → `List<String> categoryNames`.
-- [ ] `TopicNewsRepository`: drop `JOIN FETCH topic.category` and keep `JOIN FETCH tn.interestTopic`.
-- [ ] `InterestTopicRepository.findCategoryNamesByTopicIds` (projection query from Design).
-- [ ] `TopicNewsOutboxPublisher`: one `findCategoryNamesByTopicIds` call per batch → `Map<UUID, List<String>>`
-      sorted by name; `toEvent` reads from it. Still no `@Transactional`.
-- [ ] Tests: `TopicNewsOutboxPublisherIntegrationTest`: a topic with 3 categories → the Kafka record's
-      `categoryNames` equals the 3 names in sorted order. Also, a due batch of several topics with different
-      category sets → each event carries its own topic's names. `TopicNewsRepositoryIntegrationTest`: the
-      due-batch query returns each news row once and respects the page size when topics have 3 categories.
-      `TopicNewsOutboxPublisherTest` follows the new shape.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 4. Gateway: feed and route DTOs
-
-- [ ] Gateway `InterestTopicResponseDTO` and `FeedTopicResponseDTO`: `categoryId`/`categoryName` →
-      `List<…> categories` (`id`, `name`), in a new gateway-side summary DTO. `FeedServiceImpl` passes the list
-      through.
-- [ ] Tests: `FeedControllerIntegrationTest`: a topic stubbed with 3 categories → the feed returns all 3 in the
-      stubbed order. `InterestTopicRoutesIntegrationTest`: a create/patch body with `categoryIds` and a
-      response with `categories` pass through unchanged.
-- [ ] Update `TESTING.md`.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 5. Gateway: events and notification outbox carry `categoryNames`
-
-- [ ] Gateway `TopicNewsEventDTO` and `TopicNewsNotificationEventDTO`: `categoryName` → `List<String> categoryNames`.
-- [ ] `NotificationOutbox.categoryNames` as `text[]` (Design); `TopicNewsNotificationServiceImpl` binds it with
-      `setArray`; `NotificationOutboxPublisherServiceImpl` maps it onto the outgoing event.
-- [ ] Guard: skip when `categoryNames` is null or empty, or any name is longer than `MAX_COLUMN_LENGTH`.
-- [ ] Tests: `NotificationOutboxRepositoryIntegrationTest`: a 3-name `text[]` round-trips in order.
-      `TopicNewsListenerIntegrationTest`: an event with 3 names → outbox rows carry all 3 in order. Empty
-      list, null list, and one 256-character name → skipped and inbox-marked, asserted with a sentinel event.
-      `NotificationOutboxPublisherServiceImplTest` and `TopicNewsNotificationServiceImplTest` follow the new
-      shape.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 6. Mail service: render all categories
-
-- [ ] `TopicNewsNotificationEventDTO.categoryNames` with the validation from Design.
-- [ ] `TopicNewsEmailRenderer`: token `CATEGORY_NAMES`; HTML: escape each name and join with ` &middot; `; text:
-      strip line breaks from each name and join with ` · `.
-- [ ] `topicNewsEmailTemplate.html` (header and preheader) and `.txt`: `{{CATEGORY_NAME}}` → `{{CATEGORY_NAMES}}`.
-- [ ] Tests (renderer): 1 name → no separator; 3 names → joined in the given order in both HTML and text;
-      a name containing `<b>&` is escaped in HTML only; a name containing `\r\n` is flattened in text.
-      Validation: empty list, 4 names, a blank name → rejected the way an invalid event is today.
-      `AbstractKafkaE2ETestSupport` fixtures follow the new shape.
-- [ ] Update `TESTING.md` if any listed scenario changed.
-- [ ] **Gate:** `signal_flow_mail_service` `mvn verify` green 3× in a row.
-
-#### 7. Frontend: one chip per category
-
-- [ ] `src/api/feed.ts`: `categories: { id: string; name: string }[]`.
-- [ ] `TopicCard.tsx`/`.css`: a chip row as in Design (wrapping, ellipsis per chip, keyed by id), styled with
-      the existing tokens and `--home-scale`. `.topic-card-category` becomes the chip class.
-- [ ] **Gate:** `npm run build` and `npm run lint` pass; then a manual check with the stack running. A topic with three
-      40-character categories shows three chips that wrap without horizontal scroll at 375 px and at desktop width,
-      in both themes.
-
-#### 8. e2e: fixtures and one multi-category check
-
-- [ ] `e2e/tests/fixtures.ts`: create topics with `categoryIds: [id]`. Add a helper to create a topic with
-      several categories.
-- [ ] `feed.spec.ts`: a topic created with 2 categories shows both names on its card, in name order.
-- [ ] Update `e2e/PLAN.md` or `e2e/CLAUDE.md` if either lists the scenarios.
-- [ ] **Gate:** the full e2e suite is green twice in a row against a freshly started stack.
-
-#### 9. Docs and the end-to-end smoke check
-
-- [ ] `DECISIONS.md` entries: topic service (many-to-many with a cap of 3, duplicates rejected, no collection
-      fetch-join with paging, the publisher's per-batch category query, name cap 40); gateway (outbox
-      `text[]` instead of a joined string); mail (the `CATEGORY_NAMES` join format).
-- [ ] Each touched service's `CLAUDE.md` gets an "easy to break" note: never `JOIN FETCH` `categories` in a
-      paged query (topic service); event field changes must ship to all three services together (all three).
-      Record the latter as a **shortcut**.
-- [ ] Fix the stale gap lines in the gateway's and topic service's `PLAN.md`: they say `ddl-auto=update`, but
-      it is `create`, and the wipe-on-restart is intentional.
-- [ ] **Gate:** a manual smoke check on a freshly started full stack. Create a topic with 3 categories and
-      subscribe to it; the feed card shows 3 chips; trigger news generation; the delivered email shows
-      "A · B · C" in the header and the preheader.
 
 ### Accepted gaps
 

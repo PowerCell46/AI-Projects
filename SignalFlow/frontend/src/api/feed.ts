@@ -2,12 +2,16 @@ const BASE_URL = import.meta.env.VITE_BASE_API_URL ?? ''
 
 export type FeedFilter = 'ALL' | 'SUBSCRIBED' | 'NOT_SUBSCRIBED'
 
+export interface FeedCategory {
+    id: string
+    name: string
+}
+
 export interface FeedTopic {
     id: string
     name: string
     description: string
-    categoryId: string
-    categoryName: string
+    categories: FeedCategory[]
     subscribed: boolean
 }
 

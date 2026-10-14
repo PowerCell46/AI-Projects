@@ -21,12 +21,22 @@ export interface TestTopic {
     name: string
 }
 
+export interface TestTopicWithCategories extends TestTopic {
+    categoryNames: string[]
+}
+
 export interface MailpitMessage {
     ID: string
     From: { Name: string; Address: string }
     To: { Name: string; Address: string }[]
     Subject: string
     Created: string
+}
+
+// The topic service caps category names at 40 characters, so keep the random suffix short. A
+// distinct label per category makes the names sort in label order.
+function uniqueCategoryName(label = 'cat'): string {
+    return `e2e-${label}-${randomUUID().slice(0, 8)}`
 }
 
 export function newUser(): TestUser {
@@ -75,7 +85,7 @@ export async function createTopicViaApi(
     const adminReq = await getAdminApiContext()
     try {
         const category = await postOrThrow(adminReq, '/api/v1/categories', {
-            name: `e2e-category-${randomUUID()}`,
+            name: uniqueCategoryName(),
         })
 
         const topicName = name ?? `e2e-topic-${randomUUID()}`
@@ -83,7 +93,7 @@ export async function createTopicViaApi(
             name: topicName,
             description: `e2e description for ${topicName}`,
             prompt: 'e2e prompt',
-            categoryId: category['id'],
+            categoryIds: [category['id']],
         })
 
         return {
@@ -107,7 +117,7 @@ export async function createTopicsBatchViaApi(
     const adminReq = await getAdminApiContext()
     try {
         const category = await postOrThrow(adminReq, '/api/v1/categories', {
-            name: `e2e-category-${randomUUID()}`,
+            name: uniqueCategoryName(),
         })
         const categoryId = category['id'] as string
         const created: TestTopic[] = []
@@ -118,7 +128,7 @@ export async function createTopicsBatchViaApi(
                 name: topicName,
                 description: `e2e description for ${topicName}`,
                 prompt: 'e2e prompt',
-                categoryId,
+                categoryIds: [categoryId],
             })
             created.push({
                 categoryId,
@@ -128,6 +138,44 @@ export async function createTopicsBatchViaApi(
         }
 
         return created
+    } finally {
+        await adminReq.dispose()
+    }
+}
+
+// Creates a topic with several categories. The ids are sent in reverse name order on purpose, so a
+// test can prove the response and the card sort the categories by name, not by the order sent.
+export async function createTopicWithCategoriesViaApi(
+    categoryLabels: string[],
+): Promise<TestTopicWithCategories> {
+    const adminReq = await getAdminApiContext()
+    try {
+        const categoryIds: string[] = []
+        const categoryNames: string[] = []
+
+        for (const label of [...categoryLabels].sort()) {
+            const categoryName = uniqueCategoryName(label)
+            const category = await postOrThrow(adminReq, '/api/v1/categories', {
+                name: categoryName,
+            })
+            categoryIds.push(category['id'] as string)
+            categoryNames.push(categoryName)
+        }
+
+        const topicName = `e2e-topic-${randomUUID()}`
+        const topic = await postOrThrow(adminReq, '/api/v1/interest-topics', {
+            name: topicName,
+            description: `e2e description for ${topicName}`,
+            prompt: 'e2e prompt',
+            categoryIds: [...categoryIds].reverse(),
+        })
+
+        return {
+            categoryId: categoryIds[0],
+            topicId: topic['id'] as string,
+            name: topicName,
+            categoryNames,
+        }
     } finally {
         await adminReq.dispose()
     }
