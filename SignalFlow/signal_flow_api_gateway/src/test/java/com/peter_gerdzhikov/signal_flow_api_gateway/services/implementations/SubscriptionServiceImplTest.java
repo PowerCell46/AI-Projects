@@ -24,6 +24,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.AuthenticatedUserNotFoundException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.DuplicateSubscriptionException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionNotFoundException;
@@ -79,6 +80,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_save_and_return_the_subscription() {
+            callersAccountExists();
             User user = new User();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
@@ -95,6 +97,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_reference_the_user_without_loading_it() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
             when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn(0L);
@@ -110,6 +113,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_lock_the_user_before_reading_the_subscription_count() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
             when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn(0L);
@@ -127,6 +131,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_throw_when_the_user_is_already_subscribed() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(true);
 
@@ -138,6 +143,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_throw_when_the_subscription_limit_is_reached() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
             when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn((long) MAX_SUBSCRIPTIONS_PER_USER);
@@ -150,6 +156,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_report_the_duplicate_when_the_user_is_both_subscribed_and_at_the_limit() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(true);
 
@@ -161,6 +168,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_translate_a_unique_constraint_violation_into_a_duplicate_subscription() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
             when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn(0L);
@@ -174,6 +182,7 @@ class SubscriptionServiceImplTest {
 
         @Test
         void should_rethrow_a_foreign_key_violation_without_relabelling_it() {
+            callersAccountExists();
             when(subscriptionRepository.existsByUser_IdAndInterestTopicId(USER_ID, INTEREST_TOPIC_ID))
                     .thenReturn(false);
             when(subscriptionRepository.countByUser_Id(USER_ID)).thenReturn(0L);
@@ -183,6 +192,20 @@ class SubscriptionServiceImplTest {
 
             assertThatThrownBy(() -> subscriptionService.subscribe(USER_ID, INTEREST_TOPIC_ID))
                     .isSameAs(fkViolation);
+        }
+
+        @Test
+        void should_throw_when_the_callers_account_no_longer_exists() {
+            when(userRepository.lockById(USER_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> subscriptionService.subscribe(USER_ID, INTEREST_TOPIC_ID))
+                    .isInstanceOf(AuthenticatedUserNotFoundException.class);
+
+            verify(subscriptionRepository, never()).saveAndFlush(any());
+        }
+
+        private void callersAccountExists() {
+            when(userRepository.lockById(USER_ID)).thenReturn(Optional.of(USER_ID));
         }
 
         private DataIntegrityViolationException dataIntegrityViolation(String sqlState) {

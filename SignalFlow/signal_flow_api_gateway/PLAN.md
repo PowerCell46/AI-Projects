@@ -42,6 +42,13 @@ Nothing open.
   create/edit/delete for the rest of the window; a disabled account keeps writing subscriptions for the
   same reason. Direct consequence of "no DB read on an authenticated request." **Trigger:** needing to cut
   off an account immediately.
+- **Shortcut: a deleted user's token keeps working until it expires** (up to `JWT_TTL`, 1 h). Reads succeed;
+  subscribe answers 401. **Trigger:** a need to cut off access instantly, which means checking the user per
+  request or keeping a revoked-token list.
+- **User deletion: queued emails aren't cancelled, there's no user list or admin UI, admins can't be deleted
+  through the app, and the only audit trail is a log line.** A notification row that fails every send attempt
+  stays in `notification_outbox` with the email address. **Trigger:** a data-erasure requirement (delete the
+  user's outbox rows in the same transaction), or more than one person administering accounts.
 - **No server-side logout revocation.** A stolen token lives until it expires (≤1h). Same trigger.
 - **The reconciliation job runs on every instance.** No scheduler lock, so N instances make N full passes at
   05:00. Harmless, since the deletes give the same result either way; only wasted lookups. Same shape as the

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.AuthenticatedUserNotFoundException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.DuplicateSubscriptionException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionNotFoundException;
@@ -68,9 +69,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         } catch (DataIntegrityViolationException e) {
             if (!isUniqueConstraintViolation(e)) {
-                // Not the (interest_topic_id, user_id) constraint - most likely the user_id FK, meaning
-                // the caller's own user row is gone. Rethrown rather than mislabeled, so the generic
-                // handler's neutral 409 answers instead of a wrong "already subscribed".
+                // Not the (interest_topic_id, user_id) constraint. The lock above guarantees the caller's
+                // user row exists, so this is some other integrity error. Rethrown rather than mislabeled,
+                // so the generic handler's neutral 409 answers instead of a wrong "already subscribed".
                 throw e;
             }
 
@@ -92,10 +93,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     /**
      * Holds a row lock on the user for the rest of the transaction, serialising that one user's
      * concurrent subscribes. Without it the cap is check-then-act: concurrent requests for distinct
-     * topics all read the same stale count and all pass it, overrunning the cap.
+     * topics all read the same stale count and all pass it, overrunning the cap. The lock also finds no
+     * row when the caller's account was deleted while their token was still valid.
      */
     private void lockCallersSubscriptions(UUID userId) {
-        userRepository.lockById(userId);
+        userRepository
+                .lockById(userId)
+                .orElseThrow(AuthenticatedUserNotFoundException::new);
     }
 
     /**

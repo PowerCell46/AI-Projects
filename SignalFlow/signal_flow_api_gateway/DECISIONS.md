@@ -833,3 +833,21 @@ the request to reach the public controller without interference from stale cooki
   255 characters.** Same skip-and-mark-processed treatment as the other guards: retrying can't change the payload.
 - **The batch insert binds the array with `setArray(createArrayOf("text", ...))`** because `JdbcTemplate` has no
   list binding for `text[]`.
+
+## Cross-service plan, phase 3 — an admin deletes a user account
+
+- **Hard delete, with the database cascading to subscriptions.** `Subscription.user` carries
+  `@OnDelete(CASCADE)`, so deleting the `users` row removes its subscriptions in the same statement and no
+  "delete subscriptions first" code exists. Soft delete would keep the email taken, and the person can
+  register again with the same address.
+- **Only `USER` accounts can be deleted.** An `ADMIN` target, including the caller's own account, answers 403
+  and nothing is deleted. Admins are removed in the database.
+- **The account is looked up by email** (`DELETE /api/v1/users?email=`), lowercased the same way login and
+  register do it. The only audit trail is the `info` log line with the admin's and the user's ids.
+- **A deleted user's token works for up to an hour (accepted shortcut).** Requests deliberately read no user
+  row. Reads stay harmless; subscribe is the only action that needs the row, so it now answers 401 "Please log
+  in again." (`AuthenticatedUserNotFoundException`, thrown when `lockById` is empty) instead of a neutral 409
+  from the foreign key. The delete/subscribe race is safe by the row lock: subscribe first means the delete
+  waits and cascades over the new row; delete first means the lock finds nothing and subscribe answers 401.
+- **Queued emails are not cancelled.** The outbox polls every 3 s and deletes each row once sent, so the window
+  is a few seconds.

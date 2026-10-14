@@ -25,12 +25,15 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.ErrorResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.RequestBodyTooLargeException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.AuthenticatedUserNotFoundException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.DuplicateEmailException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.auth.InvalidCredentialsException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.interesttopics.InterestTopicFeedUnavailableException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.DuplicateSubscriptionException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionLimitExceededException;
 import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.subscriptions.SubscriptionNotFoundException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.users.UserNotDeletableException;
+import com.peter_gerdzhikov.signal_flow_api_gateway.exceptions.users.UserNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,6 +61,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(errorBody(HttpStatus.NOT_FOUND, List.of(e.getMessage())));
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserNotFound(UserNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(errorBody(HttpStatus.NOT_FOUND, List.of(e.getMessage())));
+    }
+
     /**
      * A genuine fallback only - each service translates its own constraint into a domain exception, so
      * the message stays neutral rather than naming any one constraint.
@@ -75,8 +84,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(errorBody(HttpStatus.CONTENT_TOO_LARGE, List.of(e.getMessage())));
     }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponseDTO> handleInvalidCredentials(InvalidCredentialsException e) {
+    @ExceptionHandler(UserNotDeletableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserNotDeletable(UserNotDeletableException e) {
+        return errorResponse(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    @ExceptionHandler({
+            AuthenticatedUserNotFoundException.class,
+            InvalidCredentialsException.class
+    })
+    public ResponseEntity<ErrorResponseDTO> handleUnauthorized(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(errorBody(HttpStatus.UNAUTHORIZED, List.of(e.getMessage())));
     }

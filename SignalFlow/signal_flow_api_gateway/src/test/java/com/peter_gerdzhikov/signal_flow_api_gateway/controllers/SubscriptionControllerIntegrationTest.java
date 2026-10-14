@@ -168,6 +168,22 @@ class SubscriptionControllerIntegrationTest extends AbstractPostgresIntegrationT
         }
 
         @Test
+        void should_return_401_when_the_callers_account_was_deleted() {
+            String cookie = registerAndGetCookie(EMAIL);
+            userRepository.deleteAll();
+            UUID interestTopicId = UUID.randomUUID();
+
+            ErrorResponseDTO body = subscribe(cookie, interestTopicId)
+                    .expectStatus().isUnauthorized()
+                    .expectBody(ErrorResponseDTO.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            assertThat(body.getMessages()).containsExactly("Please log in again.");
+            assertThat(subscriptionRepository.count()).isZero();
+        }
+
+        @Test
         void should_return_400_for_a_missing_interest_topic_id() {
             String cookie = registerAndGetCookie(EMAIL);
 

@@ -15,6 +15,7 @@ green.** Before any `.java` edit load `java-code-style` (and `java-junit` for te
 | --- | --- | --- | --- |
 | 1 | An interest topic belongs to 1–3 categories (steps 1–9) | 2026-10-14 | — |
 | 2 | Tell the model which stories were already covered (steps 1–4) | 2026-10-14 | — |
+| 3 | An admin can delete a user account (steps 1–4) | 2026-10-14 | — |
 
 ## Left open
 
@@ -170,7 +171,7 @@ is independent of Phase 1 and can be done before or after it.
 
 ---
 
-## Phase 3 — An admin can delete a user account
+## Phase 3 — An admin can delete a user account ✅ **Done** (2026-10-14)
 
 ### Why
 
@@ -182,62 +183,21 @@ fresh account. The person isn't notified.
 Only the gateway changes, because accounts live only in its `users` table and the mail service stores
 nothing per user.
 
-### Design
+### What was built
 
-**Endpoint.** `DELETE /api/v1/users?email=someone@example.com`, admin only.
-
-| Case | Response |
-| --- | --- |
-| The email belongs to a `USER` account | **204**. The account and its subscriptions are deleted. |
-| The email belongs to an `ADMIN` account, including the caller's own | **403**, and nothing is deleted. Admins can only be removed in the database. |
-| No account has that email | **404** |
-| `email` missing, blank or not an email | **400** |
-| The caller isn't an admin | **403** (Spring Security, as for the other admin routes) |
-| No token, or an invalid one | **401** |
-
-- The email is lowercased before the lookup, the same way `AuthServiceImpl` does for login and register,
-  so `Someone@Example.com` finds the account.
-- On success, log `Admin '{adminId}' deleted user '{userId}'.` at `info`, using ids only, as the other
-  log lines do. This log line is the only audit trail.
-
-**Code shape.**
-- `SecurityConfiguration`: add a `USERS_PATH` matcher (`/api/v1/users` and `/api/v1/users/**`, every
-  method) to the `hasRole(ADMIN)` rule, so any verb added later is admin-only by default.
-- New `controllers/UserController` (`@RequestMapping("/api/v1/users")`) with one `@DeleteMapping`
-  taking `@RequestParam @NotBlank @Email String email` and the caller's `Jwt` for the log line.
-- New `services/interfaces/UserService` + `implementations/UserServiceImpl` with
-  `void deleteByEmail(String email, UUID adminId)`, `@Transactional`: find by email (404 if absent),
-  refuse an `ADMIN` target (403), otherwise `userRepository.delete(user)`.
-- New `exceptions/users/UserNotFoundException` (404) and `exceptions/users/UserNotDeletableException`
-  (403), both mapped in `GlobalExceptionHandler`.
-
-**Subscriptions go with the user, through the database.** `Subscription.user` gets
-`@OnDelete(action = OnDeleteAction.CASCADE)`, the same approach the topic service uses for `TopicNews`.
-Deleting the `users` row then removes its subscriptions in the same statement, and no
-"delete subscriptions first" code is needed. There's no migration: `ddl-auto=create` recreates the
-foreign key with `ON DELETE CASCADE` on the next start.
-
-**A deleted user who is still logged in.** Their token keeps working until it expires (`JWT_TTL`, 1 h
-by default), because requests deliberately don't read the user row. This is accepted (a shortcut, see
-Accepted gaps). What happens in that window:
-- Reads are harmless. The feed works, `GET /subscriptions` returns an empty list, and `/me` still
-  answers from the token.
-- **Subscribe** is the only action that needs the user row. Today it fails on the foreign key and the
-  generic handler answers with a neutral 409. It now answers **401** with "Please log in again."
-  `SubscriptionServiceImpl.lockCallersSubscriptions` already calls `userRepository.lockById`, which
-  returns an empty `Optional` when the user is gone. It now does
-  `.orElseThrow(AuthenticatedUserNotFoundException::new)`, a new exception in `exceptions/auth`, mapped
-  to 401. No extra query is needed.
-- **Unsubscribe** already answers 404, because the subscription is gone. That's fine.
-- **The race between delete and subscribe** is safe. Subscribe locks the user row `FOR UPDATE`. If it
-  runs first, the delete waits and then cascades over the new subscription. If the delete runs first,
-  the lock finds no row and subscribe answers 401. The comment on the foreign-key branch in
-  `subscribe` gets updated: the lock now guarantees the row exists, and the rethrow stays only for
-  other integrity errors.
-
-**Emails already queued** for the user are **not** cancelled. The notification outbox polls every 3 s
-and deletes each row once it's sent, so a deletion would have to land within those seconds to matter.
-See Accepted gaps.
+- **Endpoint.** `DELETE /api/v1/users?email=`, admin only: a `USER` → 204; an `ADMIN` target, including the caller's own
+  account → 403; unknown email → 404; missing, blank or malformed email → 400; a `USER` caller → 403; no token → 401.
+- **Security.** `SecurityConfiguration` puts `/api/v1/users` and `/api/v1/users/**` (every method) under `hasRole(ADMIN)`.
+- **Code.** `UserController`, `UserService`/`UserServiceImpl.deleteByEmail` (`@Transactional`, lowercased lookup, admin
+  refused before `delete`), `UserNotFoundException` (404) and `UserNotDeletableException` (403) in `exceptions/users`.
+  The success log line `Admin '{adminId}' deleted user '{userId}'.` is the only audit trail.
+- **Cascade.** `Subscription.user` has `@OnDelete(CASCADE)`; no migration (`ddl-auto=create`).
+- **Stale token.** `SubscriptionServiceImpl.lockCallersSubscriptions` throws `AuthenticatedUserNotFoundException`
+  (401 "Please log in again.") when `lockById` is empty. The delete/subscribe race is safe by the row lock.
+- **Tests.** `UserControllerIntegrationTest`, `UserServiceImplTest`, a cascade test in `SubscriptionRepositoryIntegrationTest`,
+  and 401 scenarios in `SubscriptionControllerIntegrationTest` and `SubscriptionServiceImplTest`.
+- **Manual check (2026-10-14).** On a live gateway: delete → 204, the stale cookie's subscribe → 401, re-register → 201
+  with no subscriptions, the admin deleting themselves → 403. Docs in the gateway's `DECISIONS.md`, `CLAUDE.md`, `PLAN.md` and `TESTING.md`.
 
 ### Test strategy
 
@@ -247,64 +207,6 @@ See Accepted gaps.
 - Each step's gate: `signal_flow_api_gateway` `mvn verify` green **three runs in a row**.
 - Every new or changed `*ControllerIntegrationTest` scenario updates the gateway's `TESTING.md` in the
   same change.
-
-### Steps
-
-#### 1. Gateway: subscriptions are deleted with their user
-
-- [ ] `Subscription.user`: `@OnDelete(action = OnDeleteAction.CASCADE)`.
-- [ ] Tests, `SubscriptionRepositoryIntegrationTest`: deleting a user with 2 subscriptions removes both. A
-      second user's subscriptions to the same topics are untouched.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 2. Gateway: subscribe answers 401 when the caller's account is gone
-
-- [ ] `exceptions/auth/AuthenticatedUserNotFoundException` → 401 "Please log in again." in
-      `GlobalExceptionHandler`.
-- [ ] `SubscriptionServiceImpl.lockCallersSubscriptions`: `lockById(userId).orElseThrow(...)`. Update the
-      foreign-key comment in `subscribe` (see Design).
-- [ ] Tests, `SubscriptionServiceImplTest`: `lockById` empty → throws, and `saveAndFlush` is never called.
-      `should_rethrow_a_foreign_key_violation_without_relabelling_it` keeps passing with `lockById`
-      stubbed present.
-- [ ] Tests, `SubscriptionControllerIntegrationTest`: a valid token whose user row was deleted → `POST
-      /subscriptions` returns 401, and no subscription row exists for that user id.
-- [ ] Update `TESTING.md`.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 3. Gateway: `DELETE /api/v1/users?email=`
-
-- [ ] `SecurityConfiguration`: the `USERS_PATH` admin matcher.
-- [ ] `UserNotFoundException` (404) and `UserNotDeletableException` (403), mapped in `GlobalExceptionHandler`.
-- [ ] `UserService`/`UserServiceImpl.deleteByEmail` and `UserController` as in Design, including the log line.
-- [ ] Tests, new `UserControllerIntegrationTest`:
-  - [ ] an admin deletes a `USER` with 2 subscriptions → 204. The user row and both subscriptions are
-        gone, and another user's subscriptions are untouched;
-  - [ ] the email given in mixed case → 204;
-  - [ ] after the deletion, logging in with the old credentials → 401. Registering again with the same
-        email → 201, as a new id with no subscriptions;
-  - [ ] an `ADMIN` target, and the caller's own email → 403, and the row still exists;
-  - [ ] an unknown email → 404;
-  - [ ] a missing, blank or malformed `email` → 400;
-  - [ ] a `USER` caller → 403, and the target still exists; no cookie → 401.
-- [ ] Tests, `UserServiceImplTest` (unit): an admin target is refused before `delete` is called; an
-      unknown email throws `UserNotFoundException`; the lookup uses the lowercased email.
-- [ ] Update `TESTING.md` with a new `DELETE /api/v1/users` section.
-- [ ] **Gate:** `signal_flow_api_gateway` `mvn verify` green 3× in a row.
-
-#### 4. Docs and a manual check
-
-- [ ] Gateway `DECISIONS.md` entries: hard delete with a database cascade; only `USER` accounts can be
-      deleted; lookup by email; the 1-hour stale-token window accepted with subscribe → 401; queued
-      emails not cancelled.
-- [ ] Gateway `CLAUDE.md`: list the new admin route wherever routes and roles are described. Add an "easy
-      to break" note: any new table that references `users` needs its own `@OnDelete(CASCADE)` or explicit
-      cleanup, or deleting a user will fail on the foreign key.
-- [ ] Record the stale-token window as a **shortcut** in the gateway's `CLAUDE.md` and `PLAN.md` gaps.
-- [ ] **Gate:** a manual check on a running stack.
-  1. Register a test user and subscribe it to 2 topics.
-  2. As the admin, run `curl -X DELETE '…/api/v1/users?email=<test user>'` → 204.
-  3. With the test user's still-valid cookie, subscribe → 401.
-  4. Register again with the same email → it works, with no subscriptions.
 
 ### Accepted gaps
 

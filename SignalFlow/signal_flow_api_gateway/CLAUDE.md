@@ -9,7 +9,8 @@ reads need a login, everything else ADMIN) and **subscription reconciliation** (
 that hard-deletes subscriptions whose topic the topic service reports missing, via its internal
 `POST /internal/v1/interest-topics/existing`) and the **dashboard feed** (`GET /api/v1/feed`, a
 real endpoint composing the caller's subscriptions with the topic service's internal
-`POST /internal/v1/interest-topics/feed`). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
+`POST /internal/v1/interest-topics/feed`) and **user deletion** (`DELETE /api/v1/users?email=`, ADMIN only,
+hard-deletes a `USER` account and its subscriptions; an `ADMIN` target answers 403). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
 reactive — reactive would rule out JPA for no throughput this project needs), with routes declared in Java
 (`InterestTopicRoutesConfiguration`) and access rules in `SecurityConfiguration`.
 
@@ -78,6 +79,13 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
   the gateway and the mail service at once. A stale in-flight event is skipped by the gateway guard or rejected by
   the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
   deploys, or deploying the services independently.
+
+- **Any new table that references `users` needs its own `@OnDelete(action = OnDeleteAction.CASCADE)` or explicit
+  cleanup in `UserServiceImpl.deleteByEmail`**, or deleting a user fails on the foreign key. `Subscription` is the
+  only one today.
+- **Shortcut: a deleted user's token keeps working until it expires** (up to `JWT_TTL`, 1 h), because
+  authenticated requests read no user row. Reads succeed; subscribe answers 401. **Trigger:** a need to cut off
+  access instantly, which means checking the user per request or keeping a revoked-token list.
 
 ## Skills
 

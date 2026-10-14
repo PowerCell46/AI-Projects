@@ -198,6 +198,24 @@ class SubscriptionRepositoryIntegrationTest extends AbstractPostgresIntegrationT
                 .containsExactlyInAnyOrderElementsOf(subscribers.stream().map(User::getId).toList());
     }
 
+    @Test
+    void should_delete_a_users_subscriptions_with_the_user_and_leave_other_users_untouched() {
+        User bob = userRepository.save(newUser("bob@example.com"));
+        User alice = userRepository.save(newUser("alice@example.com"));
+        UUID otherTopicId = UUID.randomUUID();
+        subscriptionRepository.save(newSubscription(bob, INTEREST_TOPIC_ID));
+        subscriptionRepository.save(newSubscription(bob, otherTopicId));
+        subscriptionRepository.save(newSubscription(alice, INTEREST_TOPIC_ID));
+        subscriptionRepository.save(newSubscription(alice, otherTopicId));
+        subscriptionRepository.flush();
+
+        userRepository.delete(bob);
+        userRepository.flush();
+
+        assertThat(subscriptionRepository.countByUser_Id(bob.getId())).isZero();
+        assertThat(subscriptionRepository.countByUser_Id(alice.getId())).isEqualTo(2);
+    }
+
     private List<UUID> randomTopicIds(int count) {
         return Stream
                 .generate(UUID::randomUUID)

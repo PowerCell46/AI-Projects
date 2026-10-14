@@ -51,6 +51,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
+    private static final String USERS_PATH = "/api/v1/users";
+
+    private static final String USERS_SUBPATHS = "/api/v1/users/**";
+
     private static final RequestMatcher[] PUBLIC_MATCHERS = {
             PathPatternRequestMatcher.pathPattern(HttpMethod.GET, "/actuator/health"),
             PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/register"),
@@ -82,7 +86,7 @@ public class SecurityConfiguration {
                         )
                         .authenticated()
                         // Every other method, not just the known writes, so a verb added downstream later is closed by default.
-                        .requestMatchers(CATEGORIES_PATH, INTEREST_TOPICS_PATH)
+                        .requestMatchers(CATEGORIES_PATH, INTEREST_TOPICS_PATH, USERS_PATH, USERS_SUBPATHS)
                         .hasRole(Role.ADMIN.name())
                         .anyRequest()
                         .authenticated())

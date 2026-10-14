@@ -96,6 +96,7 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 - Exceeding the per-user cap returns 409 (`should_return_409_when_the_subscription_limit_is_reached`) —
   the cap is `app.subscriptions.max-per-user`, lowered in the test profile so the scenario fills it in a
   handful of requests
+- A valid token whose user row was deleted returns 401 "Please log in again." and creates no subscription (`should_return_401_when_the_callers_account_was_deleted`)
 - A missing topic id returns 400 (`should_return_400_for_a_missing_interest_topic_id`)
 - Malformed JSON returns 400 (`should_return_400_for_malformed_json`)
 - No cookie returns 401 (`should_return_401_with_no_cookie`)
@@ -109,6 +110,21 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 - Unsubscribing from a topic you never subscribed to returns 404 (`should_return_404_when_not_subscribed`)
 - Another user's subscription returns 404 and is not deleted (`should_return_404_when_the_subscription_belongs_to_another_user`)
 - A malformed topic id returns 400 without naming the target type (`should_return_400_for_a_malformed_interest_topic_id`)
+- No cookie returns 401 (`should_return_401_with_no_cookie`)
+
+## `DELETE /api/v1/users?email=`
+
+`UserControllerIntegrationTest`
+
+- An admin deletes a `USER`: 204, the row and its subscriptions are gone, another user's subscriptions are untouched (`should_delete_a_user_with_their_subscriptions_and_leave_others_untouched`)
+- The email in mixed case still finds the account (`should_find_the_account_when_the_email_is_given_in_mixed_case`)
+- After deletion the old credentials return 401, and registering again with the same email creates a new id with no subscriptions (`should_let_the_person_register_again_as_a_fresh_account_after_deletion`)
+- An `ADMIN` target returns 403 and the row stays (`should_return_403_and_keep_the_account_when_the_target_is_an_admin`)
+- The caller's own email returns 403 and the row stays (`should_return_403_and_keep_the_account_when_the_admin_targets_themselves`)
+- An unknown email returns 404 and deletes nothing (`should_return_404_when_no_account_has_the_email`)
+- A blank or malformed email returns 400 and deletes nothing (`should_return_400_and_delete_nothing_for_a_blank_or_malformed_email`)
+- A missing email returns 400 (`should_return_400_when_the_email_is_missing`)
+- A `USER` caller returns 403 and the target stays (`should_return_403_and_delete_nothing_when_the_caller_is_not_an_admin`)
 - No cookie returns 401 (`should_return_401_with_no_cookie`)
 
 ## `GET /api/v1/feed`
