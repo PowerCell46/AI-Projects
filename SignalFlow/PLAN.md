@@ -14,6 +14,7 @@ green.** Before any `.java` edit load `java-code-style` (and `java-junit` for te
 | Phase | Scope | Done | Audit |
 | --- | --- | --- | --- |
 | 1 | An interest topic belongs to 1–3 categories (steps 1–9) | 2026-10-14 | — |
+| 2 | Tell the model which stories were already covered (steps 1–4) | 2026-10-14 | — |
 
 ## Left open
 
@@ -94,7 +95,7 @@ is no category filter in the feed (see Accepted gaps).
 
 ---
 
-## Phase 2 — Tell the model which stories were already covered
+## Phase 2 — Tell the model which stories were already covered ✅ **Done** (2026-10-14)
 
 ### Why
 
@@ -108,60 +109,23 @@ and shown like any other day.
 Only the topic service changes; the event, gateway, mail service and frontend are untouched. This phase
 is independent of Phase 1 and can be done before or after it.
 
-### Design
+### What was built
 
-**Where the headlines come from.** Each item's headline is the `<strong>` text inside its `<li>`. The
-headlines are parsed from the stored `TopicNews.data` HTML of past days, not stored separately. To make
-parsing reliable, the prompt now **requires** that item shape (today it only lists the allowed tags).
-
-**Output format (system prompt, always).** It replaces the current tag list in `SYSTEM_PROMPT_TEMPLATE`,
-keeping the date, the "only what the web search returned" rule and "at most 5 items":
-
-```
-Output only an HTML fragment - no preamble, no Markdown. Put the items in one <ul>, and write every
-item exactly as:
-<li><strong>Headline</strong> One or two sentences of detail. <a href="source URL">Source name</a></li>
-<em> is allowed inside the detail. If you find nothing new worth reporting, output only a short
-<p> note saying so instead of the list.
-```
-
-**Already-covered block (system prompt, only when there are headlines).** It goes after the format
-rules. The headlines are listed newest day first, one per line:
-
-```
-For context, these stories were already covered for this topic recently:
-- Apple’s fall lineup
-- U.S. stocks rallied on Friday, October 2.
-Prefer stories that are not on this list. If you do include one of them, it should be because of a
-meaningful new development - say what's new.
-```
-
-With no headlines (a new topic, or none parsed), the block is left out entirely.
-
-**Window.** Rows of the same topic with `newsDate` in `[newsDate − N, newsDate)`, so today's own row is
-excluded. **Any status counts** (`PENDING`, `SENT`, `FAILED`): the history is "what the model already
-said", not "what was delivered". `N` is the new property
-`app.news.covered-lookback-days=${NEWS_COVERED_LOOKBACK_DAYS:7}`. Setting it to `0` gives an empty
-window, so no block is sent; this needs no extra code. The query is served by the existing
-`(interest_topic_id, news_date)` unique index.
-
-**Code shape.**
-- `TopicNewsRepository.findDataByTopicInDateRange(UUID interestTopicId, LocalDate from, LocalDate to)`:
-  a JPQL projection `SELECT tn.data FROM TopicNews tn WHERE tn.interestTopic.id = :id AND tn.newsDate
-  >= :from AND tn.newsDate < :to ORDER BY tn.newsDate DESC`, returning `List<String>`.
-- `utilities/NewsHeadlines` (a final class with a private constructor and a static
-  `List<String> extract(String html)`, the same shape as `LogSanitizer`). It matches each `<li>`
-  (attributes allowed) whose first child is `<strong>`, case-insensitively and across line breaks. It
-  strips any tags nested in the headline, unescapes entities with `HtmlUtils.htmlUnescape`, collapses
-  whitespace to single spaces, trims, and drops blanks. Input with no matching item (for example a
-  "nothing new" `<p>`) gives an empty list. No new dependency; a regex is enough for the shape the
-  prompt requires.
-- `TopicNewsGenerationJob.generateNewsForTopic`: after the "already exists for today" check, load the
-  window's `data`, extract the headlines of every row in order, and de-duplicate them while keeping
-  the first occurrence (`LinkedHashSet`). Log the topic id and the headline **count** (not the text)
-  at `info`, then call `generate`.
-- `NewsGenerationService.generate(InterestTopic, LocalDate, List<String> coveredHeadlines)`: the
-  implementation appends the block above to the system message when the list is non-empty.
+- **Prompt.** `SYSTEM_PROMPT_TEMPLATE` requires one `<ul>` with items `<li><strong>Headline</strong> detail <a href>Source</a></li>`
+  and allows a short "nothing new" `<p>` note instead of the list. At most 5 items.
+- **Headlines.** `utilities/NewsHeadlines.extract` reads the `<strong>` text of each `<li>` (case-insensitive, attributes
+  allowed, nested tags stripped, entities unescaped, whitespace collapsed, blanks dropped).
+- **Query.** `TopicNewsRepository.findDataByTopicInDateRange(topicId, startDate, endDate)`: rows in
+  `[newsDate - N, newsDate)`, newest first, any status.
+- **Setting.** `app.news.covered-lookback-days=${NEWS_COVERED_LOOKBACK_DAYS:7}`; `0` leaves the hint out.
+- **Job.** `TopicNewsGenerationJob` extracts, de-duplicates (first-seen order) and logs the headline count per topic,
+  then passes the list to `NewsGenerationService.generate(topic, newsDate, coveredHeadlines)`.
+- **Hint block.** Appended to the system message only when the list is non-empty: the "already covered" list plus a
+  "prefer other stories, say what's new" sentence.
+- **Tests.** `NewsHeadlinesTest`, repository window/status/topic tests, prompt tests (block, empty list, special
+  characters), job unit and integration tests (the single recorded request holds only the right topic's recent headlines).
+- **Manual check (2026-10-14).** On a live stack with a hand-inserted row, the log showed a non-zero count and the new
+  row kept the item shape. Docs in the topic service's `DECISIONS.md` and `CLAUDE.md`.
 
 ### Test strategy
 
@@ -173,75 +137,6 @@ window, so no block is sent; this needs no extra code. The query is served by th
   other topic in that test already has a row for today, so the job skips it. That way an assertion
   on "the request body" can't read another topic's prompt.
 - Each step's gate: `signal_flow_interest_topic_service` `mvn verify` green **three runs in a row**.
-
-### Steps
-
-#### 1. Topic service: require the item format
-
-- [ ] `SYSTEM_PROMPT_TEMPLATE`: the format rules from Design, including the "nothing new" `<p>` note.
-- [ ] `NewsGenerationServiceImplIntegrationTest.should_carry_the_format_rules_the_date_and_the_topic_in_the_messages`:
-      also assert that the system message contains `<li><strong>Headline</strong>` and the "nothing new"
-      sentence.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 2. Topic service: extract headlines from stored news
-
-- [ ] `utilities/NewsHeadlines.extract` as in Design.
-- [ ] `NewsHeadlinesTest` (unit):
-  - [ ] the required shape with 3 items → 3 headlines, in document order;
-  - [ ] the real shape from production: a `<ul>` with newlines and indentation between items, and an
-        `&amp;` and a `’` in a headline → unescaped text;
-  - [ ] a `<strong>` holding a nested `<em>` → the tag is stripped and its text kept;
-  - [ ] `<LI>`/`<STRONG>` in upper case, and `<li class="x">` → still matched;
-  - [ ] a line break inside a headline → collapsed to a single space;
-  - [ ] an `<li>` without a leading `<strong>`, a `<strong>` outside any `<li>`, and an empty
-        `<strong></strong>` → ignored;
-  - [ ] a "nothing new" `<p>` alone, a blank string → an empty list.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 3. Topic service: send the covered headlines with each generation
-
-- [ ] `application.properties`: `app.news.covered-lookback-days=${NEWS_COVERED_LOOKBACK_DAYS:7}`, with a
-      comment in the style of the other `app.news.*` entries (what it bounds; `0` turns the hint off).
-- [ ] `TopicNewsRepository.findDataByTopicInDateRange` (Design).
-- [ ] `NewsGenerationService`/`Impl`: the new `coveredHeadlines` parameter and the block from Design,
-      left out when the list is empty.
-- [ ] `TopicNewsGenerationJob`: the lookback `@Value`; load, extract, de-duplicate, log the count, pass
-      the list to `generate`.
-- [ ] Tests, `TopicNewsRepositoryIntegrationTest` (fixed dates, `to` = 2026-10-13, `from` = 2026-10-06):
-  - [ ] rows on 10-06 and 10-12 are returned, newest first; rows on 10-05 and 10-13 are not;
-  - [ ] a `SENT` row and a `FAILED` row inside the window are both returned;
-  - [ ] another topic's row inside the window is not returned.
-- [ ] Tests, `NewsGenerationServiceImplIntegrationTest`:
-  - [ ] with two headlines → the system message contains the "already covered" sentence, each headline as
-        a `- ` line in the given order, and the "Prefer stories" sentence;
-  - [ ] with an empty list → the system message contains neither sentence;
-  - [ ] a headline with quotes and a non-ASCII character reaches the request as valid, unchanged JSON
-        (the same idea as `should_send_a_prompt_with_special_characters_as_valid_unchanged_json`).
-- [ ] Tests, `TopicNewsGenerationJobTest` (unit): two past rows whose headlines overlap → `generate`
-      receives each headline once, in first-seen order; no past rows → an empty list.
-- [ ] Tests, `TopicNewsGenerationJobIntegrationTest`: topic A has rows for yesterday and 8 days ago, and
-      topic B has rows for yesterday and today (so B is skipped). After one run, the single recorded
-      request contains A's yesterday headline, and contains neither A's 8-day-old headline nor B's
-      yesterday headline. Existing tests in this class follow the new signature.
-- [ ] Update `TESTING.md` if it lists any of these scenarios.
-- [ ] **Gate:** `signal_flow_interest_topic_service` `mvn verify` green 3× in a row.
-
-#### 4. Docs and a manual check
-
-- [ ] Topic service `DECISIONS.md` entries: headlines are parsed from the stored HTML rather than stored
-      separately; the hint is a soft preference with no code-side filtering; any status counts toward
-      the window; the "nothing new" note is ordinary news content.
-- [ ] Topic service `CLAUDE.md`, "easy to break": the item shape in `SYSTEM_PROMPT_TEMPLATE` and
-      `NewsHeadlines.extract` must change together. If the prompt's shape changes and the extractor
-      doesn't, the hint silently becomes empty.
-- [ ] Document `NEWS_COVERED_LOOKBACK_DAYS` wherever the service's other environment variables are
-      documented (today only `application.properties`).
-- [ ] **Gate:** a manual check on a running stack. For one topic, insert yesterday's row by hand with
-      `psql`, with a recognisable headline in the required shape. Trigger generation, for example with
-      `NEWS_CRON` set a minute ahead. Confirm the log line shows a non-zero headline count for that topic
-      and that the new row's `data` still follows the required item shape. Whether the model actually
-      avoids the story is observed over the following days; it isn't part of the gate.
 
 ### Accepted gaps
 

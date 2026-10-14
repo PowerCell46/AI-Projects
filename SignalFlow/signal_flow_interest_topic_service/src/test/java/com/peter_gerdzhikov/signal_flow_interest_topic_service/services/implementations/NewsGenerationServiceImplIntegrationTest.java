@@ -57,7 +57,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
     void should_return_the_message_content_from_a_successful_response() {
         stubChatCompletions(successResponse("<p>Rust 1.90 shipped.</p>"));
 
-        String news = newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE);
+        String news = newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE, List.of());
 
         assertThat(news).isEqualTo("<p>Rust 1.90 shipped.</p>");
     }
@@ -66,7 +66,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
     void should_send_the_model_max_tokens_and_bearer_key() {
         stubChatCompletions(successResponse("<p>news</p>"));
 
-        newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE);
+        newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE, List.of());
 
         JsonNode body = requestBody();
         assertThat(body.path("model").asString()).isEqualTo("deepseek/deepseek-v4.1-flash:online");
@@ -78,7 +78,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
     void should_carry_the_format_rules_the_date_and_the_topic_in_the_messages() {
         stubChatCompletions(successResponse("<p>news</p>"));
 
-        newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE);
+        newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE, List.of());
 
         JsonNode messages = requestBody().path("messages");
         String systemMessage = messages.get(0).path("content").asString();
@@ -87,10 +87,46 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
         assertThat(systemMessage)
                 .contains(NEWS_DATE.toString())
                 .contains("5 items")
-                .contains("<a href>");
+                .contains("<a href=\"source URL\">")
+                .contains("<li><strong>Headline</strong>")
+                .contains("If you find nothing new worth reporting, output only a short <p> note");
         assertThat(userMessage)
                 .contains("rust")
                 .contains("What's new with Rust?");
+    }
+
+    @Test
+    void should_list_the_covered_headlines_in_the_given_order_when_there_are_some() {
+        stubChatCompletions(successResponse("<p>news</p>"));
+
+        newsGenerationService.generate(
+                newTopic("rust", "What's new with Rust?"), NEWS_DATE, List.of("Apple's fall lineup", "Rust 1.90 shipped"));
+
+        assertThat(systemMessage())
+                .contains("For context, these stories were already covered for this topic recently:\n"
+                        + "- Apple's fall lineup\n- Rust 1.90 shipped\n")
+                .contains("Prefer stories that are not on this list.");
+    }
+
+    @Test
+    void should_leave_out_the_covered_block_when_there_are_no_headlines() {
+        stubChatCompletions(successResponse("<p>news</p>"));
+
+        newsGenerationService.generate(newTopic("rust", "What's new with Rust?"), NEWS_DATE, List.of());
+
+        assertThat(systemMessage())
+                .doesNotContain("already covered")
+                .doesNotContain("Prefer stories");
+    }
+
+    @Test
+    void should_send_a_covered_headline_with_quotes_and_non_ascii_as_valid_unchanged_json() {
+        stubChatCompletions(successResponse("<p>news</p>"));
+        String trickyHeadline = "The \"Rust\" \\ story \u2019s caf\u00e9";
+
+        newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of(trickyHeadline));
+
+        assertThat(systemMessage()).contains("- " + trickyHeadline);
     }
 
     @Test
@@ -98,7 +134,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
         stubChatCompletions(successResponse("<p>news</p>"));
         String trickyPrompt = "Cover \"Rust\", the \\ operator, and\nnew lines.";
 
-        newsGenerationService.generate(newTopic("rust", trickyPrompt), NEWS_DATE);
+        newsGenerationService.generate(newTopic("rust", trickyPrompt), NEWS_DATE, List.of());
 
         JsonNode userMessage = requestBody().path("messages").get(1);
         assertThat(userMessage.path("content").asString()).contains(trickyPrompt);
@@ -112,7 +148,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
                 .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .withBody("{\"error\": {\"message\": \"insufficient credits\"}}"));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class)
                 .satisfies(e -> {
                     NewsGenerationFailedException failure = (NewsGenerationFailedException) e;
@@ -128,7 +164,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
                 .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .withBody("{\"error\": {\"message\": \"bad key\\n2026-09-24 ERROR fabricated log line\"}}"));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class)
                 .satisfies(e -> assertThat(e.getMessage()).doesNotContain("\n").doesNotContain("\r"));
     }
@@ -137,7 +173,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
     void should_fail_when_the_choices_field_is_missing() {
         stubChatCompletions(jsonResponse("{}"));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class);
     }
 
@@ -145,7 +181,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
     void should_fail_when_choices_is_empty() {
         stubChatCompletions(jsonResponse("{\"choices\": []}"));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class);
     }
 
@@ -155,7 +191,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
     void should_fail_when_the_content_is_null_or_blank(String content) {
         stubChatCompletions(successResponse(content));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class);
     }
 
@@ -166,7 +202,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
                 .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .withBody("not json"));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class);
     }
 
@@ -175,7 +211,7 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
         stubChatCompletions(successResponse("<p>news</p>")
                 .withFixedDelay(DELAY_PAST_THE_TEST_READ_TIMEOUT_MILLIS));
 
-        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE))
+        assertThatThrownBy(() -> newsGenerationService.generate(newTopic("rust", "prompt"), NEWS_DATE, List.of()))
                 .isInstanceOf(NewsGenerationFailedException.class);
     }
 
@@ -206,6 +242,10 @@ class NewsGenerationServiceImplIntegrationTest extends AbstractOpenRouterIntegra
                 .withStatus(200)
                 .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .withBody(body);
+    }
+
+    private String systemMessage() {
+        return requestBody().path("messages").get(0).path("content").asString();
     }
 
     private JsonNode requestBody() {

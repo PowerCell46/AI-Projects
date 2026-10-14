@@ -411,3 +411,17 @@ re-raise them when entries are uncommented.
   `findCategoryNamesByTopicIds` once per batch and groups the names itself (see the entry above).
 - **`Category.name` max length 100 → 40**, to keep feed chips and the email header tidy. No migration:
   `ddl-auto=create` wipes both databases on every start, on purpose.
+
+## Cross-service plan, phase 2 — tell the model which stories were already covered
+
+- **Headlines are parsed from the stored `TopicNews.data` HTML, not stored separately.** `NewsHeadlines.extract`
+  reads the `<strong>` text of each `<li>`; the system prompt now requires that item shape. No new column, no
+  structured model output.
+- **The hint is a soft preference, with no filtering in code.** The prompt says "prefer other stories"; a repeat
+  can still get through, and a covered story may return when there is a meaningful new development.
+- **Any status counts toward the window** (`PENDING`, `SENT`, `FAILED`): the history is what the model already
+  said, not what was delivered. The window is `[newsDate - N, newsDate)`, so today's own row is excluded.
+- **A "nothing new" `<p>` note is ordinary news content.** It is saved, emailed and shown like any day, and it
+  yields no headlines for later days.
+- **`findDataByTopicInDateRange` names its parameters `startDate`/`endDate`**, not `from`/`to`, to stay clear of
+  JPQL keywords. De-duplication uses `distinct()`, which keeps first-seen order like a `LinkedHashSet`.

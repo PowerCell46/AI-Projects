@@ -18,6 +18,18 @@ public interface TopicNewsRepository extends JpaRepository<TopicNews, UUID> {
     boolean existsByInterestTopic_IdAndNewsDate(UUID interestTopicId, LocalDate newsDate);
 
     @Query("""
+            SELECT tn.data FROM TopicNews tn
+            WHERE tn.interestTopic.id = :interestTopicId
+                AND tn.newsDate >= :startDate AND tn.newsDate < :endDate
+            ORDER BY tn.newsDate DESC
+            """)
+    List<String> findDataByTopicInDateRange(
+            @Param("interestTopicId") UUID interestTopicId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("""
             SELECT tn FROM TopicNews tn
             JOIN FETCH tn.interestTopic topic
             WHERE tn.status = :status AND tn.nextAttemptAt <= :now

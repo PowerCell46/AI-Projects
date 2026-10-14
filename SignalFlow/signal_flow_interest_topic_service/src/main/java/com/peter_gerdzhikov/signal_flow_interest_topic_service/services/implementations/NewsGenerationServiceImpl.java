@@ -2,6 +2,7 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.impleme
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -34,9 +35,18 @@ public class NewsGenerationServiceImpl implements NewsGenerationService {
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             You are a news curator. Report notable news published on or just before %s about the user's \
-            topic below, using only what the web search returned. Cite each item with an <a href> link to \
-            its source. Output only an HTML fragment built from <p>, <ul>, <li>, <strong>, <em> and <a> \
-            tags - no preamble, no Markdown. Report at most 5 items.""";
+            topic below, using only what the web search returned. Report at most 5 items.
+            Output only an HTML fragment - no preamble, no Markdown. Put the items in one <ul>, and write \
+            every item exactly as:
+            <li><strong>Headline</strong> One or two sentences of detail. <a href="source URL">Source name</a></li>
+            <em> is allowed inside the detail. If you find nothing new worth reporting, output only a short \
+            <p> note saying so instead of the list.""";
+
+    private static final String COVERED_STORIES_INTRO =
+            "For context, these stories were already covered for this topic recently:";
+
+    private static final String COVERED_STORIES_ADVICE = "Prefer stories that are not on this list. If you do "
+            + "include one of them, it should be because of a meaningful new development - say what's new.";
 
     private final String model;
 
@@ -55,8 +65,8 @@ public class NewsGenerationServiceImpl implements NewsGenerationService {
     }
 
     @Override
-    public String generate(InterestTopic interestTopic, LocalDate newsDate) {
-        OpenRouterChatResponseDTO response = call(buildRequest(interestTopic, newsDate));
+    public String generate(InterestTopic interestTopic, LocalDate newsDate, List<String> coveredHeadlines) {
+        OpenRouterChatResponseDTO response = call(buildRequest(interestTopic, newsDate, coveredHeadlines));
         return extractContent(response);
     }
 
@@ -92,13 +102,27 @@ public class NewsGenerationServiceImpl implements NewsGenerationService {
         return content;
     }
 
-    private OpenRouterChatRequestDTO buildRequest(InterestTopic interestTopic, LocalDate newsDate) {
+    private OpenRouterChatRequestDTO buildRequest(
+            InterestTopic interestTopic, LocalDate newsDate, List<String> coveredHeadlines) {
         OpenRouterChatMessageDTO systemMessage = new OpenRouterChatMessageDTO(
-                "system", SYSTEM_PROMPT_TEMPLATE.formatted(newsDate));
+                "system", SYSTEM_PROMPT_TEMPLATE.formatted(newsDate) + coveredStoriesBlock(coveredHeadlines));
         OpenRouterChatMessageDTO userMessage = new OpenRouterChatMessageDTO(
                 "user", "%s%n%n%s".formatted(interestTopic.getName(), interestTopic.getPrompt()));
 
         return new OpenRouterChatRequestDTO(model, List.of(systemMessage, userMessage), maxTokens);
+    }
+
+    private String coveredStoriesBlock(List<String> coveredHeadlines) {
+        if (CollectionUtils.isEmpty(coveredHeadlines)) {
+            return "";
+        }
+
+        String headlineLines = coveredHeadlines
+                .stream()
+                .map(headline -> "- " + headline)
+                .collect(Collectors.joining("\n"));
+
+        return "\n\n" + COVERED_STORIES_INTRO + "\n" + headlineLines + "\n" + COVERED_STORIES_ADVICE;
     }
 
     private String providerMessage(RestClientResponseException e) {

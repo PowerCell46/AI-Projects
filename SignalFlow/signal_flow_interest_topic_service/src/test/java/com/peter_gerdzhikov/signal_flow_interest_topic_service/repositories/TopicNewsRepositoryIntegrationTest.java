@@ -122,6 +122,56 @@ class TopicNewsRepositoryIntegrationTest extends AbstractIntegrationTest {
                 .containsExactly("topic-2", "topic-1");
     }
 
+    @Test
+    void should_return_the_data_of_rows_in_the_window_newest_first_and_exclude_the_end_date() {
+        InterestTopic topic = newSavedTopic("rust");
+        saveNewsWithData(topic, LocalDate.of(2026, 10, 5), "too old");
+        saveNewsWithData(topic, LocalDate.of(2026, 10, 6), "window start");
+        saveNewsWithData(topic, LocalDate.of(2026, 10, 12), "window end");
+        saveNewsWithData(topic, LocalDate.of(2026, 10, 13), "the end date itself");
+
+        List<String> data = topicNewsRepository.findDataByTopicInDateRange(
+                topic.getId(), LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 13));
+
+        assertThat(data).containsExactly("window end", "window start");
+    }
+
+    @Test
+    void should_return_rows_of_any_status_in_the_window() {
+        InterestTopic topic = newSavedTopic("rust");
+        saveNewsWithStatus(topic, LocalDate.of(2026, 10, 10), NewsStatus.SENT);
+        saveNewsWithStatus(topic, LocalDate.of(2026, 10, 11), NewsStatus.FAILED);
+        saveNewsWithStatus(topic, LocalDate.of(2026, 10, 12), NewsStatus.PENDING);
+
+        List<String> data = topicNewsRepository.findDataByTopicInDateRange(
+                topic.getId(), LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 13));
+
+        assertThat(data).hasSize(3);
+    }
+
+    @Test
+    void should_not_return_another_topics_rows_in_the_window() {
+        Set<Category> categories = Set.of(categoryRepository.save(newCategory("programming")));
+        InterestTopic topic = newSavedTopic("rust", categories);
+        InterestTopic otherTopic = newSavedTopic("kotlin", categories);
+        saveNewsWithData(otherTopic, LocalDate.of(2026, 10, 10), "someone else's news");
+
+        List<String> data = topicNewsRepository.findDataByTopicInDateRange(
+                topic.getId(), LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 13));
+
+        assertThat(data).isEmpty();
+    }
+
+    private void saveNewsWithData(InterestTopic topic, LocalDate newsDate, String data) {
+        TopicNews news = newNews(topic, newsDate, NewsStatus.PENDING, Instant.now());
+        news.setData(data);
+        topicNewsRepository.save(news);
+    }
+
+    private void saveNewsWithStatus(InterestTopic topic, LocalDate newsDate, NewsStatus status) {
+        topicNewsRepository.save(newNews(topic, newsDate, status, Instant.now()));
+    }
+
     private InterestTopic newSavedTopic(String name) {
         Category category = categoryRepository.save(newCategory("programming"));
         return newSavedTopic(name, Set.of(category));

@@ -3,11 +3,14 @@ package com.peter_gerdzhikov.signal_flow_interest_topic_service.jobs;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -17,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
@@ -101,6 +106,41 @@ class TopicNewsGenerationJobIntegrationTest extends AbstractOpenRouterIntegratio
         List<TopicNews> allNews = topicNewsRepository.findAll();
         assertThat(allNews).hasSize(1);
         assertThat(allNews.get(0).getInterestTopic().getId()).isEqualTo(healthyTopic.getId());
+    }
+
+    @Test
+    void should_send_only_the_recent_headlines_of_the_topic_being_generated() {
+        LocalDate today = LocalDate.now(ZoneId.of("Europe/Sofia"));
+        Category category = categoryRepository.save(newCategory("programming"));
+        InterestTopic topicA = interestTopicRepository.save(newTopic("alpha-topic", category));
+        InterestTopic topicB = interestTopicRepository.save(newTopic("beta-topic", category));
+        topicNewsRepository.save(newNews(topicA, today.minusDays(1), headlineItem("A yesterday story")));
+        topicNewsRepository.save(newNews(topicA, today.minusDays(8), headlineItem("A old story")));
+        topicNewsRepository.save(newNews(topicB, today.minusDays(1), headlineItem("B yesterday story")));
+        topicNewsRepository.save(newNews(topicB, today, headlineItem("B today story")));
+
+        topicNewsGenerationJob.generateDailyNews();
+
+        List<LoggedRequest> requests = OPENROUTER_STUB.find(postRequestedFor(urlEqualTo(CHAT_COMPLETIONS_PATH)));
+        assertThat(requests).hasSize(1);
+        assertThat(requests.get(0).getBodyAsString())
+                .contains("alpha-topic")
+                .contains("- A yesterday story")
+                .doesNotContain("A old story")
+                .doesNotContain("B yesterday story");
+    }
+
+    private String headlineItem(String headline) {
+        return "<ul><li><strong>%s</strong> Detail.</li></ul>".formatted(headline);
+    }
+
+    private TopicNews newNews(InterestTopic topic, LocalDate newsDate, String data) {
+        return TopicNews.builder()
+                .interestTopic(topic)
+                .newsDate(newsDate)
+                .data(data)
+                .nextAttemptAt(Instant.now())
+                .build();
     }
 
     private Category newCategory(String name) {

@@ -43,6 +43,8 @@ class TopicNewsGenerationJobTest {
 
     private static final int MAX_CONCURRENCY = 5;
 
+    private static final int COVERED_LOOKBACK_DAYS = 7;
+
     private static final String TOPIC_PROMPT = "What's new with Rust?";
 
     @Mock
@@ -59,7 +61,8 @@ class TopicNewsGenerationJobTest {
     @BeforeEach
     void setUp() {
         topicNewsGenerationJob = new TopicNewsGenerationJob(
-                NEWS_ZONE, MAX_CONCURRENCY, topicNewsRepository, newsGenerationService, interestTopicRepository);
+                NEWS_ZONE, MAX_CONCURRENCY, COVERED_LOOKBACK_DAYS, topicNewsRepository, newsGenerationService,
+                interestTopicRepository);
     }
 
     @Nested
@@ -74,7 +77,7 @@ class TopicNewsGenerationJobTest {
 
             topicNewsGenerationJob.generateDailyNews();
 
-            verify(newsGenerationService, never()).generate(any(), any());
+            verify(newsGenerationService, never()).generate(any(), any(), any());
             verify(topicNewsRepository, never()).saveAndFlush(any());
         }
 
@@ -84,12 +87,12 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(topic), any(LocalDate.class))).thenReturn("today's rust news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("today's rust news");
 
             topicNewsGenerationJob.generateDailyNews();
 
             ArgumentCaptor<LocalDate> newsDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
-            verify(newsGenerationService).generate(eq(topic), newsDateCaptor.capture());
+            verify(newsGenerationService).generate(eq(topic), newsDateCaptor.capture(), any());
             assertThat(newsDateCaptor.getValue()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
 
             ArgumentCaptor<TopicNews> newsCaptor = ArgumentCaptor.forClass(TopicNews.class);
@@ -110,9 +113,9 @@ class TopicNewsGenerationJobTest {
                     .thenReturn(new PageImpl<>(List.of(failingTopic, healthyTopic)));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(failingTopic), any(LocalDate.class)))
+            when(newsGenerationService.generate(eq(failingTopic), any(LocalDate.class), any()))
                     .thenThrow(new RuntimeException("AI timeout"));
-            when(newsGenerationService.generate(eq(healthyTopic), any(LocalDate.class)))
+            when(newsGenerationService.generate(eq(healthyTopic), any(LocalDate.class), any()))
                     .thenReturn("healthy topic news");
 
             assertThatCode(() -> topicNewsGenerationJob.generateDailyNews()).doesNotThrowAnyException();
@@ -126,11 +129,42 @@ class TopicNewsGenerationJobTest {
             when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
-            when(newsGenerationService.generate(eq(topic), any(LocalDate.class))).thenReturn("today's rust news");
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("today's rust news");
             when(topicNewsRepository.saveAndFlush(any()))
                     .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
             assertThatCode(() -> topicNewsGenerationJob.generateDailyNews()).doesNotThrowAnyException();
+        }
+
+        @Test
+        void should_pass_each_covered_headline_once_in_first_seen_order() {
+            InterestTopic topic = newTopic();
+            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
+                    .thenReturn(false);
+            when(topicNewsRepository.findDataByTopicInDateRange(eq(topic.getId()), any(LocalDate.class), any(LocalDate.class)))
+                    .thenReturn(List.of(
+                            "<ul><li><strong>Beta</strong> d</li><li><strong>Alpha</strong> d</li></ul>",
+                            "<ul><li><strong>Alpha</strong> d</li><li><strong>Gamma</strong> d</li></ul>"));
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("news");
+
+            topicNewsGenerationJob.generateDailyNews();
+
+            verify(newsGenerationService).generate(
+                    eq(topic), any(LocalDate.class), eq(List.of("Beta", "Alpha", "Gamma")));
+        }
+
+        @Test
+        void should_pass_an_empty_list_when_there_are_no_past_rows() {
+            InterestTopic topic = newTopic();
+            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
+                    .thenReturn(false);
+            when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any())).thenReturn("news");
+
+            topicNewsGenerationJob.generateDailyNews();
+
+            verify(newsGenerationService).generate(eq(topic), any(LocalDate.class), eq(List.of()));
         }
 
         @Test
@@ -161,7 +195,7 @@ class TopicNewsGenerationJobTest {
 
             AtomicInteger inFlight = new AtomicInteger();
             AtomicInteger maxInFlight = new AtomicInteger();
-            when(newsGenerationService.generate(any(), any(LocalDate.class))).thenAnswer(invocation -> {
+            when(newsGenerationService.generate(any(), any(LocalDate.class), any())).thenAnswer(invocation -> {
                 int concurrentCalls = inFlight.incrementAndGet();
                 maxInFlight.updateAndGet(observed -> Math.max(observed, concurrentCalls));
                 Thread.sleep(20);

@@ -24,6 +24,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.TopicNew
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.InterestTopicRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.TopicNewsRepository;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.NewsGenerationService;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.utilities.NewsHeadlines;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +38,8 @@ public class TopicNewsGenerationJob {
 
     private final int maxConcurrency;
 
+    private final int coveredLookbackDays;
+
     private final TopicNewsRepository topicNewsRepository;
 
     private final NewsGenerationService newsGenerationService;
@@ -46,12 +49,14 @@ public class TopicNewsGenerationJob {
     public TopicNewsGenerationJob(
             @Value("${app.news.zone}") String newsZone,
             @Value("${app.news.max-concurrency}") int maxConcurrency,
+            @Value("${app.news.covered-lookback-days}") int coveredLookbackDays,
             TopicNewsRepository topicNewsRepository,
             NewsGenerationService newsGenerationService,
             InterestTopicRepository interestTopicRepository
     ) {
         this.newsZone = ZoneId.of(newsZone);
         this.maxConcurrency = maxConcurrency;
+        this.coveredLookbackDays = coveredLookbackDays;
         this.topicNewsRepository = topicNewsRepository;
         this.newsGenerationService = newsGenerationService;
         this.interestTopicRepository = interestTopicRepository;
@@ -109,9 +114,13 @@ public class TopicNewsGenerationJob {
             return;
         }
 
+        List<String> coveredHeadlines = findCoveredHeadlines(topic, newsDate);
+        log.info("Interest topic '{}' has {} already covered headlines for '{}'.",
+                topic.getId(), coveredHeadlines.size(), newsDate);
+
         String data;
         try {
-            data = newsGenerationService.generate(topic, newsDate);
+            data = newsGenerationService.generate(topic, newsDate, coveredHeadlines);
 
         } catch (Exception e) {
             log.error("News generation failed for interest topic '{}'; skipping it for '{}'.",
@@ -126,6 +135,15 @@ public class TopicNewsGenerationJob {
             log.warn("Lost the race to insert news for interest topic '{}' on '{}'; another run already did.",
                     topic.getId(), newsDate);
         }
+    }
+
+    private List<String> findCoveredHeadlines(InterestTopic topic, LocalDate newsDate) {
+        return topicNewsRepository
+                .findDataByTopicInDateRange(topic.getId(), newsDate.minusDays(coveredLookbackDays), newsDate)
+                .stream()
+                .flatMap(data -> NewsHeadlines.extract(data).stream())
+                .distinct()
+                .toList();
     }
 
     private TopicNews newPendingNews(InterestTopic topic, LocalDate newsDate, String data) {

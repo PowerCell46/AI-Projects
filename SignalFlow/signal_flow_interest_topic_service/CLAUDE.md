@@ -73,6 +73,9 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_interest_topic_serv
   the gateway and the mail service at once. A stale in-flight event is skipped by the gateway guard or rejected by
   the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
   deploys, or deploying the services independently.
+- **The item shape in `SYSTEM_PROMPT_TEMPLATE` and `NewsHeadlines.extract` must change together.** The prompt demands
+  `<li><strong>Headline</strong> ...</li>` and the extractor reads exactly that. If only the prompt changes, the
+  "already covered" hint silently becomes empty; the logged headline count per topic shows it.
 
 ## Skills
 
