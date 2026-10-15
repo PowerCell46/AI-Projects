@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.entities;
 
+import java.util.Locale;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -46,7 +48,7 @@ public class User extends CommonEntity {
     @PreUpdate
     private void lowercaseEmail() {
         if (email != null) {
-            email = email.toLowerCase();
+            email = email.toLowerCase(Locale.ROOT);
         }
     }
 }

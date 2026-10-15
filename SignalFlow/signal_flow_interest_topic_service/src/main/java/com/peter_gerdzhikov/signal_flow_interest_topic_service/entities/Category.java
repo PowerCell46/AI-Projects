@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.entities;
 
+import java.util.Locale;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -26,7 +28,7 @@ public class Category extends CommonEntity {
     @PrePersist
     private void lowercaseName() {
         if (name != null) {
-            name = name.toLowerCase();
+            name = name.toLowerCase(Locale.ROOT);
         }
     }
 }

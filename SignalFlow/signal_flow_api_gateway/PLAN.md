@@ -46,9 +46,8 @@ Nothing open.
   subscribe answers 401. **Trigger:** a need to cut off access instantly, which means checking the user per
   request or keeping a revoked-token list.
 - **User deletion: queued emails aren't cancelled, there's no user list or admin UI, admins can't be deleted
-  through the app, and the only audit trail is a log line.** A notification row that fails every send attempt
-  stays in `notification_outbox` with the email address. **Trigger:** a data-erasure requirement (delete the
-  user's outbox rows in the same transaction), or more than one person administering accounts.
+  through the app, and the only audit trail is a log line.** The user's `notification_outbox` rows are deleted
+  with the account. **Trigger:** more than one person administering accounts.
 - **No server-side logout revocation.** A stolen token lives until it expires (≤1h). Same trigger.
 - **The reconciliation job runs on every instance.** No scheduler lock, so N instances make N full passes at
   05:00. Harmless, since the deletes give the same result either way; only wasted lookups. Same shape as the

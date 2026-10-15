@@ -1,6 +1,10 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.services.implementations;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 
@@ -11,6 +15,7 @@ import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfac
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.DatabaseSeedService;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.services.interfaces.InterestTopicService;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -27,19 +32,19 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Breakthroughs, product launches, and industry moves in AI.",
                             "Cover major AI model releases, research breakthroughs, and moves by leading AI "
                                     + "labs and big tech companies.",
-                            NewsSchedule.DAILY),
+                            NewsSchedule.DAILY, "Business & Finance", "Science & Research"),
                     new TopicSeed(
                             "Consumer Electronics",
                             "New devices, gadgets, and consumer tech launches.",
                             "Cover new smartphone, laptop, wearable, and other consumer device launches, "
                                     + "along with notable product recalls or price changes.",
-                            NewsSchedule.WEEKLY),
+                            NewsSchedule.WEEKLY, "Consumer Products"),
                     new TopicSeed(
                             "Cybersecurity",
                             "Data breaches, vulnerabilities, and security industry news.",
                             "Cover newly disclosed data breaches, critical vulnerabilities, ransomware "
                                     + "incidents, and major cybersecurity industry announcements.",
-                            NewsSchedule.WEEKDAYS))
+                            NewsSchedule.WEEKDAYS, "Security & Privacy"))
             )
             , new CategorySeed("Business & Finance", List.of(
                     new TopicSeed(
@@ -47,7 +52,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Major moves in global stock indices and notable earnings.",
                             "Cover significant moves in major stock indices (S&P 500, Nasdaq, Dow, FTSE, "
                                     + "major Asian indices) and notable company earnings reports.",
-                            NewsSchedule.WEEKDAYS),
+                            NewsSchedule.WEEKDAYS, "Economy"),
                     /*new TopicSeed(
                             "Startups & Venture Capital",
                             "Funding rounds, acquisitions, and notable startup news.",
@@ -59,7 +64,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Price movements, regulation, and major crypto industry events.",
                             "Cover significant price movements in major cryptocurrencies, regulatory "
                                     + "developments, and notable events at crypto exchanges or projects.",
-                            NewsSchedule.DAILY))
+                            NewsSchedule.DAILY, "Technology"))
             )
             /*, new CategorySeed("Politics", List.of(
                     new TopicSeed(
@@ -113,13 +118,13 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Dietary research, fitness trends, and wellness guidance.",
                             "Cover notable nutrition research findings, fitness trends, and evidence-based "
                                     + "wellness guidance.",
-                            NewsSchedule.WEEKLY),
+                            NewsSchedule.WEEKLY, "Lifestyle"),
                     new TopicSeed(
                             "Mental Health",
                             "Mental health research, awareness campaigns, and policy news.",
                             "Cover notable mental health research, awareness campaigns, and policy "
                                     + "developments affecting mental healthcare.",
-                            NewsSchedule.WEEKLY))
+                            NewsSchedule.WEEKLY, "Science & Research"))
             )
             /*, new CategorySeed("Sports", List.of(
                     new TopicSeed(
@@ -147,20 +152,26 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Movie and TV releases, box office, and industry news.",
                             "Cover notable film and TV releases, box office results, and entertainment "
                                     + "industry announcements.",
-                            NewsSchedule.WEEKENDS),
+                            NewsSchedule.WEEKENDS, "Arts & Culture"),
                     new TopicSeed(
                             "Music Industry",
                             "Album releases, tours, and major music industry news.",
                             "Cover notable album and single releases, major tour announcements, and music "
                                     + "industry business news.",
-                            NewsSchedule.WEEKLY),
+                            NewsSchedule.WEEKLY, "Arts & Culture"),
                     new TopicSeed(
                             "Video Games",
                             "Game releases, studio news, and gaming industry trends.",
                             "Cover notable video game releases, studio announcements, and gaming industry "
                                     + "trends.",
-                            NewsSchedule.WEEKLY))
+                            NewsSchedule.WEEKLY, "Technology"))
             )
+            , new CategorySeed("Security & Privacy", List.of())
+            , new CategorySeed("Consumer Products", List.of())
+            , new CategorySeed("Economy", List.of())
+            , new CategorySeed("Lifestyle", List.of())
+            , new CategorySeed("Science & Research", List.of())
+            , new CategorySeed("Arts & Culture", List.of())
             /*, new CategorySeed("Environment & Climate", List.of(
                     new TopicSeed(
                             "Renewable Energy",
@@ -236,19 +247,38 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
             return;
         }
 
-        SEED_CATALOG.forEach(this::seedCategory);
+        Map<String, Category> categoriesByName = createCategories();
+        SEED_CATALOG.forEach(categorySeed -> seedTopics(categorySeed, categoriesByName));
         log.info("Seeded {} categories and their interest topics.", SEED_CATALOG.size());
     }
 
-    private void seedCategory(CategorySeed categorySeed) {
-        Category category = categoryService.create(categorySeed.getName());
+    private Map<String, Category> createCategories() {
+        Map<String, Category> categoriesByName = new LinkedHashMap<>();
+        SEED_CATALOG.forEach(categorySeed -> categoriesByName.put(
+                categorySeed.getName(),
+                categoryService.create(categorySeed.getName())));
+
+        return categoriesByName;
+    }
+
+    private void seedTopics(CategorySeed categorySeed, Map<String, Category> categoriesByName) {
         categorySeed.getTopics()
                 .forEach(topicSeed -> interestTopicService.create(
                         topicSeed.getName(),
                         topicSeed.getDescription(),
                         topicSeed.getPrompt(),
-                        List.of(category.getId()),
+                        categoryIdsOf(categorySeed, topicSeed, categoriesByName),
                         topicSeed.getSchedule()));
+    }
+
+    private List<UUID> categoryIdsOf(
+            CategorySeed categorySeed,
+            TopicSeed topicSeed,
+            Map<String, Category> categoriesByName) {
+        return Stream
+                .concat(Stream.of(categorySeed.getName()), topicSeed.getExtraCategoryNames().stream())
+                .map(categoryName -> categoriesByName.get(categoryName).getId())
+                .toList();
     }
 
     @Value
@@ -259,15 +289,30 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
         List<TopicSeed> topics;
     }
 
-    @Value
+    @Getter
     private static class TopicSeed {
 
-        String name;
+        private final String name;
 
-        String description;
+        private final String prompt;
 
-        String prompt;
+        private final String description;
 
-        NewsSchedule schedule;
+        private final NewsSchedule schedule;
+
+        private final List<String> extraCategoryNames;
+
+        private TopicSeed(
+                String name,
+                String description,
+                String prompt,
+                NewsSchedule schedule,
+                String... extraCategoryNames) {
+            this.name = name;
+            this.prompt = prompt;
+            this.description = description;
+            this.schedule = schedule;
+            this.extraCategoryNames = List.of(extraCategoryNames);
+        }
     }
 }

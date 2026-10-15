@@ -80,7 +80,19 @@ class TopicNewsEmailRendererTest {
             assertTrue(html.contains("<p>Rust 1.90 <strong>shipped</strong> with <em>faster</em> builds.</p>"));
             assertTrue(html.contains("<ul><li>See <a"));
             assertTrue(html.contains("href=\"https://example.com/notes\""));
-            assertTrue(html.contains("release notes</a>.</li></ul>"));
+            assertTrue(html.contains("release notes</a> (example.com).</li></ul>"));
+        }
+
+        @Test
+        void should_show_the_real_host_after_a_link_whose_text_names_another_site_in_the_html_part() {
+            TopicNewsNotificationEventDTO event = anEvent("Topic", "Category",
+                    "<p><a href=\"https://evil.example/login\">SignalFlow</a></p>",
+                    "recipient@example.com");
+
+            RenderedEmail email = renderer.render(event);
+
+            assertTrue(email.getHtml().contains("SignalFlow</a> (evil.example)"));
+            assertTrue(email.getText().contains("SignalFlow (https://evil.example/login)"));
         }
 
         @Test

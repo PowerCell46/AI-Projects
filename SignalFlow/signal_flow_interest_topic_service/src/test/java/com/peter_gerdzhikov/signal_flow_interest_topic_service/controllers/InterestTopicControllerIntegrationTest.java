@@ -14,6 +14,8 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -494,6 +496,29 @@ class InterestTopicControllerIntegrationTest extends AbstractIntegrationTest {
             patchRawBody(interestTopic.getId(), "{\"schedule\": \"MONTHLY\"}").expectStatus().isBadRequest();
 
             assertThat(storedSchedule(interestTopic.getId())).isEqualTo(NewsSchedule.DAILY);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", "   ", "\\n\\t"})
+        void should_return_400_for_a_blank_name_and_keep_the_stored_one(String blankName) {
+            Category category = persistedCategory("programming");
+            InterestTopic interestTopic = persistedInterestTopic(TOPIC_NAME, category);
+
+            patchRawBody(interestTopic.getId(), "{\"name\": \"" + blankName + "\"}").expectStatus().isBadRequest();
+
+            assertThat(interestTopicRepository.findById(interestTopic.getId()).orElseThrow().getName()).isEqualTo(TOPIC_NAME);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", "   ", "\\n\\t"})
+        void should_return_400_for_a_blank_prompt_and_keep_the_stored_one(String blankPrompt) {
+            Category category = persistedCategory("programming");
+            InterestTopic interestTopic = persistedInterestTopic(TOPIC_NAME, category);
+            String storedPrompt = interestTopic.getPrompt();
+
+            patchRawBody(interestTopic.getId(), "{\"prompt\": \"" + blankPrompt + "\"}").expectStatus().isBadRequest();
+
+            assertThat(interestTopicRepository.findById(interestTopic.getId()).orElseThrow().getPrompt()).isEqualTo(storedPrompt);
         }
 
         @Test

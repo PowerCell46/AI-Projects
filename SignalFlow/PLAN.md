@@ -13,19 +13,10 @@ green.** Before any `.java` edit load `java-code-style` (and `java-junit` for te
 
 | Phase | Scope | Done | Audit |
 | --- | --- | --- | --- |
-| 1 | An interest topic belongs to 1–3 categories (steps 1–9) | 2026-10-14 | — |
-| 2 | Tell the model which stories were already covered (steps 1–4) | 2026-10-14 | — |
-| 3 | An admin can delete a user account (steps 1–4) | 2026-10-14 | — |
-| 4 | Each topic has a news schedule (steps 1–10) | 2026-10-14 | — |
-
-## Left open
-
-- **Phase 1, step 7: the frontend gate's manual check was waived.** Three 40-character chips at 375 px and in both
-  themes were not checked. The 2026-10-14 smoke check looked only at desktop width, dark theme.
-- **Phase 4, step 8: the manual card check ran against a mock gateway, not the full stack.** It covered desktop and a
-  375 px viewport, dark theme only (the app has no light theme). It also covers the 375 px part of the Phase 1 item above.
-- **Mail service: consumers started before their topic exists pick it up only after the Kafka metadata refresh (about
-  5 minutes).** Seen in the Phase 4 smoke check (the email arrived late); not caused by Phase 4.
+| 1 | An interest topic belongs to 1–3 categories (steps 1–9) | 2026-10-14 | 2026-10-15 |
+| 2 | Tell the model which stories were already covered (steps 1–4) | 2026-10-14 | 2026-10-15 |
+| 3 | An admin can delete a user account (steps 1–4) | 2026-10-14 | 2026-10-15 |
+| 4 | Each topic has a news schedule (steps 1–10) | 2026-10-14 | 2026-10-15 |
 
 ---
 
@@ -53,11 +44,15 @@ is no category filter in the feed (see Accepted gaps).
   whose list is null, empty or has a name over 255 characters. Feed and route DTOs carry `categories`.
 - **Mail.** Token `CATEGORY_NAMES`: HTML escapes each name and joins with ` &middot; `; text strips line breaks and joins
   with ` · `. Validation `@NotEmpty @Size(max = 3)`, `@NotBlank @Size(max = 100)` per name.
-- **Frontend.** `FeedTopic.categories`; `TopicCard` renders one chip per category in a wrapping flex row, each chip
-  ellipsized with a `title` of the full name.
+- **Frontend.** `FeedTopic.categories`; `TopicCard` renders up to 2 category chips on one non-wrapping row under the
+  title, each ellipsized with a `title` of the full name, plus a "+N" chip whose `title` lists the hidden names
+  (changed 2026-10-14: wrapping chips made card heights uneven).
 - **e2e.** Fixtures use `categoryIds` and 40-character-safe category names; `feed.spec.ts` checks a two-category card.
+- **Card layout check (2026-10-14).** On the full e2e stack at 320, 375, 600, 768, 1024, 1280 and 1920 px, dark theme
+  only (the app has no light theme): cards with 1, 2 and 3 categories (3 with 40-character names) had equal heights at
+  every width and the page never scrolled sideways. Repeated for the schedule label in Phase 4.
 - **Audit.** A smoke check on a fresh full stack (2026-10-14) showed 3 chips on the card and `alpha · beta · gamma` in the
-  email header, preheader and text body. No exploit-hunter audit was run for this phase.
+  email header, preheader and text body. The 2026-10-15 security audit covered this phase; its seven findings are fixed.
 
 ### Test strategy
 
@@ -84,7 +79,7 @@ is no category filter in the feed (see Accepted gaps).
   **Trigger:** users ask to browse by category.
 - **The admin list filters by one `categoryId`, not by several.** **Trigger:** an admin screen that needs
   "any of" or "all of" filtering.
-- **Seed topics stay single-category.** **Trigger:** demo data needs to show multi-category topics.
+- **Seed topics: all 10 have 2 categories, Artificial Intelligence has 3.** Updated 2026-10-14 with six extra seed categories (Security & Privacy, Consumer Products, Economy, Lifestyle, Science & Research, Arts & Culture) that no topic owns as its first category. The pairings are hand-picked; add a topic only where the extra category clearly fits.
 - **The category order is alphabetical; there's no admin-chosen order or primary category.** **Trigger:**
   a need to emphasize one category.
 
@@ -95,7 +90,7 @@ is no category filter in the feed (see Accepted gaps).
 | 1 | Should a topic belong to many categories? | Yes, 1 to 3. |
 | 2 | Is a category filter in the feed planned? | No: a good idea, but extra effort. Category stays a label. |
 | 3 | Should one category be primary? | No. All are equal, and all are shown on the card and in the email. |
-| 4 | Must the display scale? | Yes: chips that wrap with an ellipsis; a joined header in the email; a list (not a joined string) in the outbox. |
+| 4 | Must the display scale? | Yes: at most 2 chips on one row plus a "+N" chip (revised 2026-10-14, was wrapping chips); a joined header in the email; a list (not a joined string) in the outbox. |
 | 5 | Should category names be capped lower? | Yes, 100 → 40. |
 | 6 | Is `ddl-auto=create` (wipe on restart) intentional? | Yes. That's why no migration is needed. |
 
@@ -126,8 +121,13 @@ is independent of Phase 1 and can be done before or after it.
 - **Setting.** `app.news.covered-lookback-days=${NEWS_COVERED_LOOKBACK_DAYS:7}`; `0` leaves the hint out.
 - **Job.** `TopicNewsGenerationJob` extracts, de-duplicates (first-seen order) and logs the headline count per topic,
   then passes the list to `NewsGenerationService.generate(topic, newsDate, coveredHeadlines)`.
-- **Hint block.** Appended to the system message only when the list is non-empty: the "already covered" list plus a
-  "prefer other stories, say what's new" sentence.
+- **Hint block.** Only when the list is non-empty. The list goes in the user message, between `<covered_stories>` tags,
+  as "Already covered for this topic recently:" plus one `- headline` per line; the system message carries the advice.
+  The advice treats the list as data, counts a reworded or re-sourced story as covered, says to choose other stories,
+  allows a covered story only with a meaningful new development (said in the detail sentence), and sends the model to the
+  short `<p>` note when everything it found is covered (reworded 2026-10-14). Moved out of the system message on
+  2026-10-15 (security audit): headlines come from web-sourced model output, so they are untrusted. At most 50
+  headlines of 200 characters each, with `<` and `>` removed so none can close the tag.
 - **Tests.** `NewsHeadlinesTest`, repository window/status/topic tests, prompt tests (block, empty list, special
   characters), job unit and integration tests (the single recorded request holds only the right topic's recent headlines).
 - **Manual check (2026-10-14).** On a live stack with a hand-inserted row, the log showed a non-zero count and the new
@@ -154,9 +154,10 @@ is independent of Phase 1 and can be done before or after it.
   shape, extraction finds nothing and that day's hint is empty. Nothing fails; the count in the log
   line shows it. **Trigger:** the logged count is often 0 for topics with history, which means asking
   the model for structured (JSON) items and storing the headlines alongside the HTML.
-- **No cap on the size of the covered list.** At most about 35 headlines (7 days × 5 items), so it's
-  small. **Trigger:** a larger lookback or item limit makes the prompt noticeably longer or more
-  expensive.
+- **The covered list is capped at 50 headlines of 200 characters each** (security audit, 2026-10-15). Normal use is
+  about 35 headlines (7 days × 5 items), so the cap only bites on a larger lookback or item limit. The query returns
+  newest first, so the oldest headlines are the ones left out, silently. **Trigger:** a lookback or item limit that
+  regularly passes 50 headlines, which means raising the cap.
 - **"Nothing new" days still send an email.** **Trigger:** readers find those emails noisy, which means
   recognising the note and not publishing that day.
 - **Headlines only, no source links.** Decided 2026-10-13: the headline is enough. **Trigger:** vague
@@ -221,9 +222,8 @@ nothing per user.
 - **The frontend doesn't treat a 401 from subscribe as "log in again".** It shows whatever it shows
   for a failed subscribe today. **Trigger:** deleted users actually hit this, or the frontend starts
   handling session expiry in general.
-- **Queued emails aren't cancelled.** The window is a few seconds. A notification row that fails all
-  send attempts stays in `notification_outbox` with the email address. **Trigger:** a data-erasure
-  requirement, which means deleting the user's outbox rows in the same transaction.
+- **Queued emails aren't cancelled.** The window is a few seconds. Deleting a user also deletes their
+  `notification_outbox` rows (security audit, 2026-10-15), so no address or AI text outlives the account.
 - **No user list or admin UI.** You need to know the email. **Trigger:** more than one person
   administering accounts, or a need to browse users.
 - **Admins can't be deleted through the app**, only in the database. **Trigger:** more than one admin.
@@ -269,8 +269,10 @@ outbox), the mail service (header), the frontend (card) and e2e.
   `schedule` (missing or null → `DAILY`, set in the service); update takes it with null meaning unchanged; an unknown
   value → 400. Responses and the internal feed items carry `schedule`. No migration (Q6 of Phase 1).
 - **Seeds.** Every `TopicSeed`, active and commented out, carries a preset.
-- **Job.** `generateDailyNews()` only computes today's date and calls `generateNewsFor(LocalDate)`. A topic whose preset
-  doesn't run that day is skipped first (debug log), before the "already exists" query and any AI call.
+- **Job.** `generateDailyNews()` only computes today's date and calls `generateNewsFor(LocalDate)`. The job loads only topics
+  whose preset runs that day (`findByScheduleIn(NewsSchedule.runningOn(day), page)`, changed 2026-10-14); the in-code
+  `runsOn` check stays as a guard before the "already exists" query and any AI call. The "already has news" check is
+  deliberately not in that query: it would shrink the result while the job pages by offset and skip topics.
 - **Snapshot.** `TopicNews.schedule` and `periodStart` (both not null) are set when the row is created, so the event and
   email describe what was generated even if the schedule is edited before the outbox publishes.
 - **Prompt.** `generate(topic, newsDate, periodStart, coveredHeadlines)`: one day keeps "on or just before D"; a range
@@ -286,9 +288,10 @@ outbox), the mail service (header), the frontend (card) and e2e.
 - **Frontend.** `FeedSchedule` type; `TopicCard` shows a small muted label under the title ("Daily", "Weekdays",
   "Weekends", "Weekly · Mondays"); an unknown value renders nothing.
 - **e2e.** `createTopicViaApi` takes an optional schedule; `feed.spec.ts` checks "Weekly · Mondays" and the default "Daily".
+- **Card layout check (2026-10-14).** The schedule label passed the same seven-width check as Phase 1.
 - **Audit.** A smoke check on the e2e stack (2026-10-14, fake OpenRouter, cron every minute): the `WEEKDAYS` topic got a
   row (`schedule` WEEKDAYS, `period_start` 2026-10-14) and the `WEEKENDS` topic none; the email header read
-  "Weekdays · 14 October 2026"; both cards showed their labels. No exploit-hunter audit was run for this phase.
+  "Weekdays · 14 October 2026"; both cards showed their labels. The 2026-10-15 security audit covered this phase; its seven findings are fixed.
 
 ### Test strategy
 

@@ -19,9 +19,13 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.Category;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.projections.TopicCategoryNameProjection;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.support.AbstractIntegrationTest;
 
@@ -178,6 +182,38 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void should_return_only_topics_with_the_given_schedules_when_paging_by_schedule() {
+        Category category = categoryRepository.save(newCategory("art"));
+        persistTopicWithSchedule("daily", category, NewsSchedule.DAILY);
+        persistTopicWithSchedule("weekdays", category, NewsSchedule.WEEKDAYS);
+        persistTopicWithSchedule("weekly", category, NewsSchedule.WEEKLY);
+        persistTopicWithSchedule("weekends", category, NewsSchedule.WEEKENDS);
+        interestTopicRepository.flush();
+        entityManager.clear();
+
+        Page<InterestTopic> page = interestTopicRepository.findByScheduleIn(
+                Set.of(NewsSchedule.DAILY, NewsSchedule.WEEKDAYS), PageRequest.of(0, 10, Sort.by("name")));
+
+        assertThat(page.getContent()).extracting(InterestTopic::getName).containsExactly("daily", "weekdays");
+    }
+
+    @Test
+    void should_return_each_matching_topic_once_and_respect_the_page_size_when_topics_have_several_categories() {
+        Set<Category> categories = new HashSet<>(categoryRepository.saveAll(List.of(
+                newCategory("art"), newCategory("science"), newCategory("sport"))));
+        IntStream.range(0, 3).forEach(i -> persistTopicWithSchedule("topic-" + i, categories, NewsSchedule.DAILY));
+        persistTopicWithSchedule("other", categories, NewsSchedule.WEEKLY);
+        interestTopicRepository.flush();
+        entityManager.clear();
+
+        Page<InterestTopic> firstPage = interestTopicRepository.findByScheduleIn(
+                Set.of(NewsSchedule.DAILY), PageRequest.of(0, 2, Sort.by("name")));
+
+        assertThat(firstPage.getContent()).extracting(InterestTopic::getName).containsExactly("topic-0", "topic-1");
+        assertThat(firstPage.getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
     void should_report_a_category_that_is_one_of_several_as_existing() {
         List<Category> categories = categoryRepository.saveAll(List.of(
                 newCategory("art"), newCategory("science"), newCategory("sport")));
@@ -225,6 +261,16 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
         Category category = new Category();
         category.setName(name);
         return category;
+    }
+
+    private void persistTopicWithSchedule(String name, Category category, NewsSchedule schedule) {
+        persistTopicWithSchedule(name, Set.of(category), schedule);
+    }
+
+    private void persistTopicWithSchedule(String name, Set<Category> categories, NewsSchedule schedule) {
+        InterestTopic topic = newTopic(name, categories);
+        topic.setSchedule(schedule);
+        interestTopicRepository.save(topic);
     }
 
     private InterestTopic newTopic(String name, Category category) {

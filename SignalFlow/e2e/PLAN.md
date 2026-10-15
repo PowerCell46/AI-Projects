@@ -33,7 +33,7 @@ Mirror the UrlShortener e2e shape exactly (config, global setup/teardown driving
 3. **Fixtures.** Shared helpers: unique-user registration via API, admin login + category/topic creation via gateway routes returning IDs, unique naming everywhere for parallel safety.
 4. **`auth.spec.ts`.** Register → lands on `/` authenticated; login; logout → `/login` with protected `/` redirecting; validation errors (short/weak password, bad email, duplicate email → 409) asserting inline UI errors.
 5. **`subscriptions.spec.ts`.** Fixture-created topic; Subscribe toggle on `TopicCard` (`aria-pressed`, Subscribed label); unsubscribe back; subscribed counts update.
-6. **`feed.spec.ts`.** ALL / SUBSCRIBED / NOT_SUBSCRIBED filter tabs with counts; pager loads more; empty-feed state with zero topics; a two-category topic shows both names on its card in name order; a card shows its schedule label (`Weekly · Mondays`, and `Daily` by default).
+6. **`feed.spec.ts`.** ALL / SUBSCRIBED / NOT_SUBSCRIBED filter tabs with counts; pager loads more; empty-feed state with zero topics; a two-category topic shows both names on its card in name order; a three-category topic shows two chips and "+1"; a card shows its schedule label (`Weekly · Mondays`, and `Daily` by default).
 7. **Docs.** `e2e/CLAUDE.md` (run/debug/teardown, incl. `E2E_SKIP_TEARDOWN=1`, headed/slow scripts) mirroring UrlShortener's.
 
 ## Validation Plan

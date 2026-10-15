@@ -1,5 +1,6 @@
 package com.peter_gerdzhikov.signal_flow_api_gateway.services.implementations;
 
+import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,7 +30,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public User register(RegisterRequestDTO request) {
-        String email = request.getEmail().toLowerCase();
+        String email = request.getEmail().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmail(email)) {
             throw new DuplicateEmailException();
         }
@@ -52,7 +53,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public User login(LoginRequestDTO request) {
-        String email = request.getEmail().toLowerCase();
+        String email = request.getEmail().toLowerCase(Locale.ROOT);
         Optional<User> maybeUser = userRepository.findByEmail(email);
 
         if (maybeUser.isEmpty()) {

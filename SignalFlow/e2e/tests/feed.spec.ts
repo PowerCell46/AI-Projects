@@ -59,6 +59,22 @@ test('a topic with two categories shows both on its card, in name order', async 
     )
 })
 
+test('a topic with three categories shows two and a +1 chip naming the third', async ({
+    page,
+    request,
+}) => {
+    const user = newUser()
+    await registerViaApi(request, user)
+    const topic = await createTopicWithCategoriesViaApi(['alpha', 'beta', 'gamma'])
+
+    await loginAndWaitForFeed(page, user)
+    await revealTopicCard(page, topic.name)
+
+    const chips = topicCard(page, topic.name).locator('.topic-card-category')
+    await expect(chips).toHaveText([topic.categoryNames[0], topic.categoryNames[1], '+1'])
+    await expect(chips.last()).toHaveAttribute('title', topic.categoryNames[2])
+})
+
 test('a card shows its schedule, Daily by default', async ({ page, request }) => {
     const user = newUser()
     await registerViaApi(request, user)

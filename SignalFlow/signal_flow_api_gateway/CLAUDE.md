@@ -80,6 +80,12 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
   the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
   deploys, or deploying the services independently.
 
+- **Any new table that keeps a user's data needs its own cleanup in `UserServiceImpl.deleteByEmail`** (see the
+  outbox delete there), because a column with no foreign key does not cascade.
+- **Login and register are rate limited per client address, in memory** (`AuthRateLimitFilter`). The client is the
+  `X-Forwarded-For` entry 1 from the right; if the proxy chain changes, change
+  `CLIENT_ADDRESS_FORWARDED_FOR_INDEX_FROM_RIGHT`, or every client shares one bucket. Per instance only, so a second
+  instance doubles the limit.
 - **Any new table that references `users` needs its own `@OnDelete(action = OnDeleteAction.CASCADE)` or explicit
   cleanup in `UserServiceImpl.deleteByEmail`**, or deleting a user fails on the foreign key. `Subscription` is the
   only one today.

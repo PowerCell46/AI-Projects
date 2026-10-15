@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,6 +71,7 @@ public class TopicNewsGenerationJob {
 
     public void generateNewsFor(LocalDate newsDate) {
         log.info("Daily news generation job triggered for '{}'.", newsDate);
+        Set<NewsSchedule> schedulesRunningToday = NewsSchedule.runningOn(newsDate.getDayOfWeek());
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, Sort.by("id"));
 
         // Each topic's OpenRouter call is I/O-bound, so a virtual thread per topic is cheap - the
@@ -78,7 +80,7 @@ public class TopicNewsGenerationJob {
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Page<InterestTopic> page;
             do {
-                page = interestTopicRepository.findAll(pageable);
+                page = interestTopicRepository.findByScheduleIn(schedulesRunningToday, pageable);
                 awaitAll(page
                         .stream()
                         .map(topic -> executor.submit(() -> generateNewsForTopicBounded(topic, newsDate, concurrencyLimiter)))

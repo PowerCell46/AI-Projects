@@ -117,6 +117,7 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 `UserControllerIntegrationTest`
 
 - An admin deletes a `USER`: 204, the row and its subscriptions are gone, another user's subscriptions are untouched (`should_delete_a_user_with_their_subscriptions_and_leave_others_untouched`)
+- The user's queued notifications are deleted with the account, another user's are untouched (`should_delete_the_users_queued_notifications_and_leave_others_untouched`)
 - The email in mixed case still finds the account (`should_find_the_account_when_the_email_is_given_in_mixed_case`)
 - After deletion the old credentials return 401, and registering again with the same email creates a new id with no subscriptions (`should_let_the_person_register_again_as_a_fresh_account_after_deletion`)
 - An `ADMIN` target returns 403 and the row stays (`should_return_403_and_keep_the_account_when_the_target_is_an_admin`)
@@ -126,6 +127,13 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 - A missing email returns 400 (`should_return_400_when_the_email_is_missing`)
 - A `USER` caller returns 403 and the target stays (`should_return_403_and_delete_nothing_when_the_caller_is_not_an_admin`)
 - No cookie returns 401 (`should_return_401_with_no_cookie`)
+
+## Rate limit on `POST /api/v1/auth/login` and `/register`
+
+`AuthRateLimitIntegrationTest` (limit set to 3 per window)
+
+- The 4th login from one client address returns 429 with `Retry-After: 60`; the first three return 401 (`should_answer_429_with_retry_after_once_a_client_address_exceeds_the_login_limit`)
+- Another client address is still answered while the first is limited (`should_keep_answering_other_client_addresses_while_one_is_limited`)
 
 ## `GET /api/v1/feed`
 

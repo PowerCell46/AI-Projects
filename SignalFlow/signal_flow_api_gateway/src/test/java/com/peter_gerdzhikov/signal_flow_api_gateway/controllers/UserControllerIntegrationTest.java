@@ -2,6 +2,9 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,9 +22,12 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.LoginRequestDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.RegisterRequestDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.auth.UserResponseDTO;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.NotificationOutbox;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
+import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.NotificationOutboxStatus;
+import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.NotificationOutboxRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.SubscriptionRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.repositories.UserRepository;
 import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.TokenService;
@@ -46,6 +52,9 @@ class UserControllerIntegrationTest extends AbstractPostgresIntegrationTest {
     private SubscriptionRepository subscriptionRepository;
 
     @Autowired
+    private NotificationOutboxRepository notificationOutboxRepository;
+
+    @Autowired
     private TokenService tokenService;
 
     private String adminEmail;
@@ -54,6 +63,7 @@ class UserControllerIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @BeforeEach
     void clearAndCreateAdmin() {
+        notificationOutboxRepository.deleteAll();
         subscriptionRepository.deleteAll();
         userRepository.deleteAll();
         adminEmail = uniqueEmail("admin");
@@ -74,6 +84,20 @@ class UserControllerIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(subscriptionRepository.countByUser_Id(target.getId())).isZero();
         assertThat(userRepository.existsByEmail(bystander.getEmail())).isTrue();
         assertThat(subscriptionRepository.countByUser_Id(bystander.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void should_delete_the_users_queued_notifications_and_leave_others_untouched() {
+        User target = saveUser(uniqueEmail("target"), Role.USER);
+        User bystander = saveUser(uniqueEmail("bystander"), Role.USER);
+        notificationOutboxRepository.save(queuedNotificationFor(target));
+        notificationOutboxRepository.save(queuedNotificationFor(bystander));
+
+        deleteUser(adminCookie, target.getEmail()).expectStatus().isNoContent();
+
+        assertThat(notificationOutboxRepository.findAll())
+                .extracting(NotificationOutbox::getUserId)
+                .containsExactly(bystander.getId());
     }
 
     @Test
@@ -172,6 +196,27 @@ class UserControllerIntegrationTest extends AbstractPostgresIntegrationTest {
                 .expectStatus().isUnauthorized();
 
         assertThat(userRepository.existsByEmail(target.getEmail())).isTrue();
+    }
+
+    private NotificationOutbox queuedNotificationFor(User user) {
+        LocalDate newsDate = LocalDate.now();
+
+        return NotificationOutbox
+                .builder()
+                .newsId(UUID.randomUUID())
+                .interestTopicId(UUID.randomUUID())
+                .topicName("rust")
+                .categoryNames(List.of("programming"))
+                .newsDate(newsDate)
+                .schedule("DAILY")
+                .periodStart(newsDate)
+                .data("<p>news</p>")
+                .generatedAt(Instant.now())
+                .userId(user.getId())
+                .emailAddress(user.getEmail())
+                .status(NotificationOutboxStatus.PENDING)
+                .attemptCount(0)
+                .build();
     }
 
     private RestTestClient.ResponseSpec deleteUser(String cookie, String email) {

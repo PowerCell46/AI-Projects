@@ -193,3 +193,11 @@ file — this entry is the full record of its one finding.
 - **`NEWS_PERIOD` format.** `DAILY`: "News for 13 October 2026" (unchanged). Other presets: the label, ` · `
   (`&middot;` in HTML), then the dates - one day "14 October 2026", a range inside one month "6–12 October 2026",
   across months "29 September – 5 October 2026", across years "29 December 2026 – 4 January 2027" (en dashes).
+
+## 2026-10-15 — Links show their real host in the HTML email
+
+The model's output is steered by web pages, so an injected instruction can produce a link whose text names a
+trusted site and whose `href` points elsewhere. After sanitizing, `LinkHostAnnotator` appends " (host)" after every
+link in the HTML part, in punycode so a look-alike Unicode domain is visible, and unwraps a link whose host cannot be
+read. The text part already prints the full URL, so it is unchanged. Links stay clickable; a host allowlist or
+dropping links were rejected as too restrictive for open-web news sources.

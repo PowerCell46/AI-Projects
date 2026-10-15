@@ -40,6 +40,13 @@ class NewsScheduleTest {
     }
 
     @ParameterizedTest
+    @MethodSource("schedulesByDay")
+    void should_return_every_preset_that_runs_when_asking_for_a_day(
+            DayOfWeek day, NewsSchedule[] expectedSchedules) {
+        assertThat(NewsSchedule.runningOn(day)).containsExactlyInAnyOrder(expectedSchedules);
+    }
+
+    @ParameterizedTest
     @MethodSource("periodStarts")
     void should_start_the_period_after_the_previous_run_day_when_the_preset_runs_on_the_news_date(
             NewsSchedule schedule, LocalDate newsDate, LocalDate expectedPeriodStart) {
@@ -54,6 +61,15 @@ class NewsScheduleTest {
                 Arguments.of(NewsSchedule.WEEKDAYS, new DayOfWeek[]{MON, TUE, WED, THU, FRI}),
                 Arguments.of(NewsSchedule.WEEKENDS, new DayOfWeek[]{SAT, SUN}),
                 Arguments.of(NewsSchedule.WEEKLY, new DayOfWeek[]{MON}));
+    }
+
+    private static Stream<Arguments> schedulesByDay() {
+        return Stream.of(
+                Arguments.of(MON, new NewsSchedule[]{NewsSchedule.DAILY, NewsSchedule.WEEKDAYS, NewsSchedule.WEEKLY}),
+                Arguments.of(TUE, new NewsSchedule[]{NewsSchedule.DAILY, NewsSchedule.WEEKDAYS}),
+                Arguments.of(FRI, new NewsSchedule[]{NewsSchedule.DAILY, NewsSchedule.WEEKDAYS}),
+                Arguments.of(SAT, new NewsSchedule[]{NewsSchedule.DAILY, NewsSchedule.WEEKENDS}),
+                Arguments.of(SUN, new NewsSchedule[]{NewsSchedule.DAILY, NewsSchedule.WEEKENDS}));
     }
 
     private static Stream<Arguments> periodStarts() {

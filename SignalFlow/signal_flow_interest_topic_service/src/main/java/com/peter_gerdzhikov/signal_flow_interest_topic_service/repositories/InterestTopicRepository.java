@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.InterestTopic;
+import com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_interest_topic_service.repositories.projections.TopicCategoryNameProjection;
 
 public interface InterestTopicRepository extends JpaRepository<InterestTopic, UUID> {
@@ -19,6 +20,8 @@ public interface InterestTopicRepository extends JpaRepository<InterestTopic, UU
     boolean existsByCategories_Id(UUID categoryId);
 
     Page<InterestTopic> findByCategories_Id(UUID categoryId, Pageable pageable);
+
+    Page<InterestTopic> findByScheduleIn(Collection<NewsSchedule> schedules, Pageable pageable);
 
     @Query("SELECT t.id AS topicId, c.name AS categoryName FROM InterestTopic t JOIN t.categories c WHERE t.id IN :ids")
     List<TopicCategoryNameProjection> findCategoryNamesByTopicIds(@Param("ids") Collection<UUID> ids);

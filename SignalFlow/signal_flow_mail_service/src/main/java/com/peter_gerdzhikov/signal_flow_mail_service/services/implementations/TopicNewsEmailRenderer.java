@@ -27,6 +27,7 @@ import org.springframework.web.util.HtmlUtils;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.NewsSchedule;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.utilities.HtmlToPlainTextConverter;
+import com.peter_gerdzhikov.signal_flow_mail_service.utilities.LinkHostAnnotator;
 
 /**
  * Classpath HTML and text templates with single-pass {@code {{TOKEN}}} substitution; both templates are
@@ -34,7 +35,9 @@ import com.peter_gerdzhikov.signal_flow_mail_service.utilities.HtmlToPlainTextCo
  * {@code DATA} is the only token carrying untrusted AI-generated HTML, so only it runs through
  * {@link #DATA_SANITIZATION_POLICY} - every other HTML token is a plain string, HTML-escaped instead. The
  * text template takes the same sanitized {@code DATA}, converted to plain text, and every other token
- * raw, since a text body has no markup to inject into.
+ * raw, since a text body has no markup to inject into. In the HTML part each link also shows its real
+ * host, since the model can be steered by web pages into a link whose text names another site; the text part
+ * already prints the full URL.
  */
 @Component
 public class TopicNewsEmailRenderer {
@@ -96,7 +99,7 @@ public class TopicNewsEmailRenderer {
                 "NEWS_PERIOD", formatNewsPeriod(event, HTML_PERIOD_SEPARATOR),
                 "GENERATED_AT", formattedGeneratedAt,
                 "RECIPIENT_EMAIL", HtmlUtils.htmlEscape(event.getEmailAddress()),
-                "DATA", sanitizedData
+                "DATA", LinkHostAnnotator.annotate(sanitizedData)
         );
 
         Map<String, String> textValuesByToken = Map.of(

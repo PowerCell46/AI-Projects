@@ -88,6 +88,27 @@ class NotificationOutboxRepositoryIntegrationTest extends AbstractPostgresIntegr
         assertThat(page).isEmpty();
     }
 
+    @Test
+    void should_delete_every_row_of_the_given_user_and_leave_other_users_rows() {
+        UUID userId = UUID.randomUUID();
+        notificationOutboxRepository.save(pendingRowFor(userId));
+        NotificationOutbox failed = pendingRowFor(userId);
+        failed.setStatus(NotificationOutboxStatus.FAILED);
+        notificationOutboxRepository.save(failed);
+        NotificationOutbox otherUsersRow = notificationOutboxRepository.save(pendingRow());
+
+        int deleted = notificationOutboxRepository.deleteAllByUserId(userId);
+
+        assertThat(deleted).isEqualTo(2);
+        assertThat(notificationOutboxRepository.findAll())
+                .extracting(NotificationOutbox::getId)
+                .containsExactly(otherUsersRow.getId());
+    }
+
+    private NotificationOutbox pendingRowFor(UUID userId) {
+        return newOutboxRow(UUID.randomUUID(), UUID.randomUUID(), userId, LocalDate.now(), Instant.now());
+    }
+
     private NotificationOutbox pendingRow() {
         return newOutboxRow(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), Instant.now());
     }

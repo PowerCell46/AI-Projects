@@ -55,6 +55,9 @@ public class SecurityConfiguration {
 
     private static final String USERS_SUBPATHS = "/api/v1/users/**";
 
+    // The size of an HS256 key; a shorter secret can be brute-forced offline from one issued token.
+    private static final int MIN_JWT_SECRET_BYTES = 32;
+
     private static final RequestMatcher[] PUBLIC_MATCHERS = {
             PathPatternRequestMatcher.pathPattern(HttpMethod.GET, "/actuator/health"),
             PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/register"),
@@ -109,7 +112,13 @@ public class SecurityConfiguration {
 
     @Bean
     public SecretKey jwtSecretKey(@Value("${app.jwt.secret}") String secret) {
-        return new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MIN_JWT_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be at least " + MIN_JWT_SECRET_BYTES + " bytes long.");
+        }
+
+        return new SecretKeySpec(secretBytes, "HmacSHA256");
     }
 
     @Bean

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -73,7 +74,7 @@ class TopicNewsGenerationJobTest {
         @Test
         void should_skip_a_topic_when_news_already_exists_for_today() {
             InterestTopic topic = newTopic();
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(true);
 
@@ -86,7 +87,7 @@ class TopicNewsGenerationJobTest {
         @Test
         void should_save_a_pending_news_row_when_none_exists_for_today() {
             InterestTopic topic = newTopic();
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
             when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("today's rust news");
@@ -113,7 +114,7 @@ class TopicNewsGenerationJobTest {
         void should_skip_the_failing_topic_and_still_save_the_rest() {
             InterestTopic failingTopic = newTopic();
             InterestTopic healthyTopic = newTopic();
-            when(interestTopicRepository.findAll(any(Pageable.class)))
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(failingTopic, healthyTopic)));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
                     .thenReturn(false);
@@ -130,7 +131,7 @@ class TopicNewsGenerationJobTest {
         @Test
         void should_swallow_a_unique_constraint_race_on_save() {
             InterestTopic topic = newTopic();
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
             when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("today's rust news");
@@ -143,7 +144,7 @@ class TopicNewsGenerationJobTest {
         @Test
         void should_pass_each_covered_headline_once_in_first_seen_order() {
             InterestTopic topic = newTopic();
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
             when(topicNewsRepository.findDataByTopicInDateRange(eq(topic.getId()), any(LocalDate.class), any(LocalDate.class)))
@@ -161,7 +162,7 @@ class TopicNewsGenerationJobTest {
         @Test
         void should_pass_an_empty_list_when_there_are_no_past_rows() {
             InterestTopic topic = newTopic();
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(eq(topic.getId()), any(LocalDate.class)))
                     .thenReturn(false);
             when(newsGenerationService.generate(eq(topic), any(LocalDate.class), any(LocalDate.class), any())).thenReturn("news");
@@ -177,13 +178,13 @@ class TopicNewsGenerationJobTest {
             InterestTopic secondTopic = newTopic();
             Page<InterestTopic> firstPage = new PageImpl<>(List.of(firstTopic), PageRequest.of(0, 1), 2);
             Page<InterestTopic> secondPage = new PageImpl<>(List.of(secondTopic), PageRequest.of(1, 1), 2);
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(firstPage, secondPage);
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(firstPage, secondPage);
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
                     .thenReturn(true);
 
             topicNewsGenerationJob.generateDailyNews();
 
-            verify(interestTopicRepository, times(2)).findAll(any(Pageable.class));
+            verify(interestTopicRepository, times(2)).findByScheduleIn(any(), any(Pageable.class));
             verify(topicNewsRepository).existsByInterestTopic_IdAndNewsDate(eq(firstTopic.getId()), any());
             verify(topicNewsRepository).existsByInterestTopic_IdAndNewsDate(eq(secondTopic.getId()), any());
         }
@@ -193,7 +194,7 @@ class TopicNewsGenerationJobTest {
             List<InterestTopic> topics = IntStream.range(0, 12)
                     .mapToObj(i -> newTopic())
                     .toList();
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(topics));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(new PageImpl<>(topics));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(any(), any(LocalDate.class)))
                     .thenReturn(false);
 
@@ -224,7 +225,7 @@ class TopicNewsGenerationJobTest {
         @Test
         void should_skip_a_weekly_topic_without_any_lookup_or_generation_when_the_day_is_not_monday() {
             InterestTopic topic = newTopic(NewsSchedule.WEEKLY);
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
 
             topicNewsGenerationJob.generateNewsFor(TUESDAY);
 
@@ -232,10 +233,20 @@ class TopicNewsGenerationJobTest {
         }
 
         @Test
+        void should_load_only_the_schedules_that_run_on_the_given_day() {
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+            topicNewsGenerationJob.generateNewsFor(TUESDAY);
+
+            verify(interestTopicRepository).findByScheduleIn(
+                    eq(Set.of(NewsSchedule.DAILY, NewsSchedule.WEEKDAYS)), any(Pageable.class));
+        }
+
+        @Test
         void should_generate_a_weekly_topic_for_the_past_week_and_save_its_schedule_and_period_start_on_monday() {
             InterestTopic topic = newTopic(NewsSchedule.WEEKLY);
             LocalDate expectedPeriodStart = LocalDate.of(2026, 10, 6);
-            when(interestTopicRepository.findAll(any(Pageable.class))).thenReturn(singlePage(topic));
+            when(interestTopicRepository.findByScheduleIn(any(), any(Pageable.class))).thenReturn(singlePage(topic));
             when(topicNewsRepository.existsByInterestTopic_IdAndNewsDate(topic.getId(), MONDAY)).thenReturn(false);
             when(newsGenerationService.generate(topic, MONDAY, expectedPeriodStart, List.of())).thenReturn("weekly news");
 

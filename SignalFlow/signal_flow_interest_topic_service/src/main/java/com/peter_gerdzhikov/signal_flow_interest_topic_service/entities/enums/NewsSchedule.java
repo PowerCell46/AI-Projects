@@ -21,6 +21,18 @@ public enum NewsSchedule {
         this.runDays = runDays;
     }
 
+    public static Set<NewsSchedule> runningOn(DayOfWeek day) {
+        EnumSet<NewsSchedule> schedules = EnumSet.noneOf(NewsSchedule.class);
+
+        for (NewsSchedule schedule : values()) {
+            if (schedule.runsOn(day)) {
+                schedules.add(schedule);
+            }
+        }
+
+        return schedules;
+    }
+
     public boolean runsOn(DayOfWeek day) {
         return runDays.contains(day);
     }

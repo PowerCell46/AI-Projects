@@ -850,7 +850,7 @@ the request to reach the public controller without interference from stale cooki
   from the foreign key. The delete/subscribe race is safe by the row lock: subscribe first means the delete
   waits and cascades over the new row; delete first means the lock finds nothing and subscribe answers 401.
 - **Queued emails are not cancelled.** The outbox polls every 3 s and deletes each row once sent, so the window
-  is a few seconds.
+  is a few seconds. Superseded in part by the 2026-10-15 entry below: the user's outbox rows are now deleted.
 
 ## Cross-service plan, phase 4 — each topic has a news schedule
 
@@ -859,3 +859,21 @@ the request to reach the public controller without interference from stale cooki
   guard skips and marks processed a record whose `schedule` is blank or over 16 characters, or whose `periodStart` is null.
 - **In the outbox `INSERT`, `schedule` and `period_start` sit right after `news_date`**, which shifted the later
   parameter indices by two.
+
+## 2026-10-15 — Security audit fixes
+
+- **Login and register are rate limited per client address** (`AuthRateLimitFilter`, 20 per minute by default,
+  429 with `Retry-After`). Both cost a bcrypt hash and are unauthenticated. The counters are in memory (fixed
+  window), so the limit holds per instance only; a second instance would double it. **Trigger:** more than one
+  gateway instance, which needs a shared store (Redis) or a proxy-level limit. The two endpoints share one budget
+  per address, and a window can let through up to twice the limit across a boundary - acceptable at this size.
+- **The client address is the `X-Forwarded-For` entry 1 from the right**, not the leftmost. Caddy sets the header to
+  the client address (it overwrites what a client sends) and the frontend nginx appends Caddy's, so the right-hand
+  entries are ours and the left ones are client-controlled. If the proxy chain changes, change
+  `CLIENT_ADDRESS_FORWARDED_FOR_INDEX_FROM_RIGHT`. With too few entries (direct access) the socket address is used.
+- **Deleting a user deletes their `notification_outbox` rows** in the same transaction (`user_id`, no foreign key,
+  so nothing cascades). Closes the earlier erasure gap.
+- **`JWT_SECRET` must be at least 32 bytes**, or the gateway refuses to start; a shorter HS256 key can be
+  brute-forced offline from one issued cookie.
+- **Email and topic/category names are lowercased with `Locale.ROOT`**, so a Turkish or Azeri default locale cannot
+  turn `I` into `ı` and miss or duplicate accounts.

@@ -101,3 +101,7 @@ Steps here, once the gateway side lands:
 - **Redis AOF stays `everysec`**, not `always`. Can lose ~1s of dedupe keys on a crash, which can only
   cause duplicates on redelivery, never lost delivery. **Permanent:** `always` would cost an fsync per
   write to close a window whose only failure mode is an already-accepted duplicate.
+- **A consumer started before its topic exists picks the topic up only after the Kafka metadata refresh (about
+  5 minutes).** Seen in the Phase 4 smoke check on 2026-10-14: the email arrived late. Not caused by that phase.
+  **Trigger:** emails arriving late or missing right after a fresh deploy or a first run, which means creating
+  the topic before the consumer starts or shortening the metadata refresh interval.

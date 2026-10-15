@@ -442,3 +442,18 @@ re-raise them when entries are uncommented.
 - **At most 5 items per issue for every preset.** A weekly issue is the top 5 of the week.
 - **`generateDailyNews()` only computes today's date and calls the public `generateNewsFor(LocalDate)`.** Tests call
   `generateNewsFor` with fixed dates, so none of them depends on the weekday the build runs on.
+
+## 2026-10-14 — The job filters topics by schedule in the query, but not by "already has news"
+
+`TopicNewsGenerationJob` loads topics with `findByScheduleIn(NewsSchedule.runningOn(day), pageable)`, so a topic that
+doesn't run that day is never read. The set of schedules comes from `NewsSchedule`, so the weekday rules live in one
+place. The per-topic `existsByInterestTopic_IdAndNewsDate` check stays in code: moving it into the query would shrink
+the result while the job saves rows, and offset paging would then skip topics. The in-code `runsOn` check stays as a
+cheap guard. **Trigger to revisit:** keyset paging (`id > :lastId`), which would make a `NOT EXISTS` filter safe.
+
+## 2026-10-15 — Covered stories moved out of the system prompt
+
+Headlines of earlier output come from model text that came from web pages, so they are untrusted. They now sit in
+the user message between `<covered_stories>` tags (the system prompt only explains how to treat them), capped at 50
+headlines of 200 characters, with `<` and `>` removed so none can close the tag. A `PATCH` with a blank `name` or
+`prompt` is now a 400, as on create; a blank name made every email for that topic fail the mail validation.

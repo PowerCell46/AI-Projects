@@ -10,6 +10,15 @@ const SCHEDULE_LABELS: Record<FeedSchedule, string> = {
     WEEKLY: 'Weekly \u00B7 Mondays',
 };
 
+const MAX_VISIBLE_CATEGORIES = 2;
+
+function hiddenCategoryNames(categories: FeedTopic['categories']): string {
+    return categories
+        .slice(MAX_VISIBLE_CATEGORIES)
+        .map((category) => category.name)
+        .join(', ');
+}
+
 interface TopicCardProps {
     topic: FeedTopic
     onChange: (topicId: string, subscribed: boolean) => void
@@ -60,20 +69,28 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
             data-subscribed={subscribed}
             data-burst={burst ?? undefined}
         >
-            <div className="topic-card-row">
-                <h2 className="topic-card-title">{topic.name}</h2>
-                <ul className="topic-card-categories">
-                    {topic.categories.map((category) => (
-                        <li
-                            key={category.id}
-                            className="topic-card-category"
-                            title={category.name}
-                        >
-                            {category.name}
-                        </li>
-                    ))}
-                </ul>
-            </div>
+            <h2 className="topic-card-title">{topic.name}</h2>
+
+            <ul className="topic-card-categories">
+                {topic.categories.slice(0, MAX_VISIBLE_CATEGORIES).map((category) => (
+                    <li
+                        key={category.id}
+                        className="topic-card-category"
+                        title={category.name}
+                    >
+                        {category.name}
+                    </li>
+                ))}
+                {topic.categories.length > MAX_VISIBLE_CATEGORIES && (
+                    <li
+                        className="topic-card-category"
+                        data-overflow="true"
+                        title={hiddenCategoryNames(topic.categories)}
+                    >
+                        +{topic.categories.length - MAX_VISIBLE_CATEGORIES}
+                    </li>
+                )}
+            </ul>
 
             {scheduleLabel && (
                 <p className="topic-card-schedule">{scheduleLabel}</p>

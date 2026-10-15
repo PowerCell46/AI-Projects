@@ -63,14 +63,6 @@
 
 /* ─── Layout ────────────────────────────────────────────────────────────── */
 
-.topic-card-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: calc(var(--home-scale) * 1rem);
-    flex-wrap: wrap;
-}
-
 .topic-card-title {
     margin: 0;
     font-size: calc(var(--home-scale) * 1.0625rem);
@@ -81,18 +73,15 @@
 
 .topic-card-categories {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
     gap: calc(var(--home-scale) * 0.375rem);
     min-width: 0;
-    max-width: 100%;
-    margin: 0;
+    margin: calc(var(--home-scale) * 0.625rem) 0 0;
     padding: 0;
     list-style: none;
 }
 
 .topic-card-category {
-    max-width: 100%;
+    min-width: 0;
     padding: calc(var(--home-scale) * 0.125rem) calc(var(--home-scale) * 0.5rem);
     overflow: hidden;
     font-size: calc(var(--home-scale) * 0.78125rem);
@@ -101,6 +90,11 @@
     color: var(--text-3);
     border: 1px solid var(--line);
     border-radius: 0.1875rem;
+}
+
+/* The "+N" chip must stay readable while the name chips shrink. */
+.topic-card-category[data-overflow='true'] {
+    flex-shrink: 0;
 }
 
 .topic-card-schedule {

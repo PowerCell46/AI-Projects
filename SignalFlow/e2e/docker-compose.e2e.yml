@@ -170,6 +170,7 @@ services:
       JWT_SECRET: e2e-test-only-jwt-secret-not-for-any-real-use-0123456789abcdef
       COOKIE_SECURE: "false"
       BCRYPT_STRENGTH: 4
+      AUTH_RATE_LIMIT_MAX_REQUESTS: 100000
       INTEREST_TOPIC_SERVICE_URL: http://topics:8081
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       ADMIN_EMAIL: admin@e2e.local
