@@ -17,6 +17,7 @@ Hand-maintained - see `CLAUDE.md`'s "Writing code" section for the rule keeping 
   from address, and marks the Redis key `SENT` (`should_send_one_email_on_happy_path`)
 - The sent email carries a `text/plain` alternative alongside the `text/html` part, `data` converted to
   plain text with the link URL kept (`should_send_a_text_part_with_the_data_converted_to_plain_text_including_the_link_url`)
+- A link whose text names another site gets its real host after it in the HTML part, and the text part keeps the full URL (`should_show_the_real_host_after_a_link_whose_text_names_another_site`)
 - Exact redelivery (same record published twice) sends exactly one email
   (`should_send_only_one_email_on_exact_redelivery`)
 - The same news to two different users sends two emails and marks two independent `SENT` keys

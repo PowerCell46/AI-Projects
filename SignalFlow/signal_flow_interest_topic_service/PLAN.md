@@ -1,15 +1,7 @@
 # SignalFlow Interest Topic Service — plan
 
-Phase 1 (data model, endpoints, news generation job, outbox publisher, exploit-hunter audit) shipped
-2026-09-23. Phase 2 (real news generation via OpenRouter, mail sanitizer) shipped 2026-09-24 - manual
-smoke check confirmed a real `topic_news` row (clean HTML, working source links) and a correctly
-rendering delivered email. A fresh exploit-hunter audit on 2026-09-25 (`exploit-report-2026-09-25.md`)
-re-verified all four prior findings still patched and surfaced one new Medium finding; that finding, plus
-the spend-cap and serial-generation gaps it was the concrete trigger for, shipped the same day - row-count
-caps on categories/interest topics, a paginated `GET /api/v1/categories`, and bounded-concurrency news
-generation. Running the full suite for that work also surfaced and fixed a pre-existing test-isolation gap
-in two repository integration tests (`DECISIONS.md`). See `CLAUDE.md` for what this service is and how to
-run it, `DECISIONS.md` for why non-obvious calls were made, `TESTING.md` for the e2e catalog.
+Shipped phases and audits are in git history. See `CLAUDE.md` for what this service is and how to run it,
+`DECISIONS.md` for why non-obvious calls were made, `TESTING.md` for the e2e catalog.
 
 Below is what's still open.
 

@@ -213,6 +213,23 @@ class TopicNewsNotificationRequestedListenerIntegrationTest extends AbstractNoti
     }
 
     @Test
+    void should_show_the_real_host_after_a_link_whose_text_names_another_site() {
+        String recipient = uniqueRecipient();
+        TopicNewsNotificationEventDTO event = aValidEvent(recipient);
+        event.setData("<ul><li><strong>Security notice</strong> <a href=\"https://evil.example/login\">SignalFlow</a></li></ul>");
+
+        publish(NOTIFICATION_REQUESTED_TOPIC, event.getUserId().toString(), toJson(event));
+
+        JsonNode summary = awaitEmail(recipient);
+        JsonNode message = MAILPIT_CLIENT.fetchMessage(summary.get("ID").asString());
+
+        String html = message.get("HTML").asString();
+        assertTrue(html.contains("href=\"https://evil.example/login\""));
+        assertTrue(html.contains("SignalFlow</a> (evil.example)"));
+        assertTrue(message.get("Text").asString().contains("SignalFlow (https://evil.example/login)"));
+    }
+
+    @Test
     void should_dead_letter_an_oversized_data_field_without_sending() {
         TopicNewsNotificationEventDTO event = aValidEvent(uniqueRecipient());
         event.setData("a".repeat(TopicNewsNotificationEventDTO.MAX_DATA_LENGTH + 1));
