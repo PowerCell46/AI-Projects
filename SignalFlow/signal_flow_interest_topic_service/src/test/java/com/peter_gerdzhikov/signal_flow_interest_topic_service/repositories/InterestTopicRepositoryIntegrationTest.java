@@ -198,6 +198,20 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void should_store_the_schedule_as_its_code_in_the_column() {
+        Category category = categoryRepository.save(newCategory("art"));
+        persistTopicWithSchedule(NAME, category, NewsSchedule.WEEKDAYS);
+        entityManager.flush();
+
+        Object storedValue = entityManager
+                .createNativeQuery("select schedule from interest_topics where name = :name")
+                .setParameter("name", NAME)
+                .getSingleResult();
+
+        assertThat(storedValue).isEqualTo(NewsSchedule.WEEKDAYS.getCode());
+    }
+
+    @Test
     void should_return_each_matching_topic_once_and_respect_the_page_size_when_topics_have_several_categories() {
         Set<Category> categories = new HashSet<>(categoryRepository.saveAll(List.of(
                 newCategory("art"), newCategory("science"), newCategory("sport"))));

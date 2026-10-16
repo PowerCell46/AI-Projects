@@ -57,7 +57,6 @@ public class TopicNews extends CommonEntity {
      * what was actually generated even if the topic's schedule is edited before the outbox publishes.
      */
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
     private NewsSchedule schedule;
 
     /**

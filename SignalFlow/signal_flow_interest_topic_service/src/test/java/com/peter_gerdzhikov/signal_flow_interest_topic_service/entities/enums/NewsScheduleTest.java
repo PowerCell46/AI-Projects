@@ -1,6 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_interest_topic_service.entities.enums;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -8,7 +9,9 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class NewsScheduleTest {
 
@@ -53,6 +56,34 @@ class NewsScheduleTest {
         assertThat(schedule.runsOn(newsDate.getDayOfWeek())).isTrue();
 
         assertThat(schedule.periodStart(newsDate)).isEqualTo(expectedPeriodStart);
+    }
+
+    @ParameterizedTest
+    @MethodSource("codesByPreset")
+    void should_keep_its_fixed_code_when_asking_a_preset_for_its_code(NewsSchedule schedule, int expectedCode) {
+        assertThat(schedule.getCode()).isEqualTo(expectedCode);
+    }
+
+    @ParameterizedTest
+    @EnumSource(NewsSchedule.class)
+    void should_find_the_preset_when_looking_up_its_own_code(NewsSchedule schedule) {
+        assertThat(NewsSchedule.fromCode(schedule.getCode())).isEqualTo(schedule);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {-1, 0, 5})
+    void should_reject_the_code_when_no_preset_has_it(int unknownCode) {
+        assertThatThrownBy(() -> NewsSchedule.fromCode(unknownCode))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("No news schedule has code %d.".formatted(unknownCode));
+    }
+
+    private static Stream<Arguments> codesByPreset() {
+        return Stream.of(
+                Arguments.of(NewsSchedule.DAILY, 1),
+                Arguments.of(NewsSchedule.WEEKDAYS, 2),
+                Arguments.of(NewsSchedule.WEEKENDS, 3),
+                Arguments.of(NewsSchedule.WEEKLY, 4));
     }
 
     private static Stream<Arguments> runDaysByPreset() {

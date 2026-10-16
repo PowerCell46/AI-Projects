@@ -5,20 +5,40 @@ import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.Set;
 
+import lombok.Getter;
+
 public enum NewsSchedule {
 
-    DAILY(EnumSet.allOf(DayOfWeek.class)),
+    DAILY(1, EnumSet.allOf(DayOfWeek.class)),
 
-    WEEKDAYS(EnumSet.range(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)),
+    WEEKDAYS(2, EnumSet.range(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)),
 
-    WEEKENDS(EnumSet.of(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)),
+    WEEKENDS(3, EnumSet.of(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)),
 
-    WEEKLY(EnumSet.of(DayOfWeek.MONDAY));
+    WEEKLY(4, EnumSet.of(DayOfWeek.MONDAY));
+
+    /**
+     * The value stored in the database. Fixed per constant, so reordering or inserting constants
+     * never changes what existing rows mean.
+     */
+    @Getter
+    private final int code;
 
     private final Set<DayOfWeek> runDays;
 
-    NewsSchedule(Set<DayOfWeek> runDays) {
+    NewsSchedule(int code, Set<DayOfWeek> runDays) {
+        this.code = code;
         this.runDays = runDays;
+    }
+
+    public static NewsSchedule fromCode(int code) {
+        for (NewsSchedule schedule : values()) {
+            if (schedule.code == code) {
+                return schedule;
+            }
+        }
+
+        throw new IllegalArgumentException("No news schedule has code %d.".formatted(code));
     }
 
     public static Set<NewsSchedule> runningOn(DayOfWeek day) {

@@ -5,8 +5,6 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -59,7 +57,6 @@ public class InterestTopic extends CommonEntity {
 
     @Builder.Default
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
     private NewsSchedule schedule = NewsSchedule.DAILY;
 
     @PreUpdate

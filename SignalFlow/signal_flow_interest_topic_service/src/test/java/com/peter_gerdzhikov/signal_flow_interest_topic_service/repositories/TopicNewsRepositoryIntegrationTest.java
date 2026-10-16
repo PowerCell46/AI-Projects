@@ -163,6 +163,21 @@ class TopicNewsRepositoryIntegrationTest extends AbstractIntegrationTest {
         assertThat(data).isEmpty();
     }
 
+    @Test
+    void should_store_the_schedule_as_its_code_in_the_column() {
+        InterestTopic topic = newSavedTopic("rust");
+        TopicNews news = newNews(topic, LocalDate.now(), NewsStatus.PENDING, Instant.now());
+        news.setSchedule(NewsSchedule.WEEKLY);
+        topicNewsRepository.saveAndFlush(news);
+
+        Object storedValue = entityManager
+                .createNativeQuery("select schedule from topic_news where id = :id")
+                .setParameter("id", news.getId())
+                .getSingleResult();
+
+        assertThat(storedValue).isEqualTo(NewsSchedule.WEEKLY.getCode());
+    }
+
     private void saveNewsWithData(InterestTopic topic, LocalDate newsDate, String data) {
         TopicNews news = newNews(topic, newsDate, NewsStatus.PENDING, Instant.now());
         news.setData(data);

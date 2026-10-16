@@ -457,3 +457,12 @@ Headlines of earlier output come from model text that came from web pages, so th
 the user message between `<covered_stories>` tags (the system prompt only explains how to treat them), capped at 50
 headlines of 200 characters, with `<` and `>` removed so none can close the tag. A `PATCH` with a blank `name` or
 `prompt` is now a 400, as on create; a blank name made every email for that topic fail the mail validation.
+
+## 2026-10-17 — `schedule` is stored as an int code, not its name
+
+`interest_topics.schedule` and `topic_news.schedule` hold `NewsSchedule.getCode()` (`DAILY` 1, `WEEKDAYS` 2,
+`WEEKENDS` 3, `WEEKLY` 4) through an auto-applied `NewsScheduleConverter`, so the name isn't repeated in every row.
+The code is an explicit field on each constant, not `EnumType.ORDINAL`: reordering or inserting a constant would
+silently remap stored rows. The pinned codes in `NewsScheduleTest` fail if one is renumbered. The API and the
+Kafka events still carry the constant's name, so the gateway and mail service are unchanged. The column type
+changes only because `ddl-auto=create` rebuilds the schema; under `update` existing rows would not migrate.
