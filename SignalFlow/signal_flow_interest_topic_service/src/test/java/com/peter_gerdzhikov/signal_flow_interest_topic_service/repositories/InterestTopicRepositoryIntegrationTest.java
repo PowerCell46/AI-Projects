@@ -56,6 +56,7 @@ class InterestTopicRepositoryIntegrationTest extends AbstractIntegrationTest {
     void clearTopicsAndCategories() {
         interestTopicRepository.deleteAll();
         categoryRepository.deleteAll();
+        entityManager.flush();
     }
 
     @Test

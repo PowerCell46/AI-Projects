@@ -410,7 +410,7 @@ re-raise them when entries are uncommented.
 - **The outbox publisher reads its batch detached, so it can't lazy-load.** It calls
   `findCategoryNamesByTopicIds` once per batch and groups the names itself (see the entry above).
 - **`Category.name` max length 100 → 40**, to keep feed chips and the email header tidy. No migration:
-  `ddl-auto=create` wipes both databases on every start, on purpose.
+  (Written when `ddl-auto=create` wiped the databases on every start; the service now runs `update`, which would not alter that column, see "ddl-auto=update" below.)
 
 ## Cross-service plan, phase 2 — tell the model which stories were already covered
 
@@ -465,4 +465,13 @@ headlines of 200 characters, with `<` and `>` removed so none can close the tag.
 The code is an explicit field on each constant, not `EnumType.ORDINAL`: reordering or inserting a constant would
 silently remap stored rows. The pinned codes in `NewsScheduleTest` fail if one is renumbered. The API and the
 Kafka events still carry the constant's name, so the gateway and mail service are unchanged. The column type
-changes only because `ddl-auto=create` rebuilds the schema; under `update` existing rows would not migrate.
+changed only because `ddl-auto=create` rebuilt the schema; under `update` (now in use) existing rows would not migrate.
+
+## ddl-auto=update
+
+The topic service runs `spring.jpa.hibernate.ddl-auto=update` (it was `create`, which wiped the database on
+every start). `update` creates missing tables and columns but never alters or drops existing ones. The
+`schedule` column changing from a string to an int code is the kind of change it does not apply: an existing
+database keeps the old column type and fails on the first read or write. There are still no versioned
+migrations: such a change needs a manual SQL change or a fresh volume (`docker compose down -v`). The e2e stack
+is unaffected because it always starts from empty Postgres instances.

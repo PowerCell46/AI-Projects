@@ -5,8 +5,8 @@ day a job asks an AI model for the latest news on every topic, stores it as `Top
 poller publishes it to Kafka. The gateway (`../signal_flow_api_gateway`) owns subscriptions and all
 authorization — this service is reachable only from the gateway and trusts every caller.
 
-`PLAN.md` is the backlog — the phase's step-by-step build plan, the data model, the endpoint table, the
-Known gaps accepted on purpose, and what should trigger revisiting each. Read it before starting a task.
+`BACKLOG.md` lists the gaps accepted on purpose, each with its trigger. The original build plan, data model and
+endpoint table are in git history (`git log -p -- PLAN.md`).
 
 ## Running the project
 
@@ -41,11 +41,11 @@ The pom is on **4.2.0-M1**, a milestone. Boot 4 renamed the starters — `spring
 Hard rules — these hold whether or not the skill is loaded:
 
 - Layered: `controller → service → repository`. Controllers never touch repositories directly. Services own business logic; controllers stay thin (validate input, delegate, shape response).
-- Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation.
+- Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation. Once either package holds more than 5 files, both are grouped into the same domain subpackages.
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
 - Endpoints live under `/api/v1`. The one exception is `/internal/v1/**`: service-to-service calls from the gateway, which its routes never forward a client to.
-- No Spring Security here — the gateway owns every access rule. Never add authentication/authorization to this service without an explicit instruction; see `PLAN.md`'s Known gaps.
+- No Spring Security here — the gateway owns every access rule. Never add authentication/authorization to this service without an explicit instruction.
 - Adding, removing, or changing a scenario in any HTTP-layer e2e suite (`*ControllerIntegrationTest`) updates `TESTING.md` in the same change — it's hand-maintained and only stays trustworthy if edits to the tests carry an edit to the catalog.
 
 Root-level packages, under `com.peter_gerdzhikov.signal_flow_interest_topic_service`:
@@ -71,7 +71,7 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_interest_topic_serv
 - **Shortcut: event field changes ship to all three services together.** `topic-news.generated` and
   `topic-news.notification-requested` have no versioning, so a field change must be deployed in the topic service,
   the gateway and the mail service at once. A stale in-flight event is skipped by the gateway guard or rejected by
-  the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
+  the mail validation. Acceptable while the three services are always deployed together. **Trigger:** keeping data across
   deploys, or deploying the services independently.
 - **`newsDate` is computed in `TopicNewsGenerationJob.generateDailyNews` and nowhere else.** Everything else takes it as
   a parameter (`generateNewsFor(LocalDate)`), so tests can pass fixed dates. A second `LocalDate.now()` breaks that and
@@ -104,7 +104,7 @@ Done = re-check touched files against any loaded skill's rules.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
 - **A step isn't done until its own tests are written and green.** No step starts on a red or missing test.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. It holds calls made *during* implementation.
 
 ### Autonomy
 

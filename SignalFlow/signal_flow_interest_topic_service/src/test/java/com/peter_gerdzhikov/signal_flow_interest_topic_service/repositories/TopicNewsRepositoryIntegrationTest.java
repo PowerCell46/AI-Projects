@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -43,6 +44,19 @@ class TopicNewsRepositoryIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    /**
+     * Rows committed by earlier, non-rolled-back SpringBootTest contexts (such as the seed catalog)
+     * stay in the shared Testcontainers Postgres. The flush runs the deletes before this test's own
+     * inserts, because Hibernate otherwise runs inserts first and hits unique-name conflicts.
+     */
+    @BeforeEach
+    void clearNewsTopicsAndCategories() {
+        topicNewsRepository.deleteAll();
+        interestTopicRepository.deleteAll();
+        categoryRepository.deleteAll();
+        entityManager.flush();
+    }
 
     @Test
     void should_reject_a_duplicate_news_row_for_the_same_topic_and_date() {

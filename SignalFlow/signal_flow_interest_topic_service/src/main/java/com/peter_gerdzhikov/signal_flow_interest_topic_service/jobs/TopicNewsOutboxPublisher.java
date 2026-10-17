@@ -77,7 +77,7 @@ public class TopicNewsOutboxPublisher {
         Map<UUID, List<String>> categoryNamesByTopicId = findCategoryNamesByTopicId(due);
 
         due
-            .forEach(news -> publishOneSafely(news, categoryNamesByTopicId));
+                .forEach(news -> publishOneSafely(news, categoryNamesByTopicId));
     }
 
     private void publishOneSafely(TopicNews news, Map<UUID, List<String>> categoryNamesByTopicId) {
@@ -144,10 +144,13 @@ public class TopicNewsOutboxPublisher {
                 .findCategoryNamesByTopicIds(topicIds)
                 .stream()
                 .collect(Collectors.groupingBy(
-                        TopicCategoryNameProjection::getTopicId,
-                        Collectors.mapping(
-                                TopicCategoryNameProjection::getCategoryName,
-                                Collectors.collectingAndThen(Collectors.toList(), TopicNewsOutboxPublisher::sorted))));
+                                TopicCategoryNameProjection::getTopicId,
+                                Collectors.mapping(
+                                        TopicCategoryNameProjection::getCategoryName,
+                                        Collectors.collectingAndThen(Collectors.toList(), TopicNewsOutboxPublisher::sorted)
+                                )
+                        )
+                );
     }
 
     private static List<String> sorted(List<String> names) {

@@ -86,7 +86,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                                     + "results, and disputes.",
                             NewsSchedule.WEEKLY))
             )*/
-            /*, new CategorySeed("Science", List.of(
+            , new CategorySeed("Science", List.of(
                     new TopicSeed(
                             "Space Exploration",
                             "Space missions, launches, and astronomical discoveries.",
@@ -105,7 +105,7 @@ public class DatabaseSeedServiceImpl implements DatabaseSeedService {
                             "Cover new climate research findings, major scientific reports, and notable "
                                     + "studies on global warming impacts.",
                             NewsSchedule.WEEKLY))
-            )*/
+            )
             , new CategorySeed("Health & Wellness", List.of(
                     /*new TopicSeed(
                             "Public Health",

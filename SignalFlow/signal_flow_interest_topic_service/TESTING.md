@@ -156,4 +156,4 @@ It's outside `/api/v1`, so no gateway route forwards a client to it.
 
 ## Known gaps
 
-See `PLAN.md`'s "Known gaps" section — accepted risks for the whole phase, not specific to these scenarios.
+Accepted risks are listed in `BACKLOG.md`, not specific to these scenarios.
