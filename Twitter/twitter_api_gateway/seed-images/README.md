@@ -18,8 +18,8 @@ All the names the seeder looks for:
 | Kristian  | `kristian.jpg`                             |
 | Kristyian | `kristyian.jpg`                            |
 | Gosho     | `gosho.jpg`                                |
-| Gabi      | `gabi.jpg`                                 |
-| Gabi2     | `gabi2.jpg`                                |
+| Gabi_Penchev   | `gabi_penchev.jpg`                    |
+| Gabi_Stoimenov | `gabi_stoimenov.jpg`                  |
 | Hristo    | `hristo.jpg`                               |
 | Bobkata   | `bobkata.jpg`                              |
 | Atanas    | `atanas.jpg`                               |
@@ -31,9 +31,8 @@ All the names the seeder looks for:
 
 `DataSeedRunner` runs after startup and, when the `users` table is empty, seeds:
 
-- 12 confirmed users (`stiliyan@seed.local`, ...) and their profile pictures. Eight share `SEED_PASSWORD`; the four
-  real people (Stiliyan, Kristian, Gosho, Gabi) each have their own (`SEED_PASSWORD_STILIYAN`, `_KRISTIAN`, `_GOSHO`,
-  `_GABI`). None has a default, and the gateway refuses to start unless each is 12-72 bytes with a lowercase letter,
+- 12 confirmed users (`stiliyan@seed.local`, ...) and their profile pictures. Every one is a real person with a password of
+  their own (`SEED_PASSWORD_<NAME>`, for example `SEED_PASSWORD_GABI_PENCHEV`). None has a default, and the gateway refuses to start unless each is 12-72 bytes with a lowercase letter,
   an uppercase letter and a digit.
 - About a third of all possible follows between them (fixed random seed, through `FollowService.followWithoutEvent`:
   the counts are real, but no `user.followed` event is queued, so the mail service sends nothing to `@seed.local` and

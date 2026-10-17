@@ -1,19 +1,19 @@
 ## What this is
 
 The single front door of the Twitter clone — it owns users and **all** access rules. One deployable, not a
-gateway plus a separate user service. Phases 1–5 are built; `PLAN.md` holds the accepted gaps (with triggers) and what
-is out of scope. Calls made *during* implementation go in `DECISIONS.md`.
+gateway plus a separate user service. Phases 1–5 are built; the accepted gaps (with triggers) are in
+`../ACCEPTED_GAPS_ROOT.md`. Calls made *during* implementation go in `DECISIONS.md`.
 
 It also **routes** (Spring Cloud Gateway MVC): `/api/v1/tweets/**` to `../twitter_tweet_service`
 (`TWEET_SERVICE_URL`), and the feed, saved-tweets, views, likes, tweet-details and author-tweets routes to
 `../twitter_timeline_service` (`TIMELINE_SERVICE_URL`). Both share `CallerIdentityFilters`: strip caller identity
 headers, add `X-User-Id` from the JWT. No tweet or timeline code lives here; their designs are in those projects'
-`PLAN.md`.
+`CLAUDE.md` files.
 
 It also serves `/internal/v1/**` (follower ids and user lookups for `../twitter_timeline_service`). Those routes sit on
 the public port and are permitted by the JWT chain; `InternalApiSecretFilter` is their only guard: a missing or wrong
 `X-Internal-Secret` answers 404, and `INTERNAL_API_SECRET` (no default, 32+ bytes) must be set or the app won't start.
-Never log the secret. The timeline service's plan (`../twitter_timeline_service/PLAN.md`) owns these steps.
+Never log the secret. The timeline service (`../twitter_timeline_service/CLAUDE.md`) owns these routes.
 
 The mail service is a separate project (`../twitter_mail_service`) and sends the confirmation and follow emails. This
 service ends at "the event is on Kafka"; the contract it produces is `docs/EVENTS.md`.
@@ -34,8 +34,8 @@ Tests use **Testcontainers**, never embedded fakes — a running Docker daemon i
 ## Demo data
 
 `DataSeedRunner` seeds 12 confirmed users, follows, tweets, replies, likes and profile pictures after startup when the
-`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). `SEED_PASSWORD` and the four
-`SEED_PASSWORD_<NAME>` (the real people) have no default and are checked at startup. How it works, the pictures and the passwords: `seed-images/README.md`.
+`users` table is empty. `SEED_ENABLED=false` turns it off (tests and the e2e stack do). Every demo user is a real person with their own
+`SEED_PASSWORD_<NAME>` (12 of them); none has a default, and each is checked at startup. How it works, the pictures and the passwords: `seed-images/README.md`.
 
 ## Spring Boot 4
 
@@ -123,7 +123,7 @@ Done = re-check touched files against any loaded skill's rules.
 - **Auto-run builds and tests only for significant changes.** Run `./mvnw clean install` or `./mvnw test` ONLY WHEN the change is behavior-affecting or structurally meaningful: new or removed features, modified business logic, API/contract changes, dependency/build changes, or broader refactors. DO **NOT** run them for comment-only edits, formatting-only changes, typo fixes, or similarly tiny updates. If tests fail due to my change — fix them, then report. If the cause is unclear — stop and report immediately.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `../ACCEPTED_GAPS_ROOT.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
 
 ### Autonomy
 

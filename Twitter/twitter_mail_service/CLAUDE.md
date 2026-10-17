@@ -5,8 +5,8 @@ topics (contracts in `../twitter_api_gateway/docs/EVENTS.md`), renders an HTML +
 template and sends it over SMTP. A Redis inbox dedupes, so a Kafka redelivery never sends the same email twice,
 short of a crash between send and mark.
 
-`PLAN.md` is the design and the backlog: two phases (confirmation email, then follow email), both built; the
-per-step gates were trimmed and the scenarios live in `docs/TESTING.md`. Read it before starting a task. Calls made *during* implementation go in `DECISIONS.md`. It is a port of
+Two phases (confirmation email, then follow email), both built; the accepted gaps are in `../ACCEPTED_GAPS_ROOT.md` and the
+scenarios live in `docs/TESTING.md`. Check them before starting a task. Calls made *during* implementation go in `DECISIONS.md`. It is a port of
 `../../SignalFlow/signal_flow_mail_service`: port from there rather than reinventing.
 
 ## Running the project
@@ -45,7 +45,7 @@ before relying on it.
 
 Hard rules - these hold whether or not the skill is loaded:
 
-- Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation. The renderers are pure and have no interface (`PLAN.md`, step 4).
+- Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation. The renderers are pure and have no interface.
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`, or an explicit constructor when `@Value` parameters are also needed. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
 - Listeners stay thin - validate, claim, send and mark live in `MailEventValidationService` and `MailDispatchService` (shared by both emails); key and render stay in the `...NotificationService` and the renderers. The listener only delegates.
@@ -111,7 +111,7 @@ Done = re-check touched files against any loaded skill's rules.
   is a hard rule.
 - **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from
   the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of
-  labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during*
+  labour: `../ACCEPTED_GAPS_ROOT.md` holds what's still open, `DECISIONS.md` holds calls already made *during*
   implementation.
 
 ### Autonomy

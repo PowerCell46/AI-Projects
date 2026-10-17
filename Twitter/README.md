@@ -91,8 +91,8 @@ Do not run the full stack and services started from the IDE at the same time: th
 ## Demo data
 
 The first start with an empty database seeds 12 confirmed demo users (`<username>@seed.local`; passwords in Setup):
-Stiliyan, Kristian, Kristyian, Gosho, Gabi, Gabi2, Hristo, Bobkata, Atanas, Stanimir, Bogdan and Kaloyan. Eight share
-`SEED_PASSWORD`; Stiliyan, Kristian, Gosho and Gabi have their own (`SEED_PASSWORD_<NAME>`). The seeder adds follows
+Stiliyan, Kristian, Kristyian, Gosho, Gabi_Penchev, Gabi_Stoimenov, Hristo, Bobkata, Atanas, Stanimir, Bogdan and Kaloyan. Each has a
+password of their own (`SEED_PASSWORD_<NAME>`). The seeder adds follows
 between about a third of all pairs (no emails sent), 3 tweets per user, 0–3 replies per tweet from other users, and
 likes on about 30% of the others' tweets. Profile pictures come from `twitter_api_gateway/seed-images/` (see its
 README; the photos are not in git). `SEED_ENABLED=false` turns seeding off; the test profile and the e2e stack set it.
@@ -122,7 +122,7 @@ Before the first start:
 
 - Put in `.env`: the secrets from Setup, `PUBLIC_URL` (the public https origin, no trailing slash; the links in emails
   are built from it), and `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` and `MAIL_FROM` for your SMTP server (add
-  `MAIL_PORT` if it is not 587). Compose stops and names whatever is missing. `SEED_PASSWORD` and the four
+  `MAIL_PORT` if it is not 587). Compose stops and names whatever is missing. The 12
   `SEED_PASSWORD_<NAME>` are needed unless `SEED_ENABLED=false`.
 - Put the certificate in `certs/fullchain.pem` and `certs/privkey.pem` (`certs/` is git-ignored). Both must be readable
   by uid 101, the user nginx runs as. After renewing, run `docker compose -f docker-compose.yml -f

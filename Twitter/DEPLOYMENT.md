@@ -37,7 +37,7 @@ Make sure to set (compose stops and names whatever is missing):
 - `MONGO_ROOT_PASSWORD`, `MONGO_APP_PASSWORD` (letters and digits only, `openssl rand -hex 24`) & `MONGO_KEYFILE_SECRET` (`openssl rand -base64 48 | tr -d '\n'`)
 - `MINIO_ACCESS_KEY` & `MINIO_SECRET_KEY`: MinIO credentials (secret 8+ characters)
 - `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` & `MAIL_FROM`: your SMTP server (add `MAIL_PORT` if it is not 587)
-- `SEED_PASSWORD` and `SEED_PASSWORD_STILIYAN`, `_KRISTIAN`, `_GOSHO`, `_GABI`: 12-72 bytes with a lowercase letter, an uppercase letter and a digit, a different one for each. Not needed if `SEED_ENABLED=false`
+- `SEED_PASSWORD_<NAME>` for each of the 12 demo users (`STILIYAN`, `KRISTIAN`, `KRISTYIAN`, `GOSHO`, `GABI_PENCHEV`, `GABI_STOIMENOV`, `HRISTO`, `BOBKATA`, `ATANAS`, `STANIMIR`, `BOGDAN`, `KALOYAN`): 12-72 bytes with a lowercase letter, an uppercase letter and a digit, a different one for each. Not needed if `SEED_ENABLED=false`
 
 ## 4. Get the TLS certificate
 

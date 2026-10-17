@@ -5,7 +5,7 @@ count, and the `tweet.created` / `tweet.deleted` events. It knows nothing about 
 (`../twitter_api_gateway`) proxies `/api/v1/tweets/**` to it and tells it who is calling through the
 `X-User-Id` header. The timeline service reads tweets back over `/internal/v1/tweets` (by ids, newest summaries by
 author, one author's tweets paged). It looks users up at the gateway's `/internal/v1/users` (`UserLookupService`,
-`INTERNAL_API_SECRET` as `X-Internal-Secret`, 32+ bytes, no default; `GATEWAY_INTERNAL_URL`) to name reply authors. Only the create route takes multipart; the body-size filter refuses it elsewhere (`415`). `PLAN.md` is the design, what is left open and the accepted gaps. Read it
+`INTERNAL_API_SECRET` as `X-Internal-Secret`, 32+ bytes, no default; `GATEWAY_INTERNAL_URL`) to name reply authors. Only the create route takes multipart; the body-size filter refuses it elsewhere (`415`). The accepted gaps are in `../ACCEPTED_GAPS_ROOT.md`. Check them
 before starting a task. Calls made *during* implementation go in `DECISIONS.md`. The events it produces are
 documented in `docs/EVENTS.md`.
 
@@ -32,7 +32,7 @@ the 3.x name, and verify any 3.x-era API before relying on it. Mongo properties 
 There is no Spring Security here. "Who am I" is the `X-User-Id` header, read by the `@CurrentUserId` argument
 resolver; the service trusts it blindly, which is safe only while it is reachable through the gateway alone.
 
-Anything marked "as the gateway" in `PLAN.md` is ported from `../twitter_api_gateway`. Port from there, don't
+Anything marked "as the gateway" in the code is ported from `../twitter_api_gateway`. Port from there, don't
 reinvent.
 
 ## Writing code
@@ -101,7 +101,7 @@ Done = re-check touched files against any loaded skill's rules.
 - **Auto-run builds and tests only for significant changes.** Run `./mvnw clean install` or `./mvnw test` ONLY WHEN the change is behavior-affecting or structurally meaningful: new or removed features, modified business logic, API/contract changes, dependency/build changes, or broader refactors. DO **NOT** run them for comment-only edits, formatting-only changes, typo fixes, or similarly tiny updates. If tests fail due to my change — fix them, then report. If the cause is unclear — stop and report immediately.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `../ACCEPTED_GAPS_ROOT.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
 
 ### Autonomy
 

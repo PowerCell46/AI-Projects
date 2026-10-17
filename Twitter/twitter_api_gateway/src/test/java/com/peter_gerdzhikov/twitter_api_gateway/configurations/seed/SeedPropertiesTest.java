@@ -17,10 +17,10 @@ class SeedPropertiesTest {
         contextRunner
                 .withPropertyValues(
                         "app.seed.enabled=true",
-                        "app.seed.passwords.gabi=Gabi-0wn-password",
+                        "app.seed.passwords.gabi_penchev=Gabi-Penchev-0wn-password",
                         "app.seed.passwords.gosho=Gosho-0wn-password")
                 .run(context -> assertThat(context.getBean(SeedProperties.class).getPasswords())
-                        .containsEntry("gabi", "Gabi-0wn-password")
+                        .containsEntry("gabi_penchev", "Gabi-Penchev-0wn-password")
                         .containsEntry("gosho", "Gosho-0wn-password"));
     }
 

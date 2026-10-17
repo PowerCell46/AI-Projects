@@ -11,7 +11,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * The passwords of the demo users that are real people, by lowercase username. Present only while seeding is on, so
+ * The passwords of the demo users, by lowercase username. Present only while seeding is on, so
  * a deployment that never seeds needs none of them.
  */
 @Getter

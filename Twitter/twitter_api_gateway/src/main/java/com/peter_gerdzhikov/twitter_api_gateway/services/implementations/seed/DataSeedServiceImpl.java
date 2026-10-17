@@ -10,7 +10,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,16 +34,11 @@ public class DataSeedServiceImpl implements DataSeedService {
 
     static final String EMAIL_DOMAIN = "seed.local";
 
+    // Every demo user is a real person, so each has a password of their own (SEED_PASSWORD_<NAME>)
     static final List<String> USERNAMES = List.of(
-            "Stiliyan", "Kristian", "Kristyian", "Gosho", "Gabi", "Gabi2",
+            "Stiliyan", "Kristian", "Kristyian", "Gosho", "Gabi_Penchev", "Gabi_Stoimenov",
             "Hristo", "Bobkata", "Atanas", "Stanimir", "Bogdan", "Kaloyan"
     );
-
-    /**
-     * The demo users that are real people: each one has a password of their own (SEED_PASSWORD_<NAME>), because the
-     * shared password is the same for anyone who has seen it.
-     */
-    static final List<String> REAL_PEOPLE = List.of("Stiliyan", "Kristian", "Gosho", "Gabi");
 
     private static final long RANDOM_SEED = 2026;
 
@@ -58,8 +52,6 @@ public class DataSeedServiceImpl implements DataSeedService {
 
     private static final Pattern PASSWORD_CLASSES = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$");
 
-    private final String password;
-
     private final FollowService followService;
 
     private final UserRepository userRepository;
@@ -72,12 +64,11 @@ public class DataSeedServiceImpl implements DataSeedService {
 
     private final TweetSeedService tweetSeedService;
 
-    private final Map<String, String> passwordsOfRealPeople;
+    private final Map<String, String> passwordsByUsername;
 
     private final ProfilePictureSeedService profilePictureSeedService;
 
     public DataSeedServiceImpl(
-            @Value("${app.seed.password}") String password,
             SeedProperties seedProperties,
             FollowService followService,
             UserRepository userRepository,
@@ -87,8 +78,7 @@ public class DataSeedServiceImpl implements DataSeedService {
             TweetSeedService tweetSeedService,
             ProfilePictureSeedService profilePictureSeedService
     ) {
-        this.password = requireStrongPassword(password, "app.seed.password", "SEED_PASSWORD");
-        this.passwordsOfRealPeople = requireRealPeoplePasswords(seedProperties.getPasswords());
+        this.passwordsByUsername = requireUserPasswords(seedProperties.getPasswords());
         this.followService = followService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -139,10 +129,10 @@ public class DataSeedServiceImpl implements DataSeedService {
         return password;
     }
 
-    private static Map<String, String> requireRealPeoplePasswords(Map<String, String> configured) {
+    private static Map<String, String> requireUserPasswords(Map<String, String> configured) {
         Map<String, String> passwords = new LinkedHashMap<>();
 
-        for (String username : REAL_PEOPLE) {
+        for (String username : USERNAMES) {
             String key = username.toLowerCase(Locale.ROOT);
             String environmentVariable = "SEED_PASSWORD_" + username.toUpperCase(Locale.ROOT);
 
@@ -154,25 +144,16 @@ public class DataSeedServiceImpl implements DataSeedService {
     }
 
     private List<User> newUsers() {
-        // One hash for everyone on the shared password, because bcrypt is slow on purpose; a real person gets their own
-        String encodedSharedPassword = passwordEncoder.encode(password);
-
         return USERNAMES
                 .stream()
                 .map(username -> User.builder()
                         .bio(BIO)
                         .username(username)
-                        .password(encodedPasswordOf(username, encodedSharedPassword))
+                        .password(passwordEncoder.encode(passwordsByUsername.get(username)))
                         .email(username.toLowerCase(Locale.ROOT) + "@" + EMAIL_DOMAIN)
                         .enabled(true)
                         .build())
                 .toList();
-    }
-
-    private String encodedPasswordOf(String username, String encodedSharedPassword) {
-        String ownPassword = passwordsOfRealPeople.get(username);
-
-        return ownPassword == null ? encodedSharedPassword : passwordEncoder.encode(ownPassword);
     }
 
     /**

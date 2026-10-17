@@ -13,9 +13,11 @@ import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -42,14 +45,11 @@ import com.peter_gerdzhikov.twitter_api_gateway.services.interfaces.seed.TweetSe
 @ExtendWith(MockitoExtension.class)
 class DataSeedServiceImplTest {
 
-    private static final String PASSWORD = "Str0ng-seed-password";
-
-    private static final Map<String, String> REAL_PEOPLE_PASSWORDS = Map.of(
-            "stiliyan", "Stiliyan-0wn-password",
-            "kristian", "Kristian-0wn-password",
-            "gosho", "Gosho-0wn-password",
-            "gabi", "Gabi-0wn-password"
-    );
+    private static final Map<String, String> PASSWORDS_BY_USERNAME = DataSeedServiceImpl.USERNAMES
+            .stream()
+            .collect(Collectors.toMap(
+                    username -> username.toLowerCase(Locale.ROOT),
+                    username -> username + "-0wn-Password1"));
 
     @Mock
     private FollowService followService;
@@ -76,20 +76,29 @@ class DataSeedServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        seedService = newSeedService(PASSWORD);
+        seedService = newSeedService(PASSWORDS_BY_USERNAME);
     }
 
-    private DataSeedServiceImpl newSeedService(String password) {
-        return newSeedService(password, REAL_PEOPLE_PASSWORDS);
-    }
-
-    private DataSeedServiceImpl newSeedService(String password, Map<String, String> realPeoplePasswords) {
+    private DataSeedServiceImpl newSeedService(Map<String, String> passwordsByUsername) {
         SeedProperties seedProperties = new SeedProperties();
-        seedProperties.setPasswords(realPeoplePasswords);
+        seedProperties.setPasswords(passwordsByUsername);
 
         return new DataSeedServiceImpl(
-                password, seedProperties, followService, userRepository, passwordEncoder,
+                seedProperties, followService, userRepository, passwordEncoder,
                 likeSeedService, replySeedService, tweetSeedService, profilePictureSeedService);
+    }
+
+    private static Map<String, String> passwordsWith(String username, String password) {
+        Map<String, String> passwords = new HashMap<>(PASSWORDS_BY_USERNAME);
+        passwords.put(username, password);
+
+        return passwords;
+    }
+
+    private static Stream<String> lowercaseUsernames() {
+        return DataSeedServiceImpl.USERNAMES
+                .stream()
+                .map(username -> username.toLowerCase(Locale.ROOT));
     }
 
     @Nested
@@ -106,49 +115,38 @@ class DataSeedServiceImplTest {
                 "NOLOWERCASE1234567",
                 "12345678901234567890"
         })
-        void should_refuse_to_start_when_the_password_is_weak(String weakPassword) {
-            assertThatThrownBy(() -> newSeedService(weakPassword))
+        void should_refuse_to_start_when_a_password_is_weak(String weakPassword) {
+            assertThatThrownBy(() -> newSeedService(passwordsWith("gosho", weakPassword)))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("SEED_PASSWORD");
+                    .hasMessageContaining("SEED_PASSWORD_GOSHO");
         }
 
         @Test
-        void should_refuse_to_start_when_the_password_is_longer_than_bcrypt_reads() {
+        void should_refuse_to_start_when_a_password_is_longer_than_bcrypt_reads() {
             String tooLong = "Aa1" + "x".repeat(70);
 
-            assertThatThrownBy(() -> newSeedService(tooLong))
+            assertThatThrownBy(() -> newSeedService(passwordsWith("gosho", tooLong)))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("72 bytes");
         }
 
         @Test
-        void should_not_put_the_password_in_the_message_when_it_is_refused() {
+        void should_not_put_a_password_in_the_message_when_it_is_refused() {
             String weakPassword = "Weak1Pw";
 
-            assertThatThrownBy(() -> newSeedService(weakPassword))
+            assertThatThrownBy(() -> newSeedService(passwordsWith("gosho", weakPassword)))
                     .hasMessageNotContaining(weakPassword);
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"stiliyan", "kristian", "gosho", "gabi"})
-        void should_refuse_to_start_when_a_real_persons_password_is_missing(String username) {
-            Map<String, String> missingOne = new HashMap<>(REAL_PEOPLE_PASSWORDS);
+        @MethodSource("com.peter_gerdzhikov.twitter_api_gateway.services.implementations.seed.DataSeedServiceImplTest#lowercaseUsernames")
+        void should_refuse_to_start_when_a_users_password_is_missing(String username) {
+            Map<String, String> missingOne = new HashMap<>(PASSWORDS_BY_USERNAME);
             missingOne.remove(username);
 
-            assertThatThrownBy(() -> newSeedService(PASSWORD, missingOne))
+            assertThatThrownBy(() -> newSeedService(missingOne))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("SEED_PASSWORD_" + username.toUpperCase());
-        }
-
-        @Test
-        void should_refuse_to_start_when_a_real_persons_password_is_weak() {
-            Map<String, String> weakOne = new HashMap<>(REAL_PEOPLE_PASSWORDS);
-            weakOne.put("gosho", "weak");
-
-            assertThatThrownBy(() -> newSeedService(PASSWORD, weakOne))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("SEED_PASSWORD_GOSHO")
-                    .hasMessageNotContaining("weak");
+                    .hasMessageContaining("SEED_PASSWORD_" + username.toUpperCase(Locale.ROOT));
         }
 
         @ParameterizedTest
@@ -157,8 +155,8 @@ class DataSeedServiceImplTest {
                 "Passw0rd-with-symbols-!?#",
                 "Aa1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         })
-        void should_accept_the_password_when_it_is_long_enough_and_has_all_three_classes(String strongPassword) {
-            assertThatCode(() -> newSeedService(strongPassword))
+        void should_accept_a_password_when_it_is_long_enough_and_has_all_three_classes(String strongPassword) {
+            assertThatCode(() -> newSeedService(passwordsWith("gosho", strongPassword)))
                     .doesNotThrowAnyException();
         }
     }
@@ -256,7 +254,7 @@ class DataSeedServiceImplTest {
         }
 
         @Test
-        void should_hash_each_real_persons_own_password_and_the_shared_one_for_everyone_else() {
+        void should_hash_each_users_own_password() {
             stubEmptyDatabase();
             when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "hash:" + invocation.getArgument(0));
 
@@ -264,15 +262,10 @@ class DataSeedServiceImplTest {
 
             ArgumentCaptor<List<User>> saved = ArgumentCaptor.captor();
             verify(userRepository).saveAll(saved.capture());
-            Map<String, String> hashesByUsername = saved.getValue()
-                    .stream()
-                    .collect(Collectors.toMap(User::getUsername, User::getPassword));
-            for (String realPerson : DataSeedServiceImpl.REAL_PEOPLE) {
-                assertThat(hashesByUsername.get(realPerson))
-                        .isEqualTo("hash:" + REAL_PEOPLE_PASSWORDS.get(realPerson.toLowerCase()));
+            for (User user : saved.getValue()) {
+                assertThat(user.getPassword())
+                        .isEqualTo("hash:" + PASSWORDS_BY_USERNAME.get(user.getUsername().toLowerCase(Locale.ROOT)));
             }
-            assertThat(hashesByUsername.get("Hristo")).isEqualTo("hash:" + PASSWORD);
-            assertThat(hashesByUsername.get("Gabi2")).isEqualTo("hash:" + PASSWORD);
         }
 
         private List<UUID> userIdsOf(List<User> users) {
