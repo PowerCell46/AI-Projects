@@ -760,6 +760,20 @@ class AuthControllerIntegrationTest extends AbstractMinioIntegrationTest {
         }
 
         @Test
+        void should_return_the_same_401_body_without_a_challenge_header_when_the_token_is_invalid() {
+            String token = TestJwts.withTamperedSignature(validCookie());
+
+            getMe(token)
+                    .expectStatus()
+                    .isUnauthorized()
+                    .expectHeader()
+                    .doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
+                    .expectBody()
+                    .jsonPath("$.messages[0]")
+                    .isEqualTo("Authentication is required.");
+        }
+
+        @Test
         void should_return_401_when_the_token_is_expired() {
             Instant issuedAt = Instant.now().minusSeconds(7200);
             String token = TestJwts.sign(TestJwts.validClaims()

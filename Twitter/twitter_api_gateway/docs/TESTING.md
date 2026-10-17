@@ -1,6 +1,6 @@
 # E2E test catalog
 
-Last updated: 2026-10-10
+Last updated: 2026-10-17
 
 Scope: HTTP-layer tests only — full stack through `DispatcherServlet` against Testcontainers Postgres and
 Kafka (and MinIO from phase 2). Repository, unit and concurrency tests exercise real Postgres too but skip the
@@ -103,6 +103,7 @@ Phase 5 catalog (people to follow, `GET /api/v1/users`, after the cross-service 
 - Still 200 after the user row is deleted, so claims alone answer (`should_return_200_without_reading_the_database_when_the_cookie_is_valid`)
 - No cookie returns 401 (`should_return_401_when_there_is_no_cookie`)
 - Tampered signature returns 401 (`should_return_401_when_the_signature_is_tampered`)
+- An invalid token gets the same JSON 401 body as a missing cookie, with no `WWW-Authenticate` header (`should_return_the_same_401_body_without_a_challenge_header_when_the_token_is_invalid`)
 - Expired token returns 401 (`should_return_401_when_the_token_is_expired`)
 - Non-UUID `sub` returns 401 (`should_return_401_when_the_subject_is_not_a_uuid`)
 - Missing `username` claim returns 401 (`should_return_401_when_the_username_claim_is_missing`)

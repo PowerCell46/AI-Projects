@@ -83,6 +83,7 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(authenticationEntryPoint)
                         .bearerTokenResolver(new CookieBearerTokenResolver(PUBLIC_MATCHERS))
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder)
@@ -140,13 +141,16 @@ public class SecurityConfiguration {
     private OAuth2TokenValidator<Jwt> requiredClaimsValidator(Clock clock) {
         JwtTimestampValidator timestampValidator = new JwtTimestampValidator();
         timestampValidator.setClock(clock);
-        return new DelegatingOAuth2TokenValidator<>(List.of(
-                timestampValidator,
-                new JwtClaimValidator<String>("sub", this::isUserId),
-                new JwtClaimValidator<String>("username", Objects::nonNull),
-                new JwtClaimValidator<String>("email", Objects::nonNull),
-                new JwtClaimValidator<>("exp", Objects::nonNull)
-        ));
+
+        return new DelegatingOAuth2TokenValidator<>(
+                List.of(
+                        timestampValidator,
+                        new JwtClaimValidator<String>("sub", this::isUserId),
+                        new JwtClaimValidator<String>("username", Objects::nonNull),
+                        new JwtClaimValidator<String>("email", Objects::nonNull),
+                        new JwtClaimValidator<>("exp", Objects::nonNull)
+                )
+        );
     }
 
     /**
