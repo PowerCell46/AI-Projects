@@ -82,16 +82,17 @@ public class ProfilePictureSeedServiceImpl implements ProfilePictureSeedService 
         Map<String, Path> imagesByUsername = new HashMap<>();
 
         try (Stream<Path> files = Files.list(picturesDirectory)) {
-            files.forEach(file -> {
-                String name = file
-                        .getFileName()
-                        .toString()
-                        .toLowerCase(Locale.ROOT);
-                int dot = name.lastIndexOf('.');
-                if (dot > 0 && IMAGE_EXTENSIONS.contains(name.substring(dot + 1))) {
-                    imagesByUsername.put(name.substring(0, dot), file);
-                }
-            });
+            files
+                    .forEach(file -> {
+                        String name = file
+                                .getFileName()
+                                .toString()
+                                .toLowerCase(Locale.ROOT);
+                        int dot = name.lastIndexOf('.');
+                        if (dot > 0 && IMAGE_EXTENSIONS.contains(name.substring(dot + 1))) {
+                            imagesByUsername.put(name.substring(0, dot), file);
+                        }
+                    });
 
         } catch (IOException e) {
             throw new UncheckedIOException(e);

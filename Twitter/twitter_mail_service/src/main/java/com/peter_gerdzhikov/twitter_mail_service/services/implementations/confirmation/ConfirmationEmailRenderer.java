@@ -34,6 +34,7 @@ public class ConfirmationEmailRenderer {
 
     public ConfirmationEmailRenderer(@Value("${app.mail.zone}") String zone) {
         this.zone = ZoneId.of(zone);
+
         this.emailTemplate = new EmailTemplate(
                 HTML_TEMPLATE_PATH,
                 TEXT_TEMPLATE_PATH,

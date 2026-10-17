@@ -12,8 +12,7 @@ import io.minio.MinioClient;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class MinioBucketInitializer
-        extends com.peter_gerdzhikov.twitter_shared.storage.MinioBucketInitializer {
+public class MinioBucketInitializer extends com.peter_gerdzhikov.twitter_shared.storage.MinioBucketInitializer {
 
     public MinioBucketInitializer(@Value("${app.minio.bucket}") String bucket, MinioClient minioClient) {
         super(bucket, minioClient);

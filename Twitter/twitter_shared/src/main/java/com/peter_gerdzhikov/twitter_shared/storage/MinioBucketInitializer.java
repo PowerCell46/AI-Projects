@@ -38,6 +38,7 @@ public class MinioBucketInitializer implements ApplicationRunner {
                 .builder()
                 .bucket(bucket)
                 .build();
+
         boolean exists = minioClient.bucketExists(existsArgs);
         if (exists) {
             return;

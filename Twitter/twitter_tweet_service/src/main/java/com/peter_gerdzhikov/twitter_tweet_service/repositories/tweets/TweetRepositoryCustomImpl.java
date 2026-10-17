@@ -47,6 +47,7 @@ public class TweetRepositoryCustomImpl implements TweetRepositoryCustom {
                         .gte(since))
                 .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
                 .limit(limit);
+
         query
                 .fields()
                 .include("createdAt");
@@ -74,6 +75,7 @@ public class TweetRepositoryCustomImpl implements TweetRepositoryCustom {
                         .is(afterCreatedAt)
                         .and("id")
                         .lt(afterId));
+
         Query query = Query.query(new Criteria().andOperator(
                 Criteria
                         .where("authorId")

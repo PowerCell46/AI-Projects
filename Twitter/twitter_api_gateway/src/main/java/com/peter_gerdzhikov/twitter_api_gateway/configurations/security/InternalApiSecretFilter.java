@@ -81,7 +81,6 @@ public class InternalApiSecretFilter extends OncePerRequestFilter {
     private boolean hasValidSecret(HttpServletRequest request) {
         String presented = request.getHeader(SECRET_HEADER);
 
-        return presented != null
-                && MessageDigest.isEqual(secret, presented.getBytes(StandardCharsets.UTF_8));
+        return presented != null && MessageDigest.isEqual(secret, presented.getBytes(StandardCharsets.UTF_8));
     }
 }

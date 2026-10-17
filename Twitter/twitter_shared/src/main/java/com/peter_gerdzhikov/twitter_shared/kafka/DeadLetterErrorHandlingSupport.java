@@ -66,7 +66,8 @@ public abstract class DeadLetterErrorHandlingSupport implements DisposableBean {
 
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 deadLetterTemplatesByValueType,
-                (record, exception) -> new TopicPartition(dltName, UNSET_PARTITION));
+                (record, exception) -> new TopicPartition(dltName, UNSET_PARTITION)
+        );
 
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
         errorHandler.addNotRetryableExceptions(notRetryableExceptions);

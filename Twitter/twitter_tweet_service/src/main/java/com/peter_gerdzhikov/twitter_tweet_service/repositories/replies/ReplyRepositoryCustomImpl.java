@@ -58,6 +58,7 @@ public class ReplyRepositoryCustomImpl implements ReplyRepositoryCustom {
                 .is(tweetId)
                 .and("authorId")
                 .is(authorId));
+
         Update update = new Update()
                 .set("content", content)
                 .set("edited", true)
