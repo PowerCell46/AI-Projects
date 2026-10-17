@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.dltreplay;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

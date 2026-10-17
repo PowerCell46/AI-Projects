@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.mail;
 
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.PermanentMailDeliveryException;

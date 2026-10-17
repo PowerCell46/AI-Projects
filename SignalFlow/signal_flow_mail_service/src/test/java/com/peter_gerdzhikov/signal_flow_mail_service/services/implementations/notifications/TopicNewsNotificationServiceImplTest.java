@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.notifications;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,9 +27,9 @@ import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.InvalidNotificat
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.NotificationClaimHeldException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.TransientMailDeliveryException;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.NotificationInboxService;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.TopicNewsMailService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.ClaimResult;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.NotificationInboxService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.mail.TopicNewsMailService;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -64,7 +64,7 @@ class TopicNewsNotificationServiceImplTest {
     class Validate {
 
         @ParameterizedTest(name = "{0}")
-        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsNotificationServiceImplTest#invalidEvents")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.notifications.TopicNewsNotificationServiceImplTest#invalidEvents")
         void should_throw_and_touch_nothing_when_the_event_is_invalid(String description, TopicNewsNotificationEventDTO invalidEvent) {
             assertThrows(InvalidNotificationEventException.class, () -> service.process(invalidEvent));
 
@@ -72,7 +72,7 @@ class TopicNewsNotificationServiceImplTest {
         }
 
         @ParameterizedTest(name = "{0}")
-        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsNotificationServiceImplTest#sizeCapBoundaryEvents")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.notifications.TopicNewsNotificationServiceImplTest#sizeCapBoundaryEvents")
         void should_not_throw_when_a_size_capped_field_is_exactly_at_its_cap(String description, TopicNewsNotificationEventDTO event) {
             when(notificationInboxService.claim(eq(event.getNewsId()), eq(event.getUserId()), anyString()))
                     .thenReturn(ClaimResult.ALREADY_SENT);

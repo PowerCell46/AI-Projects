@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.notifications;
 
 import java.time.Duration;
 import java.util.List;
@@ -9,8 +9,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.NotificationInboxService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.ClaimResult;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.NotificationInboxService;
 
 import lombok.extern.slf4j.Slf4j;
 

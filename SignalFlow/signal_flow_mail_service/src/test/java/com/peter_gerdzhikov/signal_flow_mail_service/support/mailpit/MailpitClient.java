@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.support;
+package com.peter_gerdzhikov.signal_flow_mail_service.support.mailpit;
 
 import tools.jackson.databind.JsonNode;
 

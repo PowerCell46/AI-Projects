@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.notifications;
 
 import java.util.Set;
 import java.util.UUID;
@@ -12,10 +12,10 @@ import org.springframework.stereotype.Service;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.InvalidNotificationEventException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.NotificationClaimHeldException;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.NotificationInboxService;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.TopicNewsMailService;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.TopicNewsNotificationService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.ClaimResult;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.NotificationInboxService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.mail.TopicNewsMailService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.TopicNewsNotificationService;
 
 import lombok.extern.slf4j.Slf4j;
 

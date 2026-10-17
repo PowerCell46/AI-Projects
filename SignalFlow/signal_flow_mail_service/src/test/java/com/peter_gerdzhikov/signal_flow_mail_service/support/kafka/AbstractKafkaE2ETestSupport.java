@@ -1,5 +1,6 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.support;
+package com.peter_gerdzhikov.signal_flow_mail_service.support.kafka;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.support.redis.AbstractRedisIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;

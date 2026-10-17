@@ -12,7 +12,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import com.peter_gerdzhikov.signal_flow_mail_service.support.AbstractKafkaIntegrationTest;
+import com.peter_gerdzhikov.signal_flow_mail_service.support.kafka.AbstractKafkaIntegrationTest;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.dltreplay;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -37,7 +37,7 @@ import org.springframework.stereotype.Service;
 
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.InvalidNotificationEventException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.PermanentMailDeliveryException;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.DltReplayService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.dltreplay.DltReplayService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,7 +55,8 @@ public class DltReplayServiceImpl implements DltReplayService {
     private static final Set<String> PERMANENT_FAILURE_EXCEPTION_FQCNS = Set.of(
             InvalidNotificationEventException.class.getName(),
             PermanentMailDeliveryException.class.getName(),
-            DeserializationException.class.getName());
+            DeserializationException.class.getName()
+    );
 
     private static final String DLT_HEADER_PREFIX = KafkaHeaders.PREFIX + "dlt-";
 
@@ -119,6 +120,7 @@ public class DltReplayServiceImpl implements DltReplayService {
         List<TopicPartition> partitions = consumer.partitionsFor(dltTopicName).stream()
                 .map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition()))
                 .toList();
+
         consumer.assign(partitions);
 
         return partitions;
@@ -193,9 +195,11 @@ public class DltReplayServiceImpl implements DltReplayService {
     }
 
     private void republish(Producer<String, byte[]> producer, ConsumerRecord<String, byte[]> record) {
-        List<Header> headers = StreamSupport.stream(record.headers().spliterator(), false)
+        List<Header> headers = StreamSupport
+                .stream(record.headers().spliterator(), false)
                 .filter(header -> !header.key().startsWith(DLT_HEADER_PREFIX))
                 .toList();
+
         ProducerRecord<String, byte[]> outgoing = new ProducerRecord<>(
                 notificationRequestedTopicName, null, record.key(), record.value(), headers);
 
@@ -212,7 +216,9 @@ public class DltReplayServiceImpl implements DltReplayService {
     }
 
     private Map<TopicPartition, OffsetAndMetadata> snapshotCommitOffsets(Map<TopicPartition, Long> endOffsets) {
-        return endOffsets.entrySet().stream()
+        return endOffsets
+                .entrySet()
+                .stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> new OffsetAndMetadata(entry.getValue())));
     }
 

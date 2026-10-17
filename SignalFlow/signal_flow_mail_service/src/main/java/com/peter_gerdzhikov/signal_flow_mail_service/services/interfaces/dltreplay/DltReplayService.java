@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.dltreplay;
 
 public interface DltReplayService {
 

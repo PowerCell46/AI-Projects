@@ -26,7 +26,9 @@ import lombok.NoArgsConstructor;
 public class TopicNewsNotificationEventDTO {
 
     public static final int MAX_CATEGORIES = 3;
+
     public static final int MAX_NAME_LENGTH = 100;
+
     public static final int MAX_DATA_LENGTH = 65_536;
 
     @NotNull

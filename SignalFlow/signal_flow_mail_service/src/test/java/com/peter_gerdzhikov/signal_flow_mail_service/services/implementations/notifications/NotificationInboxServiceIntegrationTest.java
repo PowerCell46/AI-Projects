@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.notifications;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -11,9 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.ClaimResult;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.NotificationInboxService;
-import com.peter_gerdzhikov.signal_flow_mail_service.support.AbstractRedisIntegrationTest;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.ClaimResult;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.notifications.NotificationInboxService;
+import com.peter_gerdzhikov.signal_flow_mail_service.support.redis.AbstractRedisIntegrationTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

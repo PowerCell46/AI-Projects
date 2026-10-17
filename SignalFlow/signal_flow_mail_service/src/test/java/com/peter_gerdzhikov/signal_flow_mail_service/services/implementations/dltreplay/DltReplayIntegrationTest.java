@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.dltreplay;
 
 import tools.jackson.databind.JsonNode;
 
@@ -13,7 +13,7 @@ import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotific
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.InvalidNotificationEventException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.TransientMailDeliveryException;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.DltReplayService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.dltreplay.DltReplayService;
 import com.peter_gerdzhikov.signal_flow_mail_service.support.AbstractNotificationE2ETest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

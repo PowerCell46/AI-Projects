@@ -6,7 +6,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.DltReplayService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.dltreplay.DltReplayService;
 
 import lombok.RequiredArgsConstructor;
 

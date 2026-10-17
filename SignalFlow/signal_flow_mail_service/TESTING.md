@@ -55,7 +55,7 @@ pointed at a closed port
 
 ## DLT replay
 
-`DltReplayIntegrationTest` - its own topic names and consumer groups (`DECISIONS.md`), `publishToDlt`
+`DltReplayIntegrationTest` - its own topic names and consumer groups, `publishToDlt`
 crafts a record directly on the DLT topic with the `kafka_dlt-exception-cause-fqcn` header a real failure
 would have left, so each scenario is deterministic without re-triggering that failure through the whole
 pipeline
@@ -71,7 +71,7 @@ pipeline
   existing `SENT` Redis key dedupes it same as any other redelivery
   (`should_not_send_a_second_email_for_a_record_whose_key_is_already_sent`)
 
-`DltReplayServiceImplTest` (unit, mocked `Consumer`/`Producer` - see `DECISIONS.md`) covers the
+`DltReplayServiceImplTest` (unit, mocked `Consumer`/`Producer`) covers the
 offset-bounding and header-stripping rules that aren't practical to reproduce deterministically over a
 real broker: a record at or beyond the offset snapshot taken at the start of a run is left unprocessed for
 the next run, and `kafka_dlt-*` headers are stripped from the republished record while other headers

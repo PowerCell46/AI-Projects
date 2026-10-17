@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -160,7 +160,7 @@ class TopicNewsEmailRendererTest {
         }
 
         @ParameterizedTest
-        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsEmailRendererTest#generatedAtAcrossDstBoundary")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail.TopicNewsEmailRendererTest#generatedAtAcrossDstBoundary")
         void should_format_generated_at_in_configured_zone(Instant generatedAt, String expectedFormattedTime) {
             TopicNewsNotificationEventDTO event = anEvent("Topic", "Category", "Body", "recipient@example.com");
             event.setGeneratedAt(generatedAt);
@@ -191,7 +191,7 @@ class TopicNewsEmailRendererTest {
         }
 
         @ParameterizedTest(name = "{0} {1}..{2}")
-        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsEmailRendererTest#periods")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail.TopicNewsEmailRendererTest#periods")
         void should_render_the_period_in_the_header_and_the_preheader(
                 NewsSchedule schedule,
                 LocalDate periodStart,

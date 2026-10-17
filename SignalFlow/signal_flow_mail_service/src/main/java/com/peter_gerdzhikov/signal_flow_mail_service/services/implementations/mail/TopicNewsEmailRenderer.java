@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -161,9 +161,11 @@ public class TopicNewsEmailRenderer {
     private String substitute(String template, Map<String, String> valuesByToken) {
         Matcher matcher = TOKEN_PATTERN.matcher(template);
         StringBuilder rendered = new StringBuilder();
+
         while (matcher.find()) {
             matcher.appendReplacement(rendered, Matcher.quoteReplacement(valuesByToken.get(matcher.group(1))));
         }
+
         matcher.appendTail(rendered);
 
         return rendered.toString();
@@ -182,6 +184,7 @@ public class TopicNewsEmailRenderer {
     private void validateTokens(String templateContent) {
         Set<String> foundTokens = new HashSet<>();
         Matcher matcher = TOKEN_PATTERN.matcher(templateContent);
+
         while (matcher.find()) {
             String token = matcher.group(1);
             if (!KNOWN_TOKENS.contains(token)) {

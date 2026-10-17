@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail;
 
 import java.net.SocketTimeoutException;
 import java.time.Instant;
@@ -100,7 +100,7 @@ class TopicNewsMailServiceImplTest {
     class Classify {
 
         @ParameterizedTest
-        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.TopicNewsMailServiceImplTest#smtpReturnCodes")
+        @MethodSource("com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail.TopicNewsMailServiceImplTest#smtpReturnCodes")
         void should_classify_smtp_address_failure_by_return_code(int returnCode, boolean expectedPermanent) throws Exception {
             when(mailSender.createMimeMessage()).thenReturn(message);
             SMTPAddressFailedException smtpException = new SMTPAddressFailedException(

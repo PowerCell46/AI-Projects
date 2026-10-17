@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations;
+package com.peter_gerdzhikov.signal_flow_mail_service.services.implementations.mail;
 
 import java.util.function.Function;
 
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.PermanentMailDeliveryException;
 import com.peter_gerdzhikov.signal_flow_mail_service.exceptions.TransientMailDeliveryException;
-import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.TopicNewsMailService;
+import com.peter_gerdzhikov.signal_flow_mail_service.services.interfaces.mail.TopicNewsMailService;
 
 import lombok.extern.slf4j.Slf4j;
 

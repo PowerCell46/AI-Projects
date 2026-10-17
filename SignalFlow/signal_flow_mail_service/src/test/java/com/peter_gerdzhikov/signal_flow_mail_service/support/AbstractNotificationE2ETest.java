@@ -1,5 +1,7 @@
 package com.peter_gerdzhikov.signal_flow_mail_service.support;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.support.kafka.AbstractKafkaE2ETestSupport;
+import com.peter_gerdzhikov.signal_flow_mail_service.support.mailpit.AbstractMailpitIntegrationTest;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 

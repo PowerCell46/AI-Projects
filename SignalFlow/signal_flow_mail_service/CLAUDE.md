@@ -6,9 +6,8 @@ The email delivery leg of SignalFlow's notification pipeline. Consumes
 HTML email from a classpath template, and sends it over SMTP. A Redis inbox dedupes on `(newsId, userId)`
 so a Kafka redelivery never sends the same email twice, short of a crash between send and mark.
 
-`PLAN.md` is the backlog — what's still to build, fix or improve, plus the gaps accepted on purpose and
-what should trigger revisiting each. Read it before starting a task. The design and step gates of the
-shipped phases are in its git history (`git log -p -- PLAN.md`).
+`BACKLOG.md` lists what is still open: a standing bug, two designed-but-unstarted features and the gaps accepted
+on purpose. The design and step gates of the shipped phases are in git history (`git log -p -- PLAN.md`).
 
 ## Running the project
 
@@ -49,7 +48,8 @@ full test structure, naming and mocking conventions.
 Hard rules — these hold whether or not the skill is loaded:
 
 - Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in
-  `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation.
+  `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation. Once either
+  package holds more than 5 files, both are grouped into the same domain subpackages.
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor` or an explicit
   constructor when `@Value` parameters are also needed. No `@Autowired` on fields, no setter injection.
   Ever.
@@ -80,7 +80,7 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_mail_service`:
 - **Shortcut: event field changes ship to all three services together.** `topic-news.generated` and
   `topic-news.notification-requested` have no versioning, so a field change must be deployed in the topic service,
   the gateway and the mail service at once. A stale in-flight event is skipped by the gateway guard or rejected by
-  the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
+  the mail validation. Acceptable while the three services are always deployed together. **Trigger:** keeping data across
   deploys, or deploying the services independently.
 
 ## Skills
@@ -117,10 +117,6 @@ Done = re-check touched files against any loaded skill's rules.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation
   paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this
   is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from
-  the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of
-  labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during*
-  implementation.
 
 ### Autonomy
 

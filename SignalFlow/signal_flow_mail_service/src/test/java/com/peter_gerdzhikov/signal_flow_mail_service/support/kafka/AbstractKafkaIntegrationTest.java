@@ -1,4 +1,4 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.support;
+package com.peter_gerdzhikov.signal_flow_mail_service.support.kafka;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.kafka.KafkaContainer;

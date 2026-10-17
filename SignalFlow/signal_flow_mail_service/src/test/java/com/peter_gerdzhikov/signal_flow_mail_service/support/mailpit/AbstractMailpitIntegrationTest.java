@@ -1,5 +1,6 @@
-package com.peter_gerdzhikov.signal_flow_mail_service.support;
+package com.peter_gerdzhikov.signal_flow_mail_service.support.mailpit;
 
+import com.peter_gerdzhikov.signal_flow_mail_service.support.kafka.AbstractKafkaE2ETestSupport;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;

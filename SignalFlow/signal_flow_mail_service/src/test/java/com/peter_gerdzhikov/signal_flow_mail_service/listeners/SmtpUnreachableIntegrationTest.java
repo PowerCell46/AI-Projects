@@ -17,7 +17,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.peter_gerdzhikov.signal_flow_mail_service.DTOs.event.TopicNewsNotificationEventDTO;
-import com.peter_gerdzhikov.signal_flow_mail_service.support.AbstractKafkaE2ETestSupport;
+import com.peter_gerdzhikov.signal_flow_mail_service.support.kafka.AbstractKafkaE2ETestSupport;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
