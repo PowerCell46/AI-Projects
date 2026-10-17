@@ -1,176 +1,123 @@
-import { expect, test } from '@playwright/test'
-import { activeAuthForm, loginViaUi, newUser, registerViaApi } from './fixtures'
+import { expect, test } from '@playwright/test';
+import { registerNewUser } from '../support/api/auth-api';
+import { TEST_PASSWORD } from '../support/constants';
+import { newUser } from '../support/data/test-user';
+import { ROUTES } from '../support/routes';
+import { authAlert, submitAuthForm, submitEmptyAuthForm } from '../support/ui/auth-form';
+import { expectFeedPage, signOut, wordmark } from '../support/ui/home-page';
+import { stubSessionExpired } from '../support/ui/route-stubs';
+import { loginViaUi } from '../support/ui/session';
 
 test('registers a new account and lands on the feed', async ({ page }) => {
-    const user = newUser()
+    const user = newUser();
 
-    await page.goto('/register')
+    await submitAuthForm(page, 'register', user.email, user.password);
 
-    const form = activeAuthForm(page)
-    await form.getByLabel('Email', { exact: true }).fill(user.email)
-    await form.getByLabel('Password', { exact: true }).fill(user.password)
-    await form.getByRole('button', { name: 'Create account', exact: true }).click()
-
-    await expect(page).toHaveURL('/')
-    await expect(page.locator('.home-wordmark')).toHaveText('signalflow')
-    await expect(page.getByRole('heading', { name: 'Feed' })).toBeVisible()
-})
+    await expectFeedPage(page);
+    await expect(wordmark(page)).toHaveText('SignalFlow');
+});
 
 test('logs in with an existing account', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
+    const user = await registerNewUser(request);
 
-    await loginViaUi(page, user)
+    await loginViaUi(page, user);
 
-    await expect(page).toHaveURL('/')
-    await expect(page.getByRole('heading', { name: 'Feed' })).toBeVisible()
-})
+    await expectFeedPage(page);
+});
 
 test('logs out and protects the feed afterwards', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    await loginViaUi(page, user)
-    await expect(page).toHaveURL('/')
+    const user = await registerNewUser(request);
+    await loginViaUi(page, user);
+    await expect(page).toHaveURL(ROUTES.home);
 
-    await page.getByRole('button', { name: 'Sign out' }).click()
+    await signOut(page);
 
-    await expect(page).toHaveURL('/login')
-    await page.goto('/')
-    await expect(page).toHaveURL('/login')
-})
+    await expect(page).toHaveURL(ROUTES.login);
+    await page.goto(ROUTES.home);
+    await expect(page).toHaveURL(ROUTES.login);
+});
 
 test('redirects an unauthenticated visitor to login', async ({ page }) => {
-    await page.goto('/')
+    await page.goto(ROUTES.home);
 
-    await expect(page).toHaveURL('/login')
-})
+    await expect(page).toHaveURL(ROUTES.login);
+});
 
 test('rejects a duplicate registration', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
+    const user = await registerNewUser(request);
 
-    await page.goto('/register')
+    const form = await submitAuthForm(page, 'register', user.email, user.password);
 
-    const form = activeAuthForm(page)
-    await form.getByLabel('Email', { exact: true }).fill(user.email)
-    await form.getByLabel('Password', { exact: true }).fill(user.password)
-    await form.getByRole('button', { name: 'Create account', exact: true }).click()
-
-    await expect(form.getByRole('alert')).toHaveText('An account already exists for that email.')
-})
+    await expect(authAlert(form)).toHaveText('An account already exists for that email.');
+});
 
 test('rejects a login with the wrong password', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
+    const user = await registerNewUser(request);
 
-    await page.goto('/login')
+    const form = await submitAuthForm(page, 'login', user.email, 'WrongPassword123');
 
-    const form = activeAuthForm(page)
-    await form.getByLabel('Email', { exact: true }).fill(user.email)
-    await form.getByLabel('Password', { exact: true }).fill('WrongPassword123')
-    await form.getByRole('button', { name: 'Sign in', exact: true }).click()
-
-    await expect(form.getByRole('alert')).toHaveText(
-        "That email and password don't match an account.",
-    )
-})
+    await expect(authAlert(form)).toHaveText("That email and password don't match an account.");
+});
 
 test('shows an inline error for a malformed email', async ({ page }) => {
-    await page.goto('/register')
+    const form = await submitAuthForm(page, 'register', 'not-an-email', TEST_PASSWORD);
 
-    const form = activeAuthForm(page)
-    await form.getByLabel('Email', { exact: true }).fill('not-an-email')
-    await form.getByLabel('Password', { exact: true }).fill('Password123')
-    await form.getByRole('button', { name: 'Create account', exact: true }).click()
-
-    await expect(form.getByRole('alert')).toHaveText('Enter a valid email address.')
-})
+    await expect(authAlert(form)).toHaveText('Enter a valid email address.');
+});
 
 test('shows an inline error for a short password', async ({ page }) => {
-    await page.goto('/register')
+    const form = await submitAuthForm(page, 'register', 'short-password@example.com', 'Short1');
 
-    const form = activeAuthForm(page)
-    await form.getByLabel('Email', { exact: true }).fill('short-password@example.com')
-    await form.getByLabel('Password', { exact: true }).fill('Short1')
-    await form.getByRole('button', { name: 'Create account', exact: true }).click()
-
-    await expect(form.getByRole('alert')).toHaveText('Password must be 8-72 characters.')
-})
+    await expect(authAlert(form)).toHaveText('Password must be 8-72 characters.');
+});
 
 test('shows an inline error for a weak password', async ({ page }) => {
-    await page.goto('/register')
+    const form = await submitAuthForm(page, 'register', 'weak-password@example.com', 'alllowercase');
 
-    const form = activeAuthForm(page)
-    await form.getByLabel('Email', { exact: true }).fill('weak-password@example.com')
-    await form.getByLabel('Password', { exact: true }).fill('alllowercase')
-    await form.getByRole('button', { name: 'Create account', exact: true }).click()
-
-    await expect(form.getByRole('alert')).toHaveText(
+    await expect(authAlert(form)).toHaveText(
         'Password needs an uppercase letter, a lowercase letter, and a number.',
-    )
-})
+    );
+});
 
 test('shows an inline error when the fields are empty', async ({ page }) => {
-    await page.goto('/register')
+    const form = await submitEmptyAuthForm(page, 'register');
 
-    const form = activeAuthForm(page)
-    await form.getByRole('button', { name: 'Create account', exact: true }).click()
-
-    await expect(form.getByRole('alert')).toHaveText('Enter your email.')
-})
+    await expect(authAlert(form)).toHaveText('Enter your email.');
+});
 
 test('preserves authenticated session across page reload', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    await loginViaUi(page, user)
-    await expect(page).toHaveURL('/')
-    await expect(page.getByRole('heading', { name: 'Feed' })).toBeVisible()
+    const user = await registerNewUser(request);
+    await loginViaUi(page, user);
+    await expectFeedPage(page);
 
-    // Reload the page: should re-authenticate via /api/v1/auth/me without bouncing to /login
-    await page.reload()
-    await expect(page).toHaveURL('/')
-    await expect(page.getByRole('heading', { name: 'Feed' })).toBeVisible()
-    await expect(page.locator('.home-wordmark')).toHaveText('signalflow')
-})
+    // The reload must re-authenticate through the auth check without bouncing to the login page.
+    await page.reload();
 
-test('redirects authenticated user away from login and register pages', async ({
-    page,
-    request,
-}) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    await loginViaUi(page, user)
-    await expect(page).toHaveURL('/')
+    await expectFeedPage(page);
+    await expect(wordmark(page)).toHaveText('SignalFlow');
+});
 
-    await page.goto('/login')
-    await expect(page).toHaveURL('/')
+test('redirects authenticated user away from login and register pages', async ({ page, request }) => {
+    const user = await registerNewUser(request);
+    await loginViaUi(page, user);
+    await expect(page).toHaveURL(ROUTES.home);
 
-    await page.goto('/register')
-    await expect(page).toHaveURL('/')
-})
+    await page.goto(ROUTES.login);
+    await expect(page).toHaveURL(ROUTES.home);
 
-test('redirects to login when session token expires (401 on auth check)', async ({
-    page,
-    request,
-}) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    await loginViaUi(page, user)
-    await expect(page).toHaveURL('/')
-    await expect(page.getByRole('heading', { name: 'Feed' })).toBeVisible()
+    await page.goto(ROUTES.register);
+    await expect(page).toHaveURL(ROUTES.home);
+});
 
-    // Simulate session expiration / invalidated cookie
-    await page.route('**/api/v1/auth/me', async (route) => {
-        await route.fulfill({
-            status: 401,
-            contentType: 'application/json',
-            body: JSON.stringify({ message: 'Unauthorized' }),
-        })
-    })
+test('redirects to login when session token expires (401 on auth check)', async ({ page, request }) => {
+    const user = await registerNewUser(request);
+    await loginViaUi(page, user);
+    await expectFeedPage(page);
 
-    // On page reload, me() fails with 401 and the app bounces back to /login
-    await page.reload()
-    await expect(page).toHaveURL('/login')
-})
+    await stubSessionExpired(page);
 
+    // On reload the auth check fails with 401 and the app bounces back to the login page.
+    await page.reload();
 
+    await expect(page).toHaveURL(ROUTES.login);
+});

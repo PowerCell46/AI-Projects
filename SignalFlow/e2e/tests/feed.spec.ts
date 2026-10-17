@@ -1,170 +1,137 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@playwright/test';
+import { registerNewUser } from '../support/api/auth-api';
 import {
-    clickSubscriptionToggle,
-    collectViewTitles,
     createTopicViaApi,
     createTopicWithCategoriesViaApi,
     createTopicsBatchViaApi,
-    isFeedGet,
-    loginAndWaitForFeed,
-    loginViaUi,
-    newUser,
-    registerViaApi,
-    revealTopicCard,
-    selectFilterTab,
+} from '../support/api/topic-scenarios';
+import { FEED_PAGE_SIZE } from '../support/constants';
+import { ROUTES } from '../support/routes';
+import { feedRetryButton, feedState } from '../support/ui/feed-state';
+import { collectViewTitles, revealTopicCard } from '../support/ui/feed-paging';
+import { selectFilterTab } from '../support/ui/filter-tabs';
+import { waitForFeedGet } from '../support/ui/network';
+import { startFeedOutage } from '../support/ui/route-stubs';
+import { loginAndWaitForFeed, loginViaUi } from '../support/ui/session';
+import {
+    clickSubscriptionToggle,
     topicCard,
-} from './fixtures'
+    topicCategoryChips,
+    topicSchedule,
+    topicToggle,
+} from '../support/ui/topic-card';
 
 test('each filter view shows only its own topics', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    const followed = await createTopicViaApi(request)
-    const unfollowed = await createTopicViaApi(request)
+    const user = await registerNewUser(request);
+    const followed = await createTopicViaApi();
+    const unfollowed = await createTopicViaApi();
 
-    await loginAndWaitForFeed(page, user)
-    await revealTopicCard(page, followed.name)
-    await clickSubscriptionToggle(page, followed.name)
-    await expect(topicCard(page, followed.name).getByRole('button')).toHaveText('Subscribed')
+    await loginAndWaitForFeed(page, user);
+    await revealTopicCard(page, followed.name);
+    await clickSubscriptionToggle(page, followed.name);
+    await expect(topicToggle(page, followed.name)).toHaveText('Subscribed');
 
     // The subscribed view is per-user and tiny, so direct assertions are
     // complete there; the global views below need full paging.
-    await selectFilterTab(page, /^Subscribed/)
-    await expect(topicCard(page, followed.name)).toBeVisible()
-    await expect(topicCard(page, unfollowed.name)).toHaveCount(0)
+    await selectFilterTab(page, 'Subscribed');
+    await expect(topicCard(page, followed.name)).toBeVisible();
+    await expect(topicCard(page, unfollowed.name)).toHaveCount(0);
 
-    await selectFilterTab(page, /^Not subscribed/)
-    const unsubscribedTitles = await collectViewTitles(page)
-    expect(unsubscribedTitles).toContain(unfollowed.name)
-    expect(unsubscribedTitles).not.toContain(followed.name)
+    await selectFilterTab(page, 'Not subscribed');
+    const unsubscribedTitles = await collectViewTitles(page);
+    expect(unsubscribedTitles).toContain(unfollowed.name);
+    expect(unsubscribedTitles).not.toContain(followed.name);
 
-    await selectFilterTab(page, /^All/)
-    const allTitles = await collectViewTitles(page)
-    expect(allTitles).toContain(followed.name)
-    expect(allTitles).toContain(unfollowed.name)
-})
+    await selectFilterTab(page, 'All');
+    const allTitles = await collectViewTitles(page);
+    expect(allTitles).toContain(followed.name);
+    expect(allTitles).toContain(unfollowed.name);
+});
 
-test('a topic with two categories shows both on its card, in name order', async ({
-    page,
-    request,
-}) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    const topic = await createTopicWithCategoriesViaApi(['alpha', 'beta'])
+test('a topic with two categories shows both on its card, in name order', async ({ page, request }) => {
+    const user = await registerNewUser(request);
+    const topic = await createTopicWithCategoriesViaApi(['alpha', 'beta']);
 
-    await loginAndWaitForFeed(page, user)
-    await revealTopicCard(page, topic.name)
+    await loginAndWaitForFeed(page, user);
+    await revealTopicCard(page, topic.name);
 
-    await expect(topicCard(page, topic.name).locator('.topic-card-category')).toHaveText(
-        topic.categoryNames,
-    )
-})
+    await expect(topicCategoryChips(page, topic.name)).toHaveText(topic.categoryNames);
+});
 
-test('a topic with three categories shows two and a +1 chip naming the third', async ({
-    page,
-    request,
-}) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    const topic = await createTopicWithCategoriesViaApi(['alpha', 'beta', 'gamma'])
+test('a topic with three categories shows two and a +1 chip naming the third', async ({ page, request }) => {
+    const user = await registerNewUser(request);
+    const topic = await createTopicWithCategoriesViaApi(['alpha', 'beta', 'gamma']);
 
-    await loginAndWaitForFeed(page, user)
-    await revealTopicCard(page, topic.name)
+    await loginAndWaitForFeed(page, user);
+    await revealTopicCard(page, topic.name);
 
-    const chips = topicCard(page, topic.name).locator('.topic-card-category')
-    await expect(chips).toHaveText([topic.categoryNames[0], topic.categoryNames[1], '+1'])
-    await expect(chips.last()).toHaveAttribute('title', topic.categoryNames[2])
-})
+    const chips = topicCategoryChips(page, topic.name);
+    const [firstCategory, secondCategory, thirdCategory] = topic.categoryNames;
+
+    await expect(chips).toHaveText([firstCategory, secondCategory, '+1']);
+    await expect(chips.last()).toHaveAttribute('title', thirdCategory);
+});
 
 test('a card shows its schedule, Daily by default', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    const weeklyTopic = await createTopicViaApi(request, undefined, 'WEEKLY')
-    const defaultTopic = await createTopicViaApi(request)
+    const user = await registerNewUser(request);
+    const weeklyTopic = await createTopicViaApi({ schedule: 'WEEKLY' });
+    const defaultTopic = await createTopicViaApi();
 
-    await loginAndWaitForFeed(page, user)
-    await revealTopicCard(page, weeklyTopic.name)
-    await expect(topicCard(page, weeklyTopic.name).locator('.topic-card-schedule')).toHaveText(
-        'Weekly \u00B7 Mondays',
-    )
+    await loginAndWaitForFeed(page, user);
+    await revealTopicCard(page, weeklyTopic.name);
+    await expect(topicSchedule(page, weeklyTopic.name)).toHaveText('Weekly · Mondays');
 
-    await revealTopicCard(page, defaultTopic.name)
-    await expect(topicCard(page, defaultTopic.name).locator('.topic-card-schedule')).toHaveText(
-        'Daily',
-    )
-})
+    await revealTopicCard(page, defaultTopic.name);
+    await expect(topicSchedule(page, defaultTopic.name)).toHaveText('Daily');
+});
 
-test('a fresh account sees the empty state in the subscribed view', async ({
-    page,
-    request,
-}) => {
-    const user = newUser()
-    await registerViaApi(request, user)
+test('a fresh account sees the empty state in the subscribed view', async ({ page, request }) => {
+    const user = await registerNewUser(request);
 
-    await loginAndWaitForFeed(page, user)
+    await loginAndWaitForFeed(page, user);
+    await selectFilterTab(page, 'Subscribed');
 
-    await selectFilterTab(page, /^Subscribed/)
-
-    await expect(page.locator('.feed-state')).toHaveText(
+    await expect(feedState(page)).toHaveText(
         'No topics in this view. Switch to All to find something to follow.',
-    )
-})
+    );
+});
 
 test('pages through more topics than fit on one screen', async ({ page, request }) => {
-    const user = newUser()
-    await registerViaApi(request, user)
+    const user = await registerNewUser(request);
 
-    // The feed loads 20 topics per page; 21 forces at least one "load more".
-    // Batch create under 1 category and 1 admin session for efficiency.
-    const createdTopics = await createTopicsBatchViaApi(21)
-    const names = new Set(createdTopics.map((t) => t.name))
+    // One topic past a full page forces at least one "load more".
+    const createdTopics = await createTopicsBatchViaApi(FEED_PAGE_SIZE + 1);
 
-    await loginAndWaitForFeed(page, user)
+    await loginAndWaitForFeed(page, user);
 
-    const titles = await collectViewTitles(page)
-    for (const name of names) {
-        expect(titles).toContain(name)
+    const titles = await collectViewTitles(page);
+
+    for (const createdTopic of createdTopics) {
+        expect(titles).toContain(createdTopic.name);
     }
-})
+});
 
-test('displays error state and recovers on retry when feed API fails', async ({
-    page,
-    request,
-}) => {
-    const user = newUser()
-    await registerViaApi(request, user)
-    const topic = await createTopicViaApi(request)
+test('displays error state and recovers on retry when feed API fails', async ({ page, request }) => {
+    const user = await registerNewUser(request);
+    const topic = await createTopicViaApi();
+    const feedOutage = await startFeedOutage(page);
 
-    // Simulate feed API failure (500)
-    let shouldFail = true
-    await page.route('**/api/v1/feed*', async (route) => {
-        if (shouldFail) {
-            await route.fulfill({
-                status: 500,
-                contentType: 'application/json',
-                body: JSON.stringify({ message: 'Internal Server Error' }),
-            })
-        } else {
-            await route.continue()
-        }
-    })
+    await loginViaUi(page, user);
+    await expect(page).toHaveURL(ROUTES.home);
 
-    await loginViaUi(page, user)
-    await expect(page).toHaveURL('/')
+    await expect(feedState(page)).toContainText("Couldn't load the feed. Try again.");
+    await expect(feedRetryButton(page)).toBeVisible();
 
-    const errorState = page.locator('.feed-state')
-    await expect(errorState).toContainText("Couldn't load the feed. Try again.")
-    const retryButton = page.locator('.feed-retry')
-    await expect(retryButton).toBeVisible()
+    // End the outage before retrying, so the retry request reaches the real feed.
+    const recoveredFeed = waitForFeedGet(page);
+    feedOutage.restore();
+    await feedRetryButton(page).click();
 
-    // Resolve error and click Retry
-    const recoveredFeed = page.waitForResponse(isFeedGet)
-    shouldFail = false
-    await retryButton.click()
-    const recoveredResponse = await recoveredFeed
-    expect(recoveredResponse.ok()).toBe(true)
+    const recoveredResponse = await recoveredFeed;
+    expect(recoveredResponse.ok()).toBe(true);
 
-    // The All view is shared across parallel tests and paged (20 per page),
+    // The All view is shared across parallel tests and paged,
     // so our topic can land beyond page one — page until it is on screen.
-    await revealTopicCard(page, topic.name)
-    await expect(page.locator('.feed-retry')).toHaveCount(0)
-})
+    await revealTopicCard(page, topic.name);
+    await expect(feedRetryButton(page)).toHaveCount(0);
+});

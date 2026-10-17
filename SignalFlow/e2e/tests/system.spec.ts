@@ -1,31 +1,36 @@
-import { expect, test } from '@playwright/test'
-import { clearMailpitMessages, getMailpitInfo, getMailpitMessages } from './fixtures'
+import { expect, test } from '@playwright/test';
+import { clearMailpitMessages, getMailpitInfo, getMailpitMessages } from '../support/api/mailpit-api';
+import { ENDPOINTS } from '../support/endpoints';
+import { HTTP_STATUS } from '../support/http-status';
+
+const UNKNOWN_TOPIC_ID = '00000000-0000-0000-0000-000000000000';
 
 test.describe('system & service health', () => {
     test('mailpit is reachable and message inbox can be queried and cleared', async () => {
-        const info = await getMailpitInfo()
-        expect(info).not.toBeNull()
-        expect(info).toHaveProperty('Version')
+        const info = await getMailpitInfo();
+        expect(info).not.toBeNull();
+        expect(info).toHaveProperty('Version');
 
-        // Clean inbox and verify it returns empty list
-        await clearMailpitMessages()
-        const messages = await getMailpitMessages()
-        expect(messages).toEqual([])
-    })
+        await clearMailpitMessages();
+
+        const messages = await getMailpitMessages();
+        expect(messages).toEqual([]);
+    });
 
     test('protected API routes reject unauthenticated requests with 401', async ({ request }) => {
-        const feedResponse = await request.get('/api/v1/feed')
-        expect(feedResponse.status()).toBe(401)
+        const feedResponse = await request.get(ENDPOINTS.feed);
+        expect(feedResponse.status()).toBe(HTTP_STATUS.unauthorized);
 
-        const subsResponse = await request.post('/api/v1/subscriptions/00000000-0000-0000-0000-000000000000')
-        expect(subsResponse.status()).toBe(401)
-    })
+        const subscriptionResponse = await request.post(ENDPOINTS.subscription(UNKNOWN_TOPIC_ID));
+        expect(subscriptionResponse.status()).toBe(HTTP_STATUS.unauthorized);
+    });
 
     test('non-admin user cannot create categories or topics directly', async ({ request }) => {
-        // Unauthenticated attempts
-        const catResponse = await request.post('/api/v1/categories', {
-            data: { name: 'unauthorized-category' },
-        })
-        expect([401, 403]).toContain(catResponse.status())
-    })
-})
+        const categoryResponse = await request.post(
+            ENDPOINTS.categories,
+            { data: { name: 'unauthorized-category' } },
+        );
+
+        expect([HTTP_STATUS.unauthorized, HTTP_STATUS.forbidden]).toContain(categoryResponse.status());
+    });
+});

@@ -25,7 +25,7 @@ here, so it only listens on `kafka:9092` internally. Tests navigate the frontend
 path the SPA uses.
 
 The compose file has no named volumes — each run starts from empty Postgres
-instances (both services also use `ddl-auto=create`), and `down -v` guarantees the
+instances (both services run `ddl-auto=update`, which creates the whole schema on an empty database), and `down -v` guarantees the
 next run does too. The nightly crons (news generation, subscription
 reconciliation, inbox cleanup) are overridden to Feb-29 dates so they never fire
 mid-run; `OPENROUTER_API_KEY` is a dummy value the tests never exercise.
@@ -34,6 +34,23 @@ To watch the browser instead of running headless: `npm run test:headed`. To also
 each action down so it's actually watchable (headed alone still runs at full speed):
 `npm run test:slow` — one worker, 1000ms of `slowMo` between actions. The delay is
 configurable per run: `SLOWMO=1000 npx playwright test --headed --workers=1`.
+
+## Layout
+
+Specs in `tests/` only describe flows; everything they call lives in `support/`:
+
+- `support/api/` — requests that set up state (`auth-api`, `category-api`, `topic-api`,
+  `topic-scenarios`, `mailpit-api`); `admin-session` runs a callback as the seeded admin.
+- `support/ui/` — one module per page area (`auth-form`, `home-page`, `topic-card`,
+  `feed-paging`, `filter-tabs`, `feed-state`, `session`), plus `network` (response
+  waiters) and `route-stubs` (simulated outages).
+- `support/data/` — test users and unique names.
+- `support/stack/` — docker compose start/stop used by global setup and teardown.
+- `support/endpoints.ts`, `routes.ts`, `selectors.ts`, `constants.ts`, `http-status.ts` —
+  no URL, path, CSS class or magic number appears outside these files.
+
+Code follows the `frontend-code-style` skill (semicolons, 4-space indent, no `as`, named
+interfaces instead of inline object types).
 
 ## Writing tests
 
@@ -51,7 +68,7 @@ configurable per run: `SLOWMO=1000 npx playwright test --headed --workers=1`.
   click. Use the network-synchronized helpers: `clickSubscriptionToggle`,
   `selectFilterTab`, `loginAndWaitForFeed`. They fail loudly with the HTTP status
   when the app itself errors, instead of timing out downstream.
-- Prerequisite state goes through the app's own API (see `tests/fixtures.ts`):
+- Prerequisite state goes through the app's own API (see `support/api/`):
   register users via `POST /api/v1/auth/register`, create categories/topics as the
   seeded admin (`admin@e2e.local`, via `DatabaseLoader`) through the gateway's
   forwarded routes. No SQL seeding.
