@@ -4,7 +4,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.event.TopicNewsEventDTO;
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.TopicNewsNotificationService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.notifications.TopicNewsNotificationService;
 
 import lombok.RequiredArgsConstructor;
 

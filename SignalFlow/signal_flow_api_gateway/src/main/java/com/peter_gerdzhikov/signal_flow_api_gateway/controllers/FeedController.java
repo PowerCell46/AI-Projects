@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.feed.FeedResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.FeedFilter;
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.FeedService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.interesttopics.FeedService;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

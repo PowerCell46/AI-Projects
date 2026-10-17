@@ -10,21 +10,24 @@ that hard-deletes subscriptions whose topic the topic service reports missing, v
 `POST /internal/v1/interest-topics/existing`) and the **dashboard feed** (`GET /api/v1/feed`, a
 real endpoint composing the caller's subscriptions with the topic service's internal
 `POST /internal/v1/interest-topics/feed`) and **user deletion** (`DELETE /api/v1/users?email=`, ADMIN only,
-hard-deletes a `USER` account and its subscriptions; an `ADMIN` target answers 403). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
+hard-deletes a `USER` account and its subscriptions; an `ADMIN` target answers 403) and the
+**topic-news notification pipeline** (a `@KafkaListener` on `topic-news.generated` fans each event out to the
+topic's enabled subscribers into a transactional outbox plus a dedup inbox; a poller publishes outbox rows to
+`topic-news.notification-requested` for the mail service, and a cleanup job purges old inbox rows). Forwarding is `spring-cloud-gateway-server-webmvc` (blocking, not
 reactive — reactive would rule out JPA for no throughput this project needs), with routes declared in Java
 (`InterestTopicRoutesConfiguration`) and access rules in `SecurityConfiguration`.
 
-`PLAN.md` is the backlog — what's still to build, fix or improve, plus the gaps accepted on purpose and
-what should trigger revisiting each. Read it before starting a task. The design and step gates of the
-shipped phases are in its git history (`git log -p -- PLAN.md`).
+`BACKLOG.md` lists what is still open: deferred work and the gaps accepted on purpose, each with its trigger.
+The design and step gates of the shipped phases are in git history (`git log -p -- PLAN.md`).
 
 ## Running the project
 
 Needs **JDK 25+**; the pom targets release 25 and a newer JDK builds it fine.
 
-`../docker-compose.yml` (the SignalFlow root, one level up) runs **Postgres only** — there's no app
-or frontend container yet. For local dev: `docker compose up postgres` from the SignalFlow root, then
-`mvn spring-boot:run` serves the app on **:8080** against it. Other goals: `mvn clean install`, `mvn
+`../docker-compose.infra.yml` (the SignalFlow root, one level up) runs the backing infra only (Postgres, Kafka,
+Redis, Mailpit); `../docker-compose.yml` runs the full stack. For local dev: `docker compose -f
+docker-compose.infra.yml up -d` from the SignalFlow root, then `mvn spring-boot:run` serves the app on **:8080**
+against it. Other goals: `mvn clean install`, `mvn
 test`, `mvn verify`.
 
 Tests use **Testcontainers**, never embedded fakes — a running Docker daemon is a hard prerequisite.
@@ -48,7 +51,7 @@ HS256 secret, because the gateway is the only verifier.
 Hard rules — these hold whether or not the skill is loaded:
 
 - Layered: `controller → service → repository`. Controllers never touch repositories directly. Services own business logic; controllers stay thin (validate input, delegate, shape response).
-- Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation.
+- Every service = an interface in `/services/interfaces` (`FooService`) + an implementation in `/services/implementations` (`FooServiceImpl`). Always, even with only one implementation. Once either package holds more than 5 files, both are grouped into the same domain subpackages (`/services/interfaces/subscriptions`, `/services/implementations/subscriptions`).
 - Constructor injection only: `private final` fields + `@RequiredArgsConstructor`. No `@Autowired` on fields, no setter injection. Ever.
 - Test methods are snake_case; the default is `should_<behaviour>_when_<condition>`.
 - Endpoints live under `/api/v1`.
@@ -77,7 +80,7 @@ Root-level packages, under `com.peter_gerdzhikov.signal_flow_api_gateway`:
 - **Shortcut: event field changes ship to all three services together.** `topic-news.generated` and
   `topic-news.notification-requested` have no versioning, so a field change must be deployed in the topic service,
   the gateway and the mail service at once. A stale in-flight event is skipped by the gateway guard or rejected by
-  the mail validation. Acceptable because the databases are wiped on restart. **Trigger:** keeping data across
+  the mail validation. Acceptable while the three services are always deployed together. **Trigger:** keeping data across
   deploys, or deploying the services independently.
 
 - **Any new table that keeps a user's data needs its own cleanup in `UserServiceImpl.deleteByEmail`** (see the
@@ -117,7 +120,7 @@ Done = re-check touched files against any loaded skill's rules.
 - **Never report a suite that didn't run as passing.** Testcontainers tests fail at startup with no Docker daemon — if that happens, say so plainly; don't score a skipped or errored suite as green.
 - **A step isn't done until its own tests are written and green.** No step starts on a red or missing test.
 - **No silent assumptions.** If you hit an unknown, a missing detail, or multiple valid implementation paths, stop immediately and ask a focused open or choice question before continuing. Do not guess; this is a hard rule.
-- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. Division of labour: `PLAN.md` holds what's still open, `DECISIONS.md` holds calls already made *during* implementation.
+- **`DECISIONS.md`** (this directory) tracks non-obvious decisions that would be hard to re-derive from the code alone. Read it at the start of any non-trivial task; add to it when one is made. It holds calls made *during* implementation; the up-front design of shipped phases is in `git log -p -- PLAN.md`.
 
 ### Autonomy
 

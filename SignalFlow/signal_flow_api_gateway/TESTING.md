@@ -6,8 +6,8 @@ exercise real Postgres too but skip the HTTP layer, so they're not listed here.
 
 Hand-maintained — see `CLAUDE.md`'s "Writing code" section for the rule keeping this in sync.
 
-All eight endpoints are enabled — the four auth ones (Register, Login, Logout, `/me`), the three
-subscription ones and the feed — plus the eight forwarded topic-service endpoints. No `@Disabled` remains anywhere in the suite.
+All gateway endpoints are enabled — the four auth ones (Register, Login, Logout, `/me`), the three
+subscription ones, user deletion and the feed — plus the eight forwarded topic-service endpoints. No `@Disabled` remains anywhere in the suite.
 
 ## `POST /api/v1/auth/register`
 
@@ -62,8 +62,7 @@ subscription ones and the feed — plus the eight forwarded topic-service endpoi
 - Returns 204 with no cookie present (`should_return_204_with_no_cookie_present`)
 - Returns 204 even when an invalid cookie is present (`should_return_204_when_an_invalid_cookie_is_present`)
 - A browser that dropped the cleared cookie can no longer authenticate `/me` (`should_prevent_a_browser_that_dropped_the_cleared_cookie_from_authenticating_me`) —
-  exercises the browser-cookie-jar path only; the JWT itself is not server-side revoked (see `PLAN.md`'s
-  Known gaps)
+  exercises the browser-cookie-jar path only; the JWT itself is not server-side revoked (see "Easy to break" in `CLAUDE.md`)
 
 ## `GET /api/v1/auth/me`
 
@@ -190,5 +189,4 @@ body-carrying writes.
 
 ## Known gaps
 
-See `PLAN.md`'s "Known gaps" section — accepted risks for the whole auth phase, not specific to these
-scenarios.
+See "Easy to break" in `CLAUDE.md` — accepted risks, not specific to these scenarios.

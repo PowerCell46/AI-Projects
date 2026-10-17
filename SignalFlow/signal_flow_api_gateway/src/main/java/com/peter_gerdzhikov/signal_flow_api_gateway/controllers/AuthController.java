@@ -18,8 +18,8 @@ import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.RegisterRequest
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.auth.UserResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.User;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.enums.Role;
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.AuthService;
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.TokenService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.auth.AuthService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.auth.TokenService;
 import com.peter_gerdzhikov.signal_flow_api_gateway.utilities.CookieFactory;
 
 import jakarta.validation.Valid;

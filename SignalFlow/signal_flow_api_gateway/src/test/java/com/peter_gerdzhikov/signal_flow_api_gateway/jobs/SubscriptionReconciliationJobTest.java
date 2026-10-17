@@ -8,7 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionReconciliationService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.subscriptions.SubscriptionReconciliationService;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionReconciliationJobTest {

@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.AuthService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.auth.AuthService;
 
 import lombok.extern.slf4j.Slf4j;
 

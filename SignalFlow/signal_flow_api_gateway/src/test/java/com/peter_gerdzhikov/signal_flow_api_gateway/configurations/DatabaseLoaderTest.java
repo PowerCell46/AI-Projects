@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.AuthService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.auth.AuthService;
 
 @ExtendWith(MockitoExtension.class)
 class DatabaseLoaderTest {

@@ -3,7 +3,7 @@ package com.peter_gerdzhikov.signal_flow_api_gateway.jobs;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.NotificationOutboxPublisherService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.notifications.NotificationOutboxPublisherService;
 
 import lombok.RequiredArgsConstructor;
 

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.request.SubscribeRequestDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.DTOs.response.subscriptions.SubscriptionResponseDTO;
 import com.peter_gerdzhikov.signal_flow_api_gateway.entities.Subscription;
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.SubscriptionService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.subscriptions.SubscriptionService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.UserService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.auth.UserService;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

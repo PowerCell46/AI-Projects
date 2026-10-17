@@ -8,7 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.InboxCleanupService;
+import com.peter_gerdzhikov.signal_flow_api_gateway.services.interfaces.notifications.InboxCleanupService;
 
 @ExtendWith(MockitoExtension.class)
 class InboxCleanupJobTest {
