@@ -10,10 +10,18 @@ import {
     typeStep,
 } from './fixtures';
 
+const ROUTES = {
+    register: '/register',
+    login: '/login',
+    feed: '/feed',
+} as const;
+
+const EMAILS_AFTER_ONE_RESEND = 2;
+
 test('should_register_confirm_by_the_emailed_link_log_in_by_email_and_reach_the_feed', async ({ page }) => {
     const user = newUser();
 
-    await page.goto('/register');
+    await page.goto(ROUTES.register);
     await typeStep(page, 'email address', user.email);
     await typeStep(page, 'username', user.username);
     await typeStep(page, 'password', user.password);
@@ -25,7 +33,9 @@ test('should_register_confirm_by_the_emailed_link_log_in_by_email_and_reach_the_
 
     await expect(page.getByText('ACCOUNT CONFIRMED')).toBeVisible();
 
-    await page.getByRole('link', { name: 'LOG IN' }).click();
+    await page
+        .getByRole('link', { name: 'LOG IN' })
+        .click();
     await typeStep(page, 'email or username', user.email);
     await typeStep(page, 'password', user.password);
 
@@ -42,18 +52,25 @@ test('should_log_in_by_username_keep_the_session_on_reload_and_log_out', async (
 
     await expect(page.getByRole('button', { name: 'Account menu' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Account menu' }).click();
-    await page.getByRole('menuitem', { name: 'LOG OUT' }).click();
+    await page
+        .getByRole('button', { name: 'Account menu' })
+        .click();
+    await page
+        .getByRole('menuitem', { name: 'LOG OUT' })
+        .click();
 
     await expect(page).toHaveURL(/\/login$/);
 });
 
 test('should_return_to_the_email_step_when_the_email_is_already_registered', async ({ page, request }) => {
     const existingUser = newUser();
-    const newcomer = { ...newUser(), email: existingUser.email };
+    const newcomer = {
+        ...newUser(),
+        email: existingUser.email,
+    };
     await registerViaApi(request, existingUser);
 
-    await page.goto('/register');
+    await page.goto(ROUTES.register);
     await typeStep(page, 'email address', newcomer.email);
     await typeStep(page, 'username', newcomer.username);
     await typeStep(page, 'password', newcomer.password);
@@ -64,10 +81,13 @@ test('should_return_to_the_email_step_when_the_email_is_already_registered', asy
 
 test('should_return_to_the_username_step_when_the_username_is_taken', async ({ page, request }) => {
     const existingUser = newUser();
-    const newcomer = { ...newUser(), username: existingUser.username };
+    const newcomer = {
+        ...newUser(),
+        username: existingUser.username,
+    };
     await registerViaApi(request, existingUser);
 
-    await page.goto('/register');
+    await page.goto(ROUTES.register);
     await typeStep(page, 'email address', newcomer.email);
     await typeStep(page, 'username', newcomer.username);
     await typeStep(page, 'password', newcomer.password);
@@ -84,7 +104,9 @@ test('should_rise_on_a_wrong_password_and_clear_the_error_when_typing', async ({
 
     await expect(page.getByRole('alert')).toHaveText('INVALID CREDENTIALS — RISING 420 M');
 
-    await page.getByLabel('password', { exact: true }).fill('x');
+    await page
+        .getByLabel('password', { exact: true })
+        .fill('x');
 
     await expect(page.getByRole('alert')).toHaveText('');
 });
@@ -97,15 +119,21 @@ test('should_offer_a_prefilled_resend_when_an_unconfirmed_user_logs_in', async (
 
     await expect(page.getByRole('alert')).toHaveText('PLEASE CONFIRM YOUR EMAIL FIRST');
 
-    await page.getByRole('link', { name: 'RESEND LINK' }).click();
+    await page
+        .getByRole('link', { name: 'RESEND LINK' })
+        .click();
 
     await expect(page).toHaveURL(/\/resend$/);
     await expect(page.getByLabel('email address', { exact: true })).toHaveValue(user.email);
 
-    await page.getByRole('button', { name: 'SEND LINK' }).click();
+    await page
+        .getByRole('button', { name: 'SEND LINK' })
+        .click();
 
     await expect(page.getByText('LINK DISPATCHED')).toBeVisible();
-    await expect.poll(() => confirmationEmailCount(user.email)).toBe(2);
+    await expect
+        .poll(() => confirmationEmailCount(user.email))
+        .toBe(EMAILS_AFTER_ONE_RESEND);
 });
 
 test('should_reject_a_confirmation_link_that_was_already_used', async ({ page, request }) => {
@@ -125,7 +153,7 @@ test('should_reject_a_confirmation_link_that_was_already_used', async ({ page, r
 test('should_step_back_from_the_password_to_the_username_with_the_browser_back_button', async ({ page }) => {
     const user = newUser();
 
-    await page.goto('/register');
+    await page.goto(ROUTES.register);
     await typeStep(page, 'email address', user.email);
     await typeStep(page, 'username', user.username);
 
@@ -138,7 +166,7 @@ test('should_step_back_from_the_password_to_the_username_with_the_browser_back_b
 });
 
 test('should_send_a_logged_out_visitor_from_the_feed_to_login', async ({ page }) => {
-    await page.goto('/feed');
+    await page.goto(ROUTES.feed);
 
     await expect(page).toHaveURL(/\/login$/);
 });
@@ -148,7 +176,7 @@ test('should_send_a_logged_in_user_from_login_to_the_feed', async ({ page, reque
     await registerAndConfirmViaApi(request, user);
     await logInAndWaitForFeed(page, user);
 
-    await page.goto('/login');
+    await page.goto(ROUTES.login);
 
     await expect(page).toHaveURL(/\/feed$/);
 });

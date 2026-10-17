@@ -1,15 +1,30 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from '@playwright/test';
-import { deleteTweet, postTweet, test, type Account } from './fixtures';
+import { deleteTweet, postTweet, test, TEST_TIMEOUT_MS, type Account } from './fixtures';
 
+const POLL_TIMEOUT_MS = 30_000;
+
+const NO_CONTENT_STATUS = 204;
+
+const NOT_FOUND_STATUS = 404;
+
+const LIKES_PATH = '/api/v1/likes';
+
+const FEED_PATH = '/api/v1/feed';
+
+const CURRENT_USER_PATH = '/api/v1/auth/me';
+
+const USER_ID_HEADER = 'X-User-Id';
+
+interface LikedTweetAuthor {
+    username: string;
+}
 
 interface LikedTweetItem {
     id: string;
     likes: number;
     likedByMe: boolean;
-    author: {
-        username: string;
-    };
+    author: LikedTweetAuthor;
 }
 
 interface LikedTweetsPage {
@@ -31,27 +46,22 @@ interface CurrentUser {
     id: string;
 }
 
-// Two registrations each wait for a confirmation email, and the feed entry and the delete cross Kafka.
-const TEST_TIMEOUT_MS = 120_000;
-
-const POLL_TIMEOUT_MS = 30_000;
-
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 
 async function likeTweet(liker: Account, tweetId: string) {
-    const response = await liker.api.put(`/api/v1/likes/${tweetId}`);
+    const response = await liker.api.put(`${LIKES_PATH}/${tweetId}`);
 
-    expect(response.status()).toBe(204);
+    expect(response.status()).toBe(NO_CONTENT_STATUS);
 }
 
 async function unlikeTweet(liker: Account, tweetId: string) {
-    const response = await liker.api.delete(`/api/v1/likes/${tweetId}`);
+    const response = await liker.api.delete(`${LIKES_PATH}/${tweetId}`);
 
-    expect(response.status()).toBe(204);
+    expect(response.status()).toBe(NO_CONTENT_STATUS);
 }
 
 async function readLikedTweets(reader: Account): Promise<LikedTweetsPage> {
-    const response = await reader.api.get('/api/v1/likes');
+    const response = await reader.api.get(LIKES_PATH);
 
     expect(response.ok()).toBe(true);
 
@@ -65,7 +75,7 @@ async function likedTweetIds(reader: Account): Promise<string[]> {
 }
 
 async function feedItemOf(reader: Account, tweetId: string): Promise<FeedItemWithLikes | undefined> {
-    const response = await reader.api.get('/api/v1/feed');
+    const response = await reader.api.get(FEED_PATH);
 
     expect(response.ok()).toBe(true);
 
@@ -75,13 +85,13 @@ async function feedItemOf(reader: Account, tweetId: string): Promise<FeedItemWit
 }
 
 async function currentUserId(account: Account): Promise<string> {
-    const response = await account.api.get('/api/v1/auth/me');
+    const response = await account.api.get(CURRENT_USER_PATH);
 
     expect(response.ok()).toBe(true);
 
-    const me: CurrentUser = await response.json();
+    const currentUser: CurrentUser = await response.json();
 
-    return me.id;
+    return currentUser.id;
 }
 
 test('should_list_the_post_once_and_count_one_like_when_it_is_liked_twice', async ({ createAccount }) => {
@@ -102,8 +112,14 @@ test('should_list_the_post_once_and_count_one_like_when_it_is_liked_twice', asyn
     expect(likedTweets.nextCursor).toBeNull();
 
     await expect
-        .poll(() => feedItemOf(bob, tweetId), { timeout: POLL_TIMEOUT_MS })
-        .toMatchObject({ likes: 1, likedByMe: false });
+        .poll(
+            () => feedItemOf(bob, tweetId),
+            { timeout: POLL_TIMEOUT_MS },
+        )
+        .toMatchObject({
+            likes: 1,
+            likedByMe: false,
+        });
 });
 
 test('should_count_two_likes_and_empty_the_list_when_both_like_and_one_unlikes_twice', async ({ createAccount }) => {
@@ -136,16 +152,19 @@ test('should_remove_the_post_from_the_liked_list_when_the_author_deletes_it', as
     await deleteTweet(bob, tweetId);
 
     await expect
-        .poll(() => likedTweetIds(ana), { timeout: POLL_TIMEOUT_MS })
+        .poll(
+            () => likedTweetIds(ana),
+            { timeout: POLL_TIMEOUT_MS },
+        )
         .toEqual([]);
 });
 
 test('should_return_404_and_keep_the_list_empty_when_the_post_is_unknown', async ({ createAccount }) => {
     const ana = await createAccount();
 
-    const response = await ana.api.put(`/api/v1/likes/${randomUUID()}`);
+    const response = await ana.api.put(`${LIKES_PATH}/${randomUUID()}`);
 
-    expect(response.status()).toBe(404);
+    expect(response.status()).toBe(NOT_FOUND_STATUS);
     expect(await likedTweetIds(ana)).toEqual([]);
 });
 
@@ -155,9 +174,12 @@ test('should_store_the_like_for_the_caller_when_a_forged_user_id_header_is_sent'
     const tweetId = await postTweet(bob, `forged like target ${bob.user.username}`);
     const bobId = await currentUserId(bob);
 
-    const response = await ana.api.put(`/api/v1/likes/${tweetId}`, { headers: { 'X-User-Id': bobId } });
+    const response = await ana.api.put(
+        `${LIKES_PATH}/${tweetId}`,
+        { headers: { [USER_ID_HEADER]: bobId } },
+    );
 
-    expect(response.status()).toBe(204);
+    expect(response.status()).toBe(NO_CONTENT_STATUS);
     expect(await likedTweetIds(ana)).toEqual([tweetId]);
     expect(await likedTweetIds(bob)).toEqual([]);
 });

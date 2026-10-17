@@ -1,9 +1,5 @@
 import { expect } from '@playwright/test';
-import { follow, latestEmailText, test } from './fixtures';
-
-
-// Accounts register and confirm through the email link, so the first one also waits for the consumer's group join.
-const TEST_TIMEOUT_MS = 120_000;
+import { follow, latestEmailText, test, TEST_TIMEOUT_MS } from './fixtures';
 
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 

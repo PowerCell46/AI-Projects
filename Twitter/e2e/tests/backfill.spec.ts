@@ -1,9 +1,5 @@
 import { expect } from '@playwright/test';
-import { FEED_POLL_TIMEOUT_MS, feedTweetIds, follow, postTweet, test, unfollow } from './fixtures';
-
-
-// Three registrations each wait for a confirmation email, and every back-fill crosses the outbox and Kafka.
-const TEST_TIMEOUT_MS = 120_000;
+import { FEED_POLL_TIMEOUT_MS, feedTweetIds, follow, postTweet, test, TEST_TIMEOUT_MS, unfollow } from './fixtures';
 
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 
@@ -36,5 +32,6 @@ test('should_leave_none_of_the_authors_tweets_in_the_feed_when_the_user_follows_
     await expect
         .poll(() => feedTweetIds(cy), { timeout: FEED_POLL_TIMEOUT_MS })
         .toEqual([newerTweet, olderTweet]);
+
     expect(await feedTweetIds(ana)).toEqual([]);
 });

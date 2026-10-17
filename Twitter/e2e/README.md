@@ -1,6 +1,6 @@
 # End-to-end tests
 
-Playwright (desktop Chromium only) against a throw-away stack: `docker-compose.e2e.yml` starts Postgres, Mongo,
+Playwright (Chromium only, at desktop and at phone size) against a throw-away stack: `docker-compose.e2e.yml` starts Postgres, Mongo,
 Kafka, MinIO, Redis, Mailpit and the four services under the `twitter-e2e` Compose project, and Playwright serves
 the frontend itself (`npm run dev` in `../frontend`). The specs register their own users in an empty database
 (`SEED_ENABLED=false`); nothing here touches the dev or full stacks.
@@ -21,7 +21,26 @@ npm run test:fast   # skip image rebuild (`E2E_NO_BUILD=1`); use on subsequent r
 npm run test:headed # run with a visible browser
 npm run test:slow   # visible browser, 1 worker, 1000ms delay between actions (watchable)
 npm run stack:down  # `down -v` on the e2e project, for manual cleanup
+npx playwright test --project=mobile-chromium   # only the phone-sized run
 ```
+
+### Projects
+- **`chromium`**: every spec at desktop size (Desktop Chrome).
+- **`mobile-chromium`**: the page-driven specs only (`*-ui.spec.ts` and `auth.spec.ts`) in Chromium emulating a Pixel 7 (touch, small viewport). It is also the only project that runs `mobile-layout-ui.spec.ts`. The API-only specs make the same requests at any size, so they run once, in `chromium`.
+
+### Specs
+API-only specs have no suffix, page-driven ones end in `-ui`.
+
+| Spec | What it covers |
+| --- | --- |
+| `auth-validation.spec.ts` / `auth-validation-ui.spec.ts` | Register rules for email, username and password: the gateway's 400s and the form's own messages |
+| `auth-confirmation.spec.ts` / `auth-confirmation-ui.spec.ts` | Expired, unknown and malformed confirmation links; a resend gives a working one |
+| `auth-session.spec.ts` / `auth-session-ui.spec.ts` | Expired, forged and garbage session cookies answer the same JSON 401 as no cookie (no `WWW-Authenticate`) and the UI goes to login |
+| `mobile-layout-ui.spec.ts` | Phone size only: on each main screen the page does not scroll sideways and every interactive element is at least 44x44 px (`tests/page-helpers.ts` lists every offender); known offenders are `test.fixme` |
+| `follows.spec.ts` / `follows-ui.spec.ts` | Self-follow, repeated follow and unfollow, follower and following lists, counts on the profile |
+| `replies-create-ui.spec.ts` | The reply composer on the tweet page: send, empty, over the limit, cancel, failures |
+
+An expired confirmation link cannot be made by waiting (the TTL is 24 h), so `database-helpers.ts` ages the link's row with `psql` inside the e2e Postgres container. `session-helpers.ts` signs session tokens with the e2e `JWT_SECRET` from `docker-compose.e2e.yml`.
 
 ### Fast vs. slow execution
 - **Fast run (`npm run test:fast`)**: When service images are already built, setting `E2E_NO_BUILD=1` skips the multi-minute Maven container rebuilds and starts straight into `up -d --wait`.

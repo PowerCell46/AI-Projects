@@ -1,6 +1,82 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test as base, type APIRequestContext, type Page } from '@playwright/test';
 
+const DEFAULT_MAILPIT_PORT = '8125';
+
+const MAILPIT_URL = `http://127.0.0.1:${process.env.E2E_MAILPIT_PORT ?? DEFAULT_MAILPIT_PORT}`;
+
+const MAILPIT_API_URL = `${MAILPIT_URL}/api/v1`;
+
+const MAILPIT_SEARCH_URL = `${MAILPIT_API_URL}/search`;
+
+const MAILPIT_MESSAGE_URL = `${MAILPIT_API_URL}/message`;
+
+const API_V1 = '/api/v1';
+
+export const API_PATHS = {
+    register: `${API_V1}/auth/register`,
+    confirm: `${API_V1}/auth/confirm`,
+    resendConfirmation: `${API_V1}/auth/confirm/resend`,
+    login: `${API_V1}/auth/login`,
+    me: `${API_V1}/auth/me`,
+    tweets: `${API_V1}/tweets`,
+    tweet: (tweetId: string) => `${API_V1}/tweets/${tweetId}`,
+    tweetCount: `${API_V1}/tweets/count`,
+    tweetDetails: (tweetId: string) => `${API_V1}/tweet-details/${tweetId}`,
+    replies: (tweetId: string) => `${API_V1}/tweets/${tweetId}/replies`,
+    reply: (tweetId: string, replyId: string) => `${API_V1}/tweets/${tweetId}/replies/${replyId}`,
+    like: (tweetId: string) => `${API_V1}/likes/${tweetId}`,
+    follow: (username: string) => `${API_V1}/users/${username}/follow`,
+    followers: (username: string) => `${API_V1}/users/${username}/followers`,
+    following: (username: string) => `${API_V1}/users/${username}/following`,
+    currentUser: `${API_V1}/users/me`,
+    user: (username: string) => `${API_V1}/users/${username}`,
+    authorTweets: (authorId: string) => `${API_V1}/author-tweets/${authorId}`,
+    feed: `${API_V1}/feed`,
+} as const;
+
+export const APP_PATHS = {
+    feed: '/feed',
+    login: '/login',
+    register: '/register',
+    users: '/users',
+    user: (username: string) => `/users/${username}`,
+    tweet: (tweetId: string) => `/tweets/${tweetId}`,
+} as const;
+
+export const HTTP_STATUS = {
+    ok: 200,
+    created: 201,
+    accepted: 202,
+    noContent: 204,
+    badRequest: 400,
+    unauthorized: 401,
+    forbidden: 403,
+    notFound: 404,
+    methodNotAllowed: 405,
+    contentTooLarge: 413,
+    unsupportedMediaType: 415,
+} as const;
+
+export const FEED_POLL_TIMEOUT_MS = 30_000;
+
+// Registrations each wait for a confirmation email, and every feed change crosses Kafka and the outbox.
+export const TEST_TIMEOUT_MS = 120_000;
+
+// The feed endpoint's default page size: the number of posts the first page holds.
+export const FIRST_PAGE_SIZE = 20;
+
+// The feed endpoint refuses a page size above this.
+export const MAX_PAGE_SIZE = 100;
+
+// The first email waits for the outbox poll, the Kafka hop and the consumer's first group join.
+const EMAIL_POLL_TIMEOUT_MS = 20_000;
+
+const CONFIRMATION_URL_PATTERN = /https?:\/\/\S+/;
+
+export const TEST_PASSWORD = 'Passw0rd-e2e';
+
+const USERNAME_SUFFIX_LENGTH = 8;
 
 export interface TestUser {
     email: string;
@@ -44,16 +120,6 @@ interface MailpitMessage {
     Text: string;
 }
 
-const MAILPIT_URL = `http://127.0.0.1:${process.env.E2E_MAILPIT_PORT ?? '8125'}`;
-
-export const FEED_POLL_TIMEOUT_MS = 30_000;
-
-// The feed endpoint's default page size: the number of posts the first page holds.
-export const FIRST_PAGE_SIZE = 20;
-
-// The feed endpoint refuses a page size above this.
-export const MAX_PAGE_SIZE = 100;
-
 // A real 1x1 PNG, because the tweet service checks the magic bytes and not only the declared type.
 export const TINY_PNG: UploadedImage = {
     name: 'dot.png',
@@ -64,18 +130,24 @@ export const TINY_PNG: UploadedImage = {
     ),
 };
 
-// The first email waits for the outbox poll, the Kafka hop and the consumer's first group join.
-const EMAIL_POLL_TIMEOUT_MS = 20_000;
+// The tweet service decides the type from the leading bytes, so plain text with an image name and type is refused.
+export const TEXT_DECLARED_AS_PNG: UploadedImage = {
+    name: 'not-an-image.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('this is plain text, not a picture'),
+};
 
-const CONFIRMATION_URL_PATTERN = /https?:\/\/\S+/;
+// A tweet holds at most this many characters (Unicode code points of the trimmed text).
+export const MAX_TWEET_CHARACTERS = 280;
 
-export const TEST_PASSWORD = 'Passw0rd-e2e';
+// A tweet holds at most this many images.
+export const MAX_TWEET_IMAGES = 4;
 
 // Usernames are 3-15 letters, digits or underscores, so "e2e_" plus 8 hex characters.
 export function newUser(): TestUser {
     const suffix = randomUUID()
         .replaceAll('-', '')
-        .slice(0, 8);
+        .slice(0, USERNAME_SUFFIX_LENGTH);
 
     return {
         email: `e2e_${suffix}@example.com`,
@@ -87,7 +159,7 @@ export function newUser(): TestUser {
 // Newest first, as Mailpit lists them.
 async function searchEmails(searchQuery: string): Promise<MailpitMessageSummary[]> {
     const query = encodeURIComponent(searchQuery);
-    const response = await fetch(`${MAILPIT_URL}/api/v1/search?query=${query}`);
+    const response = await fetch(`${MAILPIT_SEARCH_URL}?query=${query}`);
     const searchResponse: MailpitSearchResponse = await response.json();
 
     return searchResponse.messages;
@@ -98,7 +170,7 @@ async function searchEmailsTo(email: string): Promise<MailpitMessageSummary[]> {
 }
 
 async function readMessageText(messageId: string): Promise<string> {
-    const response = await fetch(`${MAILPIT_URL}/api/v1/message/${messageId}`);
+    const response = await fetch(`${MAILPIT_MESSAGE_URL}/${messageId}`);
     const message: MailpitMessage = await response.json();
 
     return message.Text;
@@ -151,7 +223,7 @@ export async function confirmationEmailCount(email: string): Promise<number> {
 
 export async function registerViaApi(request: APIRequestContext, user: TestUser) {
     const response = await request.post(
-        '/api/v1/auth/register',
+        API_PATHS.register,
         { data: user },
     );
 
@@ -162,7 +234,7 @@ export async function confirmViaApi(request: APIRequestContext, user: TestUser) 
     const confirmationUrl = new URL(await latestConfirmationUrl(user.email));
     const token = confirmationUrl.searchParams.get('token');
     const response = await request.post(
-        '/api/v1/auth/confirm',
+        API_PATHS.confirm,
         { data: { token } },
     );
 
@@ -189,7 +261,7 @@ export async function typeStep(page: Page, label: string, value: string) {
 }
 
 export async function logIn(page: Page, identifier: string, password: string) {
-    await page.goto('/login');
+    await page.goto(APP_PATHS.login);
     await typeStep(page, 'email or username', identifier);
     await typeStep(page, 'password', password);
 }
@@ -201,12 +273,15 @@ export async function logInAndWaitForFeed(page: Page, user: TestUser) {
 }
 
 export async function logInViaApi(api: APIRequestContext, user: TestUser) {
-    const response = await api.post('/api/v1/auth/login', {
-        data: {
-            identifier: user.username,
-            password: user.password,
+    const response = await api.post(
+        API_PATHS.login,
+        {
+            data: {
+                identifier: user.username,
+                password: user.password,
+            },
         },
-    });
+    );
 
     expect(response.ok()).toBe(true);
 }
@@ -243,11 +318,11 @@ export async function postTweet(author: Account, content: string, image?: Upload
     }
 
     const response = await author.api.post(
-        '/api/v1/tweets',
+        API_PATHS.tweets,
         { multipart },
     );
 
-    expect(response.status()).toBe(201);
+    expect(response.status()).toBe(HTTP_STATUS.created);
 
     const created: CreatedTweet = await response.json();
 
@@ -255,25 +330,25 @@ export async function postTweet(author: Account, content: string, image?: Upload
 }
 
 export async function deleteTweet(author: Account, tweetId: string) {
-    const response = await author.api.delete(`/api/v1/tweets/${tweetId}`);
+    const response = await author.api.delete(API_PATHS.tweet(tweetId));
 
-    expect(response.status()).toBe(204);
+    expect(response.status()).toBe(HTTP_STATUS.noContent);
 }
 
 export async function follow(follower: Account, followee: Account) {
-    const response = await follower.api.put(`/api/v1/users/${followee.user.username}/follow`);
+    const response = await follower.api.put(API_PATHS.follow(followee.user.username));
 
-    expect(response.status()).toBe(204);
+    expect(response.status()).toBe(HTTP_STATUS.noContent);
 }
 
 export async function unfollow(follower: Account, followee: Account) {
-    const response = await follower.api.delete(`/api/v1/users/${followee.user.username}/follow`);
+    const response = await follower.api.delete(API_PATHS.follow(followee.user.username));
 
-    expect(response.status()).toBe(204);
+    expect(response.status()).toBe(HTTP_STATUS.noContent);
 }
 
 export async function feedTweetIds(reader: Account, size = FIRST_PAGE_SIZE): Promise<string[]> {
-    const response = await reader.api.get(`/api/v1/feed?size=${size}`);
+    const response = await reader.api.get(`${API_PATHS.feed}?size=${size}`);
 
     expect(response.ok()).toBe(true);
 

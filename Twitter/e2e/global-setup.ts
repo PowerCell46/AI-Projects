@@ -1,18 +1,19 @@
-import { execSync } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
-import { smokeCheckFrontendContainer } from './container-smoke'
+import { COMPOSE_ARGS } from './compose-args';
+import { smokeCheckFrontendContainer } from './container-smoke';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const COMPOSE_ARGS = '-p twitter-e2e -f docker-compose.e2e.yml'
+const BUILD_TIMEOUT_MS = 900_000;
 
-const BUILD_TIMEOUT_MS = 900_000
+const UP_TIMEOUT_MS = 300_000;
 
-const UP_TIMEOUT_MS = 300_000
+const DOWN_TIMEOUT_MS = 60_000;
 
-export default async function globalSetup() {
+export default async function globalSetup(): Promise<void> {
     // The four Maven image builds run first with their own generous timeout, so a slow
     // first build fails as a build error instead of a stack-start timeout.
     if (process.env.E2E_NO_BUILD !== '1') {
@@ -20,32 +21,35 @@ export default async function globalSetup() {
             cwd: __dirname,
             stdio: 'inherit',
             timeout: BUILD_TIMEOUT_MS,
-        })
+        });
     }
 
-    const command = `docker compose ${COMPOSE_ARGS} up -d --wait`
+    const command = `docker compose ${COMPOSE_ARGS} up -d --wait`;
 
     try {
         execSync(command, {
             cwd: __dirname,
             stdio: 'inherit',
             timeout: UP_TIMEOUT_MS,
-        })
+        });
 
         // The specs run against the dev server; this covers the nginx image they never touch.
-        await smokeCheckFrontendContainer()
+        await smokeCheckFrontendContainer();
+
     } catch (error) {
-        console.error('Failed to start e2e stack in globalSetup, cleaning up...', error)
+        console.error('Failed to start e2e stack in globalSetup, cleaning up...', error);
+
         try {
             execSync(`docker compose ${COMPOSE_ARGS} down -v`, {
                 cwd: __dirname,
                 stdio: 'inherit',
-                timeout: 60_000,
-            })
+                timeout: DOWN_TIMEOUT_MS,
+            });
+
         } catch {
             // Ignore teardown error and rethrow initial error
         }
-        throw error
+
+        throw error;
     }
 }
-

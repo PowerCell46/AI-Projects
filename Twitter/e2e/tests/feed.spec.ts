@@ -1,6 +1,16 @@
 import { expect } from '@playwright/test';
-import { deleteTweet, follow, postTweet, test, unfollow, type Account } from './fixtures';
+import {
+    deleteTweet,
+    FEED_POLL_TIMEOUT_MS,
+    follow,
+    postTweet,
+    test,
+    TEST_TIMEOUT_MS,
+    unfollow,
+    type Account,
+} from './fixtures';
 
+const FEED_PATH = '/api/v1/feed';
 
 interface FeedAuthor {
     username: string;
@@ -17,15 +27,10 @@ interface FeedPage {
     nextCursor: string | null;
 }
 
-// Three registrations each wait for a confirmation email, and every feed change crosses Kafka and the outbox.
-const TEST_TIMEOUT_MS = 120_000;
-
-const FEED_POLL_TIMEOUT_MS = 30_000;
-
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 
 async function readFeed(reader: Account): Promise<FeedPage> {
-    const response = await reader.api.get('/api/v1/feed');
+    const response = await reader.api.get(FEED_PATH);
 
     expect(response.ok()).toBe(true);
 
@@ -40,13 +45,19 @@ async function feedTweetIds(reader: Account): Promise<string[]> {
 
 async function expectFeedToContain(reader: Account, tweetId: string) {
     await expect
-        .poll(() => feedTweetIds(reader), { timeout: FEED_POLL_TIMEOUT_MS })
+        .poll(
+            () => feedTweetIds(reader),
+            { timeout: FEED_POLL_TIMEOUT_MS },
+        )
         .toContain(tweetId);
 }
 
 async function expectFeedToBeEmpty(reader: Account) {
     await expect
-        .poll(() => feedTweetIds(reader), { timeout: FEED_POLL_TIMEOUT_MS })
+        .poll(
+            () => feedTweetIds(reader),
+            { timeout: FEED_POLL_TIMEOUT_MS },
+        )
         .toEqual([]);
 }
 
@@ -100,6 +111,9 @@ test('should_drop_the_authors_tweets_on_unfollow_and_bring_them_back_with_the_ne
 
     // The refollow back-fills Bob's older tweet; the new one arrives through the fan-out.
     await expect
-        .poll(() => feedTweetIds(ana), { timeout: FEED_POLL_TIMEOUT_MS })
+        .poll(
+            () => feedTweetIds(ana),
+            { timeout: FEED_POLL_TIMEOUT_MS },
+        )
         .toEqual([tweetAfterRefollow, tweetBeforeUnfollow]);
 });

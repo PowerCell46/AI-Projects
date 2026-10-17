@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, type Request } from '@playwright/test';
 import {
+    API_PATHS,
+    APP_PATHS,
     expectFeedToContain,
     FEED_POLL_TIMEOUT_MS,
     follow,
@@ -7,13 +9,11 @@ import {
     openAs,
     postTweet,
     test,
+    TEST_TIMEOUT_MS,
     TINY_PNG,
     type Account,
 } from './fixtures';
-
-
-// Registrations each wait for a confirmation email, and a follow crosses the outbox and Kafka before the feed fills.
-const TEST_TIMEOUT_MS = 120_000;
+import { postWithText } from './page-helpers';
 
 // How long one check that a card is on the page may take before the list is scrolled further.
 const PERSON_CHECK_MS = 1_000;
@@ -22,6 +22,11 @@ const PERSON_CHECK_MS = 1_000;
 const END_OF_LIST_CHECK_MS = 1_000;
 
 const BULK_POST_COUNT = 25;
+
+// The request URL starts with the configured API origin, so only its tail is compared.
+const PROFILE_UPDATE_URL_SUFFIX = '/users/me';
+
+const UNKNOWN_USERNAME = 'nobody_here';
 
 const BIO = 'Sounding the deep.';
 
@@ -40,12 +45,6 @@ function tweetsHeading(page: Page): Locator {
     return page.getByRole('heading', { level: 2 });
 }
 
-function postWithText(page: Page, text: string): Locator {
-    return page
-        .getByRole('article')
-        .filter({ hasText: text });
-}
-
 function mastheadPicture(page: Page): Locator {
     return page.locator('.profile-masthead .avatar');
 }
@@ -57,10 +56,10 @@ function headerPicture(page: Page): Locator {
 function isProfileUpdate(request: Request): boolean {
     const url = request.url();
 
-    return request.method() === 'PATCH' && url.endsWith('/users/me');
+    return request.method() === 'PATCH' && url.endsWith(PROFILE_UPDATE_URL_SUFFIX);
 }
 
-function patchRequest(page: Page): Promise<Request> {
+function waitForProfileUpdate(page: Page): Promise<Request> {
     return page.waitForRequest(isProfileUpdate);
 }
 
@@ -123,11 +122,11 @@ test(
     'should_open_the_own_profile_from_the_menu_with_an_empty_bio_and_location_left_out',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
-        await openAs(page, ana, '/feed');
+        await openAs(page, ana, APP_PATHS.feed);
 
         await openOwnProfileFromMenu(page);
 
-        await expect(page).toHaveURL(new RegExp(`/users/${ana.user.username}$`));
+        await expect(page).toHaveURL(new RegExp(`${APP_PATHS.user(ana.user.username)}$`));
         await expect(profileHeading(page)).toHaveText(ana.user.username);
         await expect(page.getByRole('button', { name: 'EDIT' })).toBeVisible();
         await expect(page.locator('.profile-masthead-bio')).toHaveCount(0);
@@ -140,7 +139,7 @@ test(
     'should_show_the_new_bio_and_location_and_keep_them_after_a_reload_when_the_profile_is_edited',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
-        await openAs(page, ana, `/users/${ana.user.username}`);
+        await openAs(page, ana, APP_PATHS.user(ana.user.username));
         const sheet = await openEditSheet(page);
 
         await sheet
@@ -167,18 +166,21 @@ test(
     'should_send_only_the_location_and_keep_the_bio_when_only_the_location_is_changed',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
-        const saved = await ana.api.patch('/api/v1/users/me', { data: { bio: BIO } });
-        expect(saved.ok()).toBe(true);
-        await openAs(page, ana, `/users/${ana.user.username}`);
+        const saveResponse = await ana.api.patch(
+            API_PATHS.currentUser,
+            { data: { bio: BIO } },
+        );
+        expect(saveResponse.ok()).toBe(true);
+        await openAs(page, ana, APP_PATHS.user(ana.user.username));
         const sheet = await openEditSheet(page);
-        const request = patchRequest(page);
+        const profileUpdateRequest = waitForProfileUpdate(page);
 
         await sheet
             .getByLabel('LOCATION')
             .fill(LOCATION);
         await saveEditSheet(sheet);
 
-        expect((await request).postDataJSON()).toEqual({ location: LOCATION });
+        expect((await profileUpdateRequest).postDataJSON()).toEqual({ location: LOCATION });
         await expect(sheet).toBeHidden();
         await expect(page.locator('.profile-masthead-bio')).toHaveText(BIO);
         await expect(page.locator('.profile-masthead-meta')).toContainText(LOCATION.toUpperCase());
@@ -189,7 +191,7 @@ test(
     'should_ask_to_discard_changes_on_escape_and_close_on_the_second_escape_when_the_sheet_is_dirty',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
-        await openAs(page, ana, `/users/${ana.user.username}`);
+        await openAs(page, ana, APP_PATHS.user(ana.user.username));
         const sheet = await openEditSheet(page);
 
         await sheet
@@ -211,7 +213,7 @@ test(
     'should_change_the_masthead_and_header_pictures_when_a_photo_is_uploaded',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
-        await openAs(page, ana, `/users/${ana.user.username}`);
+        await openAs(page, ana, APP_PATHS.user(ana.user.username));
         const mastheadBefore = await mastheadPicture(page)
             .getAttribute('src');
         const headerBefore = await headerPicture(page)
@@ -241,7 +243,7 @@ test(
         await follow(ana, bob);
         const tweetId = await postTweet(bob, content);
         await expectFeedToContain(ana, tweetId);
-        await openAs(page, ana, '/feed');
+        await openAs(page, ana, APP_PATHS.feed);
         const post = postWithText(page, content);
         await expect(post).toBeVisible();
 
@@ -249,7 +251,7 @@ test(
             .getByRole('link', { name: bob.user.username })
             .click();
 
-        await expect(page).toHaveURL(new RegExp(`/users/${bob.user.username}$`));
+        await expect(page).toHaveURL(new RegExp(`${APP_PATHS.user(bob.user.username)}$`));
         await expect(profileHeading(page)).toHaveText(bob.user.username);
         await expect(page.getByRole('button', { name: 'EDIT' })).toBeHidden();
         await expect(postWithText(page, content)).toBeVisible();
@@ -266,14 +268,14 @@ test(
     async ({ page, createAccount }) => {
         const ana = await createAccount();
         const bob = await createAccount();
-        await openAs(page, ana, `/users/${bob.user.username}`);
-        const button = page.getByRole('button', { name: `Follow ${bob.user.username}` });
-        await expect(button).toHaveText('FOLLOW');
+        await openAs(page, ana, APP_PATHS.user(bob.user.username));
+        const followButton = page.getByRole('button', { name: `Follow ${bob.user.username}` });
+        await expect(followButton).toHaveText('FOLLOW');
         await expect(page.getByText('0 FOLLOWERS')).toBeVisible();
 
-        await button.click();
+        await followButton.click();
 
-        await expect(button).toHaveText('FOLLOWING');
+        await expect(followButton).toHaveText('FOLLOWING');
         await expect(page.getByText('1 FOLLOWER', { exact: true })).toBeVisible();
     },
 );
@@ -283,7 +285,7 @@ test(
     async ({ page, createAccount }) => {
         const ana = await createAccount();
         const bob = await createAccount();
-        await openAs(page, ana, '/users');
+        await openAs(page, ana, APP_PATHS.users);
         const card = await findPersonCard(page, bob.user.username);
 
         await card
@@ -297,7 +299,7 @@ test(
             .getByText(/FOLLOWERS?$/)
             .click();
 
-        await expect(page).toHaveURL(new RegExp(`/users/${bob.user.username}$`));
+        await expect(page).toHaveURL(new RegExp(`${APP_PATHS.user(bob.user.username)}$`));
         await expect(profileHeading(page)).toHaveText(bob.user.username);
     },
 );
@@ -307,7 +309,7 @@ test(
     async ({ page, createAccount }) => {
         const ana = await createAccount();
 
-        await openAs(page, ana, '/users/nobody_here');
+        await openAs(page, ana, APP_PATHS.user(UNKNOWN_USERNAME));
 
         await expect(page.getByText('USER NOT FOUND')).toBeVisible();
     },
@@ -319,7 +321,7 @@ test(
         const ana = await createAccount();
         const bob = await createAccount();
         await postBulk(bob, BULK_POST_COUNT);
-        await openAs(page, ana, `/users/${bob.user.username}`);
+        await openAs(page, ana, APP_PATHS.user(bob.user.username));
         await expect(tweetsHeading(page)).toHaveText(`TWEETS · ${BULK_POST_COUNT}`);
 
         await scrollUntilVisible(page, page.getByText('END OF TWEETS'), END_OF_LIST_CHECK_MS);
@@ -335,7 +337,7 @@ test(
         const ana = await createAccount();
         await postTweet(ana, 'an older post');
         const content = `fresh from the profile of ${ana.user.username}`;
-        await openAs(page, ana, `/users/${ana.user.username}`);
+        await openAs(page, ana, APP_PATHS.user(ana.user.username));
         await expect(tweetsHeading(page)).toHaveText('TWEETS · 1');
 
         await page

@@ -1,6 +1,14 @@
 import { expect } from '@playwright/test';
-import { deleteTweet, postTweet, test, type Account } from './fixtures';
+import { deleteTweet, postTweet, test, TEST_TIMEOUT_MS, type Account } from './fixtures';
 
+const ENDPOINTS = {
+    savedTweets: '/api/v1/saved-tweets',
+    savedTweet: (tweetId: string) => `/api/v1/saved-tweets/${tweetId}`,
+} as const;
+
+const SAVED_LIST_POLL_TIMEOUT_MS = 30_000;
+
+test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 
 interface SavedTweetAuthor {
     username: string;
@@ -17,27 +25,20 @@ interface SavedTweetsPage {
     nextCursor: string | null;
 }
 
-// Two registrations each wait for a confirmation email, and a delete crosses the outbox and Kafka.
-const TEST_TIMEOUT_MS = 120_000;
-
-const SAVED_LIST_POLL_TIMEOUT_MS = 30_000;
-
-test.describe.configure({ timeout: TEST_TIMEOUT_MS });
-
-async function saveTweet(reader: Account, tweetId: string) {
-    const response = await reader.api.put(`/api/v1/saved-tweets/${tweetId}`);
+async function saveTweet(reader: Account, tweetId: string): Promise<void> {
+    const response = await reader.api.put(ENDPOINTS.savedTweet(tweetId));
 
     expect(response.status()).toBe(204);
 }
 
-async function unsaveTweet(reader: Account, tweetId: string) {
-    const response = await reader.api.delete(`/api/v1/saved-tweets/${tweetId}`);
+async function unsaveTweet(reader: Account, tweetId: string): Promise<void> {
+    const response = await reader.api.delete(ENDPOINTS.savedTweet(tweetId));
 
     expect(response.status()).toBe(204);
 }
 
 async function readSavedTweets(reader: Account): Promise<SavedTweetsPage> {
-    const response = await reader.api.get('/api/v1/saved-tweets');
+    const response = await reader.api.get(ENDPOINTS.savedTweets);
 
     expect(response.ok()).toBe(true);
 
@@ -85,6 +86,7 @@ test('should_remove_the_tweet_from_the_list_when_the_author_deletes_it', async (
     const bob = await createAccount();
     const tweetId = await postTweet(bob, `to be deleted by ${bob.user.username}`);
     await saveTweet(ana, tweetId);
+
     expect(await savedTweetIds(ana)).toEqual([tweetId]);
 
     await deleteTweet(bob, tweetId);

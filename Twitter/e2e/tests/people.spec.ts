@@ -1,6 +1,15 @@
 import { expect } from '@playwright/test';
-import { confirmViaApi, follow, newUser, registerViaApi, test, type Account } from './fixtures';
+import { confirmViaApi, follow, newUser, registerViaApi, test, TEST_TIMEOUT_MS, type Account } from './fixtures';
 
+// The database is shared with the specs running in parallel, but the accounts of this test are the newest ones,
+// so they are found on the first page or two.
+const MAX_PAGES_TO_WALK = 5;
+
+const LARGEST_PAGE_SIZE = 100;
+
+const USERS_PATH = '/api/v1/users';
+
+const UNAUTHORIZED_STATUS = 401;
 
 interface PersonItem {
     id: string;
@@ -14,19 +23,10 @@ interface PeoplePage {
     nextCursor: string | null;
 }
 
-// Accounts register and confirm through the email link, so the first one also waits for the consumer's group join.
-const TEST_TIMEOUT_MS = 120_000;
-
-// The database is shared with the specs running in parallel, but the accounts of this test are the newest ones,
-// so they are found on the first page or two.
-const MAX_PAGES_TO_WALK = 5;
-
-const LARGEST_PAGE_SIZE = 100;
-
 test.describe.configure({ timeout: TEST_TIMEOUT_MS });
 
 async function readPeoplePage(reader: Account, query: string): Promise<PeoplePage> {
-    const response = await reader.api.get(`/api/v1/users${query}`);
+    const response = await reader.api.get(`${USERS_PATH}${query}`);
 
     expect(response.ok()).toBe(true);
 
@@ -108,7 +108,7 @@ test('should_list_an_account_only_after_it_is_confirmed_and_answer_401_when_ther
 
     expect(peopleAfterConfirmation.items.map((person) => person.username)).toContain(pendingUser.username);
 
-    const response = await request.get(`/api/v1/users?size=${LARGEST_PAGE_SIZE}`);
+    const response = await request.get(`${USERS_PATH}?size=${LARGEST_PAGE_SIZE}`);
 
-    expect(response.status()).toBe(401);
+    expect(response.status()).toBe(UNAUTHORIZED_STATUS);
 });
