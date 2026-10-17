@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import type { FeedFilterValue } from '../../../api/feed';
 import { countForFilter } from '../../../utils/feedCounts';
 import BackToTop from './BackToTop/BackToTop';
 import FeedFilter from './FeedFilter/FeedFilter';
@@ -9,10 +7,9 @@ import { PAGE_SIZE, useFeedPages } from './useFeedPages';
 import './Feed.css';
 
 function Feed() {
-    const [filter, setFilter] = useState<FeedFilterValue>('ALL');
-    const feed = useFeedPages(filter);
+    const feed = useFeedPages();
 
-    const total = feed.counts ? countForFilter(feed.counts, filter) : 0;
+    const total = feed.counts ? countForFilter(feed.counts, feed.filter) : 0;
     const isEmpty = feed.status === 'ready' && feed.topics.length === 0;
     const hasTopics = feed.status === 'ready' && feed.topics.length > 0;
 
@@ -25,7 +22,7 @@ function Feed() {
                         Subscribe to a topic to route its signals into your feed.
                     </p>
 
-                    <FeedFilter active={filter} counts={feed.counts} onChange={setFilter} />
+                    <FeedFilter active={feed.filter} counts={feed.counts} onChange={feed.changeFilter} />
                 </header>
 
                 {feed.status === 'error' && (

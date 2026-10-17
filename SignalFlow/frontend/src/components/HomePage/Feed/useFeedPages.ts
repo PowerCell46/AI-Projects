@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchFeed } from '../../../api/feed';
-import type { FeedCounts, FeedFilterValue, FeedPage, FeedTopic } from '../../../api/feed';
+import type { FeedCounts, FeedFilterValue, FeedTopic } from '../../../api/feed';
 
 export const PAGE_SIZE = 20;
 
@@ -11,18 +11,21 @@ const LOAD_MORE_ERROR = "Couldn't load more topics. Try again.";
 export type FeedStatus = 'loading' | 'ready' | 'error';
 
 export interface FeedPages {
+    filter: FeedFilterValue;
     topics: FeedTopic[];
     counts: FeedCounts | null;
     status: FeedStatus;
     hasMore: boolean;
     isLoadingMore: boolean;
     loadMoreError: string | null;
+    changeFilter: (filter: FeedFilterValue) => void;
     loadMore: () => void;
     retry: () => void;
     applySubscription: (topicId: string, isSubscribed: boolean) => void;
 }
 
-export function useFeedPages(filter: FeedFilterValue): FeedPages {
+export function useFeedPages(): FeedPages {
+    const [filter, setFilter] = useState<FeedFilterValue>('ALL');
     const [topics, setTopics] = useState<FeedTopic[]>([]);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [counts, setCounts] = useState<FeedCounts | null>(null);
@@ -31,46 +34,15 @@ export function useFeedPages(filter: FeedFilterValue): FeedPages {
     const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
     const [reloadToken, setReloadToken] = useState(0);
 
-    const previousFilterRef = useRef(filter);
-
     useEffect(() => {
         let isCancelled = false;
-        let loadingTimer: number | null = null;
-
-        const hasFilterChanged = previousFilterRef.current !== filter;
-
-        previousFilterRef.current = filter;
-
-        setLoadMoreError(null);
-
-        function clearLoadingTimer() {
-            if (loadingTimer !== null) {
-                window.clearTimeout(loadingTimer);
-            }
-        }
-
-        function applyFirstPage(page: FeedPage) {
-            setTopics(page.items);
-            setNextCursor(page.nextCursor);
-            setCounts(page.counts);
-            setStatus('ready');
-        }
 
         // A fast filter switch must not flash "Loading…", so only a slow fetch shows it. A first
-        // mount or a retry has nothing on screen to keep, so it shows it immediately.
-        if (hasFilterChanged) {
-            loadingTimer = window.setTimeout(
-                () => {
-                    if (!isCancelled) {
-                        setStatus('loading');
-                    }
-                },
-                LOADING_INDICATOR_DELAY_MS,
-            );
-
-        } else {
-            setStatus('loading');
-        }
+        // mount starts as 'loading' and a retry sets it before reloading, so neither waits for this.
+        const loadingTimer = window.setTimeout(
+            () => setStatus('loading'),
+            LOADING_INDICATOR_DELAY_MS,
+        );
 
         fetchFeed(filter, null, PAGE_SIZE)
             .then((page) => {
@@ -78,24 +50,34 @@ export function useFeedPages(filter: FeedFilterValue): FeedPages {
                     return;
                 }
 
-                clearLoadingTimer();
-                applyFirstPage(page);
+                window.clearTimeout(loadingTimer);
+
+                setTopics(page.items);
+                setNextCursor(page.nextCursor);
+                setCounts(page.counts);
+                setStatus('ready');
             })
             .catch(() => {
                 if (isCancelled) {
                     return;
                 }
 
-                clearLoadingTimer();
+                window.clearTimeout(loadingTimer);
+
                 setStatus('error');
             });
 
         return () => {
             isCancelled = true;
 
-            clearLoadingTimer();
+            window.clearTimeout(loadingTimer);
         };
     }, [filter, reloadToken]);
+
+    function changeFilter(nextFilter: FeedFilterValue) {
+        setLoadMoreError(null);
+        setFilter(nextFilter);
+    }
 
     async function loadMore() {
         if (isLoadingMore || !nextCursor) {
@@ -121,6 +103,8 @@ export function useFeedPages(filter: FeedFilterValue): FeedPages {
     }
 
     function retry() {
+        setLoadMoreError(null);
+        setStatus('loading');
         setReloadToken((currentToken) => currentToken + 1);
     }
 
@@ -145,12 +129,14 @@ export function useFeedPages(filter: FeedFilterValue): FeedPages {
     }
 
     return {
+        filter,
         topics,
         counts,
         status,
         hasMore: nextCursor !== null,
         isLoadingMore,
         loadMoreError,
+        changeFilter,
         loadMore,
         retry,
         applySubscription,
