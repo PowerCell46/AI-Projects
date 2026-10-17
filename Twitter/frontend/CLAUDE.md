@@ -5,12 +5,12 @@ running and testing this app.
 
 The Twitter SPA: the "Hadal Descent" auth flow (`/login`, `/register`, `/confirm`, `/resend`), the feed
 (`/feed`, `/saved`, `/liked`), the People list (`/users`), a post's details with its replies (`/tweets/:tweetId`) and profiles (`/users/:username`). Vite 8, React 19, TypeScript (strict), react-router-dom 7, plain
-co-located CSS. Plans and design decisions: `PLAN.md`, `DECISIONS.md`; the visual brief for the profile: `profile-view-design.md`. The earlier briefs (auth, feed, tab row and People) are in git history.
+co-located CSS. Open items: `PLAN.md`; standing decisions: `DECISIONS.md`; security status: `SECURITY-FINDINGS.md`. The design briefs and build journals are in git history.
 
 `/feed`, `/users`, `/saved` and `/liked` sit behind `ProtectedRoute` in one layout route, `Shell` (header, tab row, compose modal,
 `<Outlet>`). `/feed` (TWEETS) and `/users` (PEOPLE) share one more layout route, `TabPanels`, which renders both pages as
 `role="tabpanel"` sections; `/saved` and `/liked` have no tab row. `/feed`, `/saved` and `/liked` render `PostList` with a different `fetchPage`;
-`/users` renders `PeopleList`. Both lists page through `usePagedList` (`src/hooks`). The shell hands the page what is
+`/users` renders `PeopleList`. Both lists page through `usePagedList` (`src/hooks/lists`). The shell hands the page what is
 shared through outlet context (`useShellContext()`): the posts you published this session (`ownPosts`) and the follow
 signal (`onFollowChanged`, `followChangeCount`).
 
@@ -36,7 +36,7 @@ profile → tweet → Back reloads the profile from the top.
   nginx on `127.0.0.1:5173`, the dev server's port. `nginx/` serves the SPA with an `index.html` fallback (the
   deep links `/confirm`, `/users/:name`, `/tweets/:id`), proxies only `/api/` to the gateway, and allows bodies up to
   21 MB. The cookie is `SameSite=Strict` and the gateway has no CORS, so the SPA and `/api` must stay on one origin.
-- `VITE_BASE_API_URL` prefixes every API call (`src/api/endpoints.ts`); unset (the default, and how the production
+- `VITE_BASE_API_URL` prefixes every API call (`src/api/core/endpoints.ts`); unset (the default, and how the production
   image builds it) means same-origin `/api`. It is baked in at build time, so changing it rebuilds.
 - Local confirmation links: the gateway queues the link in its `outbox` table and the mail service
   (`../twitter_mail_service`) emails it. Start `redis` and `mailpit` from the Twitter root, run the mail service
@@ -48,12 +48,15 @@ profile → tweet → Back reloads the profile from the top.
 ## Checks
 
 - `npm run build` (typecheck plus bundle), `npm run lint` (oxlint), `npm test` (Vitest).
-- Component tests run with jsdom, Testing Library and fake timers, and stub `src/api/*` modules with `vi.mock`. Never
-  wait in real time. Under fake timers, advance the clock in stages (`src/test/stepFlowHelpers.ts`); `src/test/setup.ts`
+- Layout: `src/` holds only source, grouped in subfolders (`api/{core,tweets,accounts}`, `hooks/{routing,lists,dom,social}`,
+  `utils/{navigation,text,validation,posts,browser}`). Tests live in `tests/`, mirroring `src/`; shared helpers are in
+  `tests/support`. A new test goes at the mirrored path; a new helper joins the group it belongs to.
+- Component tests run with jsdom, Testing Library and fake timers, and stub `src/api/**` modules with `vi.mock`. Never
+  wait in real time. Under fake timers, advance the clock in stages (`tests/support/stepFlowHelpers.ts`); `tests/support/setup.ts`
   carries the `jest` global shim that user-event needs.
-- jsdom has no `IntersectionObserver`: `src/test/setup.ts` installs a controllable double (`src/test/intersectionObserver.ts`)
+- jsdom has no `IntersectionObserver`: `tests/support/setup.ts` installs a controllable double (`tests/support/intersectionObserver.ts`)
   that tests drive by hand to show a sentinel or a post. It also stubs `URL.createObjectURL`, `URL.revokeObjectURL` and
-  `window.scrollTo`. List helpers: `src/test/postListHelpers.ts`; a stubbed `fetch`: `src/test/fetchStub.ts`.
+  `window.scrollTo`. List helpers: `tests/support/postListHelpers.ts`; a stubbed `fetch`: `tests/support/fetchStub.ts`.
 - Names are `should_..._when_...`. Test the DOM, ARIA and `data-*` state, not pixels.
 - End-to-end: `../e2e` (Playwright against a Docker stack with the real gateway). `npm test` there builds and starts
   the stack, runs the suite and tears it down; `npm run test:fast` skips the image build. The UI specs for People are
@@ -72,13 +75,13 @@ profile → tweet → Back reloads the profile from the top.
   stage in with the gauge rising from the seafloor (`ASCENT_START_DELAY_MS`, `LoginPage.tsx`).
 - The form ignores Enter while a step is sliding in, so e2e helpers wait for `data-slide="idle"`.
 - Validation rules mirror the gateway's `RegisterRequestDTO`; change both sides together.
-- Every request goes through `src/api/http.ts`. A `401` from a non-auth endpoint calls the handler `AuthProvider`
+- Every request goes through `src/api/core/http.ts`. A `401` from a non-auth endpoint calls the handler `AuthProvider`
   registers, which signs out and lands on `/login`; auth endpoints keep their own `401` meaning.
 - Likes are real: a post opens with the server's `likedByMe` and `likes`, and `PostActions` shows `formatCount(max(0,
   likes − (liked on load ? 1 : 0) + (liked now ? 1 : 0)))`: the server's count plus your own change, never below `0`.
   Other people's likes on posts already shown appear after a reload. `/liked` (menu `LIKED TWEETS`, no tab row) lists
   your own likes with `PostList`; an unliked post stays there, heart empty, until a reload.
-- Views: `ViewReporter` (`src/utils/viewReporter.ts`) is a module-level singleton that queues post ids (once per page
+- Views: `ViewReporter` (`src/components/shared/PostList/viewReporter.ts`) is a module-level singleton that queues post ids (once per page
   load, after 1 s at half visible) and posts them every 5 s and on hide. Tests reset it.
 - `--header-height` and `--tab-row-height` in `src/index.css` are shared by the header, the tab row and the sticky
   `NEW POSTS` button (its offset is both plus a gap); the header and the tab row stick as one block, `.shell-top`. The

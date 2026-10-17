@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { TabId } from '../../../utils/tabs';
+import type { TabId } from '../../../utils/navigation/tabs';
 
 
 export interface TabVisits {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchUserProfile } from '../../../api/users';
+import { fetchUserProfile } from '../../../api/accounts/users';
 
 
 interface ProfilePicture {

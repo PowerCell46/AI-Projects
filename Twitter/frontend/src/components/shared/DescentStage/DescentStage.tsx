@@ -24,7 +24,12 @@ function DescentStage({
     footer,
 }: DescentStageProps) {
     return (
-        <div className="descent-stage" data-alarm={isAlarm} data-leaving={isLeaving} data-entering={isEntering}>
+        <div
+            className="descent-stage"
+            data-alarm={isAlarm}
+            data-leaving={isLeaving}
+            data-entering={isEntering}
+        >
             <Ruler />
             <Horizon
                 depthMetres={depthMetres}

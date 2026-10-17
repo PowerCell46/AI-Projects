@@ -1,5 +1,5 @@
-import { ENDPOINTS } from '../../../../../api/endpoints';
-import type { TweetImage } from '../../../../../api/tweetPage';
+import { ENDPOINTS } from '../../../../../api/core/endpoints';
+import type { TweetImage } from '../../../../../api/tweets/tweetPage';
 import './PostImages.css';
 
 

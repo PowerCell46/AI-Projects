@@ -1,14 +1,14 @@
 import { useRef, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import type { PublishedTweet } from '../../../api/tweets';
-import type { TweetItem } from '../../../api/tweetPage';
+import type { PublishedTweet } from '../../../api/tweets/tweets';
+import type { TweetItem } from '../../../api/tweets/tweetPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import { FollowUpdatesProvider } from '../../../contexts/FollowUpdatesContext';
 import { PostUpdatesProvider } from '../../../contexts/PostUpdatesContext';
-import { useActiveTab } from '../../../hooks/useActiveTab';
-import { toOwnPost } from '../../../utils/ownPost';
-import { TABS } from '../../../utils/tabs';
-import type { TabId } from '../../../utils/tabs';
+import { useActiveTab } from '../../../hooks/routing/useActiveTab';
+import { toOwnPost } from './ownPost';
+import { TABS } from '../../../utils/navigation/tabs';
+import type { TabId } from '../../../utils/navigation/tabs';
 import ComposeModal from './ComposeModal/ComposeModal';
 import Header from './Header/Header';
 import TabRow from './TabRow/TabRow';
@@ -50,7 +50,6 @@ function Shell() {
         closeCompose();
     }
 
-
     const outletContext: ShellContext = {
         ownPosts,
         followChangeCount,
@@ -62,7 +61,7 @@ function Shell() {
         <PostUpdatesProvider>
             <FollowUpdatesProvider>
                 <div className="shell" data-signing-out={isSigningOut}>
-                    <a href="#main-content" className="shell-skip-link">Skip to main content</a>
+                    <a className="shell-skip-link" href="#main-content">Skip to main content</a>
                     <div className="shell-top">
                         <Header
                             pictureUrl={pictureUrl}

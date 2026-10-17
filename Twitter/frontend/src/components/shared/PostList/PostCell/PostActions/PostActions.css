@@ -13,10 +13,10 @@
     min-width: 2.75rem;
     min-height: 2.75rem;
     padding: 0.8125rem 0;
-    border: 0;
-    background: none;
-    color: var(--pale-action-icon);
     text-decoration: none;
+    color: var(--pale-action-icon);
+    background: none;
+    border: 0;
     cursor: pointer;
     transition: color 340ms;
 }
@@ -28,7 +28,7 @@
 
 .post-actions-count {
     font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.1em;
     font-variant-numeric: tabular-nums;
     color: var(--pale-secondary);

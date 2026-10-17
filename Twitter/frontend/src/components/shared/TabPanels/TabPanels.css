@@ -1,8 +1,3 @@
-/* The incoming panel plays this on every switch, not on the first render. */
-.tab-panels-panel[data-entering='true'] {
-    animation: tab-panels-panel-enter 400ms var(--e);
-}
-
 @keyframes tab-panels-panel-enter {
     from {
         opacity: 0;
@@ -13,4 +8,9 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* The incoming panel plays this on every switch, not on the first render. */
+.tab-panels-panel[data-entering='true'] {
+    animation: tab-panels-panel-enter 400ms var(--e);
 }

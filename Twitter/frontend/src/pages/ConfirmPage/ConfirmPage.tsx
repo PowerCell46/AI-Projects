@@ -3,7 +3,7 @@ import Arrival from '../../components/shared/Arrival/Arrival';
 import DescentStage from '../../components/shared/DescentStage/DescentStage';
 import StageLink from '../../components/shared/StageLink/StageLink';
 import { ROUTES } from '../../routes';
-import { SIGNAL_LOST_MESSAGE } from '../../utils/authErrors';
+import { SIGNAL_LOST_MESSAGE } from '../../utils/validation/authErrors';
 import { useConfirmation } from './useConfirmation';
 import './ConfirmPage.css';
 

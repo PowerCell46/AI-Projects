@@ -16,7 +16,12 @@ function GlowButton({ label, isLabelHidden = false, className = '', ref, ...butt
         .join(' ');
 
     return (
-        <button type="button" className={buttonClassName} ref={ref} {...buttonProps}>
+        <button
+            type="button"
+            className={buttonClassName}
+            {...buttonProps}
+            ref={ref}
+        >
             <span className="glow-button-label" aria-hidden={isLabelHidden}>{label}</span>
         </button>
     );

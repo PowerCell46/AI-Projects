@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from 'react';
 import type { RefObject } from 'react';
-import { tabButtonId } from '../../../../utils/tabs';
-import type { TabId } from '../../../../utils/tabs';
+import { tabButtonId } from '../../../../utils/navigation/tabs';
+import type { TabId } from '../../../../utils/navigation/tabs';
 
 
 export interface IndicatorBox {

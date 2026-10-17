@@ -1,13 +1,13 @@
 import type { MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Person } from '../../../../api/users';
+import type { Person } from '../../../../api/accounts/users';
 import Avatar from '../../../../components/shared/Avatar/Avatar';
 import FollowButton from '../../../../components/shared/FollowButton/FollowButton';
-import { truncateBio } from '../../../../utils/bio';
-import { hasTextSelection, isInsideElement } from '../../../../utils/clickTarget';
+import { truncateBio } from './bio';
+import { hasTextSelection, isInsideElement } from '../../../../utils/browser/clickTarget';
 import { profilePath } from '../../../../routes';
-import { formatCount } from '../../../../utils/count';
-import { usePersonFollow } from '../../../../hooks/usePersonFollow';
+import { formatCount } from '../../../../utils/text/count';
+import { usePersonFollow } from '../../../../hooks/social/usePersonFollow';
 import './PersonCard.css';
 
 
@@ -26,6 +26,7 @@ interface PersonCardProps {
 function PersonCard({ person, onFollowChanged }: PersonCardProps) {
     const navigate = useNavigate();
     const follow = usePersonFollow(person, onFollowChanged);
+
     // The name link is the way in for the keyboard and screen readers; the rest of the card is a larger target.
     function handleClick(event: MouseEvent<HTMLElement>) {
         if (isInsideElement(event.target, OWN_CLICK_SELECTOR) || hasTextSelection()) {
@@ -44,7 +45,7 @@ function PersonCard({ person, onFollowChanged }: PersonCardProps) {
                 <p className="person-card-name">
                     <Link className="person-card-link" to={profilePath(person.username)}>{person.username}</Link>
                 </p>
-                <p className="person-card-bio" dir="auto" data-empty={bio === null}>{bio}</p>
+                <p className="person-card-bio" data-empty={bio === null} dir="auto">{bio}</p>
                 <p className="person-card-followers">{followersTextOf(follow.followersCount)}</p>
             </div>
             <div className="person-card-action">

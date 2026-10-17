@@ -1,6 +1,5 @@
 .descent-stage {
     position: relative;
-    height: 100vh;
     height: 100dvh;
     min-height: 37.5rem;
     overflow: hidden;
@@ -9,9 +8,9 @@
 
 .descent-stage-brand {
     position: absolute;
-    top: clamp(1.75rem, 4.4vh, 2.75rem);
+    top: 2.25rem;
     left: calc(var(--ruler-width) + var(--content-pad));
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     letter-spacing: 0.44em;
     color: var(--pale-brand);
 }
@@ -39,9 +38,19 @@
     right: var(--content-pad);
     bottom: 0;
     padding: 1.5rem 0;
-    font-size: 0.65625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.11em;
     color: var(--pale-footer);
+}
+
+@keyframes descent-stage-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* Fades every layer out so the feed's header can draw in over the same dark ground. Must match STAGE_LEAVE_MS in
@@ -53,14 +62,4 @@
 
 .descent-stage[data-entering='true'] > * {
     animation: descent-stage-fade-in 900ms var(--e) backwards;
-}
-
-@keyframes descent-stage-fade-in {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
 }

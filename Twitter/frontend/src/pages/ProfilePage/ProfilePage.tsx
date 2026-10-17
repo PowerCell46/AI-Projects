@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { BottomState } from '../../components/shared/PostListStatus/PostListStatus';
-import { USERNAME_PATTERN } from '../../utils/validation';
+import { USERNAME_PATTERN } from '../../utils/validation/validation';
 import ProfileStatus from './ProfileStatus/ProfileStatus';
 import ProfileView from './ProfileView/ProfileView';
 import { useProfile } from './useProfile';

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { login } from '../../api/auth';
-import type { AuthUser } from '../../api/auth';
+import { login } from '../../api/accounts/auth';
+import type { AuthUser } from '../../api/accounts/auth';
 import Arrival from '../../components/shared/Arrival/Arrival';
 import DescentStage from '../../components/shared/DescentStage/DescentStage';
 import StageLink from '../../components/shared/StageLink/StageLink';
@@ -10,9 +10,9 @@ import { useStepFlow } from '../../components/shared/StepFlow/useStepFlow';
 import type { StepValues } from '../../components/shared/StepFlow/useStepFlow';
 import { useAuth } from '../../contexts/AuthContext';
 import { ROUTES } from '../../routes';
-import { isAscentLocationState } from '../../utils/ascent';
-import { prefersReducedMotion } from '../../utils/motion';
-import { buildResendState } from '../../utils/resendPrefill';
+import { isAscentLocationState } from '../../utils/navigation/ascent';
+import { prefersReducedMotion } from '../../utils/browser/motion';
+import { buildResendState } from '../../utils/navigation/resendPrefill';
 
 
 // The arrival rule's 150ms delay plus its 1300ms draw in Arrival.css; the session is established when it ends.
@@ -25,13 +25,13 @@ const STAGE_LEAVE_MS = 500;
 const ASCENT_START_DELAY_MS = 400;
 
 function LoginPage() {
+    const location = useLocation();
     const { signIn } = useAuth();
+    const stepFlow = useStepFlow('login', handleComplete);
     const [arrivedUser, setArrivedUser] = useState<AuthUser | null>(null);
     const [isLeaving, setIsLeaving] = useState(false);
-    const location = useLocation();
     const [isFromFeed] = useState(() => isAscentLocationState(location.state));
     const [isAscending, setIsAscending] = useState(isFromFeed);
-    const stepFlow = useStepFlow('login', handleComplete);
 
     useEffect(() => {
         if (!isAscending) {
@@ -55,7 +55,10 @@ function LoginPage() {
         const drawDurationMs = shouldAnimate ? ARRIVAL_RULE_DRAW_MS : 0;
         const leaveDurationMs = shouldAnimate ? STAGE_LEAVE_MS : 0;
 
-        const leaveTimerId = window.setTimeout(() => setIsLeaving(true), drawDurationMs);
+        const leaveTimerId = window.setTimeout(
+            () => setIsLeaving(true),
+            drawDurationMs,
+        );
 
         // Signing in makes GuestRoute send the user on to the feed.
         const signInTimerId = window.setTimeout(
@@ -78,6 +81,16 @@ function LoginPage() {
         setArrivedUser(authUser);
     }
 
+    const resendLink = stepFlow.shouldOfferResend && (
+        <StageLink
+            to={ROUTES.resend}
+            variant="secondary"
+            state={buildResendState(stepFlow.values.identifier)}
+        >
+            RESEND LINK
+        </StageLink>
+    );
+
     if (arrivedUser) {
         return (
             <DescentStage
@@ -92,16 +105,6 @@ function LoginPage() {
             </DescentStage>
         );
     }
-
-    const resendLink = stepFlow.shouldOfferResend && (
-        <StageLink
-            to={ROUTES.resend}
-            variant="secondary"
-            state={buildResendState(stepFlow.values.identifier)}
-        >
-            RESEND LINK
-        </StageLink>
-    );
 
     return (
         <DescentStage

@@ -1,4 +1,4 @@
-import { useProfilePictureSource } from '../../../hooks/useProfilePictureSource';
+import { useProfilePictureSource } from '../../../hooks/social/useProfilePictureSource';
 import './Avatar.css';
 
 

@@ -1,28 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { me } from '../api/auth';
-import type { AuthUser } from '../api/auth';
-import { setUnauthorizedHandler } from '../api/http';
-import { prefersReducedMotion } from '../utils/motion';
+import { me } from '../api/accounts/auth';
+import type { AuthUser } from '../api/accounts/auth';
+import { setUnauthorizedHandler } from '../api/core/http';
+import { prefersReducedMotion } from '../utils/browser/motion';
 
-
-export type SessionStatus = 'loading' | 'authenticated' | 'anonymous';
-
-interface Session {
-    status: SessionStatus;
-    user: AuthUser | null;
-}
-
-interface AuthContextValue extends Session {
-    isSigningOut: boolean;
-    hasSignedOut: boolean;
-    signIn: (user: AuthUser) => void;
-    signOut: () => void;
-}
-
-interface AuthProviderProps {
-    children: ReactNode;
-}
 
 // How long the feed plays out before the session ends; the longest leave animation in Header.css and PostList.css
 // is 1200ms.
@@ -38,6 +20,20 @@ const ANONYMOUS_SESSION: Session = {
     user: null,
 };
 
+export type SessionStatus = 'loading' | 'authenticated' | 'anonymous';
+
+interface Session {
+    status: SessionStatus;
+    user: AuthUser | null;
+}
+
+interface AuthContextValue extends Session {
+    isSigningOut: boolean;
+    hasSignedOut: boolean;
+    signIn: (user: AuthUser) => void;
+    signOut: () => void;
+}
+
 function authenticatedSession(authUser: AuthUser): Session {
     return {
         status: 'authenticated',
@@ -46,6 +42,10 @@ function authenticatedSession(authUser: AuthUser): Session {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+interface AuthProviderProps {
+    children: ReactNode;
+}
 
 export function AuthProvider({ children }: AuthProviderProps) {
     const [session, setSession] = useState<Session>(LOADING_SESSION);

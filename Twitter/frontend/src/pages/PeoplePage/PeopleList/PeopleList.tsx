@@ -1,9 +1,9 @@
-import { fetchPeople } from '../../../api/users';
+import { fetchPeople } from '../../../api/accounts/users';
 import ListFooter from '../../../components/shared/ListFooter/ListFooter';
 import { useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
-import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
-import { usePagedList } from '../../../hooks/usePagedList';
-import { bottomStateOf } from '../../../utils/bottomState';
+import { useBottomSentinel } from '../../../hooks/lists/useBottomSentinel';
+import { usePagedList } from '../../../hooks/lists/usePagedList';
+import { bottomStateOf } from '../../../utils/posts/bottomState';
 import PersonCard from './PersonCard/PersonCard';
 import './PeopleList.css';
 

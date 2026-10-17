@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { TweetItem } from '../../api/tweetPage';
+import type { TweetItem } from '../../api/tweets/tweetPage';
 import { useShellContext } from '../../components/shared/Shell/useShellContext';
 
 

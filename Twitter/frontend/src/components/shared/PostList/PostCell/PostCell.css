@@ -3,10 +3,6 @@
     border: 1px solid var(--pale-cell-border);
 }
 
-.post-cell[data-clickable='true'] {
-    cursor: pointer;
-}
-
 .post-cell-author {
     display: flex;
     align-items: center;
@@ -38,7 +34,7 @@
 .post-cell-time {
     margin-left: auto;
     font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font-size: 0.75rem;
     letter-spacing: 0.1em;
     white-space: nowrap;
     color: var(--pale-secondary);
@@ -53,6 +49,10 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--pale-post-body);
+}
+
+.post-cell[data-clickable='true'] {
+    cursor: pointer;
 }
 
 .post-cell-author-link:hover .post-cell-name {
@@ -71,6 +71,5 @@
 
     .post-cell-body {
         padding: 1.125rem 1.125rem 0;
-        font-size: 1.0625rem;
     }
 }

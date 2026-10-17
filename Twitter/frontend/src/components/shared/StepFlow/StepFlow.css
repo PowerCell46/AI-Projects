@@ -5,7 +5,7 @@
 .step-flow-question {
     margin-bottom: 2.25rem;
     font-family: var(--font-headline);
-    font-size: clamp(1.5625rem, 4.8vw, 2.625rem);
+    font-size: 2.25rem;
     font-weight: 400;
     line-height: 1.04;
     letter-spacing: -0.032em;
@@ -28,19 +28,19 @@
 
 .step-flow-primary {
     padding: 0 1.75rem;
-    background: var(--glow);
     font-size: 0.78125rem;
     letter-spacing: 0.14em;
     color: var(--deep);
+    background: var(--glow);
     transition: background-color 300ms, transform 500ms var(--e);
 }
 
 .step-flow-back {
     padding: 0 0.5rem;
-    background: transparent;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     letter-spacing: 0.12em;
     color: var(--pale-secondary);
+    background: transparent;
 }
 
 .step-flow-primary[aria-disabled='true'] {

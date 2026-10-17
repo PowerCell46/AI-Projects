@@ -1,4 +1,4 @@
-import { depthPositionPercent } from '../../../../utils/depth';
+import { depthPositionPercent } from '../../../../utils/browser/depth';
 import { useDepthCount } from './useDepthCount';
 import './Horizon.css';
 

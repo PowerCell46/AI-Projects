@@ -1,6 +1,6 @@
-import { fetchLikedTweets } from '../../api/likes';
+import { fetchLikedTweets } from '../../api/tweets/likes';
 import PostList from '../../components/shared/PostList/PostList';
-import { useFocusOnMount } from '../../hooks/useFocusOnMount';
+import { useFocusOnMount } from '../../hooks/dom/useFocusOnMount';
 import './LikedPage.css';
 
 
@@ -13,7 +13,7 @@ function LikedPage() {
 
     return (
         <>
-            <h1 ref={headingRef} className="liked-page-title" tabIndex={-1}>LIKED TWEETS</h1>
+            <h1 className="liked-page-title" tabIndex={-1} ref={headingRef}>LIKED TWEETS</h1>
             <PostList fetchPage={fetchLikedTweets} endText={END_TEXT} emptyText={EMPTY_TEXT} />
         </>
     );

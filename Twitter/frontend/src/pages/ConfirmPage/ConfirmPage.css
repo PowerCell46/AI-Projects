@@ -1,12 +1,12 @@
 .confirm-page-retry {
     min-height: 2.75rem;
     padding: 0 1.75rem;
-    border: 0;
-    border-radius: 0;
-    background: var(--glow);
     font-size: 0.78125rem;
     letter-spacing: 0.14em;
     color: var(--deep);
+    background: var(--glow);
+    border: 0;
+    border-radius: 0;
     cursor: pointer;
     transition: background-color 300ms;
 }

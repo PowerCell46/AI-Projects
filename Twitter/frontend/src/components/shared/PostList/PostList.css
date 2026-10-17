@@ -40,6 +40,18 @@
     }
 }
 
+@keyframes post-list-leave {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+}
+
 /* Signing out sinks the posts again, the lowest first; the 1200ms matches the header rule's retract. */
 [data-signing-out='true'] .post-list > li {
     animation: post-list-leave 700ms var(--e) forwards;
@@ -59,16 +71,4 @@
 
 [data-signing-out='true'] .post-list > li:nth-child(1) {
     animation-delay: 400ms;
-}
-
-@keyframes post-list-leave {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    to {
-        opacity: 0;
-        transform: translateY(0.75rem);
-    }
 }

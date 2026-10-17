@@ -12,15 +12,15 @@ const NEXT_STEP_LABEL = 'CONTINUE';
 
 const BACK_LABEL = 'BACK';
 
-interface StepFlowProps {
-    state: StepFlowState;
-    errorAction?: ReactNode;
-}
-
 function describeStep(stepIndex: number, stepCount: number, label: string): string {
     const capitalizedLabel = label.charAt(0) + label.slice(1).toLowerCase();
 
     return `Step ${stepIndex + 1} of ${stepCount}, ${capitalizedLabel}.`;
+}
+
+interface StepFlowProps {
+    state: StepFlowState;
+    errorAction?: ReactNode;
 }
 
 function StepFlow({ state, errorAction }: StepFlowProps) {

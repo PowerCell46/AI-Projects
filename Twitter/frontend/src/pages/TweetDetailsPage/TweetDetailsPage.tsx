@@ -5,9 +5,10 @@ import PostCell from '../../components/shared/PostList/PostCell/PostCell';
 import { useViewTracking } from '../../components/shared/PostList/useViewTracking';
 import PostListStatus from '../../components/shared/PostListStatus/PostListStatus';
 import type { BottomState } from '../../components/shared/PostListStatus/PostListStatus';
+import type { PostUpdate } from '../../contexts/PostUpdatesContext';
 import { usePostUpdates } from '../../contexts/PostUpdatesContext';
-import { useFocusOnMount } from '../../hooks/useFocusOnMount';
-import { useMinuteClock } from '../../hooks/useMinuteClock';
+import { useFocusOnMount } from '../../hooks/dom/useFocusOnMount';
+import { useMinuteClock } from '../../hooks/dom/useMinuteClock';
 import { ROUTES } from '../../routes';
 import ReplyThread from './ReplyThread/ReplyThread';
 import { useReplyThread } from './useReplyThread';
@@ -35,20 +36,13 @@ interface TweetDetailsPageProps {
 function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { reportUpdate } = usePostUpdates();
     const headingRef = useFocusOnMount<HTMLHeadingElement>();
     const details = useTweetDetails(tweetId);
     const thread = useReplyThread(tweetId);
     const now = useMinuteClock();
-    const { reportUpdate } = usePostUpdates();
-    const reportedCountChangeRef = useRef(0);
     const trackView = useViewTracking();
-    const hasEntryBehind = location.key !== FIRST_ENTRY_KEY;
-    // Your sends and deletes move the count at once; the server's count is read when the page opens.
-    const post = details.post && {
-        ...details.post,
-        replyCount: details.post.replyCount + thread.countChange,
-    };
-    const bottomState = details.problem ? STATUS_OF_PROBLEM[details.problem] : 'loading';
+    const reportedCountChangeRef = useRef(0);
 
     useEffect(() => {
         window.scrollTo({ top: 0 });
@@ -61,7 +55,10 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
         }
 
         reportedCountChangeRef.current = thread.countChange;
-        reportUpdate(tweetId, { replyCount: details.post.replyCount + thread.countChange });
+        reportUpdate(
+            tweetId,
+            { replyCount: details.post.replyCount + thread.countChange },
+        );
     }, [thread.countChange, details.post, tweetId, reportUpdate]);
 
     // With nothing behind the page, the link's own address (the feed) is the way out.
@@ -74,10 +71,22 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
         navigate(-1);
     }
 
+    function handlePostChange(update: PostUpdate) {
+        reportUpdate(tweetId, update);
+    }
+
+    const hasEntryBehind = location.key !== FIRST_ENTRY_KEY;
+    // Your sends and deletes move the count at once; the server's count is read when the page opens.
+    const post = details.post && {
+        ...details.post,
+        replyCount: details.post.replyCount + thread.countChange,
+    };
+    const bottomState = details.problem ? STATUS_OF_PROBLEM[details.problem] : 'loading';
+
     return (
         <>
-            <h1 ref={headingRef} className="sr-only" tabIndex={-1}>Post</h1>
-            <Link to={ROUTES.feed} className="tweet-details-page-back" onClick={handleBackClick}>
+            <h1 className="sr-only" tabIndex={-1} ref={headingRef}>Post</h1>
+            <Link className="tweet-details-page-back" to={ROUTES.feed} onClick={handleBackClick}>
                 <span className="tweet-details-page-back-arrow" aria-hidden="true" />
                 {BACK_LABEL}
             </Link>
@@ -88,10 +97,16 @@ function TweetDetailsPage({ tweetId }: TweetDetailsPageProps) {
                             post={post}
                             now={now}
                             isClickable={false}
-                            onChange={(update) => reportUpdate(tweetId, update)}
+                            onChange={handlePostChange}
                         />
                     </div>
-                    <ReplyThread tweetId={tweetId} postAuthorId={post.author.id} replyCount={post.replyCount} thread={thread} now={now} />
+                    <ReplyThread
+                        tweetId={tweetId}
+                        postAuthorId={post.author.id}
+                        replyCount={post.replyCount}
+                        thread={thread}
+                        now={now}
+                    />
                 </>
             ) : (
                 <PostListStatus

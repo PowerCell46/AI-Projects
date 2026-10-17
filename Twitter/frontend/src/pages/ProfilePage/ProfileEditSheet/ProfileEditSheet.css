@@ -81,7 +81,6 @@
     width: 100%;
     margin-top: 0.5rem;
     padding: 0 0 0.3125rem;
-    resize: none;
     font-family: var(--font-headline);
     font-size: 1.09375rem;
     line-height: 1.5;
@@ -89,6 +88,7 @@
     background: none;
     border: 0;
     border-radius: 0;
+    resize: none;
     outline: 0;
 }
 
@@ -121,11 +121,6 @@
     transition: transform 720ms var(--e);
 }
 
-.profile-edit-sheet-text:focus + .profile-edit-sheet-rule::after,
-.profile-edit-sheet-input:focus + .profile-edit-sheet-rule::after {
-    transform: scaleX(1);
-}
-
 .profile-edit-sheet-counter {
     margin: 0.5625rem 0 0;
     font-family: var(--font-mono);
@@ -136,10 +131,6 @@
     color: var(--pale-secondary);
 }
 
-.profile-edit-sheet-counter[data-over-limit='true'] {
-    color: var(--alarm);
-}
-
 .profile-edit-sheet-error {
     min-height: 0;
     margin: 0;
@@ -148,10 +139,6 @@
     letter-spacing: 0.13em;
     overflow-wrap: anywhere;
     color: var(--alarm);
-}
-
-.profile-edit-sheet-error:not(:empty) {
-    margin-top: 0.5rem;
 }
 
 .profile-edit-sheet-actions {
@@ -188,6 +175,31 @@
     transition: color 300ms;
 }
 
+@keyframes profile-edit-sheet-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes profile-edit-sheet-rise {
+    from {
+        transform: translateY(1.75rem);
+    }
+}
+
+.profile-edit-sheet-text:focus + .profile-edit-sheet-rule::after,
+.profile-edit-sheet-input:focus + .profile-edit-sheet-rule::after {
+    transform: scaleX(1);
+}
+
+.profile-edit-sheet-counter[data-over-limit='true'] {
+    color: var(--alarm);
+}
+
+.profile-edit-sheet-error:not(:empty) {
+    margin-top: 0.5rem;
+}
+
 .profile-edit-sheet-photo-pick:hover {
     color: var(--glow-hover);
 }
@@ -198,8 +210,8 @@
 }
 
 .profile-edit-sheet-save:not([aria-disabled='true']):hover {
-    background: var(--glow);
     color: var(--deep);
+    background: var(--glow);
 }
 
 .profile-edit-sheet-save[aria-disabled='true'] {
@@ -219,16 +231,4 @@
 .profile-edit-sheet-cancel:focus-visible {
     outline: 1px solid var(--pale);
     outline-offset: 0.25rem;
-}
-
-@keyframes profile-edit-sheet-fade {
-    from {
-        opacity: 0;
-    }
-}
-
-@keyframes profile-edit-sheet-rise {
-    from {
-        transform: translateY(1.75rem);
-    }
 }

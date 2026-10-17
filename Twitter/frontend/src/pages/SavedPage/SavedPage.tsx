@@ -1,6 +1,6 @@
-import { fetchSavedTweets } from '../../api/savedTweets';
+import { fetchSavedTweets } from '../../api/tweets/savedTweets';
 import PostList from '../../components/shared/PostList/PostList';
-import { useFocusOnMount } from '../../hooks/useFocusOnMount';
+import { useFocusOnMount } from '../../hooks/dom/useFocusOnMount';
 import './SavedPage.css';
 
 
@@ -13,7 +13,7 @@ function SavedPage() {
 
     return (
         <>
-            <h1 ref={headingRef} className="saved-page-title" tabIndex={-1}>SAVED TWEETS</h1>
+            <h1 className="saved-page-title" tabIndex={-1} ref={headingRef}>SAVED TWEETS</h1>
             <PostList fetchPage={fetchSavedTweets} endText={END_TEXT} emptyText={EMPTY_TEXT} />
         </>
     );

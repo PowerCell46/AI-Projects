@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { Reply } from '../../../api/replies';
+import type { Reply } from '../../../api/tweets/replies';
 import ListFooter from '../../../components/shared/ListFooter/ListFooter';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
-import { bottomStateOf } from '../../../utils/bottomState';
+import { useBottomSentinel } from '../../../hooks/lists/useBottomSentinel';
+import { bottomStateOf } from '../../../utils/posts/bottomState';
 import ReplyCell from '../ReplyCell/ReplyCell';
 import ReplyComposer from '../ReplyComposer/ReplyComposer';
 import type { ReplyThreadState } from '../useReplyThread';
@@ -24,8 +24,8 @@ interface ReplyThreadProps {
 
 function ReplyThread({ tweetId, postAuthorId, replyCount, thread, now }: ReplyThreadProps) {
     const { user } = useAuth();
-    const [enteringReplyId, setEnteringReplyId] = useState<string | null>(null);
     const sentinelRef = useBottomSentinel(thread.loadMore, `${thread.replies.length}-${thread.status}`);
+    const [enteringReplyId, setEnteringReplyId] = useState<string | null>(null);
     const bottomState = bottomStateOf(thread.status, thread.isEnd, thread.replies.length);
 
     // Only the reply you just sent plays the entrance; the ones loaded with the page are simply there.

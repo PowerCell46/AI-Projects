@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { logout } from '../../../../../api/auth';
+import { logout } from '../../../../../api/accounts/auth';
 import { useAuth } from '../../../../../contexts/AuthContext';
 
 

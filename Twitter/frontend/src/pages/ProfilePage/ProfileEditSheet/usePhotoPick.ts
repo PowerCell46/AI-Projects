@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { checkPickedImage } from '../../../utils/composeChecks';
+import { checkPickedImage } from '../../../utils/validation/composeChecks';
 
 
 const NO_IMAGES_YET = 0;

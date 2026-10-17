@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { FollowSubject } from '../hooks/usePersonFollow';
+import type { FollowSubject } from '../hooks/social/usePersonFollow';
 
 
 // The fields of a follow that you can change from a profile page.
@@ -11,11 +11,11 @@ interface FollowUpdatesContextValue {
     reportFollowUpdate: (username: string, update: FollowUpdate) => void;
 }
 
+const FollowUpdatesContext = createContext<FollowUpdatesContextValue | null>(null);
+
 interface FollowUpdatesProviderProps {
     children: ReactNode;
 }
-
-const FollowUpdatesContext = createContext<FollowUpdatesContextValue | null>(null);
 
 export function FollowUpdatesProvider({ children }: FollowUpdatesProviderProps) {
     const [updates, setUpdates] = useState<Record<string, FollowUpdate>>({});

@@ -2,9 +2,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../../../contexts/AuthContext';
-import { useProfilePictureSource } from '../../../../../hooks/useProfilePictureSource';
+import { useProfilePictureSource } from '../../../../../hooks/social/useProfilePictureSource';
 import { ROUTES, profilePath } from '../../../../../routes';
-import { SIGNAL_LOST_MESSAGE } from '../../../../../utils/authErrors';
+import { wrapIndex } from '../../../../../utils/navigation/wrapIndex';
+import { SIGNAL_LOST_MESSAGE } from '../../../../../utils/validation/authErrors';
 import { useLogout } from './useLogout';
 import './UserMenu.css';
 
@@ -15,8 +16,9 @@ function menuItemsOf(menu: HTMLElement | null): HTMLElement[] {
     return Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
 }
 
-function indexAfterStep(currentIndex: number, itemCount: number, step: number): number {
-    return (currentIndex + step + itemCount) % itemCount;
+interface MenuLink {
+    label: string;
+    path: string;
 }
 
 interface UserMenuProps {
@@ -95,7 +97,10 @@ function UserMenu({ pictureUrl }: UserMenuProps) {
 
         } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
-            items[indexAfterStep(currentIndex, items.length, event.key === 'ArrowDown' ? 1 : -1)]?.focus();
+
+            const step = event.key === 'ArrowDown' ? 1 : -1;
+
+            items[wrapIndex(currentIndex, step, items.length)]?.focus();
 
         } else if (event.key === 'Home' || event.key === 'End') {
             event.preventDefault();
@@ -103,70 +108,76 @@ function UserMenu({ pictureUrl }: UserMenuProps) {
         }
     }
 
+    const profileLinks: MenuLink[] = user
+        ? [{
+            label: 'PROFILE',
+            path: profilePath(user.username),
+        }]
+        : [];
+    const menuLinks: MenuLink[] = [
+        ...profileLinks,
+        {
+            label: 'SAVED TWEETS',
+            path: ROUTES.saved,
+        },
+        {
+            label: 'LIKED TWEETS',
+            path: ROUTES.liked,
+        },
+    ];
+
     return (
         <div className="user-menu" ref={containerRef}>
             <button
                 type="button"
                 className="user-menu-trigger"
-                ref={triggerRef}
                 aria-label="Account menu"
                 aria-haspopup="menu"
                 aria-expanded={isOpen}
                 aria-controls={isOpen ? menuId : undefined}
                 data-open={isOpen}
+                ref={triggerRef}
                 onClick={handleTriggerClick}
                 onKeyDown={handleTriggerKeyDown}
             >
                 <span className="user-menu-avatar">
-                    <img className="user-menu-picture" src={picture.src} onError={picture.onError} alt="" />
+                    <img
+                        className="user-menu-picture"
+                        src={picture.src}
+                        alt=""
+                        onError={picture.onError}
+                    />
                 </span>
             </button>
             {isOpen && (
                 <div className="user-menu-panel">
                     <div
-                        className="user-menu-list"
                         id={menuId}
-                        role="menu"
+                        className="user-menu-list"
                         aria-label="Account"
+                        role="menu"
                         ref={menuRef}
                         onKeyDown={handleMenuKeyDown}
                     >
-                        {user && (
+                        {menuLinks.map((menuLink) => (
                             <Link
+                                key={menuLink.path}
                                 className="user-menu-item"
-                                to={profilePath(user.username)}
+                                to={menuLink.path}
                                 role="menuitem"
                                 tabIndex={-1}
                                 onClick={closeMenuAndFocusTrigger}
                             >
-                                PROFILE
+                                {menuLink.label}
                             </Link>
-                        )}
-                        <Link
-                            className="user-menu-item"
-                            to={ROUTES.saved}
-                            role="menuitem"
-                            tabIndex={-1}
-                            onClick={closeMenuAndFocusTrigger}
-                        >
-                            SAVED TWEETS
-                        </Link>
-                        <Link
-                            className="user-menu-item"
-                            to={ROUTES.liked}
-                            role="menuitem"
-                            tabIndex={-1}
-                            onClick={closeMenuAndFocusTrigger}
-                        >
-                            LIKED TWEETS
-                        </Link>
+                        ))}
                         <button
                             type="button"
                             className="user-menu-item"
                             data-tone="destructive"
+                            aria-disabled={isLoggingOut}
                             role="menuitem"
                             tabIndex={-1}
-                            aria-disabled={isLoggingOut}
                             onClick={logOut}
                         >
                             LOG OUT

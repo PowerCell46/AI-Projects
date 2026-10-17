@@ -24,18 +24,18 @@
     position: absolute;
     top: 0;
     right: 0;
+    z-index: 1;
     display: grid;
     place-items: center;
     min-width: 2.75rem;
     min-height: 2.75rem;
     padding: 0;
-    background: none;
-    border: 0;
     font-size: 1.25rem;
     line-height: 1;
     color: var(--input-text);
+    background: none;
+    border: 0;
     cursor: pointer;
-    z-index: 1;
 }
 
 .image-previews-remove::before {
@@ -43,11 +43,11 @@
     position: absolute;
     top: 0.25rem;
     right: 0.25rem;
+    z-index: -1;
     width: 1.5rem;
     height: 1.5rem;
     background: var(--deep);
     opacity: 0.8;
-    z-index: -1;
 }
 
 .image-previews-remove:focus-visible {

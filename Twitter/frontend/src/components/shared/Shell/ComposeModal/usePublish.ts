@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
-import { publishTweet } from '../../../../api/tweets';
-import type { PublishedTweet, PublishRequest } from '../../../../api/tweets';
-import { describeUploadFailure } from '../../../../utils/composeChecks';
+import { publishTweet } from '../../../../api/tweets/tweets';
+import type { PublishedTweet, PublishRequest } from '../../../../api/tweets/tweets';
+import { describeUploadFailure } from '../../../../utils/validation/composeChecks';
 
 
 interface Publishing {

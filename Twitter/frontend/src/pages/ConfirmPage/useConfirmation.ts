@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { confirm } from '../../api/auth';
-import { ApiError } from '../../api/http';
-import { STATUS_BAD_REQUEST } from '../../api/httpStatus';
+import { confirm } from '../../api/accounts/auth';
+import { ApiError } from '../../api/core/http';
+import { STATUS_BAD_REQUEST } from '../../api/core/httpStatus';
 
 
 export type ConfirmationStatus = 'pending' | 'confirmed' | 'expired' | 'failed';

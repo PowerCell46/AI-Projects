@@ -14,6 +14,8 @@ COPY public ./public
 
 COPY src ./src
 
+COPY tests ./tests
+
 # Typecheck and bundle into dist/
 RUN npm run build
 

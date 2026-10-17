@@ -1,11 +1,11 @@
 import type { MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { TweetItem } from '../../../../api/tweetPage';
+import type { TweetItem } from '../../../../api/tweets/tweetPage';
 import type { PostUpdate } from '../../../../contexts/PostUpdatesContext';
 import { profilePath, tweetPath } from '../../../../routes';
-import { stripBidiControls } from '../../../../utils/bidi';
-import { hasTextSelection, isInsideElement } from '../../../../utils/clickTarget';
-import { formatPostTime } from '../../../../utils/relativeTime';
+import { stripBidiControls } from '../../../../utils/text/bidi';
+import { hasTextSelection, isInsideElement } from '../../../../utils/browser/clickTarget';
+import { formatPostTime } from '../../../../utils/text/relativeTime';
 import Avatar from '../../Avatar/Avatar';
 import PostActions from './PostActions/PostActions';
 import PostImages from './PostImages/PostImages';
@@ -24,8 +24,6 @@ interface PostCellProps {
 
 function PostCell({ post, now, isClickable = true, onChange }: PostCellProps) {
     const navigate = useNavigate();
-    const { author } = post;
-    const body = stripBidiControls(post.content);
 
     function handleClick(event: MouseEvent<HTMLElement>) {
         if (!isClickable || isInsideElement(event.target, OWN_CLICK_SELECTOR) || hasTextSelection()) {
@@ -34,6 +32,9 @@ function PostCell({ post, now, isClickable = true, onChange }: PostCellProps) {
 
         navigate(tweetPath(post.id));
     }
+
+    const { author } = post;
+    const body = stripBidiControls(post.content);
 
     return (
         <article

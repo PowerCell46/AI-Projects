@@ -16,13 +16,18 @@ interface StepInputProps {
 }
 
 function StepInput({ step, value, isActive, isInvalid, errorId, inputRef, onChange }: StepInputProps) {
-    const inputId = `step-input-${step.field}`;
     const [isRevealed, setIsRevealed] = useState(false);
-    const isPassword = step.inputType === 'password';
 
     function handleChange(event: ChangeEvent<HTMLInputElement>) {
         onChange(step.field, event.target.value);
     }
+
+    function handleToggleReveal() {
+        setIsRevealed((wasRevealed) => !wasRevealed);
+    }
+
+    const inputId = `step-input-${step.field}`;
+    const isPassword = step.inputType === 'password';
 
     return (
         <div
@@ -33,24 +38,24 @@ function StepInput({ step, value, isActive, isInvalid, errorId, inputRef, onChan
         >
             <label className="step-input-label" htmlFor={inputId}>{step.placeholder}</label>
             <input
-                ref={isActive ? inputRef : undefined}
                 id={inputId}
-                className="step-input-field"
-                type={isRevealed ? 'text' : step.inputType}
                 name={step.field}
+                type={isRevealed ? 'text' : step.inputType}
+                className="step-input-field"
+                aria-invalid={isInvalid}
+                aria-describedby={isInvalid ? errorId : undefined}
                 autoComplete={step.autoComplete}
                 placeholder={step.placeholder}
                 value={value}
-                aria-invalid={isInvalid}
-                aria-describedby={isInvalid ? errorId : undefined}
                 spellCheck={false}
                 autoCapitalize="none"
+                ref={isActive ? inputRef : undefined}
                 onChange={handleChange}
             />
             {isPassword && (
                 <PasswordToggle
                     isRevealed={isRevealed}
-                    onToggle={() => setIsRevealed((wasRevealed) => !wasRevealed)}
+                    onToggle={handleToggleReveal}
                 />
             )}
             <span className="step-input-rule" />

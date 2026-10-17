@@ -7,6 +7,18 @@
     list-style: none;
 }
 
+@keyframes people-list-leave {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+}
+
 /* Signing out sinks the cards like the posts, the lowest first; the 1200ms matches the header rule's retract. */
 [data-signing-out='true'] .people-list > li {
     animation: people-list-leave 700ms var(--e) forwards;
@@ -26,16 +38,4 @@
 
 [data-signing-out='true'] .people-list > li:nth-child(1) {
     animation-delay: 400ms;
-}
-
-@keyframes people-list-leave {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    to {
-        opacity: 0;
-        transform: translateY(0.75rem);
-    }
 }

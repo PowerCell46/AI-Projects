@@ -12,7 +12,12 @@ interface StageLinkProps {
 
 function StageLink({ to, variant, children, state }: StageLinkProps) {
     return (
-        <Link className="stage-link" data-variant={variant} to={to} state={state}>
+        <Link
+            className="stage-link"
+            data-variant={variant}
+            to={to}
+            state={state}
+        >
             {children}
         </Link>
     );

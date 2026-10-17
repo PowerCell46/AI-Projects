@@ -1,5 +1,5 @@
 import { useOutletContext } from 'react-router-dom';
-import type { TweetItem } from '../../../api/tweetPage';
+import type { TweetItem } from '../../../api/tweets/tweetPage';
 
 
 export interface ShellContext {

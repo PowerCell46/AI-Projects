@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import type { UserProfile } from '../../../api/users';
+import type { UserProfile } from '../../../api/accounts/users';
 import FollowButton from '../../../components/shared/FollowButton/FollowButton';
 import { useShellContext } from '../../../components/shared/Shell/useShellContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
-import { usePersonFollow } from '../../../hooks/usePersonFollow';
+import { usePersonFollow } from '../../../hooks/social/usePersonFollow';
 import ProfileEditButton from '../ProfileEditButton/ProfileEditButton';
 import ProfileEditSheet from '../ProfileEditSheet/ProfileEditSheet';
 import ProfileMasthead from '../ProfileMasthead/ProfileMasthead';
@@ -27,6 +27,10 @@ function ProfileView({ profile, serverTweetCount, onProfileSaved }: ProfileViewP
     const { onFollowChanged, onProfilePictureChanged } = useShellContext();
     const { reportFollowUpdate } = useFollowUpdates();
     const isOwnProfile = user?.username.toLowerCase() === profile.username.toLowerCase();
+    const follow = usePersonFollow(profile, handleFollowChanged);
+    const { ownPosts, tweetCount } = useOwnProfilePosts(isOwnProfile, serverTweetCount);
+    const [isEditing, setIsEditing] = useState(false);
+    const editButtonRef = useRef<HTMLButtonElement>(null);
 
     function handleFollowChanged(followedByMe: boolean, followersCount: number) {
         onFollowChanged();
@@ -35,11 +39,6 @@ function ProfileView({ profile, serverTweetCount, onProfileSaved }: ProfileViewP
             followersCount,
         });
     }
-
-    const follow = usePersonFollow(profile, handleFollowChanged);
-    const { ownPosts, tweetCount } = useOwnProfilePosts(isOwnProfile, serverTweetCount);
-    const [isEditing, setIsEditing] = useState(false);
-    const editButtonRef = useRef<HTMLButtonElement>(null);
 
     // Every answer of the edit sheet is the saved profile: the page takes it, and a new picture goes to the header too.
     function handleSaved(savedProfile: UserProfile) {

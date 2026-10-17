@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import { likeTweet, unlikeTweet } from '../../../../../api/likes';
-import { saveTweet, unsaveTweet } from '../../../../../api/savedTweets';
+import { likeTweet, unlikeTweet } from '../../../../../api/tweets/likes';
+import { saveTweet, unsaveTweet } from '../../../../../api/tweets/savedTweets';
 import type { PostUpdate } from '../../../../../contexts/PostUpdatesContext';
-import { useOptimisticToggle } from '../../../../../hooks/useOptimisticToggle';
+import { useOptimisticToggle } from '../../../../../hooks/social/useOptimisticToggle';
 import { tweetPath } from '../../../../../routes';
-import { formatCount } from '../../../../../utils/count';
+import { formatCount } from '../../../../../utils/text/count';
 import FillIcon from './FillIcon/FillIcon';
 import './PostActions.css';
 
@@ -41,13 +41,15 @@ function PostActions({
     );
 
     // The server's count already holds your like when the post loaded liked; a read taken mid-race can say 0 for a
-    // post that is liked by you, so the shown count never goes below 0.
-    const shownLikeCount = Math.max(0, likeCount - Number(isLikedInitially) + Number(like.isOn));
+    // post that is liked by you, so the count never goes below 0.
+    function likeCountWhen(isLiked: boolean): number {
+        return Math.max(0, likeCount - Number(isLikedInitially) + Number(isLiked));
+    }
 
     function likeUpdate(isLiked: boolean): PostUpdate {
         return {
             likedByMe: isLiked,
-            likes: Math.max(0, likeCount - Number(isLikedInitially) + Number(isLiked)),
+            likes: likeCountWhen(isLiked),
         };
     }
 
@@ -60,6 +62,8 @@ function PostActions({
         onChange?.({ savedByMe: !save.isOn });
         save.toggle();
     }
+
+    const shownLikeCount = likeCountWhen(like.isOn);
 
     const replyContent = (
         <>

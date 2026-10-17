@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import type { ArmPhase } from '../../../hooks/useArmPhase';
+import type { ArmPhase } from '../../../hooks/social/useArmPhase';
 import GlowButton from '../GlowButton/GlowButton';
 import './FollowButton.css';
 
@@ -34,12 +34,12 @@ function FollowButton({ username, isFollowing, phase, onClick, onDisarm }: Follo
     return (
         <GlowButton
             className="follow-button"
-            label={labelOf(isFollowing, phase)}
-            isLabelHidden
             aria-label={`Follow ${username}`}
             aria-pressed={isFollowing}
             data-following={isFollowing}
             data-phase={phase}
+            label={labelOf(isFollowing, phase)}
+            isLabelHidden
             onClick={onClick}
             onBlur={onDisarm}
             onKeyDown={handleKeyDown}

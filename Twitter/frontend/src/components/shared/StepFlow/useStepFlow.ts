@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ApiError } from '../../../api/http';
+import { ApiError } from '../../../api/core/http';
 import { FLOWS } from '../../../flows';
 import type { Flow, FlowField, FlowName, FlowStep } from '../../../flows';
-import { describeAuthError, RISE_METRES } from '../../../utils/authErrors';
-import type { AuthErrorScreen } from '../../../utils/authErrors';
-import { validateField } from '../../../utils/validation';
+import { describeAuthError, RISE_METRES } from '../../../utils/validation/authErrors';
+import type { AuthErrorScreen } from '../../../utils/validation/authErrors';
+import { validateField } from '../../../utils/validation/validation';
 import { useStepTransition } from './useStepTransition';
 import type { StepDirection, StepSlide } from './useStepTransition';
 
+
+const AUTOFOCUS_DELAY_MS = 60;
+
+const NETWORK_FAILURE_STATUS = 0;
+
+const EMPTY_VALUES: StepValues = {
+    identifier: '',
+    email: '',
+    username: '',
+    password: '',
+};
 
 export type StepValues = Record<FlowField, string>;
 
@@ -35,17 +46,6 @@ export interface StepFlowState {
 interface StepLocationState {
     stepIndex: number;
 }
-
-const AUTOFOCUS_DELAY_MS = 60;
-
-const NETWORK_FAILURE_STATUS = 0;
-
-const EMPTY_VALUES: StepValues = {
-    identifier: '',
-    email: '',
-    username: '',
-    password: '',
-};
 
 function isStepLocationState(locationState: unknown): locationState is StepLocationState {
     return typeof locationState === 'object'
@@ -113,11 +113,6 @@ export function useStepFlow(
 
         return () => window.clearTimeout(focusTimerId);
     }, [stepIndex]);
-
-    const step = flow.steps[stepIndex];
-    const isLastStep = stepIndex === flow.steps.length - 1;
-    const visibleError = stepError?.stepIndex === stepIndex ? stepError : null;
-    const isRising = visibleError?.gauge === 'rise';
 
     function setValue(field: FlowField, value: string) {
         setValues((currentValues) => ({
@@ -188,6 +183,11 @@ export function useStepFlow(
             navigate(-1);
         }
     }
+
+    const step = flow.steps[stepIndex];
+    const isLastStep = stepIndex === flow.steps.length - 1;
+    const visibleError = stepError?.stepIndex === stepIndex ? stepError : null;
+    const isRising = visibleError?.gauge === 'rise';
 
     return {
         flow,

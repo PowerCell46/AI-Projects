@@ -1,7 +1,7 @@
-import { fetchTweetDetails } from '../../api/tweetDetails';
-import type { TweetItem } from '../../api/tweetPage';
-import { useDetailsLoader } from '../../hooks/useDetailsLoader';
-import type { DetailsProblem } from '../../hooks/useDetailsLoader';
+import { fetchTweetDetails } from '../../api/tweets/tweetDetails';
+import type { TweetItem } from '../../api/tweets/tweetPage';
+import { useDetailsLoader } from '../../hooks/lists/useDetailsLoader';
+import type { DetailsProblem } from '../../hooks/lists/useDetailsLoader';
 
 
 export type { DetailsProblem };

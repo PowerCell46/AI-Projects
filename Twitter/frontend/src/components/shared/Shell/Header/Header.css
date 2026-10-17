@@ -17,19 +17,10 @@
     display: inline-flex;
     align-items: center;
     min-height: 2.75rem;
-    font-size: 0.65625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.42em;
     text-decoration: none;
     color: var(--pale-brand);
-}
-
-.header-brand:hover {
-    color: var(--pale);
-}
-
-.header-brand:focus-visible {
-    outline: 1px solid var(--pale);
-    outline-offset: 0.25rem;
 }
 
 .header-actions {
@@ -54,16 +45,6 @@
 .header-brand,
 .header-actions {
     animation: header-content-fade 900ms var(--e) 400ms backwards;
-}
-
-/* Signing out plays the arrival backwards: the rule flashes in and retracts, and the content fades away. */
-[data-signing-out='true'] .header::after {
-    animation: header-rule-retract 1200ms var(--e) both;
-}
-
-[data-signing-out='true'] .header-brand,
-[data-signing-out='true'] .header-actions {
-    animation: header-content-leave 700ms var(--e) both;
 }
 
 @keyframes header-rule-draw {
@@ -118,4 +99,23 @@
     to {
         opacity: 0;
     }
+}
+
+.header-brand:hover {
+    color: var(--pale);
+}
+
+.header-brand:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+/* Signing out plays the arrival backwards: the rule flashes in and retracts, and the content fades away. */
+[data-signing-out='true'] .header::after {
+    animation: header-rule-retract 1200ms var(--e) both;
+}
+
+[data-signing-out='true'] .header-brand,
+[data-signing-out='true'] .header-actions {
+    animation: header-content-leave 700ms var(--e) both;
 }

@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { AnimationEvent, FormEvent } from 'react';
-import { ApiError } from '../../../api/http';
-import { STATUS_NOT_FOUND, STATUS_UNAVAILABLE } from '../../../api/httpStatus';
-import { createReply } from '../../../api/replies';
-import type { Reply } from '../../../api/replies';
-import { canPublish } from '../../../utils/composeChecks';
+import { ApiError } from '../../../api/core/http';
+import { STATUS_NOT_FOUND, STATUS_UNAVAILABLE } from '../../../api/core/httpStatus';
+import { createReply } from '../../../api/tweets/replies';
+import type { Reply } from '../../../api/tweets/replies';
+import { canPublish } from '../../../utils/validation/composeChecks';
 import ReplyTextField from '../ReplyTextField/ReplyTextField';
 import './ReplyComposer.css';
 
@@ -13,11 +13,11 @@ const POST_DELETED_MESSAGE = 'This post was deleted.';
 
 const BUSY_MESSAGE = 'Busy, try again.';
 
-type ComposerView = 'closed' | 'open' | 'closing';
-
 const OPENER_TEXT = 'Write a reply…';
 
 const SEND_FAILED_MESSAGE = "Couldn't send. Try again.";
+
+type ComposerView = 'closed' | 'open' | 'closing';
 
 function describeSendFailure(failure: unknown): string {
     if (failure instanceof ApiError && failure.status === STATUS_NOT_FOUND) {
@@ -45,8 +45,6 @@ function ReplyComposer({ tweetId, onSent }: ReplyComposerProps) {
     const shouldRefocusOpenerRef = useRef(false);
     const errorId = useId();
 
-    const isSubmittable = canPublish(text, 0) && !isSending;
-
     // Cancelling hands the focus back to the row that opened the field; a blur must not take it from where it went.
     useEffect(() => {
         if (view === 'closed' && shouldRefocusOpenerRef.current) {
@@ -54,6 +52,10 @@ function ReplyComposer({ tweetId, onSent }: ReplyComposerProps) {
             openerRef.current?.focus();
         }
     }, [view]);
+
+    function handleOpen() {
+        setView('open');
+    }
 
     function handleCancel() {
         shouldRefocusOpenerRef.current = true;
@@ -103,9 +105,16 @@ function ReplyComposer({ tweetId, onSent }: ReplyComposerProps) {
         }
     }
 
+    const isSubmittable = canPublish(text, 0) && !isSending;
+
     if (view === 'closed') {
         return (
-            <button type="button" className="reply-composer-opener" ref={openerRef} onClick={() => setView('open')}>
+            <button
+                type="button"
+                className="reply-composer-opener"
+                ref={openerRef}
+                onClick={handleOpen}
+            >
                 <span className="reply-composer-opener-tag" aria-hidden="true">NEW</span>
                 <span className="reply-composer-opener-text">{OPENER_TEXT}</span>
             </button>
@@ -132,7 +141,7 @@ function ReplyComposer({ tweetId, onSent }: ReplyComposerProps) {
                     onCancel={handleCancel}
                     onBlur={handleBlur}
                 />
-                <p className="reply-composer-error" id={errorId} role="alert">{errorMessage}</p>
+                <p id={errorId} className="reply-composer-error" role="alert">{errorMessage}</p>
             </div>
         </form>
     );

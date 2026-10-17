@@ -12,12 +12,12 @@
     height: 100%;
     min-width: 2.75rem;
     padding: 0 1.25rem;
-    background: none;
-    border: 0;
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.17em;
     text-transform: uppercase;
     color: var(--pale-secondary);
+    background: none;
+    border: 0;
     cursor: pointer;
     transition: color 300ms;
 }
@@ -32,19 +32,6 @@
     padding-left: 0;
 }
 
-.tab-row-tab:hover {
-    color: var(--pale-tab-hover);
-}
-
-.tab-row-tab[aria-selected='true'] {
-    color: var(--glow);
-}
-
-.tab-row-tab:focus-visible {
-    outline: 1px solid var(--pale);
-    outline-offset: -0.25rem;
-}
-
 /* Overlaps the row's bottom border. Its offset and width are measured from the active tab, so it shrinks and grows as
    it travels between the two labels. */
 .tab-row-indicator {
@@ -54,19 +41,6 @@
     height: 0.125rem;
     background: var(--glow);
     transition: transform 520ms var(--e), width 520ms var(--e);
-}
-
-[data-signing-out='true'] .tab-row-tab,
-[data-signing-out='true'] .tab-row-indicator {
-    animation: tab-row-leave 700ms var(--e) both;
-}
-
-@media (max-width: 600px) {
-    .tab-row-tab {
-        padding: 0 0.875rem;
-        font-size: 0.59375rem;
-        letter-spacing: 0.12em;
-    }
 }
 
 @keyframes tab-row-fade {
@@ -86,5 +60,30 @@
 
     to {
         opacity: 0;
+    }
+}
+
+.tab-row-tab:hover {
+    color: var(--pale-tab-hover);
+}
+
+.tab-row-tab[aria-selected='true'] {
+    color: var(--glow);
+}
+
+.tab-row-tab:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: -0.25rem;
+}
+
+[data-signing-out='true'] .tab-row-tab,
+[data-signing-out='true'] .tab-row-indicator {
+    animation: tab-row-leave 700ms var(--e) both;
+}
+
+@media (max-width: 600px) {
+    .tab-row-tab {
+        padding: 0 0.875rem;
+        letter-spacing: 0.12em;
     }
 }

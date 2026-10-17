@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { prefersReducedMotion } from '../../../../utils/motion';
+import { prefersReducedMotion } from '../../../../utils/browser/motion';
 
 
 export const DEPTH_COUNT_DURATION_MS = 950;

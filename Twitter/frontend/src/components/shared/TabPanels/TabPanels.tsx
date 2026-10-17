@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useActiveTab } from '../../../hooks/useActiveTab';
-import { useOpenTweetId } from '../../../hooks/useOpenTweetId';
-import { useOpenUsername } from '../../../hooks/useOpenUsername';
+import { useActiveTab } from '../../../hooks/routing/useActiveTab';
+import { useOpenTweetId } from './useOpenTweetId';
+import { useOpenUsername } from './useOpenUsername';
 import FeedPage from '../../../pages/FeedPage/FeedPage';
 import PeoplePage from '../../../pages/PeoplePage/PeoplePage';
 import ProfilePage from '../../../pages/ProfilePage/ProfilePage';
 import TweetDetailsPage from '../../../pages/TweetDetailsPage/TweetDetailsPage';
 import { ROUTES } from '../../../routes';
-import { TABS, tabButtonId, tabPanelId } from '../../../utils/tabs';
-import type { TabId } from '../../../utils/tabs';
+import { TABS, tabButtonId, tabPanelId } from '../../../utils/navigation/tabs';
+import type { TabId } from '../../../utils/navigation/tabs';
 import { useTabScrollMemory } from './useTabScrollMemory';
 import { useTabVisits } from './useTabVisits';
 import './TabPanels.css';
@@ -45,10 +45,10 @@ function TabPanels() {
                     key={tab.id}
                     id={tabPanelId(tab.id)}
                     className="tab-panels-panel"
-                    role="tabpanel"
                     aria-labelledby={tabButtonId(tab.id)}
-                    hidden={tab.id !== activeTab}
                     data-entering={hasSwitched && tab.id === activeTab}
+                    role="tabpanel"
+                    hidden={tab.id !== activeTab}
                 >
                     {visitedTabs.includes(tab.id) && PAGE_OF_TAB[tab.id]}
                 </section>

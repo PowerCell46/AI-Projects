@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
-import { prefersReducedMotion } from '../../../utils/motion';
+import { prefersReducedMotion } from '../../../utils/browser/motion';
 
+
+// Must match the 400ms opacity fade in StepFlow.css, or the content swaps while it is still visible.
+export const STEP_SWAP_MS = 400;
+
+// One frame or two, so the browser paints the offset position before the step is released to rest.
+const ENTER_RELEASE_MS = 30;
 
 export type StepSlide = 'idle' | 'exit' | 'enter';
 
@@ -11,12 +17,6 @@ export interface StepTransition {
     slide: StepSlide;
     direction: StepDirection;
 }
-
-// Must match the 400ms opacity fade in StepFlow.css, or the content swaps while it is still visible.
-export const STEP_SWAP_MS = 400;
-
-// One frame or two, so the browser paints the offset position before the step is released to rest.
-const ENTER_RELEASE_MS = 30;
 
 export function useStepTransition(requestedStepIndex: number): StepTransition {
     const [stepIndex, setStepIndex] = useState(0);

@@ -7,11 +7,11 @@
     min-height: 2.75rem;
     margin: 0 auto 1.375rem;
     padding: 0 1.5rem;
-    background: var(--deep);
-    border: 1px solid var(--pale-user-avatar-border);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.17em;
     color: var(--pale);
+    background: var(--deep);
+    border: 1px solid var(--pale-user-avatar-border);
     cursor: pointer;
     transition: background-color 300ms, border-color 300ms;
 }

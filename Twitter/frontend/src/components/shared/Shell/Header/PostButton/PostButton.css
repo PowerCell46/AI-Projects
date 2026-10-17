@@ -7,12 +7,12 @@
     min-height: 2.75rem;
     padding: 0 1rem;
     overflow: hidden;
-    background: none;
-    border: 1px solid var(--glow-border);
     font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.17em;
     color: var(--glow);
+    background: none;
+    border: 1px solid var(--glow-border);
     cursor: pointer;
     transition: color 360ms var(--e);
 }
@@ -26,19 +26,6 @@
     transform: scaleY(0);
     transform-origin: bottom;
     transition: transform 420ms var(--e);
-}
-
-.post-button:hover {
-    color: var(--deep);
-}
-
-.post-button:hover::before {
-    transform: scaleY(1);
-}
-
-.post-button:focus-visible {
-    outline: 1px solid var(--pale);
-    outline-offset: 0.25rem;
 }
 
 .post-button-plus,
@@ -70,6 +57,19 @@
     left: 50%;
     width: 1px;
     height: 100%;
+}
+
+.post-button:hover {
+    color: var(--deep);
+}
+
+.post-button:hover::before {
+    transform: scaleY(1);
+}
+
+.post-button:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
 }
 
 @media (max-width: 600px) {

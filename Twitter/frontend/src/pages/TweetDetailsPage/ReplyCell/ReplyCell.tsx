@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError } from '../../../api/http';
-import { STATUS_NOT_FOUND } from '../../../api/httpStatus';
-import { deleteReply } from '../../../api/replies';
-import type { Reply } from '../../../api/replies';
+import { ApiError } from '../../../api/core/http';
+import { STATUS_NOT_FOUND } from '../../../api/core/httpStatus';
+import { deleteReply } from '../../../api/tweets/replies';
+import type { Reply } from '../../../api/tweets/replies';
 import Avatar from '../../../components/shared/Avatar/Avatar';
-import { stripBidiControls } from '../../../utils/bidi';
-import { formatPostTime } from '../../../utils/relativeTime';
+import { stripBidiControls } from '../../../utils/text/bidi';
+import { formatPostTime } from '../../../utils/text/relativeTime';
 import ReplyEditor from '../ReplyEditor/ReplyEditor';
 import './ReplyCell.css';
 
 
-type ReplyMode = 'viewing' | 'editing' | 'confirming-delete';
-
 const DELETE_FAILED_MESSAGE = "Couldn't delete. Try again.";
 
 const INDEX_DIGITS = 2;
+
+type ReplyMode = 'viewing' | 'editing' | 'confirming-delete';
 
 // Two digits, and past 99 the number simply grows.
 function formatReplyIndex(position: number): string {
@@ -49,7 +49,6 @@ function ReplyCell({
     const deleteButtonRef = useRef<HTMLButtonElement>(null);
     const keepButtonRef = useRef<HTMLButtonElement>(null);
     const previousModeRef = useRef<ReplyMode>('viewing');
-    const { author } = reply;
 
     // Focus follows the change of mode: into the question's safe answer, and back to the button that opened it.
     useEffect(() => {
@@ -67,9 +66,6 @@ function ReplyCell({
             deleteButtonRef.current?.focus();
         }
     }, [mode]);
-
-    const canEdit = currentUserId !== null && author.id === currentUserId;
-    const canDelete = canEdit || (currentUserId !== null && postAuthorId === currentUserId);
 
     function handleSaved(savedReply: Reply) {
         onChanged(savedReply);
@@ -107,6 +103,18 @@ function ReplyCell({
         setMode('confirming-delete');
     }
 
+    function handleEditAsked() {
+        setMode('editing');
+    }
+
+    function handleViewingRestored() {
+        setMode('viewing');
+    }
+
+    const { author } = reply;
+    const canEdit = currentUserId !== null && author.id === currentUserId;
+    const canDelete = canEdit || (currentUserId !== null && postAuthorId === currentUserId);
+
     return (
         <article className="reply-cell" aria-label={`Reply by ${author.username}`} data-entering={isEntering}>
             <span className="reply-cell-index" aria-hidden="true">{formatReplyIndex(position)}</span>
@@ -125,7 +133,7 @@ function ReplyCell({
                     )}
                 </header>
                 {mode === 'editing' ? (
-                    <ReplyEditor reply={reply} onSaved={handleSaved} onCancel={() => setMode('viewing')} />
+                    <ReplyEditor reply={reply} onSaved={handleSaved} onCancel={handleViewingRestored} />
                 ) : (
                     <p className="reply-cell-body" dir="auto">{stripBidiControls(reply.content)}</p>
                 )}
@@ -137,7 +145,7 @@ function ReplyCell({
                                 className="reply-cell-action"
                                 data-action="edit"
                                 ref={editButtonRef}
-                                onClick={() => setMode('editing')}
+                                onClick={handleEditAsked}
                             >
                                 EDIT
                             </button>
@@ -170,7 +178,7 @@ function ReplyCell({
                                     className="reply-cell-action"
                                     data-action="edit"
                                     ref={keepButtonRef}
-                                    onClick={() => setMode('viewing')}
+                                    onClick={handleViewingRestored}
                                 >
                                     NO
                                 </button>

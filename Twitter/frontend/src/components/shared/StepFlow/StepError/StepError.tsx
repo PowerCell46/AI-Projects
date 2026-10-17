@@ -8,7 +8,12 @@ interface StepErrorProps {
 
 function StepError({ id, message }: StepErrorProps) {
     return (
-        <div id={id} className="step-error" role="alert" data-visible={message !== null}>
+        <div
+            id={id}
+            className="step-error"
+            data-visible={message !== null}
+            role="alert"
+        >
             <div className="step-error-clip">
                 {message !== null && (
                     <p className="step-error-message">

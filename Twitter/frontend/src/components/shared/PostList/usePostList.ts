@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import type { Page, PageRequest } from '../../../api/paging';
-import type { TweetItem } from '../../../api/tweetPage';
-import { usePagedList } from '../../../hooks/usePagedList';
-import type { PagedListState } from '../../../hooks/usePagedList';
-import { mergeNewestFirst } from '../../../utils/tweetList';
+import type { Page, PageRequest } from '../../../api/core/paging';
+import type { TweetItem } from '../../../api/tweets/tweetPage';
+import { usePagedList } from '../../../hooks/lists/usePagedList';
+import type { PagedListState } from '../../../hooks/lists/usePagedList';
+import { mergeNewestFirst } from '../../../utils/posts/tweetList';
 
 
 export interface PostListState extends PagedListState<TweetItem> {

@@ -1,4 +1,4 @@
-import { formatFullCount, pluralLabel } from '../../../utils/profileFormat';
+import { formatFullCount, pluralLabel } from '../../../utils/text/profileFormat';
 import './ProfileStats.css';
 
 

@@ -1,15 +1,15 @@
 import { useRef, useState } from 'react';
-import { updateProfile, uploadProfilePicture } from '../../../api/users';
-import type { UserProfile } from '../../../api/users';
-import { describeUploadFailure } from '../../../utils/composeChecks';
+import { updateProfile, uploadProfilePicture } from '../../../api/accounts/users';
+import type { UserProfile } from '../../../api/accounts/users';
+import { describeUploadFailure } from '../../../utils/validation/composeChecks';
 import {
     changedFields,
     describeSaveFailure,
     isBioOverLimit,
     isEmptyChange,
     isLocationOverLimit,
-} from '../../../utils/profileEdit';
-import type { SaveErrors } from '../../../utils/profileEdit';
+} from '../../../utils/validation/profileEdit';
+import type { SaveErrors } from '../../../utils/validation/profileEdit';
 
 
 const NO_ERRORS: SaveErrors = {

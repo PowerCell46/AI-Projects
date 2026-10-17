@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useFocusOnMount } from '../../../hooks/useFocusOnMount';
+import { useFocusOnMount } from '../../../hooks/dom/useFocusOnMount';
 import './Arrival.css';
 
 
@@ -18,7 +18,13 @@ function Arrival({ eyebrow, headline, detail, isAlarm = false, children }: Arriv
     return (
         <section className="arrival" data-alarm={isAlarm}>
             <p className="arrival-eyebrow">{eyebrow}</p>
-            <h1 ref={headlineRef} className="arrival-headline" tabIndex={-1}>{headline}</h1>
+            <h1
+                className="arrival-headline"
+                tabIndex={-1}
+                ref={headlineRef}
+            >
+                {headline}
+            </h1>
             {detail && <p className="arrival-detail">{detail}</p>}
             <span className="arrival-rule" />
             {children && <div className="arrival-actions">{children}</div>}

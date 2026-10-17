@@ -1,15 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { PublishedTweet } from '../../../../api/tweets';
+import type { PublishedTweet } from '../../../../api/tweets/tweets';
+import { countCharacters } from '../../../../utils/text/count';
 import {
     ALLOWED_IMAGE_TYPES,
     canPublish,
-    countCharacters,
     MAX_TWEET_CHARACTERS,
-} from '../../../../utils/composeChecks';
-import { useFocusTrap } from '../../../../hooks/useFocusTrap';
-import { useScrollLock } from '../../../../hooks/useScrollLock';
-import { isApplePlatform } from '../../../../utils/platform';
+} from '../../../../utils/validation/composeChecks';
+import { useFocusTrap } from '../../../../hooks/dom/useFocusTrap';
+import { useScrollLock } from '../../../../hooks/dom/useScrollLock';
+import { isApplePlatform } from './platform';
 import ImagePreviews from './ImagePreviews/ImagePreviews';
 import { useImageAttachments } from './useImageAttachments';
 import { usePublish } from './usePublish';
@@ -28,10 +28,10 @@ interface ComposeModalProps {
 }
 
 function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
-    const [text, setText] = useState('');
-    const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
     const attachments = useImageAttachments();
     const publishing = usePublish(onPublished);
+    const [text, setText] = useState('');
+    const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
     const headlineId = useId();
     const counterId = useId();
     const dialogRef = useRef<HTMLDivElement>(null);
@@ -56,12 +56,6 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
             keepEditingRef.current?.focus();
         }
     }, [isConfirmingDiscard]);
-
-    const characterCount = countCharacters(text);
-    const isOverLimit = characterCount > MAX_TWEET_CHARACTERS;
-    const hasDraft = characterCount > 0 || attachments.images.length > 0;
-    const isSubmittable = canPublish(text, attachments.images.length) && !publishing.isPublishing;
-    const shortcutHint = isApplePlatform() ? '⌘↵' : 'CTRL↵';
 
     function handleCancel() {
         if (publishing.isPublishing) {
@@ -92,6 +86,10 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
         });
     }
 
+    function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
+        setText(event.currentTarget.value);
+    }
+
     function handlePick(event: ChangeEvent<HTMLInputElement>) {
         attachments.addFiles(Array.from(event.currentTarget.files ?? []));
 
@@ -118,6 +116,12 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
         }
     }
 
+    const characterCount = countCharacters(text);
+    const isOverLimit = characterCount > MAX_TWEET_CHARACTERS;
+    const hasDraft = characterCount > 0 || attachments.images.length > 0;
+    const isSubmittable = canPublish(text, attachments.images.length) && !publishing.isPublishing;
+    const shortcutHint = isApplePlatform() ? '⌘↵' : 'CTRL↵';
+
     return (
         <div
             className="compose-modal"
@@ -129,16 +133,16 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
         >
             <div className="compose-modal-content">
                 <p className="compose-modal-eyebrow">NEW POST</p>
-                <h2 className="compose-modal-headline" id={headlineId}>What's worth sending up?</h2>
+                <h2 id={headlineId} className="compose-modal-headline">What's worth sending up?</h2>
                 <textarea
                     className="compose-modal-text"
-                    ref={textareaRef}
-                    value={text}
-                    placeholder="write something"
                     aria-labelledby={headlineId}
                     aria-describedby={counterId}
+                    value={text}
+                    placeholder="write something"
                     rows={4}
-                    onChange={(event) => setText(event.currentTarget.value)}
+                    ref={textareaRef}
+                    onChange={handleTextChange}
                 />
                 <div className="compose-modal-rule" aria-hidden="true" />
                 <ImagePreviews images={attachments.images} onRemove={attachments.removeImage} />
@@ -153,7 +157,11 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
                         />
                         ATTACH IMAGE
                     </label>
-                    <p className="compose-modal-counter" id={counterId} data-over-limit={isOverLimit}>
+                    <p
+                        id={counterId}
+                        className="compose-modal-counter"
+                        data-over-limit={isOverLimit}
+                    >
                         {characterCount} / {MAX_TWEET_CHARACTERS}
                     </p>
                 </div>
@@ -161,7 +169,13 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
                 {isConfirmingDiscard ? (
                     <div className="compose-modal-actions">
                         <p className="compose-modal-question">DISCARD POST?</p>
-                        <button type="button" className="compose-modal-discard" onClick={onClose}>DISCARD</button>
+                        <button
+                            type="button"
+                            className="compose-modal-discard"
+                            onClick={onClose}
+                        >
+                            DISCARD
+                        </button>
                         <button
                             type="button"
                             className="compose-modal-cancel"
@@ -181,7 +195,13 @@ function ComposeModal({ onClose, onPublished }: ComposeModalProps) {
                         >
                             PUBLISH {shortcutHint}
                         </button>
-                        <button type="button" className="compose-modal-cancel" onClick={handleCancel}>CANCEL</button>
+                        <button
+                            type="button"
+                            className="compose-modal-cancel"
+                            onClick={handleCancel}
+                        >
+                            CANCEL
+                        </button>
                     </div>
                 )}
                 <p className="compose-modal-error" role="alert">{publishing.errorMessage}</p>

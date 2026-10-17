@@ -1,6 +1,6 @@
 import PostListStatus from '../../../components/shared/PostListStatus/PostListStatus';
 import type { BottomState } from '../../../components/shared/PostListStatus/PostListStatus';
-import { useFocusOnMount } from '../../../hooks/useFocusOnMount';
+import { useFocusOnMount } from '../../../hooks/dom/useFocusOnMount';
 
 
 const NOT_FOUND_TEXT = 'USER NOT FOUND';
@@ -16,7 +16,7 @@ function ProfileStatus({ state, onRetry }: ProfileStatusProps) {
 
     return (
         <>
-            <h1 ref={headingRef} className="sr-only" tabIndex={-1}>Profile</h1>
+            <h1 className="sr-only" tabIndex={-1} ref={headingRef}>Profile</h1>
             <PostListStatus
                 state={state}
                 endText={NOT_FOUND_TEXT}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { resendConfirmation } from '../../api/auth';
+import { resendConfirmation } from '../../api/accounts/auth';
 import Arrival from '../../components/shared/Arrival/Arrival';
 import DescentStage from '../../components/shared/DescentStage/DescentStage';
 import ResendButton from '../../components/shared/ResendButton/ResendButton';
@@ -9,7 +9,7 @@ import StepFlow from '../../components/shared/StepFlow/StepFlow';
 import { useStepFlow } from '../../components/shared/StepFlow/useStepFlow';
 import type { StepValues } from '../../components/shared/StepFlow/useStepFlow';
 import { ROUTES } from '../../routes';
-import { readPrefilledEmail } from '../../utils/resendPrefill';
+import { readPrefilledEmail } from '../../utils/navigation/resendPrefill';
 
 
 function ResendPage() {

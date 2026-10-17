@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { checkPickedImage } from '../../../../utils/composeChecks';
+import { checkPickedImage } from '../../../../utils/validation/composeChecks';
 
 
 export interface AttachedImage {

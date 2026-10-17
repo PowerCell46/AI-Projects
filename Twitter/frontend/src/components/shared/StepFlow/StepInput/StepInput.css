@@ -19,17 +19,13 @@
     min-width: 0;
     min-height: 2.75rem;
     padding: 0 0 1rem;
-    border: 0;
-    outline: none;
-    background: transparent;
     font-family: var(--font-mono);
-    font-size: clamp(1.0625rem, 3.2vw, 1.5625rem);
+    font-size: 1.125rem;
     letter-spacing: -0.01em;
     color: var(--input-text);
-}
-
-.step-input[data-has-toggle='true'] .step-input-field {
-    padding-right: 3rem;
+    background: transparent;
+    border: 0;
+    outline: none;
 }
 
 /* Edge draws its own reveal button in a password field; ours replaces it. */
@@ -45,8 +41,8 @@
    oversized inset shadow covers that background with the stage colour, and the fill colour restores the text. */
 .step-input-field:autofill {
     box-shadow: 0 0 0 100vmax var(--deep) inset;
-    -webkit-text-fill-color: var(--input-text);
     caret-color: var(--input-text);
+    -webkit-text-fill-color: var(--input-text);
 }
 
 /* The rule filling in is the input's focus indicator; the input itself shows no outline. */
@@ -60,6 +56,10 @@
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 720ms var(--e), background-color 500ms;
+}
+
+.step-input[data-has-toggle='true'] .step-input-field {
+    padding-right: 3rem;
 }
 
 .step-input:focus-within .step-input-rule {

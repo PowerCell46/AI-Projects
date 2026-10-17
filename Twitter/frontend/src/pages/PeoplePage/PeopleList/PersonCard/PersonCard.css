@@ -42,7 +42,7 @@
 .person-card-followers {
     margin-top: 0.625rem;
     font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
     font-variant-numeric: tabular-nums;
     color: var(--pale-secondary);

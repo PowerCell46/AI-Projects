@@ -5,22 +5,11 @@
     padding: 1.75rem 0 1.25rem;
 }
 
-/* A reply you just sent opens its row, rises into place and lets its index flash in the accent colour. The padding
-   is animated with the row so nothing below it jumps. */
-.reply-cell[data-entering='true'] {
-    grid-template-rows: 1fr;
-    animation: reply-cell-enter 640ms var(--e);
-}
-
-.reply-cell[data-entering='true'] .reply-cell-index {
-    animation: reply-cell-index-flash 1600ms var(--e);
-}
-
 .reply-cell-index {
     min-height: 0;
     padding-top: 0.25rem;
     font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.1em;
     font-variant-numeric: tabular-nums;
     color: var(--pale-depth-label);
@@ -50,7 +39,7 @@
 .reply-cell-time {
     margin-left: auto;
     font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font-size: 0.75rem;
     letter-spacing: 0.1em;
     white-space: nowrap;
     color: var(--pale-secondary);
@@ -58,7 +47,7 @@
 
 .reply-cell-edited {
     font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.12em;
     white-space: nowrap;
     color: var(--pale-secondary);
@@ -92,7 +81,7 @@
 .reply-cell-question {
     padding-left: 0.5rem;
     font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
     color: var(--pale);
 }
@@ -101,40 +90,23 @@
     min-width: 2.75rem;
     min-height: 2.75rem;
     padding: 0 0.5rem;
-    background: none;
-    border: 0;
     font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
     color: var(--pale-secondary);
+    background: none;
+    border: 0;
     cursor: pointer;
     transition: color 300ms var(--e);
-}
-
-.reply-cell-action:hover {
-    color: var(--pale);
-}
-
-.reply-cell-action[data-action='delete']:hover {
-    color: var(--alarm);
-}
-
-.reply-cell-action:focus-visible {
-    outline: 1px solid var(--pale);
-    outline-offset: 0.25rem;
 }
 
 .reply-cell-error {
     min-height: 0;
     font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.13em;
     overflow-wrap: anywhere;
     color: var(--alarm);
-}
-
-.reply-cell-error:not(:empty) {
-    padding-bottom: 0.75rem;
 }
 
 @keyframes reply-cell-enter {
@@ -156,4 +128,32 @@
     from {
         color: var(--glow);
     }
+}
+
+/* A reply you just sent opens its row, rises into place and lets its index flash in the accent colour. The padding
+   is animated with the row so nothing below it jumps. */
+.reply-cell[data-entering='true'] {
+    grid-template-rows: 1fr;
+    animation: reply-cell-enter 640ms var(--e);
+}
+
+.reply-cell[data-entering='true'] .reply-cell-index {
+    animation: reply-cell-index-flash 1600ms var(--e);
+}
+
+.reply-cell-action:hover {
+    color: var(--pale);
+}
+
+.reply-cell-action[data-action='delete']:hover {
+    color: var(--alarm);
+}
+
+.reply-cell-action:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.reply-cell-error:not(:empty) {
+    padding-bottom: 0.75rem;
 }

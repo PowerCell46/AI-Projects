@@ -1,7 +1,8 @@
 import { useRef } from 'react';
 import type { KeyboardEvent } from 'react';
-import { TABS, tabButtonId, tabPanelId } from '../../../../utils/tabs';
-import type { TabId } from '../../../../utils/tabs';
+import { TABS, tabButtonId, tabPanelId } from '../../../../utils/navigation/tabs';
+import type { TabId } from '../../../../utils/navigation/tabs';
+import { wrapIndex } from '../../../../utils/navigation/wrapIndex';
 import { useTabIndicator } from './useTabIndicator';
 import './TabRow.css';
 
@@ -46,27 +47,32 @@ function TabRow({ activeTab, onSelect }: TabRowProps) {
         event.preventDefault();
 
         const currentIndex = TABS.findIndex((candidate) => candidate.id === tab);
-        const nextTab = TABS[(currentIndex + step + TABS.length) % TABS.length].id;
+        const nextTab = TABS[wrapIndex(currentIndex, step, TABS.length)].id;
 
         tabButtonsRef.current[nextTab]?.focus();
         onSelect(nextTab);
     }
 
     return (
-        <div className="tab-row" role="tablist" aria-label="Sections" ref={rowRef}>
+        <div
+            className="tab-row"
+            aria-label="Sections"
+            role="tablist"
+            ref={rowRef}
+        >
             {TABS.map((tab) => (
                 <button
                     key={tab.id}
                     id={tabButtonId(tab.id)}
-                    ref={(tabButton) => {
-                        tabButtonsRef.current[tab.id] = tabButton;
-                    }}
                     type="button"
-                    role="tab"
                     className="tab-row-tab"
                     aria-selected={tab.id === activeTab}
                     aria-controls={tabPanelId(tab.id)}
+                    role="tab"
                     tabIndex={tab.id === activeTab ? 0 : -1}
+                    ref={(tabButton) => {
+                        tabButtonsRef.current[tab.id] = tabButton;
+                    }}
                     onClick={() => handleClick(tab.id)}
                     onKeyDown={(event) => handleKeyDown(event, tab.id)}
                 >

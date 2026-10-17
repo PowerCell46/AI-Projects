@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PageRequest } from '../../../api/paging';
-import type { TweetItem, TweetPage } from '../../../api/tweetPage';
-import { PAGE_SIZE } from '../../../hooks/usePagedList';
-import { findNewerItems } from '../../../utils/tweetList';
+import type { PageRequest } from '../../../api/core/paging';
+import type { TweetItem, TweetPage } from '../../../api/tweets/tweetPage';
+import { PAGE_SIZE } from '../../../hooks/lists/usePagedList';
+import { findNewerItems } from '../../../utils/posts/tweetList';
 
 
 export const NEW_POSTS_INTERVAL_MS = 60_000;

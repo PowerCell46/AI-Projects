@@ -13,15 +13,15 @@
     width: 100%;
     min-height: 5.25rem;
     padding: 0 0 0.875rem;
-    resize: none;
-    background: none;
-    border: 0;
-    border-radius: 0;
-    outline: 0;
     font-family: var(--font-headline);
     font-size: 1.03125rem;
     line-height: 1.5;
     color: var(--input-text);
+    background: none;
+    border: 0;
+    border-radius: 0;
+    resize: none;
+    outline: 0;
 }
 
 .reply-text-field-rule {
@@ -40,10 +40,6 @@
     transition: transform 720ms var(--e);
 }
 
-.reply-text-field-text:focus + .reply-text-field-rule::after {
-    transform: scaleX(1);
-}
-
 .reply-text-field-meta {
     display: flex;
     align-items: center;
@@ -53,14 +49,10 @@
 
 .reply-text-field-counter {
     font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
     font-variant-numeric: tabular-nums;
     color: var(--pale-secondary);
-}
-
-.reply-text-field-counter[data-over-limit='true'] {
-    color: var(--alarm);
 }
 
 .reply-text-field-cancel {
@@ -68,34 +60,30 @@
     min-height: 2.75rem;
     margin-right: auto;
     padding: 0;
-    background: none;
-    border: 0;
     font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
     color: var(--pale-secondary);
+    background: none;
+    border: 0;
     cursor: pointer;
     transition: color 300ms var(--e);
-}
-
-.reply-text-field-cancel:hover {
-    color: var(--pale);
 }
 
 /* The same ghost button as POST and FOLLOW: a glow panel rises from the bottom and the text turns dark. */
 .reply-text-field-submit {
     position: relative;
+    isolation: isolate;
     min-width: 2.75rem;
     min-height: 2.75rem;
     padding: 0 1.25rem;
-    isolation: isolate;
     overflow: hidden;
-    background: none;
-    border: 1px solid var(--glow-border);
     font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.17em;
     color: var(--glow);
+    background: none;
+    border: 1px solid var(--glow-border);
     cursor: pointer;
     transition: color 360ms var(--e);
 }
@@ -109,6 +97,18 @@
     transform: scaleY(0);
     transform-origin: bottom;
     transition: transform 420ms var(--e);
+}
+
+.reply-text-field-text:focus + .reply-text-field-rule::after {
+    transform: scaleX(1);
+}
+
+.reply-text-field-counter[data-over-limit='true'] {
+    color: var(--alarm);
+}
+
+.reply-text-field-cancel:hover {
+    color: var(--pale);
 }
 
 .reply-text-field-submit:not([aria-disabled='true']):hover {

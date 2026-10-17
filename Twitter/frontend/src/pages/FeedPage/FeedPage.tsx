@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { fetchFeed } from '../../api/feed';
+import { fetchFeed } from '../../api/tweets/feed';
 import PostList from '../../components/shared/PostList/PostList';
 import { useShellContext } from '../../components/shared/Shell/useShellContext';
-import { useActiveTab } from '../../hooks/useActiveTab';
+import { useActiveTab } from '../../hooks/routing/useActiveTab';
 import { ROUTES } from '../../routes';
 import { useFollowCountWhenShown } from './useFollowCountWhenShown';
 

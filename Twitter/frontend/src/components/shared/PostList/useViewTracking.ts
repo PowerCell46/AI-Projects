@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { viewReporter } from '../../../utils/viewReporter';
-import type { ViewReporter } from '../../../utils/viewReporter';
+import { viewReporter } from './viewReporter';
+import type { ViewReporter } from './viewReporter';
 
 
 const MIN_VISIBLE_RATIO = 0.5;
@@ -16,22 +16,22 @@ export function useViewTracking(reporter: ViewReporter = viewReporter): TrackVie
     const dwellTimerIdsRef = useRef(new Map<Element, number>());
 
     useEffect(() => {
-        function flushWhenHidden() {
+        function handleVisibilityChange() {
             if (document.visibilityState === 'hidden') {
                 reporter.flush({ isKeepalive: true });
             }
         }
 
-        function flushOnPageHide() {
+        function handlePageHide() {
             reporter.flush({ isKeepalive: true });
         }
 
-        document.addEventListener('visibilitychange', flushWhenHidden);
-        window.addEventListener('pagehide', flushOnPageHide);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('pagehide', handlePageHide);
 
         return () => {
-            document.removeEventListener('visibilitychange', flushWhenHidden);
-            window.removeEventListener('pagehide', flushOnPageHide);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('pagehide', handlePageHide);
         };
     }, [reporter]);
 
@@ -52,10 +52,13 @@ export function useViewTracking(reporter: ViewReporter = viewReporter): TrackVie
                 return;
             }
 
-            const timerId = window.setTimeout(() => {
-                dwellTimerIdsRef.current.delete(target);
-                reporter.record(tweetId);
-            }, DWELL_MS);
+            const timerId = window.setTimeout(
+                () => {
+                    dwellTimerIdsRef.current.delete(target);
+                    reporter.record(tweetId);
+                },
+                DWELL_MS,
+            );
 
             dwellTimerIdsRef.current.set(target, timerId);
         }

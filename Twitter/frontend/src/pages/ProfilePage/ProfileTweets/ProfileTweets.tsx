@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { fetchAuthorTweets } from '../../../api/authorTweets';
-import type { PageRequest } from '../../../api/paging';
-import type { TweetItem } from '../../../api/tweetPage';
+import { fetchAuthorTweets } from '../../../api/tweets/authorTweets';
+import type { PageRequest } from '../../../api/core/paging';
+import type { TweetItem } from '../../../api/tweets/tweetPage';
 import PostList from '../../../components/shared/PostList/PostList';
-import { formatFullCount } from '../../../utils/profileFormat';
+import { formatFullCount } from '../../../utils/text/profileFormat';
 import './ProfileTweets.css';
 
 

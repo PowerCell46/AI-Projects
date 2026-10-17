@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
-import { countCharacters, isOverCharacterLimit, MAX_TWEET_CHARACTERS } from '../../../utils/composeChecks';
+import { countCharacters } from '../../../utils/text/count';
+import { isOverCharacterLimit, MAX_TWEET_CHARACTERS } from '../../../utils/validation/composeChecks';
 import './ReplyTextField.css';
 
 
@@ -57,12 +58,12 @@ function ReplyTextField({
         <>
             <label className="reply-text-field-label" htmlFor={fieldId}>{label}</label>
             <textarea
-                className="reply-text-field-text"
                 id={fieldId}
-                ref={textareaRef}
+                className="reply-text-field-text"
+                aria-describedby={`${counterId} ${errorId}`}
                 value={text}
                 rows={3}
-                aria-describedby={`${counterId} ${errorId}`}
+                ref={textareaRef}
                 onChange={(event) => onChange(event.currentTarget.value)}
                 onKeyDown={handleKeyDown}
                 onBlur={onBlur}
@@ -77,7 +78,7 @@ function ReplyTextField({
                 >
                     CANCEL
                 </button>
-                <p className="reply-text-field-counter" id={counterId} data-over-limit={isOverCharacterLimit(text)}>
+                <p id={counterId} className="reply-text-field-counter" data-over-limit={isOverCharacterLimit(text)}>
                     {countCharacters(text)} / {MAX_TWEET_CHARACTERS}
                 </p>
                 <button

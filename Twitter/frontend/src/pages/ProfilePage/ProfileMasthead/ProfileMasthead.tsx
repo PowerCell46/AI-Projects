@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import type { UserProfile } from '../../../api/users';
+import type { UserProfile } from '../../../api/accounts/users';
 import Avatar from '../../../components/shared/Avatar/Avatar';
-import { useFocusOnMount } from '../../../hooks/useFocusOnMount';
-import { stripBidiControls } from '../../../utils/bidi';
-import { formatJoinDate } from '../../../utils/profileFormat';
+import { useFocusOnMount } from '../../../hooks/dom/useFocusOnMount';
+import { stripBidiControls } from '../../../utils/text/bidi';
+import { formatJoinDate } from '../../../utils/text/profileFormat';
 import './ProfileMasthead.css';
 
 
@@ -23,15 +23,15 @@ interface ProfileMastheadProps {
 
 // An empty bio or location is left out altogether, not shown as a placeholder.
 function ProfileMasthead({ profile, action }: ProfileMastheadProps) {
+    const nameRef = useFocusOnMount<HTMLHeadingElement>();
     const bio = visibleText(profile.bio);
     const location = visibleText(profile.location);
-    const nameRef = useFocusOnMount<HTMLHeadingElement>();
 
     return (
         <header className="profile-masthead">
             <Avatar pictureUrl={profile.profilePictureUrl} size="huge" />
             <div className="profile-masthead-text">
-                <h1 ref={nameRef} className="profile-masthead-name" tabIndex={-1}>{profile.username}</h1>
+                <h1 className="profile-masthead-name" tabIndex={-1} ref={nameRef}>{profile.username}</h1>
                 {bio !== '' && <p className="profile-masthead-bio">{bio}</p>}
                 <p className="profile-masthead-meta">
                     {location !== '' && <span>{location.toUpperCase()}</span>}

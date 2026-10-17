@@ -1,8 +1,8 @@
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
-import { updateReply } from '../../../api/replies';
-import type { Reply } from '../../../api/replies';
-import { canPublish } from '../../../utils/composeChecks';
+import { updateReply } from '../../../api/tweets/replies';
+import type { Reply } from '../../../api/tweets/replies';
+import { canPublish } from '../../../utils/validation/composeChecks';
 import ReplyTextField from '../ReplyTextField/ReplyTextField';
 import './ReplyEditor.css';
 
@@ -20,8 +20,6 @@ function ReplyEditor({ reply, onSaved, onCancel }: ReplyEditorProps) {
     const [errorMessage, setErrorMessage] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const errorId = useId();
-
-    const isSavable = canPublish(text, 0) && text.trim() !== reply.content.trim() && !isSaving;
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -44,6 +42,8 @@ function ReplyEditor({ reply, onSaved, onCancel }: ReplyEditorProps) {
         }
     }
 
+    const isSavable = canPublish(text, 0) && text.trim() !== reply.content.trim() && !isSaving;
+
     return (
         <form className="reply-editor" onSubmit={handleSubmit}>
             <ReplyTextField
@@ -56,7 +56,7 @@ function ReplyEditor({ reply, onSaved, onCancel }: ReplyEditorProps) {
                 onChange={setText}
                 onCancel={onCancel}
             />
-            <p className="reply-editor-error" id={errorId} role="alert">{errorMessage}</p>
+            <p id={errorId} className="reply-editor-error" role="alert">{errorMessage}</p>
         </form>
     );
 }

@@ -1,5 +1,6 @@
 @import './fonts.css';
 
+/* Breakpoints (max-width): 600px, 720px. */
 :root {
     --deep: #00081f;
     --glow: #4e8bff;
@@ -48,7 +49,7 @@
     --header-height: 3.75rem;
     --tab-row-height: 2.875rem;
     --ruler-width: 4.875rem;
-    --content-pad: clamp(1.625rem, 6vw, 5.5rem);
+    --content-pad: 3rem;
 
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
     --font-headline: 'Inter Tight', system-ui, sans-serif;
@@ -62,6 +63,7 @@
 @media (max-width: 720px) {
     :root {
         --ruler-width: 3.25rem;
+        --content-pad: 1.625rem;
     }
 }
 
@@ -72,8 +74,8 @@
 }
 
 html {
-    font-size: 100%;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    font-size: 100%;
     background: var(--deep);
 }
 
@@ -110,9 +112,9 @@ input {
     margin: -1px;
     padding: 0;
     overflow: hidden;
-    clip-path: inset(50%);
     white-space: nowrap;
     border: 0;
+    clip-path: inset(50%);
 }
 
 @media (prefers-reduced-motion: reduce) {

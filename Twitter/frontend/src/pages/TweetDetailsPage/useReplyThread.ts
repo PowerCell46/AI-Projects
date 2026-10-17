@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { fetchReplies } from '../../api/replies';
-import type { Reply } from '../../api/replies';
-import { usePagedList } from '../../hooks/usePagedList';
-import type { LoadStatus } from '../../hooks/usePagedList';
-import { appendUnique } from '../../utils/tweetList';
+import { fetchReplies } from '../../api/tweets/replies';
+import type { Reply } from '../../api/tweets/replies';
+import { usePagedList } from '../../hooks/lists/usePagedList';
+import type { LoadStatus } from '../../hooks/lists/usePagedList';
+import { appendUnique } from '../../utils/posts/tweetList';
 
 
 export interface ReplyThreadState {

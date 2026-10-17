@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { fetchTweetCount } from '../../api/tweets';
-import { fetchUserProfile } from '../../api/users';
-import type { UserProfile } from '../../api/users';
-import { useDetailsLoader } from '../../hooks/useDetailsLoader';
-import type { DetailsProblem } from '../../hooks/useDetailsLoader';
+import { fetchTweetCount } from '../../api/tweets/tweets';
+import { fetchUserProfile } from '../../api/accounts/users';
+import type { UserProfile } from '../../api/accounts/users';
+import { useDetailsLoader } from '../../hooks/lists/useDetailsLoader';
+import type { DetailsProblem } from '../../hooks/lists/useDetailsLoader';
 
 
 export type { DetailsProblem as ProfileProblem };

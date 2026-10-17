@@ -1,18 +1,18 @@
 import { useEffect, useId, useRef } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
-import type { UserProfile } from '../../../api/users';
+import type { UserProfile } from '../../../api/accounts/users';
 import Avatar from '../../../components/shared/Avatar/Avatar';
-import { useArmPhase } from '../../../hooks/useArmPhase';
-import { useFocusTrap } from '../../../hooks/useFocusTrap';
-import { useOverLimitAnnouncement } from '../../../hooks/useOverLimitAnnouncement';
-import { useScrollLock } from '../../../hooks/useScrollLock';
-import { ALLOWED_IMAGE_TYPES } from '../../../utils/composeChecks';
+import { useArmPhase } from '../../../hooks/social/useArmPhase';
+import { useFocusTrap } from '../../../hooks/dom/useFocusTrap';
+import { useOverLimitAnnouncement } from './useOverLimitAnnouncement';
+import { useScrollLock } from '../../../hooks/dom/useScrollLock';
+import { countCharacters } from '../../../utils/text/count';
+import { ALLOWED_IMAGE_TYPES } from '../../../utils/validation/composeChecks';
 import {
-    countProfileCharacters,
     PROFILE_BIO_MAX_CODE_POINTS,
     PROFILE_LOCATION_MAX_CODE_POINTS,
     PROFILE_PHOTO_HINT,
-} from '../../../utils/profileEdit';
+} from '../../../utils/validation/profileEdit';
 import LockedField from './LockedField/LockedField';
 import { usePhotoPick } from './usePhotoPick';
 import { useProfileEdit } from './useProfileEdit';
@@ -62,10 +62,6 @@ function ProfileEditSheet({ profile, email, onSaved, onClose }: ProfileEditSheet
     const dialogRef = useRef<HTMLDivElement>(null);
     const bioRef = useRef<HTMLTextAreaElement>(null);
     const handleTrapKeyDown = useFocusTrap(dialogRef);
-    const isArmed = discard.phase === 'armed';
-    const locationError = edit.errors.location || (edit.isLocationOver ? LOCATION_OVER_MESSAGE : '');
-    const photoError = edit.errors.photo || photo.errorMessage;
-    const isSaveBlocked = edit.isSaving || edit.isBioOver || edit.isLocationOver;
 
     // The sheet fades in first, so the bio takes focus a moment after it opens.
     useEffect(() => {
@@ -125,6 +121,11 @@ function ProfileEditSheet({ profile, email, onSaved, onClose }: ProfileEditSheet
         }
     }
 
+    const isArmed = discard.phase === 'armed';
+    const locationError = edit.errors.location || (edit.isLocationOver ? LOCATION_OVER_MESSAGE : '');
+    const photoError = edit.errors.photo || photo.errorMessage;
+    const isSaveBlocked = edit.isSaving || edit.isBioOver || edit.isLocationOver;
+
     return (
         <div
             className="profile-edit-sheet"
@@ -169,7 +170,7 @@ function ProfileEditSheet({ profile, email, onSaved, onClose }: ProfileEditSheet
                     />
                     <div className="profile-edit-sheet-rule" aria-hidden="true" />
                     <p id={counterId} className="profile-edit-sheet-counter" data-over-limit={edit.isBioOver}>
-                        {countProfileCharacters(edit.bio)} / {PROFILE_BIO_MAX_CODE_POINTS}
+                        {countCharacters(edit.bio)} / {PROFILE_BIO_MAX_CODE_POINTS}
                     </p>
                     <p id={bioErrorId} className="profile-edit-sheet-error">{edit.errors.bio}</p>
                     <p className="sr-only" aria-live="polite">{overLimitAnnouncement}</p>

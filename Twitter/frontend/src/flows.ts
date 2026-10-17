@@ -1,3 +1,5 @@
+const IDENTITY_DEPTH_METRES = 140;
+
 export type FlowName = 'login' | 'register' | 'resend';
 
 export type FlowField = 'identifier' | 'email' | 'username' | 'password';
@@ -17,8 +19,6 @@ export interface Flow {
     submitLabel: string;
     seafloorDepthMetres: number;
 }
-
-const IDENTITY_DEPTH_METRES = 140;
 
 export const FLOWS: Record<FlowName, Flow> = {
     login: {

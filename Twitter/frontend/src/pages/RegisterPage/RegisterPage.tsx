@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { register } from '../../api/auth';
+import { register } from '../../api/accounts/auth';
 import Arrival from '../../components/shared/Arrival/Arrival';
 import DescentStage from '../../components/shared/DescentStage/DescentStage';
 import ResendButton from '../../components/shared/ResendButton/ResendButton';

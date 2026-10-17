@@ -3,7 +3,7 @@ import {
     isMajorTick,
     tickLabelMetres,
     tickPositionPercent,
-} from '../../../../utils/depth';
+} from '../../../../utils/browser/depth';
 import './Ruler.css';
 
 

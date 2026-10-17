@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { TweetItem } from '../api/tweetPage';
+import type { TweetItem } from '../api/tweets/tweetPage';
 
 
 // The fields of a post that you can change from its details page.
@@ -11,11 +11,11 @@ interface PostUpdatesContextValue {
     reportUpdate: (tweetId: string, update: PostUpdate) => void;
 }
 
+const PostUpdatesContext = createContext<PostUpdatesContextValue | null>(null);
+
 interface PostUpdatesProviderProps {
     children: ReactNode;
 }
-
-const PostUpdatesContext = createContext<PostUpdatesContextValue | null>(null);
 
 export function PostUpdatesProvider({ children }: PostUpdatesProviderProps) {
     const [updates, setUpdates] = useState<Record<string, PostUpdate>>({});

@@ -1,9 +1,9 @@
-import type { PageRequest } from '../../../api/paging';
-import type { TweetItem, TweetPage } from '../../../api/tweetPage';
+import type { PageRequest } from '../../../api/core/paging';
+import type { TweetItem, TweetPage } from '../../../api/tweets/tweetPage';
 import { usePostUpdates } from '../../../contexts/PostUpdatesContext';
-import { useBottomSentinel } from '../../../hooks/useBottomSentinel';
-import { useMinuteClock } from '../../../hooks/useMinuteClock';
-import { bottomStateOf } from '../../../utils/bottomState';
+import { useBottomSentinel } from '../../../hooks/lists/useBottomSentinel';
+import { useMinuteClock } from '../../../hooks/dom/useMinuteClock';
+import { bottomStateOf } from '../../../utils/posts/bottomState';
 import type { EmptyAction } from '../PostListStatus/PostListStatus';
 import ListFooter from '../ListFooter/ListFooter';
 import NewPostsButton from './NewPostsButton/NewPostsButton';
@@ -39,8 +39,8 @@ function PostList({
     reloadEmptyKey,
     isShown = true,
 }: PostListProps) {
-    const list = usePostList(fetchPage, ownPosts);
     const { updates } = usePostUpdates();
+    const list = usePostList(fetchPage, ownPosts);
     const now = useMinuteClock(isShown);
     const trackView = useViewTracking();
     const sentinelRef = useBottomSentinel(list.loadMore, `${list.items.length}-${list.status}`);

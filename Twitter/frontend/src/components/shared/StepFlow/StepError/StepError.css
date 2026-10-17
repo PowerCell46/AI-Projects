@@ -14,10 +14,10 @@
 .step-error-message {
     display: flex;
     padding: 0.5rem 0;
-    font-size: 0.65625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.13em;
-    color: var(--alarm);
     overflow-wrap: anywhere;
+    color: var(--alarm);
 }
 
 .step-error-marker {
