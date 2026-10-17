@@ -1,40 +1,43 @@
-import { useState } from 'react'
-import type { AuthUser } from '../../api/auth'
-import Feed from './Feed/Feed'
-import './HomePage.css'
+import { useState } from 'react';
+import Feed from './Feed/Feed';
+import './HomePage.css';
 
 interface HomePageProps {
-    user: AuthUser
-    onSignOutRequest: () => void
-    entering: boolean
+    isEntering: boolean;
+    onSignOutRequest: () => void;
 }
 
-function HomePage({ onSignOutRequest, entering }: HomePageProps) {
-    const [signingOut, setSigningOut] = useState(false)
+function HomePage({ isEntering, onSignOutRequest }: HomePageProps) {
+    const [isSigningOut, setIsSigningOut] = useState(false);
 
     function handleSignOut() {
-        if (signingOut) {
-            return
+        if (isSigningOut) {
+            return;
         }
 
-        setSigningOut(true)
-        onSignOutRequest()
+        setIsSigningOut(true);
+        onSignOutRequest();
     }
 
     return (
         <div className="home-page">
             <header className="home-header">
-                <span className="home-wordmark">signalflow</span>
-                <button type="button" className="home-signout" onClick={handleSignOut} disabled={signingOut}>
-                    {signingOut ? 'Signing out' : 'Sign out'}
+                <span className="home-wordmark">SignalFlow</span>
+                <button
+                    type="button"
+                    className="home-signout"
+                    disabled={isSigningOut}
+                    onClick={handleSignOut}
+                >
+                    {isSigningOut ? 'Signing out' : 'Sign out'}
                 </button>
             </header>
 
-            <main className="home-main" data-entering={entering}>
+            <main className="home-main" data-entering={isEntering}>
                 <Feed />
             </main>
         </div>
-    )
+    );
 }
 
-export default HomePage
+export default HomePage;

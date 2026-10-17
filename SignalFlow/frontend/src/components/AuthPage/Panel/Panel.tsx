@@ -1,15 +1,7 @@
-import type { CSSProperties } from 'react'
-import './Panel.css'
+import type { AuthMode } from '../authMode';
+import './Panel.css';
 
-export type Mode = 'signin' | 'register'
-
-interface PanelProps {
-    mode: Mode
-    style: CSSProperties
-    onSwitch: () => void
-}
-
-const COPY: Record<Mode, { heading: string; body: string; button: string }> = {
+const COPY: Record<AuthMode, PanelCopy> = {
     signin: {
         heading: 'New to SignalFlow?',
         body: 'Create an account to follow topics and build a feed that only shows what you track.',
@@ -20,15 +12,29 @@ const COPY: Record<Mode, { heading: string; body: string; button: string }> = {
         body: 'Sign in to pick up your feed and the topics you already follow.',
         button: 'Sign in',
     },
+};
+
+export type PanelPosition = 'left' | 'right' | 'full';
+
+interface PanelCopy {
+    heading: string;
+    body: string;
+    button: string;
 }
 
-function Panel({ mode, style, onSwitch }: PanelProps) {
-    const copy = COPY[mode]
+interface PanelProps {
+    mode: AuthMode;
+    position: PanelPosition;
+    onSwitch: () => void;
+}
+
+function Panel({ mode, position, onSwitch }: PanelProps) {
+    const copy = COPY[mode];
 
     return (
-        <div className="auth-panel" style={style}>
+        <div className="auth-panel" data-position={position}>
             <div className="auth-panel-content">
-                <p className="auth-panel-wordmark">signalflow</p>
+                <p className="auth-panel-wordmark">SignalFlow</p>
                 <h2 className="auth-panel-heading">{copy.heading}</h2>
                 <p className="auth-panel-copy">{copy.body}</p>
                 <button type="button" className="auth-panel-switch" onClick={onSwitch}>
@@ -36,7 +42,7 @@ function Panel({ mode, style, onSwitch }: PanelProps) {
                 </button>
             </div>
         </div>
-    )
+    );
 }
 
-export default Panel
+export default Panel;

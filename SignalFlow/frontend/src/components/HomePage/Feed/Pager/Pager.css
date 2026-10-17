@@ -8,10 +8,10 @@
     gap: calc(var(--home-scale) * 1.25rem);
     margin: 0;
     padding: 0;
-    border: none;
-    background: none;
     font: inherit;
     text-align: left;
+    background: none;
+    border: none;
     cursor: pointer;
 }
 
@@ -28,8 +28,8 @@
 
 .pager-stem {
     position: absolute;
-    left: calc(var(--home-scale) * 0.3125rem);
     top: 0;
+    left: calc(var(--home-scale) * 0.3125rem);
     width: 1.5px;
     height: calc(var(--home-scale) * 0.875rem);
     background-color: var(--line-btn);
@@ -40,8 +40,8 @@
 
 .pager-head {
     position: absolute;
-    left: 0;
     top: calc(var(--home-scale) * 0.6875rem);
+    left: 0;
     width: calc(var(--home-scale) * 0.625rem);
     height: calc(var(--home-scale) * 0.625rem);
     border-right: 1.5px solid var(--line-btn);
@@ -53,13 +53,13 @@
 }
 
 .pager-control:hover:not(:disabled) .pager-stem {
-    background-color: var(--accent);
     height: calc(var(--home-scale) * 1.25rem);
+    background-color: var(--accent);
 }
 
 .pager-control:hover:not(:disabled) .pager-head {
     border-color: var(--accent);
-    transform: rotate(45deg) translate(4px, 4px);
+    transform: rotate(45deg) translate(0.25rem, 0.25rem);
 }
 
 .pager-text {

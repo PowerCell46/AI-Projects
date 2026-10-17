@@ -1,24 +1,23 @@
-import { useState } from 'react'
-import type { ChangeEvent, FormEvent, RefObject } from 'react'
-import { AuthApiError, login, register } from '../../../api/auth'
-import type { AuthUser } from '../../../api/auth'
-import './AuthForm.css'
+import { useState } from 'react';
+import type { ChangeEvent, FormEvent, RefObject } from 'react';
+import { login, register } from '../../../api/auth';
+import type { AuthCredentials, AuthUser } from '../../../api/auth';
+import { ApiError } from '../../../api/request';
+import type { AuthMode } from '../authMode';
+import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, validateEmail, validatePassword } from './validation';
+import './AuthForm.css';
 
-export type Mode = 'signin' | 'register'
+const HTTP_UNAUTHORIZED = 401;
 
-type Phase = 'idle' | 'submitting' | 'error'
+const HTTP_CONFLICT = 409;
 
-type InvalidField = 'email' | 'password'
+const INVALID_CREDENTIALS_MESSAGE = "That email and password don't match an account.";
 
-interface AuthFormProps {
-    mode: Mode
-    active: boolean
-    emailInputRef: RefObject<HTMLInputElement | null>
-    onRequestSwitch: () => void
-    onAuthSuccess: (user: AuthUser) => void
-}
+const DUPLICATE_ACCOUNT_MESSAGE = 'An account already exists for that email.';
 
-const COPY: Record<Mode, { heading: string; sub: string; submit: string; submitting: string }> = {
+const SERVER_UNREACHABLE_MESSAGE = "Couldn't reach the server. Try again.";
+
+const COPY: Record<AuthMode, AuthFormCopy> = {
     signin: {
         heading: 'Sign in',
         sub: 'Pick up your feed where you left it.',
@@ -31,184 +30,210 @@ const COPY: Record<Mode, { heading: string; sub: string; submit: string; submitt
         submit: 'Create account',
         submitting: 'Creating account',
     },
+};
+
+type FormPhase = 'idle' | 'submitting' | 'error';
+
+type InvalidField = 'email' | 'password';
+
+interface AuthFormCopy {
+    heading: string;
+    sub: string;
+    submit: string;
+    submitting: string;
 }
 
-// Mirrors RegisterRequestDTO/LoginRequestDTO's @Pattern rules on the gateway — kept in sync with
-// signal_flow_api_gateway so obviously-invalid input never reaches the network.
-const EMAIL_MAX_LENGTH = 254
-const EMAIL_PATTERN = /^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/
-
-const PASSWORD_MIN_LENGTH = 8
-const PASSWORD_MAX_LENGTH = 72
-const PASSWORD_COMPLEXITY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/
-
-function validateEmail(value: string): string | null {
-    const trimmed = value.trim()
-
-    if (!trimmed) {
-        return 'Enter your email.'
-    }
-    if (trimmed.length > EMAIL_MAX_LENGTH) {
-        return `Email must be ${EMAIL_MAX_LENGTH} characters or fewer.`
-    }
-    if (!EMAIL_PATTERN.test(trimmed)) {
-        return 'Enter a valid email address.'
-    }
-
-    return null
+interface FormFailure {
+    message: string;
+    invalidFields: InvalidField[];
 }
 
-function validatePassword(value: string): string | null {
-    if (!value) {
-        return 'Enter your password.'
-    }
-    if (value.length < PASSWORD_MIN_LENGTH || value.length > PASSWORD_MAX_LENGTH) {
-        return `Password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters.`
-    }
-    if (!PASSWORD_COMPLEXITY_PATTERN.test(value)) {
-        return 'Password needs an uppercase letter, a lowercase letter, and a number.'
+function validateCredentials(email: string, password: string): FormFailure | null {
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+
+    if (!emailError && !passwordError) {
+        return null;
     }
 
-    return null
+    const invalidFields: InvalidField[] = [];
+
+    if (emailError) {
+        invalidFields.push('email');
+    }
+
+    if (passwordError) {
+        invalidFields.push('password');
+    }
+
+    return {
+        message: emailError ?? passwordError ?? '',
+        invalidFields,
+    };
 }
 
-function AuthForm({ mode, active, emailInputRef, onRequestSwitch, onAuthSuccess }: AuthFormProps) {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [phase, setPhase] = useState<Phase>('idle')
-    const [errorMessage, setErrorMessage] = useState('')
-    const [invalidFields, setInvalidFields] = useState<Set<InvalidField>>(new Set())
-    const [showPassword, setShowPassword] = useState(false)
+// The design's copy differs from the gateway's own messages, so the status picks the text.
+function failureFromError(mode: AuthMode, error: unknown): FormFailure {
+    const status = error instanceof ApiError ? error.status : null;
 
-    const isSignIn = mode === 'signin'
-    const copy = COPY[mode]
-    const emailId = `${mode}-email`
-    const passwordId = `${mode}-password`
-    const isSubmitting = phase === 'submitting'
+    if (mode === 'signin' && status === HTTP_UNAUTHORIZED) {
+        return {
+            message: INVALID_CREDENTIALS_MESSAGE,
+            invalidFields: ['email', 'password'],
+        };
+    }
 
-    function handleFieldChange(field: InvalidField, event: ChangeEvent<HTMLInputElement>) {
-        if (field === 'email') {
-            setEmail(event.target.value)
-        } else {
-            setPassword(event.target.value)
+    if (mode === 'register' && status === HTTP_CONFLICT) {
+        return {
+            message: DUPLICATE_ACCOUNT_MESSAGE,
+            invalidFields: ['email'],
+        };
+    }
+
+    return {
+        message: SERVER_UNREACHABLE_MESSAGE,
+        invalidFields: [],
+    };
+}
+
+function authenticate(mode: AuthMode, credentials: AuthCredentials): Promise<AuthUser> {
+    return mode === 'signin' ? login(credentials) : register(credentials);
+}
+
+interface AuthFormProps {
+    mode: AuthMode;
+    isActive: boolean;
+    emailInputRef: RefObject<HTMLInputElement | null>;
+    onRequestSwitch: () => void;
+    onAuthSuccess: (user: AuthUser) => void;
+}
+
+function AuthForm({ mode, isActive, emailInputRef, onRequestSwitch, onAuthSuccess }: AuthFormProps) {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [phase, setPhase] = useState<FormPhase>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [invalidFields, setInvalidFields] = useState<Set<InvalidField>>(new Set());
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+    const isSignIn = mode === 'signin';
+    const isSubmitting = phase === 'submitting';
+    const copy = COPY[mode];
+    const emailId = `${mode}-email`;
+    const passwordId = `${mode}-password`;
+
+    function clearFailure() {
+        setErrorMessage('');
+        setInvalidFields(new Set());
+    }
+
+    function showFailure(failure: FormFailure) {
+        setPhase('error');
+        setErrorMessage(failure.message);
+        setInvalidFields(new Set(failure.invalidFields));
+    }
+
+    function resetAfterEdit() {
+        if (phase !== 'error') {
+            return;
         }
 
-        if (phase === 'error') {
-            setPhase('idle')
-            setErrorMessage('')
-            setInvalidFields(new Set())
-        }
+        setPhase('idle');
+        clearFailure();
+    }
+
+    function handleEmailChange(event: ChangeEvent<HTMLInputElement>) {
+        setEmail(event.target.value);
+        resetAfterEdit();
+    }
+
+    function handlePasswordChange(event: ChangeEvent<HTMLInputElement>) {
+        setPassword(event.target.value);
+        resetAfterEdit();
     }
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
+        event.preventDefault();
 
         if (isSubmitting) {
-            return
+            return;
         }
 
-        const emailError = validateEmail(email)
-        const passwordError = validatePassword(password)
+        const validationFailure = validateCredentials(email, password);
 
-        if (emailError || passwordError) {
-            const fields = new Set<InvalidField>()
-            if (emailError) {
-                fields.add('email')
-            }
-            if (passwordError) {
-                fields.add('password')
-            }
+        if (validationFailure) {
+            showFailure(validationFailure);
 
-            setPhase('error')
-            setErrorMessage(emailError ?? passwordError ?? '')
-            setInvalidFields(fields)
-            return
+            return;
         }
 
-        setPhase('submitting')
-        setErrorMessage('')
-        setInvalidFields(new Set())
+        const credentials: AuthCredentials = {
+            email,
+            password,
+        };
+
+        setPhase('submitting');
+        clearFailure();
 
         try {
-            let user: AuthUser
+            const user = await authenticate(mode, credentials);
 
-            if (isSignIn) {
-                user = await login({
-                    email,
-                    password,
-                })
-            }
-            else {
-                user = await register({
-                    email,
-                    password,
-                })
-            }
+            onAuthSuccess(user);
 
-            onAuthSuccess(user)
         } catch (error) {
-            if (isSignIn && error instanceof AuthApiError && error.status === 401) {
-                setErrorMessage("That email and password don't match an account.")
-                setInvalidFields(new Set(['email', 'password']))
-            } else if (!isSignIn && error instanceof AuthApiError && error.status === 409) {
-                setErrorMessage('An account already exists for that email.')
-                setInvalidFields(new Set(['email']))
-            } else {
-                setErrorMessage("Couldn't reach the server. Try again.")
-            }
-            setPhase('error')
+            showFailure(failureFromError(mode, error));
         }
     }
 
     return (
-        <div className="auth-form-wrap" aria-hidden={!active} inert={!active}>
-            <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        <div className="auth-form-wrap" aria-hidden={!isActive} inert={!isActive}>
+            <form className="auth-form" noValidate onSubmit={handleSubmit}>
                 <h1 className="auth-form-heading">{copy.heading}</h1>
                 <p className="auth-form-sub">{copy.sub}</p>
 
                 <div className="auth-fields">
                     <div className="auth-field">
-                        <label htmlFor={emailId} className="auth-label">
+                        <label className="auth-label" htmlFor={emailId}>
                             Email
                         </label>
                         <input
                             id={emailId}
-                            ref={emailInputRef}
-                            className="auth-input"
                             type="email"
+                            className="auth-input"
+                            aria-invalid={invalidFields.has('email')}
                             autoComplete="email"
+                            disabled={isSubmitting}
                             maxLength={EMAIL_MAX_LENGTH}
                             value={email}
-                            onChange={(event) => handleFieldChange('email', event)}
-                            aria-invalid={invalidFields.has('email')}
-                            disabled={isSubmitting}
+                            ref={emailInputRef}
+                            onChange={handleEmailChange}
                         />
                     </div>
 
                     <div className="auth-field">
-                        <label htmlFor={passwordId} className="auth-label">
+                        <label className="auth-label" htmlFor={passwordId}>
                             Password
                         </label>
                         <div className="auth-password-wrap">
                             <input
                                 id={passwordId}
+                                type={isPasswordVisible ? 'text' : 'password'}
                                 className="auth-input auth-input-password"
-                                type={showPassword ? 'text' : 'password'}
+                                aria-invalid={invalidFields.has('password')}
                                 autoComplete={isSignIn ? 'current-password' : 'new-password'}
+                                disabled={isSubmitting}
                                 maxLength={PASSWORD_MAX_LENGTH}
                                 value={password}
-                                onChange={(event) => handleFieldChange('password', event)}
-                                aria-invalid={invalidFields.has('password')}
-                                disabled={isSubmitting}
+                                onChange={handlePasswordChange}
                             />
                             <button
                                 type="button"
                                 className="auth-password-toggle"
-                                onClick={() => setShowPassword((prev) => !prev)}
-                                aria-pressed={showPassword}
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+                                aria-pressed={isPasswordVisible}
+                                onClick={() => setIsPasswordVisible((wasVisible) => !wasVisible)}
                             >
-                                {showPassword ? 'Hide' : 'Show'}
+                                {isPasswordVisible ? 'Hide' : 'Show'}
                             </button>
                         </div>
                     </div>
@@ -230,7 +255,7 @@ function AuthForm({ mode, active, emailInputRef, onRequestSwitch, onAuthSuccess 
                 </p>
             </form>
         </div>
-    )
+    );
 }
 
-export default AuthForm
+export default AuthForm;

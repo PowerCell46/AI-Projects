@@ -1,63 +1,58 @@
-import { useEffect, useState } from 'react'
-import './BackToTop.css'
+import { useEffect, useState } from 'react';
+import { isReducedMotionPreferred } from '../../../../utils/motion';
+import './BackToTop.css';
 
-const SCROLL_THRESHOLD = 400
+const SCROLL_THRESHOLD_PX = 400;
 
 function BackToTop() {
-    const [visible, setVisible] = useState(false)
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
         function updateVisibility() {
-            const scrollable = document.documentElement.scrollHeight > window.innerHeight
-            const pastThreshold = window.scrollY > SCROLL_THRESHOLD
+            const isScrollable = document.documentElement.scrollHeight > window.innerHeight;
+            const isPastThreshold = window.scrollY > SCROLL_THRESHOLD_PX;
 
-            setVisible(scrollable && pastThreshold)
+            setIsVisible(isScrollable && isPastThreshold);
         }
 
-        updateVisibility()
+        updateVisibility();
 
         window.addEventListener(
             'scroll',
             updateVisibility,
             { passive: true },
-        )
-        window.addEventListener(
-            'resize',
-            updateVisibility,
-        )
+        );
+        window.addEventListener('resize', updateVisibility);
 
         return () => {
-            window.removeEventListener(
-                'scroll',
-                updateVisibility,
-            )
-            window.removeEventListener(
-                'resize',
-                updateVisibility,
-            )
-        }
-    }, [])
+            window.removeEventListener('scroll', updateVisibility);
+            window.removeEventListener('resize', updateVisibility);
+        };
+    }, []);
 
     function handleClick() {
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
         window.scrollTo({
             top: 0,
-            behavior: reduceMotion ? 'auto' : 'smooth',
-        })
+            behavior: isReducedMotionPreferred() ? 'auto' : 'smooth',
+        });
     }
 
-    if (!visible) {
-        return null
+    if (!isVisible) {
+        return null;
     }
 
     return (
-        <button type="button" className="back-to-top" onClick={handleClick} aria-label="Back to top">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <button
+            type="button"
+            className="back-to-top"
+            aria-label="Back to top"
+            onClick={handleClick}
+        >
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                 <path d="M12 5l-7 7h4v7h6v-7h4z" fill="currentColor" />
             </svg>
         </button>
-    )
+    );
 }
 
-export default BackToTop
+export default BackToTop;

@@ -1,22 +1,27 @@
-import './Pager.css'
+import './Pager.css';
 
 interface PagerProps {
-    loaded: number
-    total: number
-    hasMore: boolean
-    loading: boolean
-    pageSize: number
-    error: string | null
-    onLoadMore: () => void
+    loaded: number;
+    total: number;
+    hasMore: boolean;
+    isLoading: boolean;
+    pageSize: number;
+    errorMessage: string | null;
+    onLoadMore: () => void;
 }
 
-function Pager({ loaded, total, hasMore, loading, pageSize, error, onLoadMore }: PagerProps) {
-    const nextCount = Math.min(pageSize, Math.max(0, total - loaded))
+function Pager({ loaded, total, hasMore, isLoading, pageSize, errorMessage, onLoadMore }: PagerProps) {
+    const nextCount = Math.min(pageSize, Math.max(0, total - loaded));
 
     return (
         <div className="pager">
             {hasMore ? (
-                <button type="button" className="pager-control" onClick={onLoadMore} disabled={loading}>
+                <button
+                    type="button"
+                    className="pager-control"
+                    disabled={isLoading}
+                    onClick={onLoadMore}
+                >
                     <span className="pager-marker" aria-hidden="true">
                         <span className="pager-stem" />
                         <span className="pager-head" />
@@ -24,7 +29,7 @@ function Pager({ loaded, total, hasMore, loading, pageSize, error, onLoadMore }:
 
                     <span className="pager-text">
                         <span className="pager-action">
-                            {loading ? 'Loading' : `Load the next ${nextCount}`}
+                            {isLoading ? 'Loading' : `Load the next ${nextCount}`}
                         </span>
 
                         <span className="pager-count">
@@ -38,9 +43,9 @@ function Pager({ loaded, total, hasMore, loading, pageSize, error, onLoadMore }:
                 </p>
             )}
 
-            {error && <p className="pager-error">{error}</p>}
+            {errorMessage && <p className="pager-error">{errorMessage}</p>}
         </div>
-    )
+    );
 }
 
-export default Pager
+export default Pager;

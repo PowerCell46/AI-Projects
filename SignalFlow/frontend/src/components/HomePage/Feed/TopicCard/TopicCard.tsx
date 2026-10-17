@@ -1,18 +1,28 @@
-import { useState } from 'react'
-import { subscribe, unsubscribe } from '../../../../api/subscriptions'
-import type { FeedSchedule, FeedTopic } from '../../../../api/feed'
-import './TopicCard.css'
+import { useState } from 'react';
+import { subscribe, unsubscribe } from '../../../../api/subscriptions';
+import type { FeedCategory, FeedSchedule, FeedTopic } from '../../../../api/feed';
+import './TopicCard.css';
 
 const SCHEDULE_LABELS: Record<FeedSchedule, string> = {
     DAILY: 'Daily',
     WEEKDAYS: 'Weekdays',
     WEEKENDS: 'Weekends',
-    WEEKLY: 'Weekly \u00B7 Mondays',
+    WEEKLY: 'Weekly · Mondays',
 };
 
 const MAX_VISIBLE_CATEGORIES = 2;
 
-function hiddenCategoryNames(categories: FeedTopic['categories']): string {
+// Must outlast the longest burst animation in TopicCard.css (950ms), so the data attribute is
+// only cleared once the animation has finished.
+const BURST_DURATION_MS = 1000;
+
+const SUBSCRIBE_ERROR = "Couldn't subscribe. Try again.";
+
+const UNSUBSCRIBE_ERROR = "Couldn't unsubscribe. Try again.";
+
+type BurstKind = 'subscribe' | 'unsubscribe';
+
+function hiddenCategoryNames(categories: FeedCategory[]): string {
     return categories
         .slice(MAX_VISIBLE_CATEGORIES)
         .map((category) => category.name)
@@ -20,81 +30,76 @@ function hiddenCategoryNames(categories: FeedTopic['categories']): string {
 }
 
 interface TopicCardProps {
-    topic: FeedTopic
-    onChange: (topicId: string, subscribed: boolean) => void
+    topic: FeedTopic;
+    onChange: (topicId: string, isSubscribed: boolean) => void;
 }
 
 function TopicCard({ topic, onChange }: TopicCardProps) {
-    const [subscribed, setSubscribed] = useState(topic.subscribed)
-    const [pending, setPending] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [burst, setBurst] = useState<'subscribe' | 'unsubscribe' | null>(null)
+    const [isSubscribed, setIsSubscribed] = useState(topic.subscribed);
+    const [isPending, setIsPending] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [burst, setBurst] = useState<BurstKind | null>(null);
 
     async function handleToggle() {
-        if (pending) {
-            return
+        if (isPending) {
+            return;
         }
 
-        const next = !subscribed
+        const willSubscribe = !isSubscribed;
 
-        setPending(true)
-        setError(null)
-        setSubscribed(next)
+        setIsPending(true);
+        setErrorMessage(null);
+        setIsSubscribed(willSubscribe);
 
-        // Trigger the one-shot animation
-        setBurst(next ? 'subscribe' : 'unsubscribe')
-        setTimeout(() => setBurst(null), 1000)
+        setBurst(willSubscribe ? 'subscribe' : 'unsubscribe');
+        window.setTimeout(() => setBurst(null), BURST_DURATION_MS);
 
         try {
-            if (next) {
-                await subscribe(topic.id)
+            if (willSubscribe) {
+                await subscribe(topic.id);
+
             } else {
-                await unsubscribe(topic.id)
+                await unsubscribe(topic.id);
             }
 
-            onChange(topic.id, next)
+            onChange(topic.id, willSubscribe);
+
         } catch {
-            setSubscribed(!next)
-            setError(next ? "Couldn't subscribe. Try again." : "Couldn't unsubscribe. Try again.")
+            setIsSubscribed(!willSubscribe);
+            setErrorMessage(willSubscribe ? SUBSCRIBE_ERROR : UNSUBSCRIBE_ERROR);
+
         } finally {
-            setPending(false)
+            setIsPending(false);
         }
     }
 
     const scheduleLabel: string | undefined = SCHEDULE_LABELS[topic.schedule];
+    const visibleCategories = topic.categories.slice(0, MAX_VISIBLE_CATEGORIES);
+    const hiddenCategoryCount = topic.categories.length - MAX_VISIBLE_CATEGORIES;
 
     return (
-        <article
-            className="topic-card"
-            data-subscribed={subscribed}
-            data-burst={burst ?? undefined}
-        >
+        <article className="topic-card" data-subscribed={isSubscribed} data-burst={burst ?? undefined}>
             <h2 className="topic-card-title">{topic.name}</h2>
 
             <ul className="topic-card-categories">
-                {topic.categories.slice(0, MAX_VISIBLE_CATEGORIES).map((category) => (
-                    <li
-                        key={category.id}
-                        className="topic-card-category"
-                        title={category.name}
-                    >
+                {visibleCategories.map((category) => (
+                    <li key={category.id} className="topic-card-category" title={category.name}>
                         {category.name}
                     </li>
                 ))}
-                {topic.categories.length > MAX_VISIBLE_CATEGORIES && (
+
+                {hiddenCategoryCount > 0 && (
                     <li
                         className="topic-card-category"
                         data-overflow="true"
                         title={hiddenCategoryNames(topic.categories)}
                     >
-                        +{topic.categories.length - MAX_VISIBLE_CATEGORIES}
+                        +{hiddenCategoryCount}
                     </li>
                 )}
             </ul>
 
-            {scheduleLabel && (
-                <p className="topic-card-schedule">{scheduleLabel}</p>
-            )}
+            {scheduleLabel && <p className="topic-card-schedule">{scheduleLabel}</p>}
 
             <p className="topic-card-description">{topic.description}</p>
 
@@ -102,21 +107,20 @@ function TopicCard({ topic, onChange }: TopicCardProps) {
                 <button
                     type="button"
                     className="topic-card-button"
-                    aria-pressed={subscribed}
-                    disabled={pending}
+                    aria-pressed={isSubscribed}
+                    disabled={isPending}
                     onClick={handleToggle}
                 >
-                    {subscribed ? 'Subscribed' : 'Subscribe'}
+                    {isSubscribed ? 'Subscribed' : 'Subscribe'}
                 </button>
-                {/* Ripple ring — rendered as a sibling so it can overflow the button */}
-                {burst && (
-                    <span className="topic-card-ripple" data-kind={burst} aria-hidden="true" />
-                )}
+
+                {/* A sibling of the button, so the expanding ring can overflow it. */}
+                {burst && <span className="topic-card-ripple" data-kind={burst} aria-hidden="true" />}
             </div>
 
-            {error && <p className="topic-card-error">{error}</p>}
+            {errorMessage && <p className="topic-card-error">{errorMessage}</p>}
         </article>
-    )
+    );
 }
 
-export default TopicCard
+export default TopicCard;

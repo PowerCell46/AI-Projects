@@ -1,61 +1,45 @@
-const BASE_URL = import.meta.env.VITE_BASE_API_URL ?? ''
+import { ENDPOINTS } from './endpoints';
+import { requestJson } from './request';
 
-export type FeedFilter = 'ALL' | 'SUBSCRIBED' | 'NOT_SUBSCRIBED'
+export type FeedFilterValue = 'ALL' | 'SUBSCRIBED' | 'NOT_SUBSCRIBED';
 
-export type FeedSchedule = 'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'WEEKLY'
+export type FeedSchedule = 'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'WEEKLY';
 
 export interface FeedCategory {
-    id: string
-    name: string
+    id: string;
+    name: string;
 }
 
 export interface FeedTopic {
-    id: string
-    name: string
-    description: string
-    categories: FeedCategory[]
-    schedule: FeedSchedule
-    subscribed: boolean
+    id: string;
+    name: string;
+    description: string;
+    categories: FeedCategory[];
+    schedule: FeedSchedule;
+    subscribed: boolean;
 }
 
 export interface FeedCounts {
-    all: number
-    subscribed: number
-    notSubscribed: number
+    all: number;
+    subscribed: number;
+    notSubscribed: number;
 }
 
 export interface FeedPage {
-    items: FeedTopic[]
-    nextCursor: string | null
-    counts: FeedCounts
+    items: FeedTopic[];
+    nextCursor: string | null;
+    counts: FeedCounts;
 }
 
-export class FeedApiError extends Error {
-    readonly status: number
-
-    constructor(status: number) {
-        super(`Feed request failed with status ${status}`)
-        this.status = status
-    }
-}
-
-export async function fetchFeed(filter: FeedFilter, after: string | null, size: number): Promise<FeedPage> {
+export function fetchFeed(filter: FeedFilterValue, after: string | null, size: number): Promise<FeedPage> {
     const params = new URLSearchParams({
         filter,
         size: String(size),
-    })
+    });
 
     if (after) {
-        params.set('after', after)
+        params.set('after', after);
     }
 
-    const response = await fetch(`${BASE_URL}/api/v1/feed?${params.toString()}`, {
-        credentials: 'include',
-    })
-
-    if (!response.ok) {
-        throw new FeedApiError(response.status)
-    }
-
-    return response.json() as Promise<FeedPage>
+    return requestJson<FeedPage>(`${ENDPOINTS.feed}?${params.toString()}`);
 }

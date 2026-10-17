@@ -1,25 +1,29 @@
 .topic-card {
-    position: relative;
-    background-color: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 0.25rem;
-    padding: calc(var(--home-scale) * 1.875rem) calc(var(--home-scale) * 1.875rem) calc(var(--home-scale) * 1.875rem) calc(var(--home-scale) * 2rem);
-    overflow: hidden;
-    transition:
-        background-color 200ms ease,
-        border-color 200ms ease;
-    /* Scale-aware shadow sizes for glow animations */
+    /* Scale-aware shadow sizes for the glow animations. */
     --_glow-spread: calc(var(--home-scale) * 0.5rem);
     --_glow-blur: calc(var(--home-scale) * 1.75rem);
     --_glow-blur-sm: calc(var(--home-scale) * 0.25rem);
+    position: relative;
+    padding:
+        calc(var(--home-scale) * 1.875rem)
+        calc(var(--home-scale) * 1.875rem)
+        calc(var(--home-scale) * 1.875rem)
+        calc(var(--home-scale) * 2rem);
+    overflow: hidden;
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    transition:
+        background-color 200ms ease,
+        border-color 200ms ease;
 }
 
 .topic-card::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
     bottom: 0;
+    left: 0;
     width: 0;
     background-color: var(--accent);
     transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -36,21 +40,7 @@
 }
 
 .topic-card[data-subscribed='true']::before {
-    width: 3px;
-}
-
-/* ─── Subscribe burst: card glow flash ─────────────────────────────────── */
-
-@keyframes card-glow-flash {
-    0%   { box-shadow: 0 0 0 0 rgba(220, 168, 47, 0); }
-    30%  { box-shadow: 0 0 0 var(--_glow-spread) rgba(220, 168, 47, 0.22), 0 0 var(--_glow-blur) var(--_glow-blur-sm) rgba(220, 168, 47, 0.10); }
-    100% { box-shadow: 0 0 0 0 rgba(220, 168, 47, 0); }
-}
-
-@keyframes card-fade-flash {
-    0%   { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
-    30%  { box-shadow: 0 0 0 var(--_glow-spread) rgba(248, 81, 73, 0.20), 0 0 var(--_glow-blur) var(--_glow-blur-sm) rgba(248, 81, 73, 0.10); }
-    100% { box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
+    width: 0.1875rem;
 }
 
 .topic-card[data-burst='subscribe'] {
@@ -60,8 +50,6 @@
 .topic-card[data-burst='unsubscribe'] {
     animation: card-fade-flash 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-
-/* ─── Layout ────────────────────────────────────────────────────────────── */
 
 .topic-card-title {
     margin: 0;
@@ -104,32 +92,29 @@
 }
 
 .topic-card-description {
+    max-width: 62ch;
     margin: calc(var(--home-scale) * 0.75rem) 0 calc(var(--home-scale) * 1.25rem);
     font-size: calc(var(--home-scale) * 0.875rem);
     line-height: 1.7;
-    max-width: 62ch;
     color: var(--text-2);
 }
 
-/* ─── Button wrapper (needed so ripple can overflow the button) ─────────── */
-
+/* Wraps the button so the ripple ring can overflow it. */
 .topic-card-button-wrap {
     position: relative;
     display: inline-flex;
     align-items: center;
 }
 
-/* ─── Button ────────────────────────────────────────────────────────────── */
-
 .topic-card-button {
     min-width: calc(var(--home-scale) * 7.875rem);
     padding: calc(var(--home-scale) * 0.5rem) calc(var(--home-scale) * 1rem);
-    border: 1px solid var(--line-btn);
-    border-radius: 0.1875rem;
-    background-color: transparent;
     font-family: inherit;
     font-size: calc(var(--home-scale) * 0.8125rem);
     color: var(--text-2);
+    background-color: transparent;
+    border: 1px solid var(--line-btn);
+    border-radius: 0.1875rem;
     cursor: pointer;
     transition:
         border-color 220ms ease,
@@ -138,8 +123,8 @@
 }
 
 .topic-card-button:hover:not(:disabled) {
-    border-color: var(--line-btn-hover);
     color: var(--text);
+    border-color: var(--line-btn-hover);
 }
 
 .topic-card-button:disabled {
@@ -147,32 +132,13 @@
 }
 
 .topic-card[data-subscribed='true'] .topic-card-button {
-    border-color: var(--accent-line);
-    background-color: var(--accent-wash-soft);
     color: var(--accent);
+    background-color: var(--accent-wash-soft);
+    border-color: var(--accent-line);
 }
 
 .topic-card[data-subscribed='true'] .topic-card-button:hover:not(:disabled) {
     border-color: var(--accent);
-}
-
-/* ─── Subscribe burst: button spring-bounce ─────────────────────────────── */
-
-@keyframes btn-subscribe-bounce {
-    0%   { transform: scale(1); }
-    20%  { transform: scale(1.16); }
-    50%  { transform: scale(0.95); }
-    72%  { transform: scale(1.06); }
-    88%  { transform: scale(0.99); }
-    100% { transform: scale(1); }
-}
-
-@keyframes btn-unsubscribe-deflate {
-    0%   { transform: scale(1); }
-    25%  { transform: scale(0.90); }
-    55%  { transform: scale(1.04); }
-    78%  { transform: scale(0.98); }
-    100% { transform: scale(1); }
 }
 
 .topic-card[data-burst='subscribe'] .topic-card-button {
@@ -183,44 +149,27 @@
     animation: btn-unsubscribe-deflate 750ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* ─── Subscribe burst: ripple ring ──────────────────────────────────────── */
-
-@keyframes ripple-expand {
-    0% {
-        transform: translate(-50%, -50%) scale(0.4);
-        opacity: 0.75;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(3.0);
-        opacity: 0;
-    }
-}
-
+/* Sized to roughly cover the button. */
 .topic-card-ripple {
     position: absolute;
-    left: 50%;
     top: 50%;
-    /* size the ring to roughly cover the button */
+    left: 50%;
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 50%;
     pointer-events: none;
+    border-radius: 50%;
     transform-origin: center;
     animation: ripple-expand 850ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Warm gold ring for subscribe */
 .topic-card-ripple[data-kind='subscribe'] {
     border: calc(var(--home-scale) * 2px) solid var(--accent);
 }
 
-/* Red ring for unsubscribe */
 .topic-card-ripple[data-kind='unsubscribe'] {
-    border: calc(var(--home-scale) * 2px) solid var(--danger);
     opacity: 0.75;
+    border: calc(var(--home-scale) * 2px) solid var(--danger);
 }
-
-/* ─── Error ──────────────────────────────────────────────────────────────── */
 
 .topic-card-error {
     margin: calc(var(--home-scale) * 0.625rem) 0 0;
@@ -228,15 +177,103 @@
     color: var(--text-2);
 }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@keyframes card-glow-flash {
+    0% {
+        box-shadow: 0 0 0 0 var(--accent-glow-clear);
+    }
+
+    30% {
+        box-shadow:
+            0 0 0 var(--_glow-spread) var(--accent-glow-strong),
+            0 0 var(--_glow-blur) var(--_glow-blur-sm) var(--accent-glow-soft);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 var(--accent-glow-clear);
+    }
+}
+
+@keyframes card-fade-flash {
+    0% {
+        box-shadow: 0 0 0 0 var(--danger-glow-clear);
+    }
+
+    30% {
+        box-shadow:
+            0 0 0 var(--_glow-spread) var(--danger-glow-strong),
+            0 0 var(--_glow-blur) var(--_glow-blur-sm) var(--danger-glow-soft);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 var(--danger-glow-clear);
+    }
+}
+
+@keyframes btn-subscribe-bounce {
+    0% {
+        transform: scale(1);
+    }
+
+    20% {
+        transform: scale(1.16);
+    }
+
+    50% {
+        transform: scale(0.95);
+    }
+
+    72% {
+        transform: scale(1.06);
+    }
+
+    88% {
+        transform: scale(0.99);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes btn-unsubscribe-deflate {
+    0% {
+        transform: scale(1);
+    }
+
+    25% {
+        transform: scale(0.9);
+    }
+
+    55% {
+        transform: scale(1.04);
+    }
+
+    78% {
+        transform: scale(0.98);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes ripple-expand {
+    0% {
+        opacity: 0.75;
+        transform: translate(-50%, -50%) scale(0.4);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(3);
+    }
+}
 
 @media (max-width: 375px) {
     .topic-card {
         padding: 1.25rem 1.25rem 1.25rem 1.375rem;
     }
 }
-
-/* ─── Reduced motion ─────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
     .topic-card,

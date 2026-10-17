@@ -2,6 +2,37 @@
 
 Calls made during implementation that aren't obvious from the code alone.
 
+## Code-style migration: no visual change
+
+The `frontend-code-style` migration pass landed: `strict: true`, one shared `ApiError` and request
+helper in `src/api/` (the only place `as`-style typing of response bodies could live; none is needed
+now), `ENDPOINTS`/`ROUTES`, named interfaces, `is`/`has` booleans, extracted hooks (`useFeedPages`,
+`useCurtain`, `useAuthSession`), and CSS property order, rem units and colour tokens.
+
+## Shortcut: per-page scale variables stay instead of root-font scaling
+
+`css.md` says sizes scale in one place, the root font size in `index.css`. This app still scales per
+page instead: `--auth-scale` on `.auth-page` and `--home-scale` on `.home-page` (1 / 1.2 / 1.5 / 1.65 /
+2 at 1920 / 2560 / 3440 / 3840px), with rem sizes wrapped in `calc()`. Also left as they are: the
+`vw` and `clamp()` sizes (`.auth-container`, `.success-curtain-heading`), `SuccessCurtain`'s per-band
+font sizes, and the one-off breakpoints (375, 480, 760, 900, 1000, 1100, 1280px and the four large
+bands).
+
+Accepted on purpose: the app has two pages and already scales well. Moving to root-font bands changes
+pixels at 1920px and above and on the phone bands, and there are no visual tests, so it needs a manual
+check at every size for no user-visible gain.
+
+**Trigger:** before the next new page is built. Otherwise that page needs a third scale variable and
+four more media blocks. Then replace the variables with root-font bands in `index.css`, reduce the
+breakpoints to a short fixed list in a comment at the top of that file, and check 320px, each
+breakpoint ±1px, and 1920px and up.
+
+## Auth panel position is a `data-position` attribute, not an inline style
+
+`Panel` used to receive `left`/`width` as a `style` object computed from the mode and the covered
+state. Those are three fixed states, not runtime-computed values, so they are now
+`data-position='left' | 'right' | 'full'` rules in `Panel.css`. The transition is unchanged.
+
 ## Error copy is frontend-owned, not passed through
 
 `auth-design.md` mandates specific error copy ("That email and password don't match an account.",

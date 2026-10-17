@@ -1,22 +1,22 @@
 .feed-filter {
     display: flex;
+    width: fit-content;
     margin-top: calc(var(--home-scale) * 1.75rem);
+    overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 0.25rem;
-    overflow: hidden;
-    width: fit-content;
 }
 
 .feed-filter-cell {
+    min-height: calc(var(--home-scale) * 2.75rem);
     padding: calc(var(--home-scale) * 0.5rem) calc(var(--home-scale) * 1.0625rem);
-    background-color: transparent;
-    border: none;
-    border-right: 1px solid var(--line);
     font-family: inherit;
     font-size: calc(var(--home-scale) * 0.8125rem);
     color: var(--text-3);
+    background-color: transparent;
+    border: none;
+    border-right: 1px solid var(--line);
     cursor: pointer;
-    min-height: calc(var(--home-scale) * 2.75rem);
     transition:
         background-color 160ms ease,
         color 160ms ease;
@@ -27,13 +27,13 @@
 }
 
 .feed-filter-cell:hover:not([aria-selected='true']) {
-    background-color: var(--surface-filter-hover);
     color: var(--text-2);
+    background-color: var(--surface-filter-hover);
 }
 
 .feed-filter-cell[aria-selected='true'] {
-    background-color: var(--surface-raise);
     color: var(--accent);
+    background-color: var(--surface-raise);
 }
 
 .feed-filter-count {

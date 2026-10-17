@@ -1,181 +1,143 @@
-import { useEffect, useRef, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import AuthPage from './components/AuthPage/AuthPage'
-import HomePage from './components/HomePage/HomePage'
-import SuccessCurtain from './components/SuccessCurtain/SuccessCurtain'
-import type { CurtainDirection, CurtainPhase } from './components/SuccessCurtain/SuccessCurtain'
-import type { Mode } from './components/AuthPage/Panel/Panel'
-import { logout, me } from './api/auth'
-import type { AuthUser } from './api/auth'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import AuthPage from './components/AuthPage/AuthPage';
+import type { AuthMode } from './components/AuthPage/authMode';
+import HomePage from './components/HomePage/HomePage';
+import SuccessCurtain from './components/SuccessCurtain/SuccessCurtain';
+import { logout } from './api/auth';
+import type { AuthUser } from './api/auth';
+import { ROUTES } from './routes';
+import { useAuthSession } from './useAuthSession';
+import { useCurtain } from './useCurtain';
+import type { CurtainGreeting } from './useCurtain';
+import { isReducedMotionPreferred } from './utils/motion';
 
-type Status = 'loading' | 'authenticated' | 'unauthenticated'
-
-const CURTAIN_COVER_MS = 340
-const CURTAIN_HOLD_MS = 1400
-const CURTAIN_REVEAL_MS = 340
-
-const SUCCESS_HEADING: Record<Mode, string> = {
+const SUCCESS_HEADING: Record<AuthMode, string> = {
     signin: 'Welcome back',
     register: 'Account created',
-}
+};
+
+const SIGNED_OUT_HEADING = 'Signed out';
 
 function App() {
-    const navigate = useNavigate()
-    const [status, setStatus] = useState<Status>('loading')
-    const [user, setUser] = useState<AuthUser | null>(null)
-    const [curtainPhase, setCurtainPhase] = useState<CurtainPhase | null>(null)
-    const [curtainDirection, setCurtainDirection] = useState<CurtainDirection>('up')
-    const [curtainGreeting, setCurtainGreeting] = useState<{ heading: string; sub: string } | null>(null)
+    const navigate = useNavigate();
+    const session = useAuthSession();
+    const curtain = useCurtain();
 
-    const timeoutIdsRef = useRef<number[]>([])
-
-    useEffect(() => {
-        let cancelled = false
-
-        me()
-            .then((result) => {
-                if (cancelled) {
-                    return
-                }
-                setUser(result)
-                setStatus('authenticated')
-            })
-            .catch(() => {
-                if (cancelled) {
-                    return
-                }
-                setStatus('unauthenticated')
-            })
-
-        return () => {
-            cancelled = true
-        }
-    }, [])
-
-    useEffect(() => {
-        const timeoutIds = timeoutIdsRef.current
-
-        return () => {
-            timeoutIds.forEach((id) => window.clearTimeout(id))
-        }
-    }, [])
-
-    function scheduleCurtain(swap: () => void) {
-        const swapId = window.setTimeout(() => {
-            swap()
-            setCurtainPhase('covered')
-        }, CURTAIN_COVER_MS)
-
-        const revealId = window.setTimeout(() => {
-            setCurtainPhase('revealing')
-        }, CURTAIN_COVER_MS + CURTAIN_HOLD_MS)
-
-        const doneId = window.setTimeout(() => {
-            setCurtainPhase(null)
-            setCurtainGreeting(null)
-        }, CURTAIN_COVER_MS + CURTAIN_HOLD_MS + CURTAIN_REVEAL_MS)
-
-        timeoutIdsRef.current.push(swapId, revealId, doneId)
+    function completeSignIn(authUser: AuthUser) {
+        session.startSession(authUser);
+        navigate(ROUTES.home);
     }
 
-    function handleAuthSuccess(authUser: AuthUser, mode: Mode) {
-        if (curtainPhase !== null) {
-            return
+    function completeSignOut() {
+        session.endSession();
+        navigate(ROUTES.login);
+    }
+
+    function handleAuthSuccess(authUser: AuthUser, mode: AuthMode) {
+        if (curtain.isPlaying) {
+            return;
         }
 
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            setUser(authUser)
-            setStatus('authenticated')
-            navigate('/')
+        if (isReducedMotionPreferred()) {
+            completeSignIn(authUser);
 
-            return
+            return;
         }
 
-        setCurtainGreeting({
+        const greeting: CurtainGreeting = {
             heading: SUCCESS_HEADING[mode],
             sub: authUser.email,
-        })
-        setCurtainDirection('up')
-        setCurtainPhase('covering')
+        };
 
-        scheduleCurtain(() => {
-            setUser(authUser)
-            setStatus('authenticated')
-            navigate('/')
-        })
+        curtain.play(
+            'up',
+            greeting,
+            () => completeSignIn(authUser),
+        );
     }
 
     function handleSignOutRequest() {
-        if (curtainPhase !== null) {
-            return
+        if (curtain.isPlaying) {
+            return;
         }
 
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        // A failed logout request still signs the user out locally.
+        if (isReducedMotionPreferred()) {
             logout()
                 .catch(() => {})
-                .finally(() => {
-                    setUser(null)
-                    setStatus('unauthenticated')
-                    navigate('/login')
-                })
+                .finally(completeSignOut);
 
-            return
+            return;
         }
 
-        setCurtainGreeting({
-            heading: 'Signed out',
-            sub: user?.email ?? '',
-        })
-        setCurtainDirection('down')
-        setCurtainPhase('covering')
+        const greeting: CurtainGreeting = {
+            heading: SIGNED_OUT_HEADING,
+            sub: session.user?.email ?? '',
+        };
 
         logout()
-            .catch(() => {})
+            .catch(() => {});
 
-        scheduleCurtain(() => {
-            setUser(null)
-            setStatus('unauthenticated')
-            navigate('/login')
-        })
+        curtain.play(
+            'down',
+            greeting,
+            completeSignOut,
+        );
     }
 
-    if (status === 'loading') {
-        return null
+    const isAuthenticated = session.status === 'authenticated';
+    const isCurtainRevealing = curtain.phase === 'revealing';
+
+    function renderAuthPage(mode: AuthMode) {
+        if (isAuthenticated) {
+            return <Navigate to={ROUTES.home} replace />;
+        }
+
+        return (
+            <AuthPage
+                mode={mode}
+                isEntering={isCurtainRevealing}
+                onAuthSuccess={handleAuthSuccess}
+            />
+        );
+    }
+
+    function renderHomePage() {
+        if (!isAuthenticated) {
+            return <Navigate to={ROUTES.login} replace />;
+        }
+
+        return (
+            <HomePage
+                isEntering={isCurtainRevealing}
+                onSignOutRequest={handleSignOutRequest}
+            />
+        );
+    }
+
+    if (session.status === 'loading') {
+        return null;
     }
 
     return (
         <>
             <Routes>
-                <Route
-                    path="/login"
-                    element={status === 'authenticated' ? <Navigate to="/" replace /> : <AuthPage mode="signin" onAuthSuccess={handleAuthSuccess} entering={curtainPhase === 'revealing'} />}
-                />
-                <Route
-                    path="/register"
-                    element={status === 'authenticated' ? <Navigate to="/" replace /> : <AuthPage mode="register" onAuthSuccess={handleAuthSuccess} entering={curtainPhase === 'revealing'} />}
-                />
-                <Route
-                    path="/"
-                    element={
-                        status === 'authenticated' && user ? (
-                            <HomePage user={user} onSignOutRequest={handleSignOutRequest} entering={curtainPhase === 'revealing'} />
-                        ) : (
-                            <Navigate to="/login" replace />
-                        )
-                    }
-                />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path={ROUTES.login} element={renderAuthPage('signin')} />
+                <Route path={ROUTES.register} element={renderAuthPage('register')} />
+                <Route path={ROUTES.home} element={renderHomePage()} />
+                <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
-            {curtainPhase !== null && curtainGreeting !== null && (
+
+            {curtain.phase !== null && curtain.greeting !== null && (
                 <SuccessCurtain
-                    phase={curtainPhase}
-                    direction={curtainDirection}
-                    heading={curtainGreeting.heading}
-                    sub={curtainGreeting.sub}
+                    phase={curtain.phase}
+                    direction={curtain.direction}
+                    heading={curtain.greeting.heading}
+                    sub={curtain.greeting.sub}
                 />
             )}
         </>
-    )
+    );
 }
 
-export default App
+export default App;

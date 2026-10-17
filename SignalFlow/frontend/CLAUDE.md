@@ -29,9 +29,11 @@ Hard rules — these hold whether or not the skill is loaded:
 
 `src/` layout:
 
-- `/api` — backend clients (base URL handling, request/response shapes)
-- `/components` — one folder per page-level component (`<Name>.tsx` + `<Name>.css`); child components nest inside their sole consumer's folder (e.g. `AuthPage/Panel/`, `AuthPage/AuthForm/`)
-- `/App.tsx`, `/main.tsx`, `/index.css`, `/vite-env.d.ts`
+- `/api` — backend clients: `endpoints.ts` (`ENDPOINTS`, the only place URLs live), `request.ts` (shared request helper and `ApiError`), one module per resource
+- `/components` — one folder per page-level component (`<Name>.tsx` + `<Name>.css`); child components nest inside their sole consumer's folder (e.g. `AuthPage/Panel/`, `AuthPage/AuthForm/`); a hook with one consumer sits next to it (`Feed/useFeedPages.ts`)
+- `/utils` — pure helpers with two or more consumers (`feedCounts.ts`, `motion.ts`)
+- `/routes.ts` — `ROUTES`, the only place app paths live
+- `/App.tsx`, `/useAuthSession.ts`, `/useCurtain.ts`, `/main.tsx`, `/index.css`, `/vite-env.d.ts`
 
 `public/` holds the favicon and `robots.txt` — this app is not a public tool, so it disallows all crawling.
 
@@ -51,6 +53,10 @@ Load skill bodies on demand (`/skill-name`). Descriptions live here — don't re
 | Responsive | `responsive-fix` — a named component/view breaks at a given resolution |
 
 Done = re-check touched files against any loaded skill's rules.
+
+**Accepted shortcut — per-page scale variables.** `--auth-scale` and `--home-scale` still scale the two pages
+instead of root-font bands (the `css.md` rule). Don't add a third scale variable: do the root-font refactor
+before building the next new page. Reasons and the checklist are in `DECISIONS.md`.
 
 ---
 

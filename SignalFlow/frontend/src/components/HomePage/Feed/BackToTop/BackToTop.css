@@ -2,15 +2,15 @@
     position: fixed;
     right: calc(var(--home-scale) * 1.75rem);
     bottom: calc(var(--home-scale) * 1.75rem);
-    width: calc(var(--home-scale) * 2.625rem);
-    height: calc(var(--home-scale) * 2.625rem);
     display: flex;
     align-items: center;
     justify-content: center;
+    width: calc(var(--home-scale) * 2.625rem);
+    height: calc(var(--home-scale) * 2.625rem);
+    color: var(--text-3);
+    background-color: var(--surface-chrome);
     border: 1px solid var(--line-chrome);
     border-radius: 0.25rem;
-    background-color: var(--surface-chrome);
-    color: var(--text-3);
     cursor: pointer;
     transition:
         color 180ms ease,
@@ -25,8 +25,8 @@
 
 .back-to-top:hover {
     color: var(--text);
-    border-color: var(--line-chrome-hover);
     background-color: var(--surface-chrome-hover);
+    border-color: var(--line-chrome-hover);
 }
 
 @media (prefers-reduced-motion: reduce) {
