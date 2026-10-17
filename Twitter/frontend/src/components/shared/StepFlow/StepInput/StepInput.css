@@ -17,6 +17,7 @@
 .step-input-field {
     width: 100%;
     min-width: 0;
+    min-height: 2.75rem;
     padding: 0 0 1rem;
     border: 0;
     outline: none;

@@ -36,7 +36,7 @@ API-only specs have no suffix, page-driven ones end in `-ui`.
 | `auth-validation.spec.ts` / `auth-validation-ui.spec.ts` | Register rules for email, username and password: the gateway's 400s and the form's own messages |
 | `auth-confirmation.spec.ts` / `auth-confirmation-ui.spec.ts` | Expired, unknown and malformed confirmation links; a resend gives a working one |
 | `auth-session.spec.ts` / `auth-session-ui.spec.ts` | Expired, forged and garbage session cookies answer the same JSON 401 as no cookie (no `WWW-Authenticate`) and the UI goes to login |
-| `mobile-layout-ui.spec.ts` | Phone size only: on each main screen the page does not scroll sideways and every interactive element is at least 44x44 px (`tests/page-helpers.ts` lists every offender); known offenders are `test.fixme` |
+| `mobile-layout-ui.spec.ts` | Phone size only: on each main screen the page does not scroll sideways and every interactive element is at least 44x44 px (`tests/page-helpers.ts` lists every offender) |
 | `follows.spec.ts` / `follows-ui.spec.ts` | Self-follow, repeated follow and unfollow, follower and following lists, counts on the profile |
 | `replies-create-ui.spec.ts` | The reply composer on the tweet page: send, empty, over the limit, cancel, failures |
 

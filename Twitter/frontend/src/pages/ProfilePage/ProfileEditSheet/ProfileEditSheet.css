@@ -96,6 +96,10 @@
     min-height: 4.125rem;
 }
 
+.profile-edit-sheet-input {
+    min-height: 2.75rem;
+}
+
 .profile-edit-sheet-input::placeholder {
     color: var(--pale-placeholder);
 }

@@ -38,20 +38,14 @@ interface Scene {
 // Where a screen is reached, and the part of the page the touch-target check covers (the whole page by default).
 interface Screen {
     name: string;
-    touchTargetFixme?: string;
     open: (page: Page, scene: Scene) => Promise<void>;
     scope?: (page: Page) => Locator;
 }
 
 interface LoggedOutScreen {
     name: string;
-    touchTargetFixme: string;
     open: (page: Page) => Promise<void>;
 }
-
-const STEP_INPUT_FIXME = 'the step input (.step-input-field) is 308x42 px, 2 px under the 44 px touch target';
-
-const LOCATION_INPUT_FIXME = 'the LOCATION input (.profile-edit-sheet-input) is 364x31 px, under the 44 px touch target';
 
 type OpenScreen = (page: Page, createAccount: () => Promise<Account>) => Promise<void>;
 
@@ -141,7 +135,6 @@ async function openRegisterPasswordStep(page: Page) {
 const LOGGED_OUT_SCREENS: LoggedOutScreen[] = [
     {
         name: 'login',
-        touchTargetFixme: STEP_INPUT_FIXME,
         open: async (page) => {
             await page.goto(APP_PATHS.login);
 
@@ -150,17 +143,14 @@ const LOGGED_OUT_SCREENS: LoggedOutScreen[] = [
     },
     {
         name: 'register_email_step',
-        touchTargetFixme: STEP_INPUT_FIXME,
         open: openRegisterEmailStep,
     },
     {
         name: 'register_username_step',
-        touchTargetFixme: STEP_INPUT_FIXME,
         open: openRegisterUsernameStep,
     },
     {
         name: 'register_password_step',
-        touchTargetFixme: STEP_INPUT_FIXME,
         open: openRegisterPasswordStep,
     },
 ];
@@ -213,7 +203,6 @@ const SCREENS: Screen[] = [
     },
     {
         name: 'profile_edit_sheet',
-        touchTargetFixme: LOCATION_INPUT_FIXME,
         open: openProfileEditSheet,
         scope: (page) => page.getByRole('dialog'),
     },
@@ -222,7 +211,6 @@ const SCREENS: Screen[] = [
 function defineLayoutTests(
     name: string,
     openScreen: OpenScreen,
-    touchTargetFixme?: string,
     scope?: (page: Page) => Locator,
 ) {
     test.describe(
@@ -240,8 +228,6 @@ function defineLayoutTests(
             test(
                 `should_give_every_control_a_44px_touch_target_on_${name}`,
                 async ({ page, createAccount }) => {
-                    test.fixme(touchTargetFixme !== undefined, touchTargetFixme);
-
                     await openScreen(page, createAccount);
 
                     await expectTouchTargetsAtLeast44px(page, scope?.(page));
@@ -255,7 +241,6 @@ for (const screen of LOGGED_OUT_SCREENS) {
     defineLayoutTests(
         screen.name,
         (page) => screen.open(page),
-        screen.touchTargetFixme,
     );
 }
 
@@ -263,7 +248,6 @@ for (const screen of SCREENS) {
     defineLayoutTests(
         screen.name,
         async (page, createAccount) => screen.open(page, await createScene(createAccount)),
-        screen.touchTargetFixme,
         screen.scope,
     );
 }
