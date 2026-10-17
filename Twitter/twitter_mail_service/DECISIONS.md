@@ -1,7 +1,7 @@
 # Decisions
 
 Non-obvious calls made *during* implementation - the ones that would be hard to re-derive from the
-code alone. Design settled up front lives in `PLAN.md`; conventions live in `CLAUDE.md`.
+code alone. Conventions live in `CLAUDE.md`.
 
 One entry per decision: what was chosen, what it was chosen over, and why.
 

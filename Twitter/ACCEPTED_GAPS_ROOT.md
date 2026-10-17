@@ -1,6 +1,8 @@
 # Accepted gaps across services
 
-Consolidated open and accepted gaps with their triggers, moved from service-level `PLAN.md` files.
+Consolidated open and accepted gaps with their triggers: the single public list of what is still open.
+
+Security-relevant gaps cite their audit; the finding text lives in `security-private/` (open and accepted) and in `SECURITY_AUDITS_ROOT.md` (fixed only). Don't repeat finding text here.
 
 ---
 
