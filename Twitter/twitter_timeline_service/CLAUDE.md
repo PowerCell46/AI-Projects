@@ -9,8 +9,8 @@ authentication: the gateway (`../twitter_api_gateway`) proxies `/api/v1/feed`, `
 `/api/v1/author-tweets/{authorId}` (one author's tweets as feed items, for the profile page) to it and tells it
 who is calling through the `X-User-Id` header.
 
-Five phases, all done; the accepted gaps with their triggers are in `../ACCEPTED_GAPS_ROOT.md`. Calls made *during* implementation go in `DECISIONS.md`, the test
-catalog is `docs/TESTING.md`, the `exploit-hunter` audits are `docs/SECURITY-AUDITS.md`.
+All planned phases are done; the accepted gaps with their triggers are in `../ACCEPTED_GAPS_ROOT.md`. Calls made *during* implementation go in `DECISIONS.md`, the test
+catalog is `docs/TESTING.md`, the `exploit-hunter` audit details are in `../SECURITY_AUDITS_ROOT.md` and `../security-private/timeline-SECURITY-AUDITS-open.md`.
 
 ## Running the project
 

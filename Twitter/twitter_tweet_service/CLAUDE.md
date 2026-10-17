@@ -5,9 +5,9 @@ count, and the `tweet.created` / `tweet.deleted` events. It knows nothing about 
 (`../twitter_api_gateway`) proxies `/api/v1/tweets/**` to it and tells it who is calling through the
 `X-User-Id` header. The timeline service reads tweets back over `/internal/v1/tweets` (by ids, newest summaries by
 author, one author's tweets paged). It looks users up at the gateway's `/internal/v1/users` (`UserLookupService`,
-`INTERNAL_API_SECRET` as `X-Internal-Secret`, 32+ bytes, no default; `GATEWAY_INTERNAL_URL`) to name reply authors. Only the create route takes multipart; the body-size filter refuses it elsewhere (`415`). The accepted gaps are in `../ACCEPTED_GAPS_ROOT.md`. Check them
-before starting a task. Calls made *during* implementation go in `DECISIONS.md`. The events it produces are
-documented in `docs/EVENTS.md`.
+`INTERNAL_API_SECRET` as `X-Internal-Secret`, 32+ bytes, no default; `GATEWAY_INTERNAL_URL`) to name reply authors. Only the create route takes multipart; the body-size filter refuses it
+elsewhere (`415`). The accepted gaps are in `../ACCEPTED_GAPS_ROOT.md`; check them before starting a task. Calls made
+*during* implementation go in `DECISIONS.md`. The events it produces are documented in `docs/EVENTS.md`.
 
 ## Running the project
 
