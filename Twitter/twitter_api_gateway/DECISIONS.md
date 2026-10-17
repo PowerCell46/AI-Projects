@@ -131,7 +131,8 @@ anything the code or its tests already say.
   bodies over Jackson's 20 MB string limit.
 - **The contract test brings its own Mongo, MinIO and Kafka** (phase 4): the shared containers aren't on a Docker
   network, so the real tweet service couldn't reach them. The gateway read timeout is 10 s for that context only, the
-  image is built from `../twitter_tweet_service`, and the container gets a fixed test-only `INTERNAL_API_SECRET`
+  image is built from `../twitter_tweet_service/Dockerfile` with the Twitter root files as its context (the Dockerfile
+  expects the root), and the container gets a fixed test-only `INTERNAL_API_SECRET`
   (the image refuses to start without one).
 
 ## Internal API and events

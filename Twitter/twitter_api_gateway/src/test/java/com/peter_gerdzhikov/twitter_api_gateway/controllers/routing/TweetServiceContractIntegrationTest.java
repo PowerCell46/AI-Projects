@@ -75,6 +75,10 @@ class TweetServiceContractIntegrationTest extends AbstractMinioIntegrationTest {
 
     private static final Network NETWORK = Network.newNetwork();
 
+    private static final List<String> MODULES_WITH_POM = List.of(
+            "twitter_shared", "twitter_api_gateway", "twitter_tweet_service", "twitter_timeline_service", "twitter_mail_service"
+    );
+
     private static final MongoDBContainer MONGO = new MongoDBContainer("mongo:8.2")
             .withReplicaSet()
             .withNetwork(NETWORK)
@@ -224,15 +228,23 @@ class TweetServiceContractIntegrationTest extends AbstractMinioIntegrationTest {
         assertThat(deleted.get("authorId").asString()).isEqualTo(alice.toString());
     }
 
+    // The Dockerfile builds from the Twitter root, with the shared module and every module's pom in the context.
     private static ImageFromDockerfile tweetServiceImage() {
-        Path service = Path.of("..", "twitter_tweet_service");
+        Path root = Path.of("..");
+        ImageFromDockerfile image = new ImageFromDockerfile("twitter-tweet-service-contract", false)
+                .withDockerfilePath("twitter_tweet_service/Dockerfile")
+                .withFileFromPath("twitter_tweet_service/Dockerfile", root.resolve("twitter_tweet_service/Dockerfile"))
+                .withFileFromPath(".mvn", root.resolve(".mvn"))
+                .withFileFromPath("mvnw", root.resolve("mvnw"))
+                .withFileFromPath("pom.xml", root.resolve("pom.xml"))
+                .withFileFromPath("twitter_shared/src", root.resolve("twitter_shared/src"))
+                .withFileFromPath("twitter_tweet_service/src", root.resolve("twitter_tweet_service/src"));
 
-        return new ImageFromDockerfile("twitter-tweet-service-contract", false)
-                .withFileFromPath("Dockerfile", service.resolve("Dockerfile"))
-                .withFileFromPath(".mvn", service.resolve(".mvn"))
-                .withFileFromPath("mvnw", service.resolve("mvnw"))
-                .withFileFromPath("pom.xml", service.resolve("pom.xml"))
-                .withFileFromPath("src", service.resolve("src"));
+        for (String module : MODULES_WITH_POM) {
+            image.withFileFromPath(module + "/pom.xml", root.resolve(module).resolve("pom.xml"));
+        }
+
+        return image;
     }
 
     private JsonNode createTweet(UUID author, String content, byte[] image) {

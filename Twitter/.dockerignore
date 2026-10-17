@@ -1,17 +1,26 @@
 # Service images build from the Twitter root; each Dockerfile copies only
 # .mvn/, mvnw, the root pom, twitter_shared/ and its own service dir.
+# Anything else is kept out of the context, so private files never reach the daemon.
 .git/
 .github/
+.claude/
 **/target/
 **/node_modules/
 frontend/
 e2e/
+docker/
+certs/
+security-private/
 **/docs/
 **/seed-images/
 **/*.md
 docker-compose*.yml
 .env*
+.gitignore
+.gitattributes
+LICENSE
 mvnw.cmd
+**/mvnw.cmd
 .idea/
 .vscode/
 **/*.iml

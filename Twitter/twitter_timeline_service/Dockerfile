@@ -38,9 +38,7 @@ RUN useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 
 # Copy the built JAR from builder stage
-COPY --from=builder /app/twitter_timeline_service/target/*.jar app.jar
-
-RUN chown app:app app.jar
+COPY --from=builder --chown=app:app /app/twitter_timeline_service/target/*.jar app.jar
 
 USER app
 

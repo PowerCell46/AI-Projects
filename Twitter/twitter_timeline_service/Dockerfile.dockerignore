@@ -1,0 +1,18 @@
+# Read by BuildKit in place of the root .dockerignore when this Dockerfile builds. The context is the Twitter root, so
+# this is an allowlist: only what the Dockerfile copies (.mvn/, mvnw, the root pom, every module's pom, the shared
+# module's src and this service's src) is sent. Add a COPY there and the path here.
+*
+
+!.mvn/
+!mvnw
+!pom.xml
+!twitter_shared/pom.xml
+!twitter_api_gateway/pom.xml
+!twitter_tweet_service/pom.xml
+!twitter_timeline_service/pom.xml
+!twitter_mail_service/pom.xml
+!twitter_shared/src/
+!twitter_timeline_service/src/
+
+**/.DS_Store
+**/*.iml
