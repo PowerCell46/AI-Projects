@@ -9,6 +9,8 @@ import './ReplyEditor.css';
 
 const SAVE_FAILED_MESSAGE = "Couldn't save. Try again.";
 
+const SAVING_LABEL = 'SAVING…';
+
 interface ReplyEditorProps {
     reply: Reply;
     onSaved: (reply: Reply) => void;
@@ -45,13 +47,13 @@ function ReplyEditor({ reply, onSaved, onCancel }: ReplyEditorProps) {
     const isSavable = canPublish(text, 0) && text.trim() !== reply.content.trim() && !isSaving;
 
     return (
-        <form className="reply-editor" onSubmit={handleSubmit}>
+        <form className="reply-editor" data-busy={isSaving} onSubmit={handleSubmit}>
             <ReplyTextField
                 label="EDIT YOUR REPLY"
                 text={text}
                 errorId={errorId}
                 shouldFocusOnMount
-                submitLabel="SAVE"
+                submitLabel={isSaving ? SAVING_LABEL : 'SAVE'}
                 isSubmitOff={!isSavable}
                 onChange={setText}
                 onCancel={onCancel}

@@ -124,6 +124,12 @@
     }
 }
 
+@keyframes reply-cell-view-fade {
+    from {
+        opacity: 0;
+    }
+}
+
 @keyframes reply-cell-index-flash {
     from {
         color: var(--glow);
@@ -139,6 +145,29 @@
 
 .reply-cell[data-entering='true'] .reply-cell-index {
     animation: reply-cell-index-flash 1600ms var(--e);
+}
+
+/* The row below is held at its height while the editor and the text swap (see useHeightGlide), and the new content fades
+   in; a saved reply flashes its index like a sent one and fades in its EDITED mark. */
+.reply-cell-view[data-gliding='true'] > * {
+    animation: reply-cell-view-fade 300ms var(--e);
+}
+
+.reply-cell[data-saved='true'] .reply-cell-index {
+    animation: reply-cell-index-flash 1600ms var(--e);
+}
+
+.reply-cell[data-saved='true'] .reply-cell-edited {
+    animation: reply-cell-view-fade 500ms var(--e);
+}
+
+/* A reply being deleted is dimmed until the server has answered. */
+.reply-cell-content {
+    transition: opacity 300ms var(--e);
+}
+
+.reply-cell[data-busy='true'] .reply-cell-content {
+    opacity: 0.55;
 }
 
 .reply-cell-action:hover {

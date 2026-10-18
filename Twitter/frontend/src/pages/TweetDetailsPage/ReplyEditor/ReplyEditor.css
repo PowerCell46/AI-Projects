@@ -1,5 +1,11 @@
 .reply-editor {
     padding-top: 0.5rem;
+    transition: opacity 300ms var(--e);
+}
+
+/* While the save is on its way the editor is dimmed, and its button says so. */
+.reply-editor[data-busy='true'] {
+    opacity: 0.55;
 }
 
 .reply-editor-error {

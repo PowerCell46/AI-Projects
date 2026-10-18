@@ -163,6 +163,26 @@ describe('editing', () => {
         expect(document.activeElement).toBe(button('EDIT'));
     });
 
+    it('should_say_saving_and_dim_the_editor_while_the_save_is_on_its_way', async () => {
+        vi.mocked(updateReply).mockReturnValue(new Promise(() => undefined));
+        renderCell();
+        await startEditing('the changed text');
+
+        await userEvent.click(button('SAVE'));
+
+        expect(button('SAVING…')).toBeTruthy();
+        expect(editField().closest('form')?.getAttribute('data-busy')).toBe('true');
+    });
+
+    it('should_mark_the_reply_as_saved_once_the_save_succeeds', async () => {
+        renderCell();
+        await startEditing('the changed text');
+
+        await userEvent.click(button('SAVE'));
+
+        expect(screen.getByRole('article').getAttribute('data-saved')).toBe('true');
+    });
+
     it('should_open_the_editor_on_the_current_text_with_focus_in_it_when_edit_is_pressed', async () => {
         renderCell();
 
@@ -260,6 +280,18 @@ describe('deleting', () => {
 
         expect(deleteReply).toHaveBeenCalledExactlyOnceWith(TWEET_ID, REPLY.id);
         expect(onRemoved).toHaveBeenCalledExactlyOnceWith(REPLY.id);
+    });
+
+    it('should_say_deleting_and_dim_the_reply_until_the_server_has_answered', async () => {
+        vi.mocked(deleteReply).mockReturnValue(new Promise(() => undefined));
+        renderCell();
+        await userEvent.click(button('DELETE'));
+
+        await userEvent.click(button('YES'));
+
+        expect(button('DELETING…')).toBeTruthy();
+        expect(screen.getByRole('article').getAttribute('data-busy')).toBe('true');
+        expect(onRemoved).not.toHaveBeenCalled();
     });
 
     it('should_remove_the_reply_when_the_server_answers_404', async () => {

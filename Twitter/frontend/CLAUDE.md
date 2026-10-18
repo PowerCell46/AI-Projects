@@ -141,6 +141,14 @@ profile → tweet → Back reloads the profile from the top.
   `visibility: hidden` (so it keeps its place) until there is text. `CANCEL`, Escape and a successful send clear the
   text and the error and blur the field; a blur alone changes nothing. **Shortcut:** the composer takes about 11 rem
   even when unused, and an error longer than one line would still push what is below it.
+- Editing and deleting a reply glide instead of jumping. `SAVE` says `SAVING…` and dims the editor; on success
+  `useHeightGlide` (`src/hooks/dom/useHeightGlide.ts`) runs the row's height from the editor's to the text's in 350 ms
+  (the height is captured just before the content changes, and the new content fades in), the index flashes and `EDITED`
+  fades in. `YES` says `DELETING…` and dims the row; on success `useCollapse` folds it away (height, padding, opacity,
+  350 ms) before `onRemoved` takes it out, so the replies below glide up and the numbers change only then. Both skip
+  the motion for reduced motion or an element with no layout (jsdom), and a fallback timer ends a transition that
+  never ends. **Shortcut:** at the very bottom of a short page the browser's scroll clamp moves the content a little
+  while it shrinks.
 - Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a
   reload. Edits and deletes are overrides on the loaded list, so `usePagedList` is unchanged. `EDIT` and `DELETE` only
