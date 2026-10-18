@@ -37,6 +37,7 @@
 }
 
 .feed-empty-panel-link {
+    white-space: nowrap;
     color: var(--glow);
     transition: color 340ms var(--e);
 }

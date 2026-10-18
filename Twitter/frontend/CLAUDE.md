@@ -140,6 +140,15 @@ profile → tweet → Back reloads the profile from the top.
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a
   reload. Edits and deletes are overrides on the loaded list, so `usePagedList` is unchanged. `EDIT` and `DELETE` only
   decide which buttons show: the server decides who may.
+- The follower and following lists: the `FOLLOWERS` and `FOLLOWING` stats of any profile are buttons that open
+  `FollowListModal` (a full-screen sheet like the compose modal; `GET /users/{username}/followers|following`, paged
+  with `usePagedList`, `PersonCard`s with their own follow buttons; your own card has none, `isFollowable`). The open
+  list is held in the router's location state (`useOpenFollowList`), so the browser's Back button closes it; the close
+  button and Escape go back the same way, and focus returns to the stat. A card opens that person's profile; Back from
+  there reopens the list; a reload keeps it open (the state is part of the history entry). The close button takes
+  focus after the fade-in only if nothing inside the dialog holds it yet. Following from a card tells the shell and the People cards (`reportFollowUpdate`) and, on
+  your own profile, moves the following count (`followingCountChange`). **Shortcut:** the list is read fresh on every
+  opening and is not kept in step with follows made elsewhere meanwhile.
 - The profile: `PATCH /users/me` sends only the changed fields (nothing changed → the sheet closes, no request); bio ≤ 160
   and location ≤ 60 are counted in code points on both sides. A picked photo uploads on `SAVE` after the `PATCH`; if the
   text saved but the photo failed, the sheet stays open and the text counts as saved. On your own profile the count is

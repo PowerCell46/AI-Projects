@@ -642,7 +642,7 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"followers", "following"})
-        void should_return_items_with_id_username_bio_picture_url_and_followed_by_me_when_the_list_is_not_empty(String list) {
+        void should_return_items_with_id_username_bio_picture_url_followers_count_and_followed_by_me_when_the_list_is_not_empty(String list) {
             User target = confirmedUser();
             User member = linkMembers(list, target, 1, true).getFirst();
             member.setBio("Hello");
@@ -650,12 +650,37 @@ class FollowControllerIntegrationTest extends AbstractMinioIntegrationTest {
 
             Map<String, Object> item = firstItemOf(list, target);
 
-            assertThat(item.keySet()).containsExactlyInAnyOrder("id", "username", "bio", "profilePictureUrl", "followedByMe");
+            assertThat(item.keySet()).containsExactlyInAnyOrder(
+                    "id",
+                    "username",
+                    "bio",
+                    "profilePictureUrl",
+                    "followersCount",
+                    "followedByMe"
+            );
             assertThat(item.get("id")).isEqualTo(member.getId().toString());
             assertThat(item.get("username")).isEqualTo(member.getUsername());
             assertThat(item.get("bio")).isEqualTo("Hello");
             assertThat(item.get("profilePictureUrl")).isNull();
             assertThat(item.get("followedByMe")).isEqualTo(false);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"followers", "following"})
+        void should_return_the_followers_count_of_each_member_when_the_list_is_not_empty(String list) {
+            User target = confirmedUser();
+            User member = linkMembers(list, target, 1, true).getFirst();
+            followSuccessfully(confirmedUser(), member);
+            long storedFollowersCount = userRepository
+                    .findById(member.getId())
+                    .orElseThrow()
+                    .getFollowersCount();
+
+            Map<String, Object> item = firstItemOf(list, target);
+
+            assertThat(((Number) item.get("followersCount")).longValue())
+                    .isPositive()
+                    .isEqualTo(storedFollowersCount);
         }
 
         @Test

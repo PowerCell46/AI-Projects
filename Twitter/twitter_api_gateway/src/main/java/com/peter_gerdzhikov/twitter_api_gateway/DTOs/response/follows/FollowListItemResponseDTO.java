@@ -19,6 +19,8 @@ public class FollowListItemResponseDTO {
 
     private String username;
 
+    private long followersCount;
+
     private boolean followedByMe;
 
     private String profilePictureUrl;

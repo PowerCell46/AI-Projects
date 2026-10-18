@@ -23,6 +23,7 @@ interface Profile {
 
 interface Member {
     username: string;
+    followersCount: number;
     followedByMe: boolean;
 }
 
@@ -218,20 +219,24 @@ test.describe(
                 expect(anaFollowing.items).toEqual([
                     expect.objectContaining({
                         username: cat.user.username,
+                        followersCount: 1,
                         followedByMe: true,
                     }),
                     expect.objectContaining({
                         username: bob.user.username,
+                        followersCount: 2,
                         followedByMe: true,
                     }),
                 ]);
                 expect(bobFollowers.items).toEqual([
                     expect.objectContaining({
                         username: cat.user.username,
+                        followersCount: 1,
                         followedByMe: true,
                     }),
                     expect.objectContaining({
                         username: ana.user.username,
+                        followersCount: 0,
                         followedByMe: false,
                     }),
                 ]);

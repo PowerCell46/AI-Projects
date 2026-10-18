@@ -3,6 +3,7 @@ import {
     API_PATHS,
     APP_PATHS,
     expectFeedToContain,
+    follow,
     HTTP_STATUS,
     newUser,
     openAs,
@@ -103,6 +104,26 @@ async function openProfileEditSheet(page: Page, scene: Scene) {
     await expect(page.getByRole('dialog', { name: 'Say who you are.' })).toBeVisible();
 }
 
+async function openFollowersDialog(page: Page, scene: Scene) {
+    await follow(scene.bob, scene.ana);
+    await openAs(page, scene.ana, APP_PATHS.user(scene.ana.user.username));
+    await page
+        .getByRole('button', { name: /FOLLOWERS?$/ })
+        .click();
+
+    await expect(page.getByRole('dialog', { name: 'FOLLOWERS' })).toBeVisible();
+    await expect(page.getByRole('dialog').getByText(scene.bob.user.username, { exact: true })).toBeVisible();
+}
+
+// Bob follows nobody and has posted nothing, so his feed is the empty one. The database is shared with the specs running
+// in parallel, so which people are suggested is not known, only that some are.
+async function openEmptyFeedPanel(page: Page, scene: Scene) {
+    await openAs(page, scene.bob, APP_PATHS.feed);
+
+    await expect(page.getByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Follow / }).first()).toBeVisible();
+}
+
 async function openComposer(page: Page, scene: Scene) {
     await openFeed(page, scene);
     await page
@@ -161,6 +182,10 @@ const SCREENS: Screen[] = [
         open: openFeed,
     },
     {
+        name: 'empty_feed_panel',
+        open: openEmptyFeedPanel,
+    },
+    {
         name: 'people_tab',
         open: async (page, scene) => {
             await openAs(page, scene.ana, APP_PATHS.users);
@@ -199,6 +224,11 @@ const SCREENS: Screen[] = [
     {
         name: 'composer_dialog',
         open: openComposer,
+        scope: (page) => page.getByRole('dialog'),
+    },
+    {
+        name: 'followers_dialog',
+        open: openFollowersDialog,
         scope: (page) => page.getByRole('dialog'),
     },
     {

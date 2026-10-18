@@ -20,10 +20,12 @@ function followersTextOf(followersCount: number): string {
 
 interface PersonCardProps {
     person: Person;
+    isFollowable?: boolean;
     onFollowChanged: (followedByMe: boolean, followersCount: number) => void;
 }
 
-function PersonCard({ person, onFollowChanged }: PersonCardProps) {
+// Nobody can follow themselves, so the reader's own card (in someone's follower list) has no follow button.
+function PersonCard({ person, isFollowable = true, onFollowChanged }: PersonCardProps) {
     const navigate = useNavigate();
     const follow = usePersonFollow(person, onFollowChanged);
 
@@ -48,16 +50,18 @@ function PersonCard({ person, onFollowChanged }: PersonCardProps) {
                 <p className="person-card-bio" data-empty={bio === null} dir="auto">{bio}</p>
                 <p className="person-card-followers">{followersTextOf(follow.followersCount)}</p>
             </div>
-            <div className="person-card-action">
-                <FollowButton
-                    username={person.username}
-                    isFollowing={follow.isFollowing}
-                    phase={follow.phase}
-                    onClick={follow.handleClick}
-                    onDisarm={follow.handleDisarm}
-                />
-                <p className="sr-only" aria-live="polite">{follow.announcement}</p>
-            </div>
+            {isFollowable && (
+                <div className="person-card-action">
+                    <FollowButton
+                        username={person.username}
+                        isFollowing={follow.isFollowing}
+                        phase={follow.phase}
+                        onClick={follow.handleClick}
+                        onDisarm={follow.handleDisarm}
+                    />
+                    <p className="sr-only" aria-live="polite">{follow.announcement}</p>
+                </div>
+            )}
         </li>
     );
 }

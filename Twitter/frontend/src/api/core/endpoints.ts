@@ -27,6 +27,8 @@ export const ENDPOINTS = {
     me: `${API_V1}/users/me`,
     profilePicture: `${API_V1}/users/me/profile-picture`,
     follow: (username: string) => `${API_V1}/users/${segment(username)}/follow`,
+    followers: (username: string) => `${API_V1}/users/${segment(username)}/followers`,
+    following: (username: string) => `${API_V1}/users/${segment(username)}/following`,
     // Served from the frontend's own public folder, not by the API.
     defaultProfilePicture: '/Default-Profile-Picture.png',
     // The backend hands out paths like /api/v1/files/{id}; the browser needs them on the API's own origin.

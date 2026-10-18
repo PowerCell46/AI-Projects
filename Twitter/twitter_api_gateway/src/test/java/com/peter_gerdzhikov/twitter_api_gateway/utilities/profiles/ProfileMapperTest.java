@@ -72,6 +72,7 @@ class ProfileMapperTest {
         User user = TestEntities.newUser();
         user.setId(UUID.randomUUID());
         user.setBio("Hello");
+        user.setFollowersCount(7);
         DbFile profilePicture = fileWithId();
         user.setProfilePicture(profilePicture);
 
@@ -81,6 +82,7 @@ class ProfileMapperTest {
         assertThat(item.getUsername()).isEqualTo(user.getUsername());
         assertThat(item.getBio()).isEqualTo("Hello");
         assertThat(item.isFollowedByMe()).isTrue();
+        assertThat(item.getFollowersCount()).isEqualTo(7);
         assertThat(item.getProfilePictureUrl()).isEqualTo("/api/v1/files/" + profilePicture.getId());
     }
 

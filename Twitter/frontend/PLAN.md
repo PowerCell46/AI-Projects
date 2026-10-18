@@ -52,7 +52,7 @@ Steps in other projects follow that project's `CLAUDE.md`. Invoke `frontend-code
 
 ## Out of scope
 
-Display names; follower / following lists; reply-author links; removing the photo; the cover picture (API exists, no
+Display names; reply-author links; removing the photo; the cover picture (API exists, no
 UI); deleting your own tweets from the profile (API exists); a birthdate UI; search; profile search; an image viewer;
 clickable links or mentions; popularity order; hiding people you already follow; refetching the people list; DLT replay
 tooling.

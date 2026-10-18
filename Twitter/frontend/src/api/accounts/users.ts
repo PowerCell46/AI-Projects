@@ -54,9 +54,9 @@ export async function fetchUserProfile(username: string): Promise<UserProfile> {
     return withPictureUrl(profile);
 }
 
-export async function fetchPeople(request: PageRequest): Promise<PeoplePage> {
+async function fetchPeoplePage(url: string): Promise<PeoplePage> {
     const response = await sendAuthenticated(
-        pageUrl(ENDPOINTS.users, request),
+        url,
         { method: 'GET' },
     );
     const page = await readJson<PeoplePage>(response);
@@ -65,6 +65,18 @@ export async function fetchPeople(request: PageRequest): Promise<PeoplePage> {
         ...page,
         items: page.items.map(withPictureUrl),
     };
+}
+
+export function fetchPeople(request: PageRequest): Promise<PeoplePage> {
+    return fetchPeoplePage(pageUrl(ENDPOINTS.users, request));
+}
+
+export function fetchFollowers(username: string, request: PageRequest): Promise<PeoplePage> {
+    return fetchPeoplePage(pageUrl(ENDPOINTS.followers(username), request));
+}
+
+export function fetchFollowing(username: string, request: PageRequest): Promise<PeoplePage> {
+    return fetchPeoplePage(pageUrl(ENDPOINTS.following(username), request));
 }
 
 export async function updateProfile(change: ProfileChange): Promise<UserProfile> {

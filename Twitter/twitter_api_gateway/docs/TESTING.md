@@ -1,6 +1,6 @@
 # E2E test catalog
 
-Last updated: 2026-10-17
+Last updated: 2026-10-18
 
 Scope: HTTP-layer tests only — full stack through `DispatcherServlet` against Testcontainers Postgres and
 Kafka (and MinIO from phase 2). Repository, unit and concurrency tests exercise real Postgres too but skip the
@@ -265,7 +265,8 @@ Every group below marked "disabled" is `@Disabled` with an empty body until its 
 `FollowControllerIntegrationTest.Lists` — enabled. Slot = `followers` / `following`.
 
 - Newest first (`should_return_the_items_newest_first_when_the_list_has_several_entries`, slot)
-- Item shape `{id, username, bio, profilePictureUrl, followedByMe}` (`should_return_items_with_id_username_bio_picture_url_and_followed_by_me_when_the_list_is_not_empty`, slot)
+- Item shape `{id, username, bio, profilePictureUrl, followersCount, followedByMe}` (`should_return_items_with_id_username_bio_picture_url_followers_count_and_followed_by_me_when_the_list_is_not_empty`, slot)
+- `followersCount` is each member's own stored count (`should_return_the_followers_count_of_each_member_when_the_list_is_not_empty`, slot)
 - `followers` holds only users who follow the target (`should_list_only_the_users_who_follow_the_target_when_the_followers_are_requested`)
 - `following` holds only users the target follows (`should_list_only_the_users_the_target_follows_when_the_following_are_requested`)
 - Default size is 20, with a next cursor when more exist (`should_return_20_items_and_a_next_cursor_when_no_size_is_given_and_more_exist`, slot)

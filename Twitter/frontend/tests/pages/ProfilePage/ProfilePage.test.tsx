@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { me } from '../../../src/api/accounts/auth';
@@ -6,11 +6,18 @@ import { fetchAuthorTweets } from '../../../src/api/tweets/authorTweets';
 import { fetchFeed } from '../../../src/api/tweets/feed';
 import { ApiError } from '../../../src/api/core/http';
 import { fetchTweetCount } from '../../../src/api/tweets/tweets';
-import { fetchUserProfile, updateProfile, uploadProfilePicture } from '../../../src/api/accounts/users';
+import {
+    fetchFollowers,
+    fetchFollowing,
+    fetchUserProfile,
+    followUser,
+    updateProfile,
+    uploadProfilePicture,
+} from '../../../src/api/accounts/users';
 import { reportViews } from '../../../src/api/tweets/views';
 import { profilePath } from '../../../src/routes';
 import { renderApp } from '../../support/renderApp';
-import { advance } from '../../support/stepFlowHelpers';
+import { advance, waitForHistoryTraversal } from '../../support/stepFlowHelpers';
 import { tweetItem } from '../../support/tweetItem';
 import { userProfile } from '../../support/userProfile';
 
@@ -35,6 +42,9 @@ vi.mock('../../../src/api/tweets/tweets', () => ({
 
 vi.mock('../../../src/api/accounts/users', () => ({
     fetchUserProfile: vi.fn(),
+    fetchFollowers: vi.fn(),
+    fetchFollowing: vi.fn(),
+    fetchPeople: vi.fn(),
     updateProfile: vi.fn(),
     uploadProfilePicture: vi.fn(),
     followUser: vi.fn(),
@@ -83,6 +93,25 @@ const OWN_PROFILE = userProfile({
     bio: 'My old bio',
     location: 'Sofia',
 });
+
+// AUTOFOCUS_DELAY_MS in FollowListModal.tsx, with a margin.
+const AUTOFOCUS_DELAY_MS = 100;
+
+const EMPTY_PEOPLE_PAGE = {
+    items: [],
+    nextCursor: null,
+};
+
+function person(username: string, followedByMe = false) {
+    return {
+        id: `id-${username}`,
+        username,
+        bio: null,
+        followersCount: 0,
+        followedByMe,
+        profilePictureUrl: null,
+    };
+}
 
 let user: ReturnType<typeof userEvent.setup>;
 
@@ -135,6 +164,15 @@ beforeEach(() => {
             nextCursor: null,
         });
     vi.mocked(reportViews)
+        .mockReset()
+        .mockResolvedValue(undefined);
+    vi.mocked(fetchFollowers)
+        .mockReset()
+        .mockResolvedValue(EMPTY_PEOPLE_PAGE);
+    vi.mocked(fetchFollowing)
+        .mockReset()
+        .mockResolvedValue(EMPTY_PEOPLE_PAGE);
+    vi.mocked(followUser)
         .mockReset()
         .mockResolvedValue(undefined);
 });
@@ -239,12 +277,171 @@ describe('the stats', () => {
         expect(statTexts()).toEqual(['1 FOLLOWER', '31 FOLLOWING', '1 TWEET']);
     });
 
-    it('should_not_make_the_stats_clickable', async () => {
+    it('should_make_followers_and_following_buttons_and_leave_the_tweet_count_as_text', async () => {
         await renderApp(profilePath('ana_b'));
 
-        const stats = openMain().getByRole('list', { name: 'Profile statistics' });
+        const stats = within(openMain().getByRole('list', { name: 'Profile statistics' }));
 
-        expect(stats.querySelector('a, button')).toBeNull();
+        expect(stats.getByRole('button', { name: '1,204 FOLLOWERS' })).toBeTruthy();
+        expect(stats.getByRole('button', { name: '31 FOLLOWING' })).toBeTruthy();
+        expect(stats.queryByRole('button', { name: /TWEET/ })).toBeNull();
+    });
+});
+
+describe('the follower and following lists', () => {
+    function stat(name: string): HTMLElement {
+        return openMain().getByRole('button', { name });
+    }
+
+    function dialog() {
+        return within(screen.getByRole('dialog'));
+    }
+
+    it('should_open_the_followers_of_the_profile_when_the_followers_stat_is_pressed', async () => {
+        vi.mocked(fetchFollowers).mockResolvedValue({
+            items: [person('bob'), person('cy')],
+            nextCursor: null,
+        });
+        await renderApp(profilePath('ana_b'));
+
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+
+        expect(fetchFollowers).toHaveBeenCalledExactlyOnceWith('ana_b', {
+            cursor: null,
+            size: 20,
+        });
+        expect(dialog().getByRole('heading', { name: 'FOLLOWERS' })).toBeTruthy();
+        expect(dialog().getByRole('link', { name: 'bob' })).toBeTruthy();
+        expect(dialog().getByRole('link', { name: 'cy' })).toBeTruthy();
+    });
+
+    it('should_open_the_people_the_profile_follows_when_the_following_stat_is_pressed', async () => {
+        vi.mocked(fetchFollowing).mockResolvedValue({
+            items: [person('dee')],
+            nextCursor: null,
+        });
+        await renderApp(profilePath('ana_b'));
+
+        await user.click(stat('31 FOLLOWING'));
+        await advance(1);
+
+        expect(fetchFollowing).toHaveBeenCalledExactlyOnceWith('ana_b', {
+            cursor: null,
+            size: 20,
+        });
+        expect(dialog().getByRole('heading', { name: 'FOLLOWING' })).toBeTruthy();
+        expect(dialog().getByRole('link', { name: 'dee' })).toBeTruthy();
+    });
+
+    it('should_say_there_is_nobody_when_the_list_is_empty', async () => {
+        await renderApp(profilePath('ana_b'));
+
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+
+        expect(dialog().getByText('NO FOLLOWERS YET')).toBeTruthy();
+    });
+
+    it('should_close_when_the_close_button_is_pressed_and_give_focus_back_to_the_stat', async () => {
+        await renderApp(profilePath('ana_b'));
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+
+        await user.click(dialog().getByRole('button', { name: 'CLOSE' }));
+        await waitForHistoryTraversal();
+
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(document.activeElement).toBe(stat('1,204 FOLLOWERS'));
+    });
+
+    it('should_leave_focus_on_a_follow_button_pressed_before_the_close_button_would_take_it', async () => {
+        vi.mocked(fetchFollowers).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        await renderApp(profilePath('ana_b'));
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+        await user.click(dialog().getByRole('button', { name: 'Follow bob' }));
+
+        await advance(AUTOFOCUS_DELAY_MS);
+
+        expect(document.activeElement).toBe(dialog().getByRole('button', { name: 'Follow bob' }));
+    });
+
+    it('should_close_when_escape_is_pressed', async () => {
+        await renderApp(profilePath('ana_b'));
+        await user.click(stat('1,204 FOLLOWERS'));
+        // The close button takes focus a moment after the modal opens, and Escape is read from inside it.
+        await advance(AUTOFOCUS_DELAY_MS);
+
+        await user.keyboard('{Escape}');
+        await waitForHistoryTraversal();
+
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('should_close_and_stay_on_the_profile_when_the_browser_goes_back', async () => {
+        await renderApp(profilePath('ana_b'));
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+
+        act(() => {
+            window.history.back();
+        });
+        await waitForHistoryTraversal();
+
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(window.location.pathname).toBe(profilePath('ana_b'));
+        expect(headingNamed(1, 'ana_b')).toBeTruthy();
+    });
+
+    it('should_show_no_follow_button_on_the_readers_own_card', async () => {
+        vi.mocked(fetchFollowers).mockResolvedValue({
+            items: [person('peter_g'), person('bob')],
+            nextCursor: null,
+        });
+        await renderApp(profilePath('ana_b'));
+
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+
+        expect(dialog().queryByRole('button', { name: 'Follow peter_g' })).toBeNull();
+        expect(dialog().getByRole('button', { name: 'Follow bob' })).toBeTruthy();
+    });
+
+    it('should_move_the_following_count_of_the_readers_own_profile_when_someone_is_followed_from_the_list', async () => {
+        vi.mocked(fetchFollowing).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        await renderApp(profilePath('peter_g'));
+        await user.click(stat('0 FOLLOWING'));
+        await advance(1);
+
+        await user.click(dialog().getByRole('button', { name: 'Follow bob' }));
+        await advance(1);
+        await advance(1);
+
+        expect(followUser).toHaveBeenCalledExactlyOnceWith('bob');
+        expect(stat('1 FOLLOWING')).toBeTruthy();
+    });
+
+    it('should_leave_the_counts_of_someone_elses_profile_alone_when_a_person_is_followed_from_the_list', async () => {
+        vi.mocked(fetchFollowers).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        await renderApp(profilePath('ana_b'));
+        await user.click(stat('1,204 FOLLOWERS'));
+        await advance(1);
+
+        await user.click(dialog().getByRole('button', { name: 'Follow bob' }));
+        await advance(1);
+        await advance(1);
+
+        expect(statTexts()).toEqual(['1,204 FOLLOWERS', '31 FOLLOWING', '25 TWEETS']);
     });
 });
 

@@ -51,6 +51,14 @@ function renderCard(changes: Partial<Person> = {}, onFollowChanged = vi.fn()) {
     return { onFollowChanged };
 }
 
+function renderUnfollowableCard() {
+    renderInRouter(
+        <ul>
+            <PersonCard person={PERSON} isFollowable={false} onFollowChanged={vi.fn()} />
+        </ul>,
+    );
+}
+
 function followButton(): HTMLElement {
     return screen.getByRole('button', { name: 'Follow ana' });
 }
@@ -171,6 +179,15 @@ describe('person card', () => {
         renderCard({ followersCount: 0 });
 
         expect(screen.getByText('0 FOLLOWERS')).toBeTruthy();
+    });
+});
+
+describe('a card that cannot be followed', () => {
+    it('should_show_the_person_without_a_follow_button_when_the_card_is_not_followable', () => {
+        renderUnfollowableCard();
+
+        expect(screen.getByRole('link', { name: 'ana' })).toBeTruthy();
+        expect(screen.queryByRole('button')).toBeNull();
     });
 });
 

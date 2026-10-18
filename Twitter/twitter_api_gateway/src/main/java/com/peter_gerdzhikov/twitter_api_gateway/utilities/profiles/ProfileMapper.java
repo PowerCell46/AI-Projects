@@ -39,6 +39,7 @@ public final class ProfileMapper {
                 .bio(user.getBio())
                 .username(user.getUsername())
                 .followedByMe(followedByMe)
+                .followersCount(user.getFollowersCount())
                 .profilePictureUrl(urlOf(user.getProfilePicture()))
                 .build();
     }
