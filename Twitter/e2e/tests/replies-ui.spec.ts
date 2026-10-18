@@ -94,9 +94,6 @@ test(
         await expect(postWithText(page, openedContent)).toBeVisible();
         await expect(page.getByRole('tablist')).toHaveCount(0);
         await page
-            .getByRole('button', { name: 'Write a reply…' })
-            .click();
-        await page
             .getByLabel('YOUR REPLY')
             .fill('a reply from ana');
         await page

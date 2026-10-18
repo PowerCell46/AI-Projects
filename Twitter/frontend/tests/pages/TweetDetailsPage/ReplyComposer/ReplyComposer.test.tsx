@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../../src/api/core/http';
@@ -38,15 +38,6 @@ function replyButton(): HTMLElement {
     return screen.getByRole('button', { name: 'REPLY' });
 }
 
-// jsdom plays no animation, so the end of the folding is sent by hand.
-function finishClosing() {
-    const form = field().closest('form');
-
-    if (form) {
-        fireEvent.animationEnd(form);
-    }
-}
-
 async function typeAndSend(text: string) {
     await userEvent.click(field());
     await userEvent.paste(text);
@@ -59,7 +50,6 @@ beforeEach(async () => {
         .mockReset()
         .mockResolvedValue(REPLY);
     render(<ReplyComposer tweetId={TWEET_ID} onSent={onSent} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
 });
 
 describe('the label', () => {
@@ -71,45 +61,63 @@ describe('the label', () => {
     });
 });
 
-describe('collapsing', () => {
-    it('should_fold_back_into_its_row_when_the_empty_field_loses_focus', async () => {
-        await userEvent.tab({ shift: true });
-
-        expect(field().closest('form')?.getAttribute('data-closing')).toBe('true');
-
-        finishClosing();
-
-        expect(screen.queryByLabelText('YOUR REPLY')).toBeNull();
-        expect(screen.getByRole('button', { name: 'Write a reply…' })).toBeTruthy();
+describe('the field', () => {
+    it('should_be_on_the_page_without_being_opened_and_say_what_to_write', () => {
+        expect(field().getAttribute('placeholder')).toBe('Write a reply…');
+        expect(screen.getByRole('button', { name: 'REPLY' })).toBeTruthy();
     });
 
-    it('should_stay_open_when_the_field_with_text_loses_focus', async () => {
+    it('should_stay_as_it_is_when_the_empty_field_gets_and_loses_focus', async () => {
+        await userEvent.click(field());
+        await userEvent.tab({ shift: true });
+
+        expect(field()).toBeTruthy();
+        expect(screen.getByText('0 / 280')).toBeTruthy();
+    });
+
+    it('should_keep_the_text_when_the_field_with_text_loses_focus', async () => {
+        await userEvent.click(field());
         await userEvent.paste('half a thought');
         await userEvent.tab();
 
         expect(field().value).toBe('half a thought');
     });
+});
 
-    it('should_clear_the_text_and_fold_when_cancel_is_pressed', async () => {
-        await userEvent.paste('half a thought');
-        await userEvent.click(screen.getByRole('button', { name: 'CANCEL' }));
-        finishClosing();
+describe('cancelling', () => {
+    function cancelButton(): HTMLElement {
+        return screen.getByText('CANCEL');
+    }
 
-        expect(screen.queryByLabelText('YOUR REPLY')).toBeNull();
-
-        await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
-
-        expect(field().value).toBe('');
+    it('should_keep_cancel_in_its_place_but_hidden_while_the_field_is_empty', () => {
+        expect(cancelButton().getAttribute('data-hidden')).toBe('true');
     });
 
-    it('should_fold_when_a_reply_is_sent', async () => {
-        await typeAndSend('hello world');
+    it('should_show_cancel_once_there_is_text', async () => {
+        await userEvent.click(field());
+        await userEvent.paste('half a thought');
 
-        expect(field().closest('form')?.getAttribute('data-closing')).toBe('true');
+        expect(cancelButton().getAttribute('data-hidden')).toBe('false');
+    });
 
-        finishClosing();
+    it('should_clear_the_text_and_let_go_of_the_field_when_cancel_is_pressed', async () => {
+        await userEvent.click(field());
+        await userEvent.paste('half a thought');
 
-        expect(screen.queryByLabelText('YOUR REPLY')).toBeNull();
+        await userEvent.click(screen.getByRole('button', { name: 'CANCEL' }));
+
+        expect(field().value).toBe('');
+        expect(document.activeElement).not.toBe(field());
+    });
+
+    it('should_clear_the_text_and_let_go_of_the_field_when_escape_is_pressed', async () => {
+        await userEvent.click(field());
+        await userEvent.paste('half a thought');
+
+        await userEvent.keyboard('{Escape}');
+
+        expect(field().value).toBe('');
+        expect(document.activeElement).not.toBe(field());
     });
 });
 
@@ -166,10 +174,9 @@ describe('sending', () => {
 
     it('should_clear_the_field_when_the_reply_is_sent', async () => {
         await typeAndSend('hello world');
-        finishClosing();
-        await userEvent.click(screen.getByRole('button', { name: 'Write a reply…' }));
 
         expect(field().value).toBe('');
+        expect(document.activeElement).not.toBe(field());
     });
 
     it('should_show_this_post_was_deleted_under_the_field_when_the_server_answers_404', async () => {

@@ -38,10 +38,9 @@ function submitButton(page: Page): Locator {
     });
 }
 
+// The field is always on the page; "opening" it is clicking into it.
 async function openComposer(page: Page) {
-    await page
-        .getByRole('button', { name: 'Write a reply…' })
-        .click();
+    await replyField(page).click();
 
     await expect(replyField(page)).toBeFocused();
 }
@@ -100,7 +99,8 @@ test(
 
         await expect(reply).toBeVisible();
         await expect(reply).toContainText(ana.user.username);
-        await expect(page.getByRole('button', { name: 'Write a reply…' })).toBeVisible();
+        await expect(replyField(page)).toHaveValue('');
+        await expect(replyField(page)).not.toBeFocused();
         expect(await storedReplyCount(ana, tweetId)).toBe(1);
     },
 );
@@ -161,7 +161,7 @@ test(
 );
 
 test(
-    'should_not_send_and_fold_the_composer_back_when_the_empty_send_button_is_pressed',
+    'should_not_send_and_keep_the_composer_open_when_the_empty_send_button_is_pressed',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
         const bob = await createAccount();
@@ -172,10 +172,9 @@ test(
         await expect(submitButton(page)).toHaveAttribute('aria-disabled', 'true');
 
         // The button is aria-disabled, which Playwright treats as not clickable, so the press is forced.
-        // Pressing it blurs the empty field, which folds the composer back into its row.
         await submitButton(page).click({ force: true });
 
-        await expect(page.getByRole('button', { name: 'Write a reply…' })).toBeVisible();
+        await expect(replyField(page)).toBeVisible();
         await expect(page.getByRole('article', { name: /^Reply by/ })).toHaveCount(0);
         expect(replyPosts).toEqual([]);
         expect(await storedReplyCount(ana, tweetId)).toBe(0);
@@ -233,7 +232,7 @@ test(
 );
 
 test(
-    'should_discard_the_text_and_close_the_composer_when_cancel_is_pressed',
+    'should_discard_the_text_and_let_go_of_the_field_when_cancel_is_pressed',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
         const bob = await createAccount();
@@ -245,27 +244,25 @@ test(
             .getByRole('button', { name: 'CANCEL' })
             .click();
 
-        await expect(page.getByRole('button', { name: 'Write a reply…' })).toBeVisible();
-
-        await openComposer(page);
-
         await expect(replyField(page)).toHaveValue('');
+        await expect(replyField(page)).not.toBeFocused();
         expect(await storedReplyCount(ana, tweetId)).toBe(0);
     },
 );
 
 test(
-    'should_close_the_composer_when_escape_is_pressed_in_the_field',
+    'should_discard_the_text_and_let_go_of_the_field_when_escape_is_pressed_in_the_field',
     async ({ page, createAccount }) => {
         const ana = await createAccount();
         const bob = await createAccount();
         await openTweetOfAnotherUser(page, ana, bob);
         await openComposer(page);
+        await replyField(page).fill('a reply that will be dropped');
 
         await page.keyboard.press('Escape');
 
-        await expect(page.getByRole('button', { name: 'Write a reply…' })).toBeVisible();
-        await expect(page.getByLabel('YOUR REPLY')).toHaveCount(0);
+        await expect(replyField(page)).toHaveValue('');
+        await expect(replyField(page)).not.toBeFocused();
     },
 );
 

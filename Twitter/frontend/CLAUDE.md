@@ -136,6 +136,11 @@ profile → tweet → Back reloads the profile from the top.
   The back link sets `data-leaving` and waits `LEAVE_MS` (450 ms, must cover the 100 ms delay plus 350 ms retract of the
   rule) before it goes back. **Shortcut:** the browser's own Back, swipe or Alt+← changes the route at once, so the
   leave animation never plays for them.
+- The reply composer is always on the page at its full size, so it never moves or covers anything: the labelled field
+  (placeholder `Write a reply…`), its rule, the `CANCEL`/counter/`REPLY` row and a reserved error line. `CANCEL` is
+  `visibility: hidden` (so it keeps its place) until there is text. `CANCEL`, Escape and a successful send clear the
+  text and the error and blur the field; a blur alone changes nothing. **Shortcut:** the composer takes about 11 rem
+  even when unused, and an error longer than one line would still push what is below it.
 - Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a
   reload. Edits and deletes are overrides on the loaded list, so `usePagedList` is unchanged. `EDIT` and `DELETE` only

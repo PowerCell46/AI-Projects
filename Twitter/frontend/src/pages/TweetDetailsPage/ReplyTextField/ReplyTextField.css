@@ -11,7 +11,7 @@
 .reply-text-field-text {
     display: block;
     width: 100%;
-    min-height: 5.25rem;
+    min-height: 5.5625rem;
     padding: 0 0 0.875rem;
     font-family: var(--font-headline);
     font-size: 1.03125rem;
@@ -22,6 +22,10 @@
     border-radius: 0;
     resize: none;
     outline: 0;
+}
+
+.reply-text-field-text::placeholder {
+    color: var(--pale-placeholder);
 }
 
 .reply-text-field-rule {
@@ -105,6 +109,11 @@
 
 .reply-text-field-counter[data-over-limit='true'] {
     color: var(--alarm);
+}
+
+/* Hidden by visibility, not display: it keeps its place and leaves the tab order and the accessibility tree. */
+.reply-text-field-cancel[data-hidden='true'] {
+    visibility: hidden;
 }
 
 .reply-text-field-cancel:hover {

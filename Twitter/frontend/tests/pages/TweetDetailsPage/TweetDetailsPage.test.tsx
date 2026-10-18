@@ -225,7 +225,7 @@ describe('loading the page', () => {
             .map((reply) => reply.textContent);
 
         expect(screen.getByText('the post under discussion')).toBeTruthy();
-        expect(screen.getByRole('button', { name: 'Write a reply…' })).toBeTruthy();
+        expect(screen.getByRole('textbox', { name: 'YOUR REPLY' })).toBeTruthy();
         expect(replies[0]).toContain('the first reply');
         expect(replies[1]).toContain('the second reply');
     });
@@ -241,7 +241,7 @@ describe('a missing post', () => {
         expect(screen.getByRole('link', { name: 'BACK' })).toBeTruthy();
         expect(screen.queryByRole('article')).toBeNull();
         expect(screen.queryByRole('button')).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Write a reply…' })).toBeNull();
+        expect(screen.queryByRole('textbox', { name: 'YOUR REPLY' })).toBeNull();
     });
 
     it('should_offer_try_again_and_show_the_post_when_the_retry_succeeds', async () => {
@@ -306,7 +306,7 @@ describe('the replies list', () => {
         await advance(1);
 
         expect(screen.getByText('the post under discussion')).toBeTruthy();
-        expect(screen.getByRole('button', { name: 'Write a reply…' })).toBeTruthy();
+        expect(screen.getByRole('textbox', { name: 'YOUR REPLY' })).toBeTruthy();
         expect(screen.getByText('SIGNAL LOST')).toBeTruthy();
 
         vi.mocked(fetchReplies).mockResolvedValue({
@@ -350,7 +350,7 @@ describe('sending a reply', () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         expect(shownReplyCount()).toContain('2');
 
-        await user.click(screen.getByRole('button', { name: 'Write a reply…' }));
+        await user.click(screen.getByRole('textbox', { name: 'YOUR REPLY' }));
         await user.paste('the second reply');
         await user.click(screen.getByRole('button', { name: 'REPLY' }));
         await advance(1);
@@ -374,7 +374,7 @@ describe('sending a reply', () => {
         await advance(1);
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
-        await user.click(screen.getByRole('button', { name: 'Write a reply…' }));
+        await user.click(screen.getByRole('textbox', { name: 'YOUR REPLY' }));
         await user.paste('the first reply');
         await user.click(screen.getByRole('button', { name: 'REPLY' }));
         await advance(1);
@@ -474,7 +474,7 @@ describe('reporting updates to the lists', () => {
         await advance(1);
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
-        await user.click(screen.getByRole('button', { name: 'Write a reply…' }));
+        await user.click(screen.getByRole('textbox', { name: 'YOUR REPLY' }));
         await user.paste('the second reply');
         await user.click(screen.getByRole('button', { name: 'REPLY' }));
         await advance(1);
