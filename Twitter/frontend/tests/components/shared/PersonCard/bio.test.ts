@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { truncateBio } from '../../../../../src/pages/PeoplePage/PeopleList/PersonCard/bio';
+import { truncateBio } from '../../../../src/components/shared/PersonCard/bio';
 
 
 const LONG_WORD = 'a'.repeat(60);

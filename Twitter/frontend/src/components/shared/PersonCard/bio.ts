@@ -1,4 +1,4 @@
-import { stripBidiControls } from '../../../../utils/text/bidi';
+import { stripBidiControls } from '../../../utils/text/bidi';
 
 
 const BIO_MAX_CODE_POINTS = 50;

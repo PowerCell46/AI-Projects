@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import PostListStatus from '../PostListStatus/PostListStatus';
-import type { BottomState, EmptyAction } from '../PostListStatus/PostListStatus';
+import type { BottomState } from '../PostListStatus/PostListStatus';
 
 
 interface ListFooterProps {
@@ -9,7 +9,6 @@ interface ListFooterProps {
     emptyText: string;
     announcement: string;
     sentinelRef: RefObject<HTMLDivElement | null>;
-    emptyAction?: EmptyAction;
     onRetry: () => void;
 }
 
@@ -21,7 +20,6 @@ function ListFooter({
     emptyText,
     announcement,
     sentinelRef,
-    emptyAction,
     onRetry,
 }: ListFooterProps) {
     return (
@@ -31,7 +29,6 @@ function ListFooter({
                     state={bottomState}
                     endText={endText}
                     emptyText={emptyText}
-                    emptyAction={emptyAction}
                     onRetry={onRetry}
                 />
             )}

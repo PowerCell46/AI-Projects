@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { followUser, unfollowUser } from '../../../../../src/api/accounts/users';
-import type { Person } from '../../../../../src/api/accounts/users';
-import { ROUTES, profilePath } from '../../../../../src/routes';
-import PersonCard from '../../../../../src/pages/PeoplePage/PeopleList/PersonCard/PersonCard';
+import { followUser, unfollowUser } from '../../../../src/api/accounts/users';
+import type { Person } from '../../../../src/api/accounts/users';
+import { ROUTES, profilePath } from '../../../../src/routes';
+import PersonCard from '../../../../src/components/shared/PersonCard/PersonCard';
 
 
-vi.mock('../../../../../src/api/accounts/users', () => ({
+vi.mock('../../../../src/api/accounts/users', () => ({
     followUser: vi.fn(),
     unfollowUser: vi.fn(),
 }));

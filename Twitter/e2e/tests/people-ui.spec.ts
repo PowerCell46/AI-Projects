@@ -76,13 +76,13 @@ function currentScrollY(page: Page): Promise<number> {
     return page.evaluate(() => window.scrollY);
 }
 
-test('should_offer_find_people_on_an_empty_feed_and_open_the_people_tab_when_it_is_pressed', async ({ page, createAccount }) => {
+test('should_offer_a_people_tab_link_on_an_empty_feed_and_open_the_people_tab_when_it_is_pressed', async ({ page, createAccount }) => {
     const ana = await createAccount();
     await openAs(page, ana, FEED_ROUTE);
     await expect(page.getByText('NOTHING HERE YET — FOLLOW SOMEONE TO SEE THEIR POSTS')).toBeVisible();
 
     await page
-        .getByRole('button', { name: 'FIND PEOPLE' })
+        .getByRole('link', { name: 'PEOPLE TAB' })
         .click();
 
     await expect(page).toHaveURL(USERS_URL_PATTERN);
@@ -119,7 +119,7 @@ test('should_show_the_post_of_the_person_just_followed_when_the_user_goes_back_t
     const tweetId = await postTweet(bob, content);
     await openAs(page, ana, FEED_ROUTE);
     await page
-        .getByRole('button', { name: 'FIND PEOPLE' })
+        .getByRole('link', { name: 'PEOPLE TAB' })
         .click();
     const card = await findPersonCard(page, bob.user.username);
 

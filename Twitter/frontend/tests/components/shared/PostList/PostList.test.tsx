@@ -1254,70 +1254,53 @@ describe('new posts while reading', () => {
     });
 });
 
-describe('the empty action', () => {
-    const EMPTY_ACTION_LABEL = 'FIND PEOPLE';
+describe('the empty content', () => {
+    const EMPTY_CONTENT = 'content for the empty list';
 
-    async function renderEmptyList(onEmptyAction = vi.fn()) {
+    async function renderListWithEmptyContent() {
         await act(async () => {
             render(
                 <PostList
                     fetchPage={fetchPage}
                     endText={END_TEXT}
                     emptyText={EMPTY_TEXT}
-                    emptyAction={{
-                        label: EMPTY_ACTION_LABEL,
-                        onClick: onEmptyAction,
-                    }}
+                    emptyContent={<p>{EMPTY_CONTENT}</p>}
                 />,
             );
         });
-
-        return { onEmptyAction };
     }
 
-    it('should_show_the_action_button_beside_the_empty_text_when_the_list_is_empty', async () => {
+    it('should_show_the_content_instead_of_the_empty_text_when_the_list_is_empty', async () => {
         fetchPage.mockResolvedValue(page([], null));
 
-        await renderEmptyList();
+        await renderListWithEmptyContent();
 
-        expect(screen.getByText(EMPTY_TEXT)).toBeTruthy();
-        expect(screen.getByRole('button', { name: EMPTY_ACTION_LABEL })).toBeTruthy();
+        expect(screen.getByText(EMPTY_CONTENT)).toBeTruthy();
+        expect(screen.queryByText(EMPTY_TEXT)).toBeNull();
     });
 
-    it('should_call_the_action_when_the_button_is_pressed', async () => {
-        fetchPage.mockResolvedValue(page([], null));
-        const { onEmptyAction } = await renderEmptyList();
-
-        await act(async () => {
-            await userEvent.click(screen.getByRole('button', { name: EMPTY_ACTION_LABEL }));
-        });
-
-        expect(onEmptyAction).toHaveBeenCalledTimes(1);
-    });
-
-    it('should_not_show_the_action_when_the_list_has_posts', async () => {
+    it('should_not_show_the_content_when_the_list_has_posts', async () => {
         fetchPage.mockResolvedValue(page(posts('a'), null));
 
-        await renderEmptyList();
+        await renderListWithEmptyContent();
 
-        expect(screen.queryByRole('button', { name: EMPTY_ACTION_LABEL })).toBeNull();
+        expect(screen.queryByText(EMPTY_CONTENT)).toBeNull();
     });
 
-    it('should_not_show_the_action_while_the_first_page_is_loading', async () => {
+    it('should_not_show_the_content_while_the_first_page_is_loading', async () => {
         fetchPage.mockReturnValue(new Promise(() => undefined));
 
-        await renderEmptyList();
+        await renderListWithEmptyContent();
 
-        expect(screen.queryByRole('button', { name: EMPTY_ACTION_LABEL })).toBeNull();
+        expect(screen.queryByText(EMPTY_CONTENT)).toBeNull();
     });
 
-    it('should_not_show_a_button_when_no_action_is_given', async () => {
+    it('should_show_the_empty_text_when_no_content_is_given', async () => {
         fetchPage.mockResolvedValue(page([], null));
 
         await renderList();
 
         expect(screen.getByText(EMPTY_TEXT)).toBeTruthy();
-        expect(screen.queryByRole('button')).toBeNull();
     });
 });
 

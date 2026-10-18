@@ -55,6 +55,11 @@ const TWEET_ID = '6f1c2a3e-0000-4000-8000-000000000001';
 
 const DWELL_MS = 1000;
 
+// The page's OPEN_MS and LEAVE_MS in TweetDetailsPage.tsx.
+const OPENING_MS = 1200;
+
+const DETAILS_LEAVE_MS = 450;
+
 const POST = {
     id: TWEET_ID,
     views: 3,
@@ -253,11 +258,32 @@ describe('a missing post', () => {
 });
 
 describe('the back link', () => {
+    it('should_play_the_leave_animation_before_going_back', async () => {
+        renderPage([ROUTES.feed, `/tweets/${TWEET_ID}`]);
+        await advance(1);
+
+        await press('BACK', 'link');
+
+        expect(document.querySelector('.tweet-details-page')?.getAttribute('data-leaving')).toBe('true');
+        expect(screen.queryByText(FEED_TEXT)).toBeNull();
+    });
+
+    it('should_end_the_opening_animation_after_it_has_played', async () => {
+        renderPage([ROUTES.feed, `/tweets/${TWEET_ID}`]);
+
+        expect(document.querySelector('.tweet-details-page')?.getAttribute('data-opening')).toBe('true');
+
+        await advance(OPENING_MS);
+
+        expect(document.querySelector('.tweet-details-page')?.getAttribute('data-opening')).toBe('false');
+    });
+
     it('should_go_back_in_the_history_when_there_is_an_entry_behind', async () => {
         renderPage([ROUTES.feed, `/tweets/${TWEET_ID}`]);
         await advance(1);
 
         await press('BACK', 'link');
+        await advance(DETAILS_LEAVE_MS);
 
         expect(screen.getByText(FEED_TEXT)).toBeTruthy();
     });
@@ -267,6 +293,7 @@ describe('the back link', () => {
         await advance(1);
 
         await press('BACK', 'link');
+        await advance(DETAILS_LEAVE_MS);
 
         expect(screen.getByText(FEED_TEXT)).toBeTruthy();
     });

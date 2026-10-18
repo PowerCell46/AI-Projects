@@ -38,6 +38,10 @@ vi.mock('../../../../../../src/api/tweets/savedTweets', () => ({
 
 vi.mock('../../../../../../src/api/accounts/users', () => ({
     fetchUserProfile: vi.fn(),
+    fetchPeople: vi.fn().mockResolvedValue({
+        items: [],
+        nextCursor: null,
+    }),
 }));
 
 vi.mock('../../../../../../src/api/tweets/authorTweets', () => ({

@@ -47,3 +47,109 @@
     outline: 1px solid var(--pale);
     outline-offset: 0.25rem;
 }
+
+/* The line the login arrival drew, sweeping under the back link: it crosses once, then fades into the cell rule. */
+.tweet-details-page-rule {
+    display: block;
+    height: 1px;
+    background: var(--glow);
+    opacity: 0;
+    transform-origin: left;
+}
+
+@keyframes tweet-details-page-rule-draw {
+    0% {
+        opacity: 1;
+        transform: scaleX(0);
+    }
+
+    60% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scaleX(1);
+    }
+}
+
+@keyframes tweet-details-page-rule-retract {
+    0% {
+        opacity: 0;
+        transform: scaleX(1);
+    }
+
+    20% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scaleX(0);
+    }
+}
+
+@keyframes tweet-details-page-rise {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes tweet-details-page-sink {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+}
+
+/* Opening: the rule draws, the post rises, then the composer and replies follow (the replies' stagger starts at
+   650ms in ReplyThread.css). */
+.tweet-details-page[data-opening='true'] .tweet-details-page-rule {
+    animation: tweet-details-page-rule-draw 1000ms var(--e) both;
+}
+
+.tweet-details-page[data-opening='true'] .tweet-details-page-post {
+    animation: tweet-details-page-rise 600ms var(--e) 150ms backwards;
+}
+
+.tweet-details-page[data-opening='true'] .tweet-details-page-thread {
+    animation: tweet-details-page-rise 600ms var(--e) 450ms backwards;
+}
+
+/* Leaving mirrors it, faster: the replies sink first (ReplyThread.css), then the post, while the rule retracts; the
+   450ms LEAVE_MS in TweetDetailsPage.tsx covers the rule's 100ms delay plus its 350ms. */
+.tweet-details-page[data-leaving='true'] .tweet-details-page-thread {
+    animation: tweet-details-page-sink 300ms var(--e) 100ms forwards;
+}
+
+.tweet-details-page[data-leaving='true'] .tweet-details-page-post {
+    animation: tweet-details-page-sink 300ms var(--e) 100ms forwards;
+}
+
+.tweet-details-page[data-leaving='true'] .tweet-details-page-rule {
+    animation: tweet-details-page-rule-retract 350ms var(--e) 100ms forwards;
+}
+
+/* The global reset shortens durations but not delays, which would hold the content invisible. */
+@media (prefers-reduced-motion: reduce) {
+    .tweet-details-page[data-opening='true'] .tweet-details-page-post,
+    .tweet-details-page[data-opening='true'] .tweet-details-page-thread,
+    .tweet-details-page[data-leaving='true'] .tweet-details-page-thread,
+    .tweet-details-page[data-leaving='true'] .tweet-details-page-post,
+    .tweet-details-page[data-leaving='true'] .tweet-details-page-rule {
+        animation-delay: 0ms;
+    }
+}

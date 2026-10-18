@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { me } from '../../../src/api/accounts/auth';
 import { fetchFeed } from '../../../src/api/tweets/feed';
-import { fetchPeople, fetchUserProfile } from '../../../src/api/accounts/users';
+import { fetchPeople, fetchUserProfile, followUser } from '../../../src/api/accounts/users';
+import { fetchAuthorTweets } from '../../../src/api/tweets/authorTweets';
 import { reportViews } from '../../../src/api/tweets/views';
 import { ROUTES } from '../../../src/routes';
 import { intersect } from '../../support/intersectionObserver';
@@ -12,6 +13,9 @@ import { renderApp } from '../../support/renderApp';
 import { advance } from '../../support/stepFlowHelpers';
 import { userProfile } from '../../support/userProfile';
 
+
+// The first of BACKFILL_DELAYS_MS in useBackfillReloadKey.ts.
+const BACKFILL_DELAY_MS = 4000;
 
 vi.mock('../../../src/api/accounts/auth', async (importOriginal) => ({
     ...await importOriginal<typeof import('../../../src/api/accounts/auth')>(),
@@ -27,6 +31,10 @@ vi.mock('../../../src/api/accounts/users', () => ({
     fetchPeople: vi.fn(),
     followUser: vi.fn(),
     unfollowUser: vi.fn(),
+}));
+
+vi.mock('../../../src/api/tweets/authorTweets', () => ({
+    fetchAuthorTweets: vi.fn(),
 }));
 
 vi.mock('../../../src/api/tweets/views', () => ({
@@ -77,6 +85,12 @@ beforeEach(() => {
     }));
     vi.mocked(fetchFeed).mockReset();
     vi.mocked(fetchPeople)
+        .mockReset()
+        .mockResolvedValue({
+            items: [],
+            nextCursor: null,
+        });
+    vi.mocked(fetchAuthorTweets)
         .mockReset()
         .mockResolvedValue({
             items: [],
@@ -162,8 +176,19 @@ describe('the feed page', () => {
     });
 });
 
-describe('find people from an empty feed', () => {
+describe('the empty feed panel', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    function person(username: string, followedByMe = false) {
+        return {
+            id: `id-${username}`,
+            username,
+            bio: null,
+            followersCount: 0,
+            followedByMe,
+            profilePictureUrl: null,
+        };
+    }
 
     beforeEach(() => {
         vi.mocked(fetchFeed).mockResolvedValue({
@@ -172,22 +197,137 @@ describe('find people from an empty feed', () => {
         });
     });
 
-    it('should_offer_a_find_people_button_when_the_feed_is_empty', async () => {
+    it('should_show_the_heading_and_the_follow_text_when_the_feed_is_empty', async () => {
         await renderApp(ROUTES.feed);
 
-        expect(screen.getByRole('button', { name: 'FIND PEOPLE' })).toBeTruthy();
+        expect(screen.getByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeTruthy();
+        expect(screen.getByText('NOTHING HERE YET — FOLLOW SOMEONE TO SEE THEIR POSTS')).toBeTruthy();
     });
 
-    it('should_open_the_people_tab_and_the_people_address_when_find_people_is_pressed', async () => {
+    it('should_suggest_the_first_three_people_the_reader_does_not_follow', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue({
+            items: [person('ana', true), person('bob'), person('cy'), person('di'), person('ed')],
+            nextCursor: null,
+        });
+
         await renderApp(ROUTES.feed);
 
-        await user.click(screen.getByRole('button', { name: 'FIND PEOPLE' }));
+        const panel = within(screen.getByRole('region', { name: 'THE SURFACE IS QUIET' }));
+        expect(panel.getAllByRole('button', { name: /^Follow / }).map((button) => button.getAttribute('aria-label'))).toEqual([
+            'Follow bob',
+            'Follow cy',
+            'Follow di',
+        ]);
+    });
+
+    it('should_keep_a_followed_suggestion_in_the_panel', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        vi.mocked(followUser).mockResolvedValue(undefined);
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByRole('button', { name: 'Follow bob' }));
+        await advance(1);
+
+        expect(screen.getByRole('link', { name: 'bob' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'Follow bob' }).getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('should_show_the_posts_of_a_followed_suggestion_at_once_without_waiting_for_the_back_fill', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        vi.mocked(followUser).mockResolvedValue(undefined);
+        vi.mocked(fetchAuthorTweets).mockResolvedValue({
+            items: [POST],
+            nextCursor: null,
+        });
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByRole('button', { name: 'Follow bob' }));
+        await advance(1);
+        await advance(1);
+
+        expect(fetchAuthorTweets).toHaveBeenCalledWith('id-bob', expect.objectContaining({ cursor: null }));
+        expect(screen.getByText('a post from the feed')).toBeTruthy();
+        expect(screen.queryByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeNull();
+    });
+
+    it('should_keep_the_panel_when_the_followed_person_has_no_posts_yet', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        vi.mocked(followUser).mockResolvedValue(undefined);
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByRole('button', { name: 'Follow bob' }));
+        await advance(1);
+        await advance(1);
+
+        expect(screen.getByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeTruthy();
+    });
+
+    it('should_keep_the_panel_when_the_posts_of_the_followed_person_cannot_be_read', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        vi.mocked(followUser).mockResolvedValue(undefined);
+        vi.mocked(fetchAuthorTweets).mockRejectedValue(new Error('The request failed.'));
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByRole('button', { name: 'Follow bob' }));
+        await advance(1);
+        await advance(1);
+
+        expect(screen.getByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeTruthy();
+    });
+
+    it('should_point_to_the_people_tab_with_a_link', async () => {
+        await renderApp(ROUTES.feed);
+
+        await user.click(screen.getByRole('link', { name: 'PEOPLE TAB' }));
 
         expect(window.location.pathname).toBe(ROUTES.people);
         expect(screen.getByRole('tab', { name: 'PEOPLE' }).getAttribute('aria-selected')).toBe('true');
     });
 
-    it('should_not_offer_find_people_when_the_feed_has_posts', async () => {
+    it('should_still_show_the_panel_without_suggestions_when_the_people_cannot_be_read', async () => {
+        vi.mocked(fetchPeople).mockRejectedValue(new Error('The request failed.'));
+
+        await renderApp(ROUTES.feed);
+
+        expect(screen.getByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeTruthy();
+        expect(screen.getByRole('link', { name: 'PEOPLE TAB' })).toBeTruthy();
+    });
+
+    it('should_read_the_feed_again_after_a_follow_so_the_back_fill_replaces_the_panel', async () => {
+        vi.mocked(fetchPeople).mockResolvedValue({
+            items: [person('bob')],
+            nextCursor: null,
+        });
+        vi.mocked(followUser).mockResolvedValue(undefined);
+        await renderApp(ROUTES.feed);
+        vi.mocked(fetchFeed).mockResolvedValue({
+            items: [POST],
+            nextCursor: null,
+        });
+
+        await user.click(screen.getByRole('button', { name: 'Follow bob' }));
+        // Two stages: the follow's state update lands when the first act ends, and only then does the timer start.
+        await advance(1);
+        await advance(BACKFILL_DELAY_MS);
+        await advance(1);
+
+        expect(screen.getByText('a post from the feed')).toBeTruthy();
+        expect(screen.queryByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeNull();
+    });
+
+    it('should_not_show_the_panel_when_the_feed_has_posts', async () => {
         vi.mocked(fetchFeed).mockResolvedValue({
             items: [POST],
             nextCursor: null,
@@ -195,7 +335,7 @@ describe('find people from an empty feed', () => {
 
         await renderApp(ROUTES.feed);
 
-        expect(screen.queryByRole('button', { name: 'FIND PEOPLE' })).toBeNull();
+        expect(screen.queryByRole('heading', { name: 'THE SURFACE IS QUIET' })).toBeNull();
     });
 });
 

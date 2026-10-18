@@ -1,13 +1,13 @@
 import type { MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Person } from '../../../../api/accounts/users';
-import Avatar from '../../../../components/shared/Avatar/Avatar';
-import FollowButton from '../../../../components/shared/FollowButton/FollowButton';
+import type { Person } from '../../../api/accounts/users';
+import Avatar from '../Avatar/Avatar';
+import FollowButton from '../FollowButton/FollowButton';
 import { truncateBio } from './bio';
-import { hasTextSelection, isInsideElement } from '../../../../utils/browser/clickTarget';
-import { profilePath } from '../../../../routes';
-import { formatCount } from '../../../../utils/text/count';
-import { usePersonFollow } from '../../../../hooks/social/usePersonFollow';
+import { hasTextSelection, isInsideElement } from '../../../utils/browser/clickTarget';
+import { profilePath } from '../../../routes';
+import { formatCount } from '../../../utils/text/count';
+import { usePersonFollow } from '../../../hooks/social/usePersonFollow';
 import './PersonCard.css';
 
 
@@ -20,7 +20,7 @@ function followersTextOf(followersCount: number): string {
 
 interface PersonCardProps {
     person: Person;
-    onFollowChanged: () => void;
+    onFollowChanged: (followedByMe: boolean, followersCount: number) => void;
 }
 
 function PersonCard({ person, onFollowChanged }: PersonCardProps) {

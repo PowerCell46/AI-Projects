@@ -100,6 +100,15 @@ profile → tweet → Back reloads the profile from the top.
   TWEETS was shown, to `PostList` as `reloadEmptyKey`, and an empty feed reads again when the tab comes back. Back-fill
   lands 3–5 s after a follow (the gateway outbox polls every 3 s), so a very quick return still finds it empty until
   the next `NEW POSTS` check.
+- The empty feed shows `FeedEmptyPanel` (`PostList`'s `emptyContent`): a heading, three suggested people (the first
+  page of `fetchPeople` minus those you follow, read once) as `PersonCard`s, a link to the People tab and ghost posts.
+  Following one reads that person's latest posts (`author-tweets`, `useFollowedPosts`) and shows them at once through
+  `PostList`'s `ownPosts`, so the panel gives way to the posts without waiting for the server's back-fill (the loaded
+  copy wins when it arrives); an unfollow takes them away again. `useFollowCountWhenShown` moves only when the tab
+  becomes shown, so a follow made inside the panel does not reload the feed itself; `useBackfillReloadKey` reads the
+  empty feed again 4 s and 8 s later (the outbox polls every 3 s) as a fallback when the author read failed or the
+  person has no posts yet. **Shortcut:** the suggestions are not refreshed until the panel mounts again, and once the
+  first followed person's posts show, the other suggestions are gone (People tab is the way to more).
 - Signing out sinks the cards of both lists: `people-list-leave` (`PeopleList.css`) and `post-list-leave`
   (`PostList.css`) must stay inside `SIGN_OUT_LEAVE_MS`.
 - Person cards are cut in the browser: `truncateBio` (50 code points, bidi controls stripped) and `formatCount`.
@@ -122,6 +131,11 @@ profile → tweet → Back reloads the profile from the top.
   people, re-keying a card whose values changed so its toggle restarts from the new values. Only the profile reports;
   the card's own toggles stay local. **Shortcut:** like the post updates, these are kept until the shell unmounts.
 - The back link goes `navigate(-1)` when the router's `location.key` is not `default`, else to `/feed`.
+- The details animate in and out: `data-opening` on `.tweet-details-page` lasts `OPEN_MS` (1200 ms: the rule draw and
+  the replies' stagger in `TweetDetailsPage.css` and `ReplyThread.css`), so replies loaded or sent later just appear.
+  The back link sets `data-leaving` and waits `LEAVE_MS` (450 ms, must cover the 100 ms delay plus 350 ms retract of the
+  rule) before it goes back. **Shortcut:** the browser's own Back, swipe or Alt+← changes the route at once, so the
+  leave animation never plays for them.
 - Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a
   reload. Edits and deletes are overrides on the loaded list, so `usePagedList` is unchanged. `EDIT` and `DELETE` only

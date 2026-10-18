@@ -4,7 +4,7 @@ import { useFollowUpdates } from '../../../contexts/FollowUpdatesContext';
 import { useBottomSentinel } from '../../../hooks/lists/useBottomSentinel';
 import { usePagedList } from '../../../hooks/lists/usePagedList';
 import { bottomStateOf } from '../../../utils/posts/bottomState';
-import PersonCard from './PersonCard/PersonCard';
+import PersonCard from '../../../components/shared/PersonCard/PersonCard';
 import './PeopleList.css';
 
 

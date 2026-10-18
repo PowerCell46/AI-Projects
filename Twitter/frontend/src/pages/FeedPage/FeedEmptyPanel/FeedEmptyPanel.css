@@ -1,0 +1,159 @@
+.feed-empty-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.375rem;
+    margin-top: 1.375rem;
+    animation: feed-empty-panel-enter 700ms var(--e) 200ms backwards;
+}
+
+.feed-empty-panel-heading {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: 0.3em;
+    text-align: center;
+    color: var(--pale);
+}
+
+.feed-empty-panel-text,
+.feed-empty-panel-hint,
+.feed-empty-panel-caption {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--pale-secondary);
+}
+
+.feed-empty-panel-people {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.feed-empty-panel-link {
+    color: var(--glow);
+    transition: color 340ms var(--e);
+}
+
+.feed-empty-panel-link:hover {
+    color: var(--glow-hover);
+}
+
+.feed-empty-panel-link:focus-visible {
+    outline: 1px solid var(--pale);
+    outline-offset: 0.25rem;
+}
+
+.feed-empty-panel-caption {
+    margin-top: 0.75rem;
+    color: var(--pale-depth-label);
+}
+
+.feed-empty-panel-ghosts {
+    display: flex;
+    flex-direction: column;
+    gap: 1.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* A post cell drawn as outlines: avatar and name on the first row, two text lines below. */
+.feed-empty-panel-ghost {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    align-items: center;
+    gap: 0.75rem 0.6875rem;
+    padding: 1rem 1.375rem 1.375rem;
+    border: 1px solid var(--pale-cell-rule);
+    animation: feed-empty-panel-pulse 2600ms ease-in-out infinite alternate;
+}
+
+.feed-empty-panel-ghost:nth-child(2) {
+    animation-delay: 400ms;
+}
+
+.feed-empty-panel-ghost:nth-child(3) {
+    animation-delay: 800ms;
+}
+
+.feed-empty-panel-ghost-avatar {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--pale-cell-border);
+}
+
+.feed-empty-panel-ghost-name,
+.feed-empty-panel-ghost-line {
+    display: block;
+    height: 0.5rem;
+    background: var(--pale-cell-rule);
+}
+
+.feed-empty-panel-ghost-name {
+    width: 30%;
+}
+
+.feed-empty-panel-ghost-line {
+    grid-column: 1 / -1;
+}
+
+.feed-empty-panel-ghost-line[data-short='true'] {
+    width: 60%;
+}
+
+@keyframes feed-empty-panel-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes feed-empty-panel-pulse {
+    from {
+        opacity: 0.35;
+    }
+
+    to {
+        opacity: 0.8;
+    }
+}
+
+@keyframes feed-empty-panel-leave {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+}
+
+/* Signing out sinks the panel like the posts; the 700ms stays inside the 1200ms sign-out. */
+[data-signing-out='true'] .feed-empty-panel {
+    animation: feed-empty-panel-leave 700ms var(--e) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feed-empty-panel {
+        animation-delay: 0ms;
+    }
+
+    .feed-empty-panel-ghost {
+        animation: none;
+        opacity: 0.6;
+    }
+}

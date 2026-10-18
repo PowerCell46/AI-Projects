@@ -89,7 +89,7 @@ describe('the shell', () => {
         await renderApp(path);
 
         expect(screen.getByRole('banner')).toBeTruthy();
-        expect(within(screen.getByRole('main')).getByRole('heading')).toBeTruthy();
+        expect(within(screen.getByRole('main')).getByRole('heading', { level: 1 })).toBeTruthy();
     });
 
     it('should_show_the_feed_page_inside_main_when_the_path_is_feed', async () => {

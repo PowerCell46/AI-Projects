@@ -16,6 +16,9 @@ import type { TabId } from '../../../../src/utils/navigation/tabs';
 import { userProfile } from '../../../support/userProfile';
 
 
+// The back link waits this long for the details' leave animation (LEAVE_MS in TweetDetailsPage.tsx).
+const DETAILS_LEAVE_MS = 450;
+
 vi.mock('../../../../src/api/accounts/auth', async (importOriginal) => ({
     ...await importOriginal<typeof import('../../../../src/api/accounts/auth')>(),
     me: vi.fn(),
@@ -629,6 +632,7 @@ describe('the tweet details panel', () => {
         await advance(1);
 
         await user.click(screen.getByRole('link', { name: 'BACK' }));
+        await advance(DETAILS_LEAVE_MS + 1);
         await waitForHistoryTraversal();
 
         expect(window.location.pathname).toBe(ROUTES.feed);
@@ -642,6 +646,7 @@ describe('the tweet details panel', () => {
         await advance(1);
 
         await user.click(screen.getByRole('link', { name: 'BACK' }));
+        await advance(DETAILS_LEAVE_MS + 1);
         await waitForHistoryTraversal();
 
         expect(tweetsPanel().getAttribute('data-entering')).toBe('false');

@@ -28,3 +28,69 @@
 .reply-thread-list > li {
     border-bottom: 1px solid var(--pale-header-rule);
 }
+
+/* Opening and leaving: the replies rise one after another once the post is in, and sink lowest-first on the way
+   out. The first four are staggered, the rest follow together. The page's `data-opening` ends after 1200ms, so
+   replies loaded later and the ones you send just appear. */
+[data-opening='true'] .reply-thread-list > li {
+    animation: reply-thread-rise 600ms var(--e) 650ms backwards;
+}
+
+[data-opening='true'] .reply-thread-list > li:nth-child(2) {
+    animation-delay: 750ms;
+}
+
+[data-opening='true'] .reply-thread-list > li:nth-child(3) {
+    animation-delay: 850ms;
+}
+
+[data-opening='true'] .reply-thread-list > li:nth-child(n + 4) {
+    animation-delay: 950ms;
+}
+
+[data-leaving='true'] .reply-thread-list > li {
+    animation: reply-thread-sink 300ms var(--e) forwards;
+}
+
+[data-leaving='true'] .reply-thread-list > li:nth-child(3) {
+    animation-delay: 40ms;
+}
+
+[data-leaving='true'] .reply-thread-list > li:nth-child(2) {
+    animation-delay: 80ms;
+}
+
+[data-leaving='true'] .reply-thread-list > li:nth-child(1) {
+    animation-delay: 120ms;
+}
+
+@keyframes reply-thread-rise {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes reply-thread-sink {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-opening='true'] .reply-thread-list > li,
+    [data-leaving='true'] .reply-thread-list > li {
+        animation-delay: 0ms;
+    }
+}

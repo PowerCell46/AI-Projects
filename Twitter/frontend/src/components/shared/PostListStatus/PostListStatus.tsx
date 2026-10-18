@@ -3,20 +3,14 @@ import './PostListStatus.css';
 
 export type BottomState = 'loading' | 'end' | 'empty' | 'failed';
 
-export interface EmptyAction {
-    label: string;
-    onClick: () => void;
-}
-
 interface PostListStatusProps {
     state: BottomState;
     endText: string;
     emptyText: string;
-    emptyAction?: EmptyAction;
     onRetry: () => void;
 }
 
-function PostListStatus({ state, endText, emptyText, emptyAction, onRetry }: PostListStatusProps) {
+function PostListStatus({ state, endText, emptyText, onRetry }: PostListStatusProps) {
     if (state === 'loading') {
         return (
             <p className="post-list-status">
@@ -31,17 +25,6 @@ function PostListStatus({ state, endText, emptyText, emptyAction, onRetry }: Pos
             <div className="post-list-status" role="alert">
                 <span>SIGNAL LOST</span>
                 <button type="button" className="post-list-status-button" onClick={onRetry}>TRY AGAIN</button>
-            </div>
-        );
-    }
-
-    if (state === 'empty' && emptyAction) {
-        return (
-            <div className="post-list-status">
-                <span>{emptyText}</span>
-                <button type="button" className="post-list-status-button" onClick={emptyAction.onClick}>
-                    {emptyAction.label}
-                </button>
             </div>
         );
     }

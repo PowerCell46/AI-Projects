@@ -1,10 +1,10 @@
+import type { ReactNode } from 'react';
 import type { PageRequest } from '../../../api/core/paging';
 import type { TweetItem, TweetPage } from '../../../api/tweets/tweetPage';
 import { usePostUpdates } from '../../../contexts/PostUpdatesContext';
 import { useBottomSentinel } from '../../../hooks/lists/useBottomSentinel';
 import { useMinuteClock } from '../../../hooks/dom/useMinuteClock';
 import { bottomStateOf } from '../../../utils/posts/bottomState';
-import type { EmptyAction } from '../PostListStatus/PostListStatus';
 import ListFooter from '../ListFooter/ListFooter';
 import NewPostsButton from './NewPostsButton/NewPostsButton';
 import PostCell from './PostCell/PostCell';
@@ -24,7 +24,7 @@ interface PostListProps {
     emptyText: string;
     ownPosts?: TweetItem[];
     shouldCheckForNewPosts?: boolean;
-    emptyAction?: EmptyAction;
+    emptyContent?: ReactNode;
     reloadEmptyKey?: number;
     isShown?: boolean;
 }
@@ -35,7 +35,7 @@ function PostList({
     emptyText,
     ownPosts = NO_OWN_POSTS,
     shouldCheckForNewPosts = false,
-    emptyAction,
+    emptyContent,
     reloadEmptyKey,
     isShown = true,
 }: PostListProps) {
@@ -54,6 +54,8 @@ function PostList({
     const bottomState = bottomStateOf(list.status, list.isEnd, list.items.length);
 
     const isEmpty = list.items.length === 0 && list.isEnd;
+    // Content given for the empty list stands in for the plain empty text.
+    const hasEmptyContent = isEmpty && emptyContent !== undefined;
 
     useReloadEmptyList(isEmpty, list.reload, reloadEmptyKey);
 
@@ -82,13 +84,13 @@ function PostList({
                     </li>
                 ))}
             </ul>
+            {hasEmptyContent && emptyContent}
             <ListFooter
-                bottomState={bottomState}
+                bottomState={hasEmptyContent ? null : bottomState}
                 endText={endText}
                 emptyText={emptyText}
                 announcement={list.announcement}
                 sentinelRef={sentinelRef}
-                emptyAction={emptyAction}
                 onRetry={list.retry}
             />
         </>
