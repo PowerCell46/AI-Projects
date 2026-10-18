@@ -147,7 +147,9 @@ profile → tweet → Back reloads the profile from the top.
   fades in. `YES` says `DELETING…` and dims the row; on success `useCollapse` folds it away (height, padding, opacity,
   350 ms) before `onRemoved` takes it out, so the replies below glide up and the numbers change only then. Both skip
   the motion for reduced motion or an element with no layout (jsdom), and a fallback timer ends a transition that
-  never ends. **Shortcut:** at the very bottom of a short page the browser's scroll clamp moves the content a little
+  never ends. `EDIT`/`DELETE` and the `DELETE? YES NO` question are both always in the row's one grid cell and trade places by fading
+  (`data-active`, `inert` and `aria-hidden` on the hidden one), so the question arrives in 200 ms with no height change.
+  **Shortcut:** at the very bottom of a short page the browser's scroll clamp moves the content a little
   while it shrinks.
 - Replies: the post's count is the server's `replyCount` plus what you sent minus what you deleted this session
   (`countChange`). Your sent replies sit under the composer until a reload; other people's replies appear after a

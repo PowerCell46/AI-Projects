@@ -162,30 +162,44 @@ function ReplyCell({
                     )}
                     {mode !== 'editing' && (canEdit || canDelete) && (
                         <div className="reply-cell-actions">
-                            {canEdit && mode === 'viewing' && (
-                                <button
-                                    type="button"
-                                    className="reply-cell-action"
-                                    data-action="edit"
-                                    ref={editButtonRef}
-                                    onClick={handleEditAsked}
+                            <div
+                                className="reply-cell-choices"
+                                data-active={mode === 'viewing'}
+                                aria-hidden={mode !== 'viewing'}
+                                inert={mode !== 'viewing'}
+                            >
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        className="reply-cell-action"
+                                        data-action="edit"
+                                        ref={editButtonRef}
+                                        onClick={handleEditAsked}
+                                    >
+                                        EDIT
+                                    </button>
+                                )}
+                                {canDelete && (
+                                    <button
+                                        type="button"
+                                        className="reply-cell-action"
+                                        data-action="delete"
+                                        ref={deleteButtonRef}
+                                        onClick={handleDeleteAsked}
+                                    >
+                                        DELETE
+                                    </button>
+                                )}
+                            </div>
+                            {canDelete && (
+                                <div
+                                    className="reply-cell-confirm"
+                                    role="group"
+                                    aria-label="Delete this reply?"
+                                    data-active={mode === 'confirming-delete'}
+                                    aria-hidden={mode !== 'confirming-delete'}
+                                    inert={mode !== 'confirming-delete'}
                                 >
-                                    EDIT
-                                </button>
-                            )}
-                            {canDelete && mode === 'viewing' && (
-                                <button
-                                    type="button"
-                                    className="reply-cell-action"
-                                    data-action="delete"
-                                    ref={deleteButtonRef}
-                                    onClick={handleDeleteAsked}
-                                >
-                                    DELETE
-                                </button>
-                            )}
-                            {mode === 'confirming-delete' && (
-                                <div className="reply-cell-confirm" role="group" aria-label="Delete this reply?">
                                     <span className="reply-cell-question">DELETE?</span>
                                     <button
                                         type="button"

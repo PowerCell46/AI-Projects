@@ -256,9 +256,26 @@ describe('deleting', () => {
 
         await userEvent.click(button('DELETE'));
 
-        expect(screen.getByText('DELETE?')).toBeTruthy();
+        expect(screen.getByRole('group', { name: 'Delete this reply?' })).toBeTruthy();
         expect(document.activeElement).toBe(button('NO'));
         expect(deleteReply).not.toHaveBeenCalled();
+    });
+
+    it('should_trade_the_choices_and_the_question_in_place_rather_than_swap_them', async () => {
+        renderCell();
+        const choices = button('EDIT').parentElement;
+        const question = document.querySelector('.reply-cell-confirm');
+
+        expect(choices?.getAttribute('data-active')).toBe('true');
+        expect(question?.getAttribute('data-active')).toBe('false');
+        expect(question?.hasAttribute('inert')).toBe(true);
+
+        await userEvent.click(button('DELETE'));
+
+        expect(choices?.getAttribute('data-active')).toBe('false');
+        expect(choices?.hasAttribute('inert')).toBe(true);
+        expect(question?.getAttribute('data-active')).toBe('true');
+        expect(question?.hasAttribute('inert')).toBe(false);
     });
 
     it('should_go_back_to_delete_with_focus_on_it_when_no_is_pressed', async () => {
@@ -267,7 +284,7 @@ describe('deleting', () => {
 
         await userEvent.click(button('NO'));
 
-        expect(screen.queryByText('DELETE?')).toBeNull();
+        expect(screen.queryByRole('group', { name: 'Delete this reply?' })).toBeNull();
         expect(document.activeElement).toBe(button('DELETE'));
         expect(onRemoved).not.toHaveBeenCalled();
     });

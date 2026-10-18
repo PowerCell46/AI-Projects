@@ -65,17 +65,37 @@
 }
 
 /* The buttons keep their 2.75rem touch height; the negative margin lines their text up with the reply's text. */
+/* EDIT / DELETE and the "DELETE? YES NO" question sit in the same grid cell and trade places by fading, so the row
+   keeps its height and the question arrives instead of popping in. */
 .reply-cell-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+    display: grid;
     margin-left: -0.5rem;
 }
 
+.reply-cell-choices,
 .reply-cell-confirm {
+    grid-area: 1 / 1;
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    justify-self: start;
+    opacity: 0;
+    transform: translateX(-0.25rem);
+    transition: opacity 200ms var(--e), transform 260ms var(--e);
+}
+
+.reply-cell-confirm {
+    transform: translateX(0.25rem);
+}
+
+.reply-cell-choices[data-active='true'],
+.reply-cell-confirm[data-active='true'] {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.reply-cell-confirm[data-active='true'] {
+    transition-delay: 100ms;
 }
 
 .reply-cell-question {
